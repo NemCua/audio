@@ -283,7 +283,7 @@ def get_beeknoee_key(key_input: str) -> str | None:
     return k if k else None
 
 
-def run_stt_translate(video_file, key_input: str, beeknoee_input: str, beeknoee_tts_input: str, beeknoee_tts_voice_input: str, slow_factor: float, progress=gr.Progress()):
+def run_stt_translate(video_file, key_input: str, beeknoee_input: str, beeknoee_tts_input: str, beeknoee_tts_voice_input: str, slow_factor: float, auto_translate: bool, progress=gr.Progress()):
     global _state
     _state = {}
 
@@ -304,7 +304,7 @@ def run_stt_translate(video_file, key_input: str, beeknoee_input: str, beeknoee_
     _state["beeknoee_tts_model"] = beeknoee_tts_input.strip() or None
     _state["beeknoee_tts_voice"] = beeknoee_tts_voice_input.strip() or None
     _state["slow_factor"]        = slow_factor
-    _state["input_tmp"]    = str(video_file)  # path tạm Gradio tạo, xóa sau render
+    _state["input_tmp"]          = str(video_file)
 
     try:
         # Kéo dãn nếu cần
@@ -328,15 +328,28 @@ def run_stt_translate(video_file, key_input: str, beeknoee_input: str, beeknoee_
         # STT
         progress(0.45, desc="STT Groq Whisper...")
         zh_cues = stt_groq(audio_stt, groq_key)
-
         _state["zh_cues"] = zh_cues
+
+        # Nếu tắt auto-translate: dừng lại, hiện bảng tiếng Trung
+        if not auto_translate:
+            df = cues_to_df(zh_cues)  # hiện tiếng Trung ở cột Bản dịch tạm
+            # Hiện nút Dịch, ẩn Render
+            return (
+                df,
+                gr.update(visible=True, value=df),
+                gr.update(visible=False),  # btn_optimize
+                gr.update(visible=False),  # btn_export_json
+                gr.update(visible=False),  # btn_render
+                gr.update(visible=True),   # btn_translate_only
+                f"✓ STT xong — {len(zh_cues)} đoạn. Bấm 'Dịch' để tiếp tục.",
+            )
 
         # Dịch — lưu cache sau mỗi chunk, cập nhật progress
         provider_name = f"Beeknoee ({BEEKNOEE_MODEL})" if beeknoee_key else "Groq LLaMA"
         cache_path = work_dir / "vi_cues.json"
 
         def on_chunk_done(done, total, partial):
-            pct = 0.65 + (done / total) * 0.15  # 65% → 80%
+            pct = 0.65 + (done / total) * 0.15
             progress(pct, desc=f"Dịch {provider_name}: chunk {done}/{total} ({done * 20}/{len(zh_cues)} đoạn)...")
             cache_path.write_text(json.dumps({
                 "vi_cues":     partial,
@@ -348,7 +361,6 @@ def run_stt_translate(video_file, key_input: str, beeknoee_input: str, beeknoee_
         progress(0.65, desc=f"Dịch Trung → Việt ({provider_name})...")
         vi_cues = translate_srt(zh_cues, groq_key, beeknoee_key=beeknoee_key,
                                 chunk_cb=on_chunk_done)
-
         _state["vi_cues"] = vi_cues
 
         # Tối ưu AI ngay sau khi dịch
@@ -359,7 +371,6 @@ def run_stt_translate(video_file, key_input: str, beeknoee_input: str, beeknoee_
             vi_cues = optimize_cues(vi_cues, groq_key, beeknoee_key=beeknoee_key,
                                     progress_cb=None)
             _state["vi_cues"] = vi_cues
-            # Lưu cache đã tối ưu
             cache_path.write_text(json.dumps({
                 "vi_cues":     vi_cues,
                 "video_path":  str(video_path),
@@ -376,6 +387,7 @@ def run_stt_translate(video_file, key_input: str, beeknoee_input: str, beeknoee_
             gr.update(visible=True),   # btn_optimize
             gr.update(visible=True),   # btn_export_json
             gr.update(visible=True),   # btn_render
+            gr.update(visible=False),  # btn_translate_only
             f"✓ STT + Dịch + Tối ưu xong — {len(vi_cues)} đoạn ({fixed} đoạn đã tối ưu)",
         )
 
@@ -383,6 +395,65 @@ def run_stt_translate(video_file, key_input: str, beeknoee_input: str, beeknoee_
         if _state.get("work_dir"):
             shutil.rmtree(_state["work_dir"], ignore_errors=True)
         raise gr.Error(str(e))
+
+
+def run_translate_only(progress=gr.Progress()):
+    """Chạy dịch từ zh_cues đã có trong state (sau khi STT xong mà không auto-translate)."""
+    global _state
+    if not _state.get("zh_cues"):
+        raise gr.Error("Chưa có dữ liệu STT. Chạy Bước 1 trước.")
+
+    groq_key     = _state.get("groq_key", "")
+    beeknoee_key = _state.get("beeknoee_key")
+    zh_cues      = _state["zh_cues"]
+    video_path   = _state["video_path"]
+    bg_track     = _state["bg_track"]
+    slow_factor  = _state.get("slow_factor", 1.0)
+    work_dir     = _state["work_dir"]
+    cache_path   = work_dir / "vi_cues.json"
+
+    provider_name = f"Beeknoee ({BEEKNOEE_MODEL})" if beeknoee_key else "Groq LLaMA"
+
+    def on_chunk_done(done, total, partial):
+        pct = (done / total) * 0.7
+        progress(pct, desc=f"Dịch {provider_name}: chunk {done}/{total}...")
+        cache_path.write_text(json.dumps({
+            "vi_cues":     partial,
+            "video_path":  str(video_path),
+            "bg_track":    str(bg_track),
+            "slow_factor": slow_factor,
+        }, ensure_ascii=False, indent=2), encoding="utf-8")
+
+    progress(0.0, desc=f"Dịch Trung → Việt ({provider_name})...")
+    vi_cues = translate_srt(zh_cues, groq_key, beeknoee_key=beeknoee_key,
+                            chunk_cb=on_chunk_done)
+    _state["vi_cues"] = vi_cues
+
+    needs_fix = [c for c in vi_cues
+                 if abs(reading_speed_pct(c["text"], c["start_sec"], c["end_sec"])) > 10]
+    if needs_fix:
+        progress(0.75, desc=f"Tối ưu AI {len(needs_fix)} đoạn...")
+        vi_cues = optimize_cues(vi_cues, groq_key, beeknoee_key=beeknoee_key, progress_cb=None)
+        _state["vi_cues"] = vi_cues
+        cache_path.write_text(json.dumps({
+            "vi_cues":     vi_cues,
+            "video_path":  str(video_path),
+            "bg_track":    str(bg_track),
+            "slow_factor": slow_factor,
+        }, ensure_ascii=False, indent=2), encoding="utf-8")
+
+    progress(1.0, desc="Dịch xong!")
+    df = cues_to_df(vi_cues, zh_cues)
+    fixed = len(needs_fix) if needs_fix else 0
+    return (
+        df,
+        gr.update(visible=True, value=df),
+        gr.update(visible=True),   # btn_optimize
+        gr.update(visible=True),   # btn_export_json
+        gr.update(visible=True),   # btn_render
+        gr.update(visible=False),  # btn_translate_only
+        f"✓ Dịch + Tối ưu xong — {len(vi_cues)} đoạn ({fixed} đoạn đã tối ưu)",
+    )
 
 
 # ---------------------------------------------------------------------------
@@ -669,7 +740,12 @@ with gr.Blocks(title="Dịch Video Tiếng Trung → Tiếng Việt") as demo:
                 minimum=1.0, maximum=2.0, value=1.0, step=0.1,
                 label="Kéo dãn video (1.0 = giữ nguyên, 1.2 = chậm 20%)",
             )
-            btn_stt = gr.Button("▶ Bước 1: STT + Dịch", variant="primary")
+            auto_translate_toggle = gr.Checkbox(
+                label="Tự động dịch sau STT",
+                value=True,
+                info="Tắt = chỉ chạy STT, dừng lại để xem/xuất tiếng Trung trước",
+            )
+            btn_stt = gr.Button("▶ Bước 1: STT + Demucs", variant="primary")
 
     status_stt = gr.Textbox(label="Trạng thái", interactive=False)
 
@@ -711,10 +787,12 @@ with gr.Blocks(title="Dịch Video Tiếng Trung → Tiếng Việt") as demo:
         visible=False,
         column_widths=["4%", "9%", "9%", "30%", "30%", "18%"],
     )
+    btn_translate_only = gr.Button("▶ Bước 2: Dịch Trung → Việt", variant="primary", visible=False)
+
     with gr.Row():
         btn_optimize    = gr.Button("✨ Tối ưu bản dịch (AI)", variant="secondary", visible=False)
         btn_export_json = gr.Button("💾 Tải JSON bản dịch",    variant="secondary", visible=False)
-        btn_render      = gr.Button("🎬 Bước 2: Render Video", variant="primary",   visible=False)
+        btn_render      = gr.Button("🎬 Render Video",          variant="primary",   visible=False)
 
     json_output     = gr.File(label="File JSON bản dịch", visible=False, interactive=False)
     status_optimize = gr.Textbox(label="Trạng thái tối ưu", interactive=False)
@@ -725,8 +803,14 @@ with gr.Blocks(title="Dịch Video Tiếng Trung → Tiếng Việt") as demo:
     # Events
     btn_stt.click(
         fn=run_stt_translate,
-        inputs=[video_input, key_input, beeknoee_input, beeknoee_tts_input, beeknoee_tts_voice_input, slow_slider],
-        outputs=[translation_table, translation_table, btn_optimize, btn_export_json, btn_render, status_stt],
+        inputs=[video_input, key_input, beeknoee_input, beeknoee_tts_input, beeknoee_tts_voice_input, slow_slider, auto_translate_toggle],
+        outputs=[translation_table, translation_table, btn_optimize, btn_export_json, btn_render, btn_translate_only, status_stt],
+    )
+
+    btn_translate_only.click(
+        fn=run_translate_only,
+        inputs=[],
+        outputs=[translation_table, translation_table, btn_optimize, btn_export_json, btn_render, btn_translate_only, status_stt],
     )
 
     tts_test_model.change(fn=get_voices, inputs=[tts_test_model], outputs=[tts_test_voice])
