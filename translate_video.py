@@ -39,6 +39,7 @@ INPUT_DIR  = BASE_DIR / "input"
 OUTPUT_DIR = BASE_DIR / "output"
 WORK_DIR   = BASE_DIR / "workdir"
 
+FFMPEG_BIN       = os.environ.get("FFMPEG_BIN", "ffmpeg")
 TTS_VOICE        = "vi-VN-HoaiMyNeural"
 TTS_SPEED_BOOST  = 1.00   # không tăng tốc mặc định, tự khớp theo window
 ATEMPO_MAX       = 2.0    # FFmpeg atempo tối đa 2.0x mỗi filter
@@ -53,7 +54,14 @@ BG_VOLUME        = 0.9    # âm lượng nhạc nền so với gốc (0.0-1.0)
 # ---------------------------------------------------------------------------
 
 def run(cmd: list[str], timeout: int = 300, check: bool = True) -> subprocess.CompletedProcess:
-    return subprocess.run(cmd, capture_output=True, text=True, timeout=timeout, check=check)
+    result = subprocess.run(cmd, capture_output=True, text=True, timeout=timeout, check=False)
+    if check and result.returncode != 0:
+        raise subprocess.CalledProcessError(
+            result.returncode, result.args,
+            output=result.stdout,
+            stderr=result.stderr,
+        )
+    return result
 
 
 def srt_time_to_sec(ts: str) -> float:
@@ -125,7 +133,7 @@ def extract_audio_for_stt(video_path: Path, audio_path: Path):
     """Tách audio chất lượng thấp tối ưu cho Whisper STT (16kHz mono 32kbps)."""
     print("  → Tách audio cho STT (16kHz mono 32kbps)...")
     run([
-        "ffmpeg", "-y", "-i", str(video_path),
+        FFMPEG_BIN, "-y", "-i", str(video_path),
         "-vn", "-acodec", "libmp3lame",
         "-ac", "1", "-ar", "16000", "-b:a", "32k",
         str(audio_path),
@@ -134,7 +142,7 @@ def extract_audio_for_stt(video_path: Path, audio_path: Path):
     if size > 24 * 1024 * 1024:
         tmp = audio_path.with_suffix(".tmp.mp3")
         run([
-            "ffmpeg", "-y", "-i", str(audio_path),
+            FFMPEG_BIN, "-y", "-i", str(audio_path),
             "-acodec", "libmp3lame", "-ac", "1", "-ar", "16000", "-b:a", "16k",
             str(tmp),
         ])
@@ -151,7 +159,7 @@ def separate_background(video_path: Path, work_dir: Path) -> Path:
     # Tách audio gốc chất lượng cao ra WAV trước
     full_audio = work_dir / "full_audio.wav"
     run([
-        "ffmpeg", "-y", "-i", str(video_path),
+        FFMPEG_BIN, "-y", "-i", str(video_path),
         "-vn", "-acodec", "pcm_s16le", "-ar", "44100", "-ac", "2",
         str(full_audio),
     ])
@@ -431,7 +439,7 @@ def stretch_audio(src: Path, dst: Path, ratio: float):
     """Kéo/nén audio theo ratio dùng atempo. ratio > 1 = nhanh hơn."""
     filters = ",".join(atempo_chain(ratio))
     run([
-        "ffmpeg", "-y", "-i", str(src),
+        FFMPEG_BIN, "-y", "-i", str(src),
         "-filter:a", filters,
         str(dst),
     ])
@@ -440,7 +448,7 @@ def stretch_audio(src: Path, dst: Path, ratio: float):
 def make_silent(duration: float, dst: Path):
     """Tạo file âm thanh im lặng duration giây."""
     run([
-        "ffmpeg", "-y",
+        FFMPEG_BIN, "-y",
         "-f", "lavfi", "-i", f"anullsrc=r=24000:cl=mono",
         "-t", f"{duration:.3f}",
         "-acodec", "libmp3lame", "-b:a", "48k",
@@ -545,7 +553,7 @@ async def build_tts_track(cues: list[dict], work_dir: Path, video_duration: floa
     )
     tts_track = work_dir / "tts_track.mp3"
     run([
-        "ffmpeg", "-y",
+        FFMPEG_BIN, "-y",
         "-f", "concat", "-safe", "0",
         "-i", str(concat_list),
         "-acodec", "libmp3lame", "-b:a", "128k",
@@ -567,7 +575,7 @@ def slowdown_video(video_path: Path, out_path: Path, factor: float) -> Path:
     atempo = 1.0 / factor
     af_filters = ",".join(atempo_chain(atempo))
     run([
-        "ffmpeg", "-y", "-i", str(video_path),
+        FFMPEG_BIN, "-y", "-i", str(video_path),
         "-vf", f"setpts={factor:.4f}*PTS",
         "-af", af_filters,
         "-c:v", "libx264", "-preset", "fast", "-crf", "20",
@@ -601,7 +609,13 @@ def render_video(
 ):
     print("  → Render video (burn sub + mix TTS + nhạc nền)...")
 
-    srt_escaped = str(srt_path).replace("\\", "/").replace("'", "\\'")
+    # FFmpeg subtitles filter: escape ':', '\', "'" in path with backslash
+    srt_escaped = (
+        str(srt_path)
+        .replace("\\", "\\\\")
+        .replace(":", "\\:")
+        .replace("'", "\\'")
+    )
 
     sub_style = (
         "FontName=Arial Unicode MS,FontSize=22,Bold=1,"
@@ -611,7 +625,7 @@ def render_video(
     )
 
     draw_box = "drawbox=x=0:y=ih-ih*0.15:w=iw:h=ih*0.15:color=black@0.92:t=fill"
-    vf = f"{draw_box},subtitles='{srt_escaped}':force_style='{sub_style}'"
+    vf = f"{draw_box},subtitles={srt_escaped}:force_style='{sub_style}'"
 
     # Mix: background * BG_VOLUME + TTS
     # Input 0 = video, input 1 = background, input 2 = tts
@@ -620,20 +634,25 @@ def render_video(
         f"[bg][2:a]amix=inputs=2:duration=first:dropout_transition=0[aout]"
     )
 
-    run([
-        "ffmpeg", "-y",
-        "-i", str(video_path),
-        "-i", str(bg_track),
-        "-i", str(tts_track),
-        "-filter_complex", amix_filter,
-        "-map", "0:v:0",
-        "-map", "[aout]",
-        "-vf", vf,
-        "-c:v", "libx264", "-preset", "fast", "-crf", "23",
-        "-c:a", "aac", "-b:a", "192k",
-        "-shortest",
-        str(output_path),
-    ], timeout=1800)
+    try:
+        run([
+            FFMPEG_BIN, "-y",
+            "-i", str(video_path),
+            "-i", str(bg_track),
+            "-i", str(tts_track),
+            "-filter_complex", amix_filter,
+            "-map", "0:v:0",
+            "-map", "[aout]",
+            "-vf", vf,
+            "-c:v", "libx264", "-preset", "fast", "-crf", "23",
+            "-c:a", "aac", "-b:a", "192k",
+            "-shortest",
+            str(output_path),
+        ], timeout=1800)
+    except subprocess.CalledProcessError as e:
+        print("=== FFmpeg stderr ===")
+        print(e.stderr[-3000:] if e.stderr else "(no stderr)")
+        raise RuntimeError(f"FFmpeg lỗi (exit {e.returncode}):\n{e.stderr[-1000:] if e.stderr else ''}") from e
 
 
 # ---------------------------------------------------------------------------
