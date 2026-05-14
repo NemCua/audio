@@ -306,11 +306,29 @@ def translate_chunk(cues: list[dict], context_cues: list[dict],
                 tgt["start_sec"] = src["start_sec"]
                 tgt["end_sec"]   = src["end_sec"]
             return translated
+        best_partial = translated
         if attempt < max_attempts - 1:
             prompt += f"\n\n[LỖI: cần đúng {len(cues)} block, nhận được {len(translated)}. KHÔNG gộp/bỏ block nào.]"
             time.sleep(3)
 
-    raise RuntimeError(f"Dịch chunk thất bại sau {max_attempts} lần thử (expected {len(cues)} blocks)")
+    # Fallback: align by SRT index, fill missing with source text
+    print(f"     ⚠ Dùng fallback: căn chỉnh theo index, bổ sung block thiếu bằng text gốc")
+    by_idx = {t["idx"]: t for t in best_partial}
+    result = []
+    for i, src in enumerate(cues, 1):
+        tgt = by_idx.get(i) or by_idx.get(src["idx"])
+        if tgt:
+            tgt = dict(tgt)
+        else:
+            tgt = dict(src)
+            tgt["text"] = src["text"]
+        tgt["start"]     = src["start"]
+        tgt["end"]       = src["end"]
+        tgt["start_sec"] = src["start_sec"]
+        tgt["end_sec"]   = src["end_sec"]
+        tgt["idx"]       = src["idx"]
+        result.append(tgt)
+    return result
 
 
 def translate_srt(cues: list[dict], groq_key: str,
