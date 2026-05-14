@@ -343,32 +343,31 @@ def run_stt_translate(video_file, key_input, beeknoee_input, beeknoee_tts_input,
         video_path = video_copy
         _state["video_path"] = video_path
 
-        progress(0.1, desc="Tách audio...")
-        audio_stt = work_dir / "audio_stt.mp3"
-        extract_audio_for_stt(video_path, audio_stt)
-
         progress(0.2, desc="Tách nhạc nền (Demucs)...")
         bg_track = separate_background(video_path, work_dir)
         _state["bg_track"] = bg_track
 
-        progress(0.45, desc="STT Groq Whisper...")
-        zh_cues = stt_groq(audio_stt, groq_key)
-        _state["zh_cues"] = zh_cues
-
         if not auto_translate:
-            # Dừng sau STT — hiện bảng tiếng Trung
-            df = cues_to_df(zh_cues)
+            # Chỉ Demucs xong — chờ JSON từ server
             return (
-                df,
-                gr.update(visible=True, value=df),
+                pd.DataFrame(columns=["#", "Bắt đầu", "Kết thúc", "Tiếng Trung", "Bản dịch", "Tốc độ đọc"]),
+                gr.update(visible=False),  # translation_table
                 gr.update(visible=False),  # btn_optimize
                 gr.update(visible=False),  # btn_export_json
                 gr.update(visible=False),  # btn_render
-                gr.update(visible=True),   # btn_translate_only
-                f"✓ STT xong — {len(zh_cues)} đoạn. Bấm 'Dịch' để tiếp tục.",
+                gr.update(visible=False),  # btn_translate_only
+                f"✓ Demucs xong — sẵn sàng nhận JSON từ server. Video: {src_path.stem}",
             )
 
-        vi_cues, fixed = _do_translate(zh_cues, groq_key, beeknoee_key, work_dir, progress, 0.55)
+        progress(0.35, desc="Tách audio STT...")
+        audio_stt = work_dir / "audio_stt.mp3"
+        extract_audio_for_stt(video_path, audio_stt)
+
+        progress(0.5, desc="STT Groq Whisper...")
+        zh_cues = stt_groq(audio_stt, groq_key)
+        _state["zh_cues"] = zh_cues
+
+        vi_cues, fixed = _do_translate(zh_cues, groq_key, beeknoee_key, work_dir, progress, 0.6)
         _state["vi_cues"] = vi_cues
 
         progress(1.0, desc="Xong!")
@@ -418,56 +417,51 @@ def run_translate_only(progress=gr.Progress()):
 # LOAD JSON (từ server hoặc export trước)
 # ---------------------------------------------------------------------------
 
-def run_load_json(json_file, video_file):
+def run_load_json(json_file):
     global _state
 
     if json_file is None:
         raise gr.Error("Chưa chọn file JSON.")
 
-    raw = json.loads(Path(json_file).read_text(encoding="utf-8"))
-    if isinstance(raw, dict):
-        raw_cues = raw.get("vi_cues", [])
-    else:
-        raw_cues = raw
+    json_path = Path(json_file)
+    json_stem = json_path.stem  # tên file không có đuôi
 
+    raw = json.loads(json_path.read_text(encoding="utf-8"))
+    raw_cues = raw if isinstance(raw, list) else raw.get("vi_cues", [])
     vi_cues, zh_cues = _normalize_cues(raw_cues)
-    _state["vi_cues"]     = vi_cues
-    _state["zh_cues"]     = zh_cues
-    _state["groq_key"]    = _state.get("groq_key", os.environ.get("GROQ_API_KEY", ""))
-    _state["beeknoee_key"]= _state.get("beeknoee_key", os.environ.get("BEEKNOEE_API_KEY"))
 
-    # Nếu có video upload kèm → chuẩn bị để Render
-    work_dir = _tmp_dir()
-    _state["work_dir"] = work_dir
-    _state["slow_factor"] = 1.0
+    # Kiểm tra khớp với video đang giữ trong state
+    video_path = _state.get("video_path")
+    bg_track   = _state.get("bg_track")
+    render_ready = False
 
-    status_extra = ""
-    if video_file is not None:
-        src = Path(video_file)
-        video_copy = work_dir / ("video" + src.suffix)
-        shutil.copy2(src, video_copy)
-        _state["video_path"] = video_copy
-
-        # Tách nhạc nền
-        try:
-            bg_track = separate_background(video_copy, work_dir)
-            _state["bg_track"] = bg_track
-            status_extra = " — video đã sẵn sàng Render"
-        except Exception as e:
-            status_extra = f" — cảnh báo: không tách được nhạc nền ({e})"
+    if video_path and bg_track:
+        video_stem = Path(video_path).stem.replace("_slowed", "").replace("slowed", "")
+        # So khớp linh hoạt: json_stem là subset hoặc bằng video_stem
+        if json_stem == video_stem or video_stem.startswith(json_stem) or json_stem.startswith(video_stem):
+            render_ready = True
+            status_video = f"✓ Khớp video '{video_stem}' — sẵn sàng Render"
+        else:
+            status_video = f"⚠ Tên JSON '{json_stem}' không khớp video đang giữ '{video_stem}'. Chạy lại Bước 1 với đúng video."
+    elif not video_path:
+        status_video = "⚠ Chưa có video — chạy Bước 1 (tắt toggle) trước để tách nhạc nền"
     else:
-        status_extra = " — chưa có video, upload video để Render"
+        status_video = "⚠ Nhạc nền chưa sẵn sàng — chạy lại Bước 1"
+
+    _state["vi_cues"]      = vi_cues
+    _state["zh_cues"]      = zh_cues
+    _state["groq_key"]     = _state.get("groq_key", os.environ.get("GROQ_API_KEY", ""))
+    _state["beeknoee_key"] = _state.get("beeknoee_key", os.environ.get("BEEKNOEE_API_KEY"))
 
     df = cues_to_df(vi_cues, zh_cues or None)
-    render_ready = video_file is not None and _state.get("bg_track") is not None
     return (
         df,
         gr.update(visible=True, value=df),
-        gr.update(visible=True),                # btn_optimize
-        gr.update(visible=True),                # btn_export_json
-        gr.update(visible=render_ready),        # btn_render
-        gr.update(visible=False),               # btn_translate_only
-        f"✓ Đã load {len(vi_cues)} đoạn{status_extra}",
+        gr.update(visible=True),              # btn_optimize
+        gr.update(visible=True),              # btn_export_json
+        gr.update(visible=render_ready),      # btn_render
+        gr.update(visible=False),             # btn_translate_only
+        f"✓ Load {len(vi_cues)} đoạn — {status_video}",
     )
 
 
@@ -663,24 +657,23 @@ with gr.Blocks(title="Dịch Video Tiếng Trung → Tiếng Việt") as demo:
                 label="Kéo dãn video (1.0 = giữ nguyên)",
             )
             auto_translate_toggle = gr.Checkbox(
-                label="Tự động dịch sau STT",
+                label="Tự động dịch sau Demucs+STT",
                 value=True,
-                info="Tắt = chỉ STT + Demucs, dừng để xem/xuất tiếng Trung trước",
+                info="Tắt = chỉ chạy Demucs, dừng lại chờ JSON bản dịch từ server",
             )
-            btn_stt = gr.Button("▶ Chạy STT + Demucs", variant="primary")
+            btn_stt = gr.Button("▶ Chạy Bước 1", variant="primary")
 
     status_stt = gr.Textbox(label="Trạng thái", interactive=False)
 
     # ── PHẦN 2: Load JSON từ server ────────────────────────────────────────
-    with gr.Accordion("📥 Load JSON bản dịch (từ server hoặc file đã xuất)", open=False):
+    with gr.Accordion("📥 Load JSON bản dịch từ server", open=False):
         gr.Markdown(
-            "Upload file JSON bản dịch (từ server dịch hoặc từ nút 'Xuất JSON' bên dưới). "
-            "Kèm video để Render ngay, hoặc bỏ qua nếu chỉ muốn xem/sửa bản dịch."
+            "Sau khi Bước 1 xong (toggle tắt), upload JSON bản dịch từ server vào đây. "
+            "App tự khớp với video đang giữ trong bộ nhớ theo tên file — "
+            "**đặt tên JSON trùng stem với video** (vd: `TikTok_123.json` cho `TikTok_123.mp4`)."
         )
-        with gr.Row():
-            load_json_file  = gr.File(label="File JSON bản dịch", file_types=[".json"])
-            load_json_video = gr.Video(label="Video gốc (để Render)", sources=["upload"])
-        btn_load_json = gr.Button("📂 Load", variant="secondary")
+        load_json_file = gr.File(label="File JSON bản dịch", file_types=[".json"])
+        btn_load_json  = gr.Button("📂 Load JSON", variant="secondary")
 
     # ── PHẦN 3: Test TTS ───────────────────────────────────────────────────
     with gr.Accordion("🔊 Test giọng đọc TTS", open=False):
@@ -745,7 +738,7 @@ with gr.Blocks(title="Dịch Video Tiếng Trung → Tiếng Việt") as demo:
 
     btn_load_json.click(
         fn=run_load_json,
-        inputs=[load_json_file, load_json_video],
+        inputs=[load_json_file],
         outputs=_stt_outputs_list,
     )
 
