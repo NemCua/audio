@@ -1,0 +1,18 @@
+# Secrets
+.env
+
+# Python cache
+__pycache__/
+*.pyc
+*.pyo
+
+# Working directories
+input/
+output/
+workdir/
+
+# Media files
+*.mp3
+*.mp4
+*.wav
+*.srt
