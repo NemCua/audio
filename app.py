@@ -85,9 +85,11 @@ def cues_to_df(cues: list[dict], zh_cues: list[dict] | None = None) -> pd.DataFr
             "#": c["idx"],
             "Bắt đầu": c["start"],
             "Kết thúc": c["end"],
-            "Tiếng Trung": zh_list[i]["text"] if i < len(zh_list) else "",
-            "Bản dịch": c["text"],
-            "Tốc độ đọc": reading_speed_label(c["text"], c["start_sec"], c["end_sec"]),
+            "Tiếng Trung": c.get("zh") or (zh_list[i]["text"] if i < len(zh_list) else ""),
+            "Bản dịch": c.get("vi") or c.get("text", ""),
+            "Tốc độ đọc": reading_speed_label(
+                c.get("vi") or c.get("text", ""), c["start_sec"], c["end_sec"]
+            ),
         }
         for i, c in enumerate(cues)
     ])
@@ -372,6 +374,7 @@ def run_stt_translate(video_file, key_input: str, beeknoee_input: str, beeknoee_
             df,
             gr.update(visible=True, value=df),
             gr.update(visible=True),   # btn_optimize
+            gr.update(visible=True),   # btn_export_json
             gr.update(visible=True),   # btn_render
             f"✓ STT + Dịch + Tối ưu xong — {len(vi_cues)} đoạn ({fixed} đoạn đã tối ưu)",
         )
@@ -386,6 +389,20 @@ def run_stt_translate(video_file, key_input: str, beeknoee_input: str, beeknoee_
 # LOAD CACHE
 # ---------------------------------------------------------------------------
 
+def _normalize_cues(raw: list[dict]) -> tuple[list[dict], list[dict]]:
+    """Chuẩn hóa cues từ server (có zh/vi) hoặc local (có text) về format thống nhất.
+    Trả về (vi_cues, zh_cues). vi_cues dùng key 'text' để tương thích render."""
+    vi_cues = []
+    zh_cues = []
+    for c in raw:
+        vi_text = c.get("vi") or c.get("text", "")
+        zh_text = c.get("zh", "")
+        vi_cues.append({**c, "text": vi_text})
+        if zh_text:
+            zh_cues.append({"idx": c["idx"], "text": zh_text})
+    return vi_cues, zh_cues
+
+
 def run_load_cache(cache_file):
     global _state
     if cache_file is None:
@@ -395,32 +412,81 @@ def run_load_cache(cache_file):
     if not cache_path.exists():
         raise gr.Error("File không tồn tại.")
 
-    data = json.loads(cache_path.read_text(encoding="utf-8"))
-    vi_cues    = data["vi_cues"]
-    video_path = Path(data["video_path"])
-    bg_track   = Path(data["bg_track"])
+    raw = json.loads(cache_path.read_text(encoding="utf-8"))
 
-    if not video_path.exists():
-        raise gr.Error(f"File video không còn tồn tại: {video_path}")
-    if not bg_track.exists():
+    # Hỗ trợ cả 2 format:
+    # - Local: {"vi_cues": [...], "video_path": ..., "bg_track": ...}
+    # - Server: [{idx, zh, vi, ...}, ...]  (array thẳng)
+    if isinstance(raw, list):
+        raw_cues = raw
+        video_path = None
+        bg_track   = None
+    else:
+        raw_cues   = raw["vi_cues"]
+        video_path = Path(raw["video_path"]) if raw.get("video_path") else None
+        bg_track   = Path(raw["bg_track"])   if raw.get("bg_track")   else None
+
+    vi_cues, zh_cues = _normalize_cues(raw_cues)
+
+    # Kiểm tra file tồn tại (chỉ khi có path)
+    if video_path and not video_path.exists():
+        raise gr.Error(f"File video không còn tồn tại: {video_path}\nHãy upload video rồi Render thủ công.")
+    if bg_track and not bg_track.exists():
         raise gr.Error(f"File nhạc nền không còn tồn tại: {bg_track}")
 
     _state["vi_cues"]     = vi_cues
-    _state["video_path"]  = video_path
-    _state["bg_track"]    = bg_track
-    _state["work_dir"]    = cache_path.parent
-    _state["slow_factor"] = data.get("slow_factor", 1.0)
+    _state["zh_cues"]     = zh_cues if zh_cues else _state.get("zh_cues", [])
+    if video_path:
+        _state["video_path"]  = video_path
+    if bg_track:
+        _state["bg_track"]    = bg_track
+    if isinstance(raw, dict):
+        _state["work_dir"]    = cache_path.parent
+        _state["slow_factor"] = raw.get("slow_factor", 1.0)
     _state["groq_key"]    = _state.get("groq_key", os.environ.get("GROQ_API_KEY", ""))
     _state["beeknoee_key"]= _state.get("beeknoee_key", os.environ.get("BEEKNOEE_API_KEY"))
 
-    df = cues_to_df(vi_cues)
+    df = cues_to_df(vi_cues, zh_cues or None)
     return (
         df,
         gr.update(visible=True, value=df),
-        gr.update(visible=True),
-        gr.update(visible=True),
-        f"✓ Đã load {len(vi_cues)} đoạn từ cache — sẵn sàng Render",
+        gr.update(visible=True),   # btn_optimize
+        gr.update(visible=True),   # btn_export_json
+        gr.update(visible=True),   # btn_render
+        f"✓ Đã load {len(vi_cues)} đoạn từ cache — sẵn sàng chỉnh sửa / Render",
     )
+
+
+# ---------------------------------------------------------------------------
+# EXPORT JSON
+# ---------------------------------------------------------------------------
+
+def run_export_json(df: pd.DataFrame):
+    global _state
+    if not _state.get("vi_cues"):
+        raise gr.Error("Chưa có bản dịch để xuất.")
+
+    import tempfile
+    vi_cues  = df_to_cues(df, _state["vi_cues"])
+    zh_cues  = _state.get("zh_cues", [])
+    zh_map   = {c["idx"]: c["text"] for c in zh_cues}
+
+    export = []
+    for c in vi_cues:
+        export.append({
+            "idx":       c["idx"],
+            "start":     c["start"],
+            "end":       c["end"],
+            "start_sec": c["start_sec"],
+            "end_sec":   c["end_sec"],
+            "zh":        zh_map.get(c["idx"], ""),
+            "vi":        c["text"],
+        })
+
+    tmp = tempfile.NamedTemporaryFile(delete=False, suffix=".json", mode="w", encoding="utf-8")
+    json.dump(export, tmp, ensure_ascii=False, indent=2)
+    tmp.close()
+    return tmp.name
 
 
 # ---------------------------------------------------------------------------
@@ -646,9 +712,11 @@ with gr.Blocks(title="Dịch Video Tiếng Trung → Tiếng Việt") as demo:
         column_widths=["4%", "9%", "9%", "30%", "30%", "18%"],
     )
     with gr.Row():
-        btn_optimize = gr.Button("✨ Tối ưu bản dịch (AI)", variant="secondary", visible=False)
-        btn_render   = gr.Button("🎬 Bước 2: Render Video", variant="primary",   visible=False)
+        btn_optimize    = gr.Button("✨ Tối ưu bản dịch (AI)", variant="secondary", visible=False)
+        btn_export_json = gr.Button("💾 Tải JSON bản dịch",    variant="secondary", visible=False)
+        btn_render      = gr.Button("🎬 Bước 2: Render Video", variant="primary",   visible=False)
 
+    json_output     = gr.File(label="File JSON bản dịch", visible=False, interactive=False)
     status_optimize = gr.Textbox(label="Trạng thái tối ưu", interactive=False)
     status_render   = gr.Textbox(label="Trạng thái render",  interactive=False)
     video_output    = gr.Video(label="Video kết quả", interactive=False)
@@ -658,7 +726,7 @@ with gr.Blocks(title="Dịch Video Tiếng Trung → Tiếng Việt") as demo:
     btn_stt.click(
         fn=run_stt_translate,
         inputs=[video_input, key_input, beeknoee_input, beeknoee_tts_input, beeknoee_tts_voice_input, slow_slider],
-        outputs=[translation_table, translation_table, btn_optimize, btn_render, status_stt],
+        outputs=[translation_table, translation_table, btn_optimize, btn_export_json, btn_render, status_stt],
     )
 
     tts_test_model.change(fn=get_voices, inputs=[tts_test_model], outputs=[tts_test_voice])
@@ -673,8 +741,14 @@ with gr.Blocks(title="Dịch Video Tiếng Trung → Tiếng Việt") as demo:
     btn_load_cache.click(
         fn=run_load_cache,
         inputs=[cache_input],
-        outputs=[translation_table, translation_table, btn_optimize, btn_render, status_stt],
+        outputs=[translation_table, translation_table, btn_optimize, btn_export_json, btn_render, status_stt],
     )
+
+    btn_export_json.click(
+        fn=run_export_json,
+        inputs=[translation_table],
+        outputs=[json_output],
+    ).then(fn=lambda: gr.update(visible=True), outputs=[json_output])
 
     translation_table.change(
         fn=refresh_speed_col,
