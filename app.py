@@ -23,7 +23,7 @@ from translate_video import (
     build_srt, parse_srt, scale_cues,
     build_tts_track, render_video, slowdown_video,
     get_audio_duration, sec_to_srt_time, srt_time_to_sec,
-    BEEKNOEE_MODEL,
+    BEEKNOEE_MODEL, BEEKNOEE_BASE_URL,
 )
 
 # Load .env
@@ -424,6 +424,37 @@ def run_load_cache(cache_file):
 
 
 # ---------------------------------------------------------------------------
+# TEST TTS
+# ---------------------------------------------------------------------------
+
+def run_test_tts(text: str, tts_model: str, tts_voice: str):
+    if not text.strip():
+        raise gr.Error("Nhập text để test.")
+
+    beeknoee_key = os.environ.get("BEEKNOEE_API_KEY") or _state.get("beeknoee_key")
+    if not beeknoee_key:
+        raise gr.Error("Chưa có Beeknoee API key.")
+
+    model = tts_model.strip() or "google-tts"
+    voice = tts_voice.strip() or "vi"
+
+    from openai import OpenAI
+    import tempfile
+
+    client = OpenAI(api_key=beeknoee_key, base_url=BEEKNOEE_BASE_URL)
+    resp = client.audio.speech.create(
+        model=model,
+        voice=voice,
+        input=text.strip(),
+        response_format="mp3",
+    )
+    tmp = tempfile.NamedTemporaryFile(delete=False, suffix=".mp3")
+    tmp.write(resp.content)
+    tmp.close()
+    return tmp.name
+
+
+# ---------------------------------------------------------------------------
 # STEP 2: Render
 # ---------------------------------------------------------------------------
 
@@ -548,6 +579,28 @@ with gr.Blocks(title="Dịch Video Tiếng Trung → Tiếng Việt") as demo:
 
     status_stt = gr.Textbox(label="Trạng thái", interactive=False)
 
+    with gr.Accordion("🔊 Test giọng đọc TTS", open=False):
+        gr.Markdown("Nhập text, chọn model/voice rồi bấm Test để nghe thử trước khi Render.")
+        with gr.Row():
+            tts_test_text = gr.Textbox(
+                label="Text thử",
+                placeholder="Nhập câu tiếng Việt để test giọng...",
+                scale=3,
+            )
+        with gr.Row():
+            tts_test_model = gr.Textbox(
+                label="Model",
+                placeholder="google-tts, neural2, wavenet, tts-1...",
+                scale=1,
+            )
+            tts_test_voice = gr.Textbox(
+                label="Voice",
+                placeholder="vi, vi-VN-Neural2-A, nova...",
+                scale=1,
+            )
+            btn_test_tts = gr.Button("▶ Test", variant="secondary", scale=1)
+        tts_test_audio = gr.Audio(label="Kết quả", interactive=False)
+
     with gr.Accordion("♻️ Khôi phục bản dịch cũ", open=False):
         gr.Markdown("Nếu app bị lỗi sau khi dịch xong, chọn file `vi_cues.json` trong thư mục `workdir/job_xxx/` để tiếp tục Render mà không cần dịch lại.")
         cache_input = gr.File(label="Chọn file vi_cues.json", file_types=[".json"])
@@ -578,6 +631,12 @@ with gr.Blocks(title="Dịch Video Tiếng Trung → Tiếng Việt") as demo:
         fn=run_stt_translate,
         inputs=[video_input, key_input, beeknoee_input, beeknoee_tts_input, beeknoee_tts_voice_input, slow_slider],
         outputs=[translation_table, translation_table, btn_optimize, btn_render, status_stt],
+    )
+
+    btn_test_tts.click(
+        fn=run_test_tts,
+        inputs=[tts_test_text, tts_test_model, tts_test_voice],
+        outputs=[tts_test_audio],
     )
 
     btn_load_cache.click(
