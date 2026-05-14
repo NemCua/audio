@@ -545,6 +545,32 @@ const observer = new MutationObserver(() => {
 observer.observe(document.body, { childList: true, subtree: true });
 """
 
+TTS_MODELS = [
+    ("🆓 Google TTS Free ($0)",        "google/google-tts"),
+    ("Google Standard ($4/1M)",         "google/standard"),
+    ("Google WaveNet ($16/1M)",         "google/wavenet"),
+    ("Google Neural2 ($16/1M)",        "google/neural2"),
+    ("Google Chirp 3 HD ($30/1M)",     "google/chirp3-hd"),
+    ("OpenAI TTS-1 ($15/1M)",          "openai/tts-1"),
+    ("OpenAI TTS-1 HD ($30/1M)",       "openai/tts-1-hd"),
+    ("OpenAI GPT-4o Mini TTS ($12/1M)","openai/gpt-4o-mini-tts"),
+]
+
+TTS_VOICES = {
+    "google/google-tts": [("🇻🇳 Tiếng Việt", "vi"), ("🇺🇸 English", "en"), ("🇨🇳 中文", "zh"), ("🇯🇵 日本語", "ja")],
+    "google/standard":   [("Nữ A (miền Bắc)", "vi-VN-Standard-A"), ("Nam B", "vi-VN-Standard-B"), ("Nữ C", "vi-VN-Standard-C"), ("Nam D", "vi-VN-Standard-D")],
+    "google/wavenet":    [("Nữ A", "vi-VN-WaveNet-A"), ("Nam B", "vi-VN-WaveNet-B"), ("Nữ C", "vi-VN-WaveNet-C"), ("Nam D", "vi-VN-WaveNet-D")],
+    "google/neural2":    [("Nữ A", "vi-VN-Neural2-A"), ("Nam B", "vi-VN-Neural2-B"), ("Nữ C", "vi-VN-Neural2-C"), ("Nam D", "vi-VN-Neural2-D")],
+    "google/chirp3-hd":  [("Nữ A", "vi-VN-Chirp-HD-A"), ("Nam B", "vi-VN-Chirp-HD-B"), ("Nữ C", "vi-VN-Chirp-HD-C"), ("Nam D", "vi-VN-Chirp-HD-D"), ("Nữ F", "vi-VN-Chirp-HD-F"), ("Trung tính O", "vi-VN-Chirp-HD-O")],
+    "openai/tts-1":      [("nova (nữ)", "nova"), ("alloy (trung tính)", "alloy"), ("echo (nam trầm)", "echo"), ("onyx (nam)", "onyx"), ("shimmer (nữ nhẹ)", "shimmer"), ("ash (nam)", "ash"), ("ballad (nam ấm)", "ballad"), ("coral (nữ)", "coral"), ("sage (trung tính)", "sage"), ("verse (nam)", "verse"), ("fable (trung tính)", "fable")],
+    "openai/tts-1-hd":   [("nova (nữ)", "nova"), ("alloy (trung tính)", "alloy"), ("echo (nam trầm)", "echo"), ("onyx (nam)", "onyx"), ("shimmer (nữ nhẹ)", "shimmer"), ("ash (nam)", "ash"), ("ballad (nam ấm)", "ballad"), ("coral (nữ)", "coral"), ("sage (trung tính)", "sage"), ("verse (nam)", "verse"), ("fable (trung tính)", "fable")],
+    "openai/gpt-4o-mini-tts": [("nova (nữ)", "nova"), ("alloy (trung tính)", "alloy"), ("echo (nam trầm)", "echo"), ("onyx (nam)", "onyx"), ("shimmer (nữ nhẹ)", "shimmer"), ("ash (nam)", "ash"), ("ballad (nam ấm)", "ballad"), ("coral (nữ)", "coral"), ("sage (trung tính)", "sage"), ("verse (nam)", "verse"), ("fable (trung tính)", "fable")],
+}
+
+def get_voices(model: str):
+    voices = TTS_VOICES.get(model, [("vi", "vi")])
+    return gr.update(choices=voices, value=voices[0][1])
+
 with gr.Blocks(title="Dịch Video Tiếng Trung → Tiếng Việt") as demo:
     gr.Markdown("# 🎬 Dịch Video Tiếng Trung → Tiếng Việt")
     gr.Markdown("Upload video → STT + Dịch tự động → Chỉnh sửa bản dịch → Render")
@@ -563,13 +589,15 @@ with gr.Blocks(title="Dịch Video Tiếng Trung → Tiếng Việt") as demo:
                 placeholder="sk-bee-... (tùy chọn)",
                 type="password",
             )
-            beeknoee_tts_input = gr.Textbox(
+            beeknoee_tts_input = gr.Dropdown(
                 label="Beeknoee TTS Model (để trống dùng Edge TTS mặc định)",
-                placeholder="google-tts, neural2, wavenet, tts-1...",
+                choices=[("-- Edge TTS mặc định --", "")] + [(l, v) for l, v in TTS_MODELS],
+                value="",
             )
-            beeknoee_tts_voice_input = gr.Textbox(
-                label="Beeknoee TTS Voice (để trống dùng 'vi')",
-                placeholder="vi, vi-VN-Neural2-A, vi-VN-WaveNet-A, nova...",
+            beeknoee_tts_voice_input = gr.Dropdown(
+                label="Beeknoee TTS Voice",
+                choices=[("vi", "vi")],
+                value="vi",
             )
             slow_slider = gr.Slider(
                 minimum=1.0, maximum=2.0, value=1.0, step=0.1,
@@ -580,22 +608,22 @@ with gr.Blocks(title="Dịch Video Tiếng Trung → Tiếng Việt") as demo:
     status_stt = gr.Textbox(label="Trạng thái", interactive=False)
 
     with gr.Accordion("🔊 Test giọng đọc TTS", open=False):
-        gr.Markdown("Nhập text, chọn model/voice rồi bấm Test để nghe thử trước khi Render.")
+        gr.Markdown("Nhập text, chọn model/voice rồi bấm Test để nghe thử.")
+        tts_test_text = gr.Textbox(
+            label="Text thử",
+            placeholder="Nhập câu tiếng Việt để test giọng...",
+        )
         with gr.Row():
-            tts_test_text = gr.Textbox(
-                label="Text thử",
-                placeholder="Nhập câu tiếng Việt để test giọng...",
-                scale=3,
-            )
-        with gr.Row():
-            tts_test_model = gr.Textbox(
+            tts_test_model = gr.Dropdown(
                 label="Model",
-                placeholder="google-tts, neural2, wavenet, tts-1...",
+                choices=[(l, v) for l, v in TTS_MODELS],
+                value="google/google-tts",
                 scale=1,
             )
-            tts_test_voice = gr.Textbox(
+            tts_test_voice = gr.Dropdown(
                 label="Voice",
-                placeholder="vi, vi-VN-Neural2-A, nova...",
+                choices=TTS_VOICES["google/google-tts"],
+                value="vi",
                 scale=1,
             )
             btn_test_tts = gr.Button("▶ Test", variant="secondary", scale=1)
@@ -632,6 +660,9 @@ with gr.Blocks(title="Dịch Video Tiếng Trung → Tiếng Việt") as demo:
         inputs=[video_input, key_input, beeknoee_input, beeknoee_tts_input, beeknoee_tts_voice_input, slow_slider],
         outputs=[translation_table, translation_table, btn_optimize, btn_render, status_stt],
     )
+
+    tts_test_model.change(fn=get_voices, inputs=[tts_test_model], outputs=[tts_test_voice])
+    beeknoee_tts_input.change(fn=get_voices, inputs=[beeknoee_tts_input], outputs=[beeknoee_tts_voice_input])
 
     btn_test_tts.click(
         fn=run_test_tts,
