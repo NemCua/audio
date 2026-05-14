@@ -157,12 +157,20 @@ def separate_background(video_path: Path, work_dir: Path) -> Path:
     ])
 
     # Chạy Demucs
+    import platform, torch
+    if torch.cuda.is_available():
+        demucs_device = "cuda"
+    elif platform.system() == "Darwin" and torch.backends.mps.is_available():
+        demucs_device = "mps"
+    else:
+        demucs_device = "cpu"
+
     demucs_out = work_dir / "demucs_out"
     run([
         "python3", "-m", "demucs",
         "--two-stems", "vocals",
         "-n", DEMUCS_MODEL,
-        "--device", "mps",
+        "--device", demucs_device,
         "-o", str(demucs_out),
         str(full_audio),
     ], timeout=3600)
