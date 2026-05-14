@@ -79,17 +79,17 @@ def reading_speed_label(text: str, start_sec: float, end_sec: float) -> str:
 
 
 def cues_to_df(cues: list[dict], zh_cues: list[dict] | None = None) -> pd.DataFrame:
-    zh_map = {c["idx"]: c["text"] for c in zh_cues} if zh_cues else {}
+    zh_list = zh_cues or []
     return pd.DataFrame([
         {
             "#": c["idx"],
             "Bắt đầu": c["start"],
             "Kết thúc": c["end"],
-            "Tiếng Trung": zh_map.get(c["idx"], ""),
+            "Tiếng Trung": zh_list[i]["text"] if i < len(zh_list) else "",
             "Bản dịch": c["text"],
             "Tốc độ đọc": reading_speed_label(c["text"], c["start_sec"], c["end_sec"]),
         }
-        for c in cues
+        for i, c in enumerate(cues)
     ])
 
 

@@ -362,7 +362,8 @@ async def tts_segment(text: str, voice: str, out_path: Path,
                         response_format="mp3",
                     )
                     out_path.write_bytes(resp.content)
-                await asyncio.get_event_loop().run_in_executor(None, _call)
+                loop = asyncio.get_running_loop()
+                await loop.run_in_executor(None, _call)
                 return
             except Exception as e:
                 if attempt == 2:
