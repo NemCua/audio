@@ -347,6 +347,8 @@ def run_stt_translate(video_file, key_input, beeknoee_input, beeknoee_tts_input,
         bg_track = separate_background(video_path, work_dir)
         _state["bg_track"] = bg_track
 
+        _state["video_stem"] = src_path.stem  # lưu stem gốc để khớp tên JSON
+
         if not auto_translate:
             # Chỉ Demucs xong — chờ JSON từ server
             return (
@@ -356,7 +358,8 @@ def run_stt_translate(video_file, key_input, beeknoee_input, beeknoee_tts_input,
                 gr.update(visible=False),  # btn_export_json
                 gr.update(visible=False),  # btn_render
                 gr.update(visible=False),  # btn_translate_only
-                f"✓ Demucs xong — sẵn sàng nhận JSON từ server. Video: {src_path.stem}",
+                f"✓ Demucs xong — chờ JSON từ server",
+                gr.update(visible=True, value=src_path.stem),  # video_stem_display
             )
 
         progress(0.35, desc="Tách audio STT...")
@@ -380,6 +383,7 @@ def run_stt_translate(video_file, key_input, beeknoee_input, beeknoee_tts_input,
             gr.update(visible=True),   # btn_render
             gr.update(visible=False),  # btn_translate_only
             f"✓ STT + Dịch + Tối ưu xong — {len(vi_cues)} đoạn ({fixed} đoạn đã tối ưu)",
+            gr.update(visible=False),  # video_stem_display
         )
 
     except Exception as e:
@@ -410,6 +414,7 @@ def run_translate_only(progress=gr.Progress()):
         gr.update(visible=True),   # btn_render
         gr.update(visible=False),  # btn_translate_only
         f"✓ Dịch + Tối ưu xong — {len(vi_cues)} đoạn ({fixed} đoạn đã tối ưu)",
+        gr.update(visible=False),  # video_stem_display
     )
 
 
@@ -462,6 +467,7 @@ def run_load_json(json_file):
         gr.update(visible=render_ready),      # btn_render
         gr.update(visible=False),             # btn_translate_only
         f"✓ Load {len(vi_cues)} đoạn — {status_video}",
+        gr.update(visible=False),             # video_stem_display
     )
 
 
@@ -664,13 +670,16 @@ with gr.Blocks(title="Dịch Video Tiếng Trung → Tiếng Việt") as demo:
             btn_stt = gr.Button("▶ Chạy Bước 1", variant="primary")
 
     status_stt = gr.Textbox(label="Trạng thái", interactive=False)
+    video_stem_display = gr.Textbox(
+        label="Tên video đang giữ (đặt tên JSON trùng với tên này)",
+        interactive=False, visible=False,
+    )
 
     # ── PHẦN 2: Load JSON từ server ────────────────────────────────────────
     with gr.Accordion("📥 Load JSON bản dịch từ server", open=False):
         gr.Markdown(
             "Sau khi Bước 1 xong (toggle tắt), upload JSON bản dịch từ server vào đây. "
-            "App tự khớp với video đang giữ trong bộ nhớ theo tên file — "
-            "**đặt tên JSON trùng stem với video** (vd: `TikTok_123.json` cho `TikTok_123.mp4`)."
+            "**Đặt tên JSON trùng stem với video** (xem tên video hiển thị ở trên)."
         )
         load_json_file = gr.File(label="File JSON bản dịch", file_types=[".json"])
         btn_load_json  = gr.Button("📂 Load JSON", variant="secondary")
@@ -720,7 +729,7 @@ with gr.Blocks(title="Dịch Video Tiếng Trung → Tiếng Việt") as demo:
     _stt_outputs_list = [
         translation_table, translation_table,
         btn_optimize, btn_export_json, btn_render, btn_translate_only,
-        status_stt,
+        status_stt, video_stem_display,
     ]
 
     btn_stt.click(
