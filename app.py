@@ -524,7 +524,7 @@ def run_test_tts(text: str, tts_model: str, tts_voice: str):
 # RENDER
 # ---------------------------------------------------------------------------
 
-def run_render(df: pd.DataFrame, progress=gr.Progress()):
+def run_render(df: pd.DataFrame, bg_volume: float, tts_volume: float, progress=gr.Progress()):
     global _state
 
     if not _state.get("vi_cues"):
@@ -559,7 +559,7 @@ def run_render(df: pd.DataFrame, progress=gr.Progress()):
         stem   = Path(video_path).stem.replace("_slowed", "").replace("slowed", "")
         output_path = work_dir / f"{stem}_vi{suffix}.mp4"
 
-        render_video(video_path, tts_track, bg_track, srt_path, output_path)
+        render_video(video_path, tts_track, bg_track, srt_path, output_path, bg_volume, tts_volume)
         progress(1.0, desc="Hoàn tất!")
 
         return str(output_path), f"✓ Render xong — bấm tải về bên dưới"
@@ -711,6 +711,10 @@ with gr.Blocks(title="Dịch Video Tiếng Trung → Tiếng Việt") as demo:
     btn_translate_only = gr.Button("▶ Dịch Trung → Việt", variant="primary", visible=False)
 
     with gr.Row():
+        bg_volume_slider  = gr.Slider(0.0, 2.0, value=0.3, step=0.05, label="Âm lượng audio gốc")
+        tts_volume_slider = gr.Slider(0.0, 3.0, value=1.8, step=0.05, label="Âm lượng lồng tiếng")
+
+    with gr.Row():
         btn_optimize    = gr.Button("✨ Tối ưu AI",       variant="secondary", visible=False)
         btn_export_json = gr.Button("💾 Xuất JSON",        variant="secondary", visible=False)
         btn_render      = gr.Button("🎬 Render Video",     variant="primary",   visible=False)
@@ -775,7 +779,7 @@ with gr.Blocks(title="Dịch Video Tiếng Trung → Tiếng Việt") as demo:
 
     btn_render.click(
         fn=run_render,
-        inputs=[translation_table],
+        inputs=[translation_table, bg_volume_slider, tts_volume_slider],
         outputs=[video_output, status_render],
     )
 

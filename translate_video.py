@@ -573,6 +573,8 @@ def render_video(
     bg_track: Path,
     srt_path: Path,
     output_path: Path,
+    bg_volume: float = 0.3,
+    tts_volume: float = 1.8,
 ):
     print("  → Render video (burn sub + mix TTS + nhạc nền)...")
 
@@ -596,8 +598,9 @@ def render_video(
     filter_complex = (
         f"[0:v]crop=iw:ih*0.12:0:ih*0.88,boxblur=10:5[blurred];"
         f"[0:v][blurred]overlay=0:H*0.88,subtitles={srt_escaped}:force_style='{sub_style}'[vout];"
-        f"[1:a]volume={BG_VOLUME}[bg];"
-        f"[bg][2:a]amix=inputs=2:duration=first:dropout_transition=0[aout]"
+        f"[1:a]volume={bg_volume}[bg];"
+        f"[2:a]volume={tts_volume}[tts];"
+        f"[bg][tts]amix=inputs=2:duration=first:dropout_transition=0[aout]"
     )
 
     try:
