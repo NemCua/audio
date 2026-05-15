@@ -343,14 +343,13 @@ def run_stt_translate(video_file, key_input, beeknoee_input, beeknoee_tts_input,
         video_path = video_copy
         _state["video_path"] = video_path
 
-        progress(0.2, desc="Tách nhạc nền (Demucs)...")
+        progress(0.2, desc="Tách audio nền...")
         bg_track = separate_background(video_path, work_dir)
         _state["bg_track"] = bg_track
 
-        _state["video_stem"] = src_path.stem  # lưu stem gốc để khớp tên JSON
+        _state["video_stem"] = src_path.stem
 
         if not auto_translate:
-            # Chỉ Demucs xong — chờ JSON từ server
             return (
                 pd.DataFrame(columns=["#", "Bắt đầu", "Kết thúc", "Tiếng Trung", "Bản dịch", "Tốc độ đọc"]),
                 gr.update(visible=False),  # translation_table
@@ -358,7 +357,7 @@ def run_stt_translate(video_file, key_input, beeknoee_input, beeknoee_tts_input,
                 gr.update(visible=False),  # btn_export_json
                 gr.update(visible=False),  # btn_render
                 gr.update(visible=False),  # btn_translate_only
-                f"✓ Demucs xong — chờ JSON từ server",
+                f"✓ Tách audio xong — chờ JSON từ server",
                 gr.update(visible=True, value=src_path.stem),  # video_stem_display
             )
 
@@ -663,9 +662,9 @@ with gr.Blocks(title="Dịch Video Tiếng Trung → Tiếng Việt") as demo:
                 label="Kéo dãn video (1.0 = giữ nguyên)",
             )
             auto_translate_toggle = gr.Checkbox(
-                label="Tự động dịch sau Demucs+STT",
+                label="Tự động STT + Dịch sau khi tách audio",
                 value=True,
-                info="Tắt = chỉ chạy Demucs, dừng lại chờ JSON bản dịch từ server",
+                info="Tắt = chỉ tách audio nền, dừng lại chờ JSON bản dịch từ server",
             )
             btn_stt = gr.Button("▶ Chạy Bước 1", variant="primary")
 
