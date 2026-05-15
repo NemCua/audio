@@ -150,47 +150,14 @@ def extract_audio_for_stt(video_path: Path, audio_path: Path):
 
 
 def separate_background(video_path: Path, work_dir: Path) -> Path:
-    """
-    Dùng Demucs tách vocals ra khỏi audio gốc.
-    Trả về đường dẫn file background (no_vocals) dạng WAV.
-    """
-    print("  → Demucs tách nhạc nền (có thể mất 1-3 phút)...")
-
-    # Tách audio gốc chất lượng cao ra WAV trước
-    full_audio = work_dir / "full_audio.wav"
+    """Extract audio gốc từ video (không tách vocals)."""
+    print("  → Tách audio nền từ video gốc...")
+    bg_path = work_dir / "background.wav"
     run([
         FFMPEG_BIN, "-y", "-i", str(video_path),
         "-vn", "-acodec", "pcm_s16le", "-ar", "44100", "-ac", "2",
-        str(full_audio),
+        str(bg_path),
     ])
-
-    # Chạy Demucs
-    import platform, torch
-    if torch.cuda.is_available():
-        demucs_device = "cuda"
-    elif platform.system() == "Darwin" and torch.backends.mps.is_available():
-        demucs_device = "mps"
-    else:
-        demucs_device = "cpu"
-
-    demucs_out = work_dir / "demucs_out"
-    run([
-        "python3", "-m", "demucs",
-        "--two-stems", "vocals",
-        "-n", DEMUCS_MODEL,
-        "--device", demucs_device,
-        "-o", str(demucs_out),
-        str(full_audio),
-    ], timeout=3600)
-
-    # Tìm file no_vocals output
-    # Demucs tạo: demucs_out/{model}/full_audio/no_vocals.wav
-    no_vocals = list(demucs_out.rglob("no_vocals.wav"))
-    if not no_vocals:
-        raise RuntimeError("Demucs không tạo ra file no_vocals.wav")
-
-    bg_path = work_dir / "background.wav"
-    no_vocals[0].rename(bg_path)
     return bg_path
 
 
