@@ -584,19 +584,18 @@ def render_video(
         .replace("'", "\\'")
     )
 
+    # Chữ vàng, border đen, không background box
     sub_style = (
         "FontName=Arial Unicode MS,FontSize=22,Bold=1,"
-        "PrimaryColour=&H00FFFFFF,OutlineColour=&H00000000,"
-        "BackColour=&H80000000,BorderStyle=4,Outline=2,Shadow=0,"
-        "Alignment=2,MarginV=10"
+        "PrimaryColour=&H0000FFFF,OutlineColour=&H00000000,"
+        "BorderStyle=1,Outline=2,Shadow=0,"
+        "Alignment=2,MarginV=18"
     )
 
-    draw_box = "drawbox=x=0:y=ih-ih*0.15:w=iw:h=ih*0.15:color=black@0.92:t=fill"
-    vf = f"{draw_box},subtitles={srt_escaped}:force_style='{sub_style}'"
-
-    # Mix: background * BG_VOLUME + TTS
-    # Input 0 = video, input 1 = background, input 2 = tts
-    amix_filter = (
+    # filter_complex: blur vùng sub gốc + mix audio
+    filter_complex = (
+        f"[0:v]crop=iw:ih*0.12:0:ih*0.88,boxblur=10:5[blurred];"
+        f"[0:v][blurred]overlay=0:H*0.88,subtitles={srt_escaped}:force_style='{sub_style}'[vout];"
         f"[1:a]volume={BG_VOLUME}[bg];"
         f"[bg][2:a]amix=inputs=2:duration=first:dropout_transition=0[aout]"
     )
@@ -607,10 +606,9 @@ def render_video(
             "-i", str(video_path),
             "-i", str(bg_track),
             "-i", str(tts_track),
-            "-filter_complex", amix_filter,
-            "-map", "0:v:0",
+            "-filter_complex", filter_complex,
+            "-map", "[vout]",
             "-map", "[aout]",
-            "-vf", vf,
             "-c:v", "libx264", "-preset", "fast", "-crf", "23",
             "-c:a", "aac", "-b:a", "192k",
             "-shortest",
