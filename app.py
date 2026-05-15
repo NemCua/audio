@@ -272,15 +272,27 @@ def run_optimize(df: pd.DataFrame, progress=gr.Progress()):
 # STEP 1: STT + Dịch
 # ---------------------------------------------------------------------------
 
+def _save_cache(work_dir: Path, vi_cues: list, video_path, bg_track):
+    cache = {
+        "video_path": str(video_path),
+        "bg_track":   str(bg_track),
+        "vi_cues":    vi_cues,
+    }
+    (work_dir / "vi_cues.json").write_text(
+        json.dumps(cache, ensure_ascii=False, indent=2), encoding="utf-8"
+    )
+
+
 def _do_translate(zh_cues, groq_key, beeknoee_key, work_dir, progress, progress_offset=0.0):
     """Dịch + tối ưu, lưu cache vào work_dir. Trả về vi_cues."""
     provider_name = f"Beeknoee ({BEEKNOEE_MODEL})" if beeknoee_key else "Groq LLaMA"
-    cache_path    = work_dir / "vi_cues.json"
+    video_path    = _state.get("video_path", "")
+    bg_track      = _state.get("bg_track", "")
 
     def on_chunk_done(done, total, partial):
         pct = progress_offset + (done / total) * 0.3
         progress(pct, desc=f"Dịch {provider_name}: chunk {done}/{total} ({done*20}/{len(zh_cues)} đoạn)...")
-        cache_path.write_text(json.dumps(partial, ensure_ascii=False, indent=2), encoding="utf-8")
+        _save_cache(work_dir, partial, video_path, bg_track)
 
     progress(progress_offset, desc=f"Dịch Trung → Việt ({provider_name})...")
     vi_cues = translate_srt(zh_cues, groq_key, beeknoee_key=beeknoee_key, chunk_cb=on_chunk_done)
@@ -290,7 +302,7 @@ def _do_translate(zh_cues, groq_key, beeknoee_key, work_dir, progress, progress_
     if needs_fix:
         progress(progress_offset + 0.3, desc=f"Tối ưu AI {len(needs_fix)} đoạn...")
         vi_cues = optimize_cues(vi_cues, groq_key, beeknoee_key=beeknoee_key, progress_cb=None)
-        cache_path.write_text(json.dumps(vi_cues, ensure_ascii=False, indent=2), encoding="utf-8")
+        _save_cache(work_dir, vi_cues, video_path, bg_track)
 
     return vi_cues, len(needs_fix) if needs_fix else 0
 
@@ -424,45 +436,42 @@ def run_load_json(json_file):
     if json_file is None:
         raise gr.Error("Chưa chọn file JSON.")
 
-    json_path = Path(json_file)
-    json_stem = json_path.stem  # tên file không có đuôi
+    raw = json.loads(Path(json_file).read_text(encoding="utf-8"))
 
-    raw = json.loads(json_path.read_text(encoding="utf-8"))
-    raw_cues = raw if isinstance(raw, list) else raw.get("vi_cues", [])
-    vi_cues, zh_cues = _normalize_cues(raw_cues)
+    if isinstance(raw, list):
+        raise gr.Error("File JSON này không có thông tin video. Dùng file vi_cues.json được tạo từ app.")
 
-    # Kiểm tra khớp với video đang giữ trong state
-    video_path = _state.get("video_path")
-    bg_track   = _state.get("bg_track")
-    render_ready = False
+    vi_cues, zh_cues = _normalize_cues(raw.get("vi_cues", []))
+    video_path = Path(raw["video_path"])
+    bg_track   = Path(raw["bg_track"])
 
-    if video_path and bg_track:
-        video_stem = Path(video_path).stem.replace("_slowed", "").replace("slowed", "")
-        # So khớp linh hoạt: json_stem là subset hoặc bằng video_stem
-        if json_stem == video_stem or video_stem.startswith(json_stem) or json_stem.startswith(video_stem):
-            render_ready = True
-            status_video = f"✓ Khớp video '{video_stem}' — sẵn sàng Render"
-        else:
-            status_video = f"⚠ Tên JSON '{json_stem}' không khớp video đang giữ '{video_stem}'. Chạy lại Bước 1 với đúng video."
-    elif not video_path:
-        status_video = "⚠ Chưa có video — chạy Bước 1 (tắt toggle) trước để tách nhạc nền"
-    else:
-        status_video = "⚠ Nhạc nền chưa sẵn sàng — chạy lại Bước 1"
+    missing = []
+    if not video_path.exists():
+        missing.append(f"video: {video_path}")
+    if not bg_track.exists():
+        missing.append(f"nhạc nền: {bg_track}")
+    if missing:
+        raise gr.Error("File không còn tồn tại:\n" + "\n".join(missing))
 
     _state["vi_cues"]      = vi_cues
     _state["zh_cues"]      = zh_cues
+    _state["video_path"]   = video_path
+    _state["bg_track"]     = bg_track
+    _state["work_dir"]     = video_path.parent
+    _state["slow_factor"]  = raw.get("slow_factor", 1.0)
     _state["groq_key"]     = _state.get("groq_key", os.environ.get("GROQ_API_KEY", ""))
     _state["beeknoee_key"] = _state.get("beeknoee_key", os.environ.get("BEEKNOEE_API_KEY"))
 
     df = cues_to_df(vi_cues, zh_cues or None)
+    stem = video_path.stem
     return (
-        gr.update(visible=True, value=df),    # translation_table
-        gr.update(visible=True),              # btn_optimize
-        gr.update(visible=True),              # btn_export_json
-        gr.update(visible=render_ready),      # btn_render
-        gr.update(visible=False),             # btn_translate_only
-        f"✓ Load {len(vi_cues)} đoạn — {status_video}",
-        gr.update(visible=False),             # video_stem_display
+        gr.update(visible=True, value=df),
+        gr.update(visible=True),   # btn_optimize
+        gr.update(visible=True),   # btn_export_json
+        gr.update(visible=True),   # btn_render
+        gr.update(visible=False),  # btn_translate_only
+        f"✓ Load {len(vi_cues)} đoạn — video: {stem}",
+        gr.update(visible=False),  # video_stem_display
     )
 
 
@@ -665,19 +674,13 @@ with gr.Blocks(title="Dịch Video Tiếng Trung → Tiếng Việt") as demo:
             btn_stt = gr.Button("▶ Chạy Bước 1", variant="primary")
 
     status_stt = gr.Textbox(label="Trạng thái", interactive=False)
-    video_stem_display = gr.Textbox(
-        label="Tên video đang giữ (đặt tên JSON trùng với tên này)",
-        interactive=False, visible=False,
-    )
+    video_stem_display = gr.Textbox(interactive=False, visible=False)
 
-    # ── PHẦN 2: Load JSON từ server ────────────────────────────────────────
-    with gr.Accordion("📥 Load JSON bản dịch từ server", open=False):
-        gr.Markdown(
-            "Sau khi Bước 1 xong (toggle tắt), upload JSON bản dịch từ server vào đây. "
-            "**Đặt tên JSON trùng stem với video** (xem tên video hiển thị ở trên)."
-        )
-        load_json_file = gr.File(label="File JSON bản dịch", file_types=[".json"])
-        btn_load_json  = gr.Button("📂 Load JSON", variant="secondary")
+    # ── PHẦN 2: Khôi phục từ cache ────────────────────────────────────────
+    with gr.Accordion("♻️ Khôi phục bản dịch (vi_cues.json)", open=False):
+        gr.Markdown("Load file `vi_cues.json` đã lưu trước đó để tiếp tục chỉnh sửa hoặc render lại.")
+        load_json_file = gr.File(label="Chọn file vi_cues.json", file_types=[".json"])
+        btn_load_json  = gr.Button("📂 Load", variant="secondary")
 
     # ── PHẦN 3: Test TTS ───────────────────────────────────────────────────
     with gr.Accordion("🔊 Test giọng đọc TTS", open=False):
