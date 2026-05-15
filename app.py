@@ -351,7 +351,6 @@ def run_stt_translate(video_file, key_input, beeknoee_input, beeknoee_tts_input,
 
         if not auto_translate:
             return (
-                pd.DataFrame(columns=["#", "Bắt đầu", "Kết thúc", "Tiếng Trung", "Bản dịch", "Tốc độ đọc"]),
                 gr.update(visible=False),  # translation_table
                 gr.update(visible=False),  # btn_optimize
                 gr.update(visible=False),  # btn_export_json
@@ -375,8 +374,7 @@ def run_stt_translate(video_file, key_input, beeknoee_input, beeknoee_tts_input,
         progress(1.0, desc="Xong!")
         df = cues_to_df(vi_cues, zh_cues)
         return (
-            df,
-            gr.update(visible=True, value=df),
+            gr.update(visible=True, value=df),  # translation_table
             gr.update(visible=True),   # btn_optimize
             gr.update(visible=True),   # btn_export_json
             gr.update(visible=True),   # btn_render
@@ -406,8 +404,7 @@ def run_translate_only(progress=gr.Progress()):
     progress(1.0, desc="Dịch xong!")
     df = cues_to_df(vi_cues, zh_cues)
     return (
-        df,
-        gr.update(visible=True, value=df),
+        gr.update(visible=True, value=df),  # translation_table
         gr.update(visible=True),   # btn_optimize
         gr.update(visible=True),   # btn_export_json
         gr.update(visible=True),   # btn_render
@@ -459,8 +456,7 @@ def run_load_json(json_file):
 
     df = cues_to_df(vi_cues, zh_cues or None)
     return (
-        df,
-        gr.update(visible=True, value=df),
+        gr.update(visible=True, value=df),    # translation_table
         gr.update(visible=True),              # btn_optimize
         gr.update(visible=True),              # btn_export_json
         gr.update(visible=render_ready),      # btn_render
@@ -726,7 +722,7 @@ with gr.Blocks(title="Dịch Video Tiếng Trung → Tiếng Việt") as demo:
 
     # ── Events ────────────────────────────────────────────────────────────
     _stt_outputs_list = [
-        translation_table, translation_table,
+        translation_table,
         btn_optimize, btn_export_json, btn_render, btn_translate_only,
         status_stt, video_stem_display,
     ]
