@@ -23,9 +23,10 @@ from translate_video import (
     extract_audio_for_stt,
     get_audio_duration,
     parse_srt, render_video,
-    scale_cues, sec_to_srt_time, separate_background,
-    slowdown_video, srt_time_to_sec, stt_groq,
+    scale_cues, sec_to_srt_time,
+    srt_time_to_sec, stt_groq,
     translate_srt,
+    CAPCUT_VOICES_VI,
 )
 
 # Load .env
@@ -56,12 +57,15 @@ def get_beeknoee_key(key_input: str) -> str | None:
     return k if k else None
 
 
-_REF_TEXT = "tức là để một giáo viên ăn trước bữa ăn của học sinh nửa giờ"
-IDEAL_WPS = len(_REF_TEXT.split()) / 3.6
+DEFAULT_WPS = 2.5  # từ/giây mặc định nếu chưa đo
 
 
 def count_words(text: str) -> int:
     return len(text.strip().split())
+
+
+def get_user_wps() -> float:
+    return _state.get("user_wps") or DEFAULT_WPS
 
 
 def reading_speed_label(text: str, start_sec: float, end_sec: float) -> str:
@@ -69,10 +73,11 @@ def reading_speed_label(text: str, start_sec: float, end_sec: float) -> str:
     if duration <= 0 or not text.strip():
         return "—"
     wps   = count_words(text) / duration
-    ratio = wps / IDEAL_WPS
+    ideal = get_user_wps()
+    ratio = wps / ideal
     pct   = (ratio - 1) * 100
-    if abs(pct) <= 10:
-        return "✅ Tốt nhất"
+    if abs(pct) <= 20:
+        return "✅ Trong ngưỡng"
     elif pct > 0:
         return f"⚡ Nhanh hơn +{pct:.0f}%"
     else:
@@ -83,16 +88,19 @@ def reading_speed_pct(text: str, start_sec: float, end_sec: float) -> float:
     duration = end_sec - start_sec
     if duration <= 0 or not text.strip():
         return 0.0
-    return (count_words(text) / duration / IDEAL_WPS - 1) * 100
+    return (count_words(text) / duration / get_user_wps() - 1) * 100
 
 
 def _normalize_cues(raw: list[dict]) -> tuple[list[dict], list[dict]]:
-    """Chuẩn hóa cues từ server (zh/vi) hoặc local (text) → (vi_cues, zh_cues)."""
+    """Chuẩn hóa cues từ server (zh/vi) hoặc local (text) → (vi_cues, zh_cues).
+    Luôn dùng "text" làm nguồn duy nhất, xóa trường "vi" để tránh conflict."""
     vi_cues, zh_cues = [], []
     for c in raw:
         vi_text = c.get("vi") or c.get("text", "")
         zh_text = c.get("zh", "")
-        vi_cues.append({**c, "text": vi_text})
+        # Bỏ "vi" khỏi dict, chỉ giữ "text" — tránh cues_to_df đọc "vi" cũ thay vì "text" mới
+        clean = {k: v for k, v in c.items() if k != "vi"}
+        vi_cues.append({**clean, "text": vi_text})
         if zh_text:
             zh_cues.append({"idx": c["idx"], "text": zh_text})
     return vi_cues, zh_cues
@@ -106,9 +114,9 @@ def cues_to_df(cues: list[dict], zh_cues: list[dict] | None = None) -> pd.DataFr
             "Bắt đầu": c["start"],
             "Kết thúc": c["end"],
             "Tiếng Trung": c.get("zh") or (zh_list[i]["text"] if i < len(zh_list) else ""),
-            "Bản dịch": c.get("vi") or c.get("text", ""),
+            "Bản dịch": c.get("text", ""),
             "Tốc độ đọc": reading_speed_label(
-                c.get("vi") or c.get("text", ""), c["start_sec"], c["end_sec"]
+                c.get("text", ""), c["start_sec"], c["end_sec"]
             ),
         }
         for i, c in enumerate(cues)
@@ -150,7 +158,7 @@ def refresh_speed_col(df: pd.DataFrame) -> pd.DataFrame:
 
 
 def _tmp_dir() -> Path:
-    d = Path(tempfile.mkdtemp(prefix="vidtrans_"))
+    d = Path(tempfile.mkdtemp(prefix="vidtrans_")).resolve()
     return d
 
 
@@ -158,92 +166,79 @@ def _tmp_dir() -> Path:
 # OPTIMIZE
 # ---------------------------------------------------------------------------
 
-REWRITE_SYSTEM = """Bạn là biên tập viên phụ đề tiếng Việt. Nhiệm vụ: viết lại câu cho gần với độ dài mục tiêu (số từ) nhưng giữ nguyên nghĩa cốt lõi.
-Quy tắc:
-- Chỉ trả về câu đã viết lại, không giải thích.
-- Không thêm dấu ngoặc kép hay ký tự thừa.
-- Giữ văn phong tự nhiên tiếng Việt.
-- Nếu cần rút ngắn: bỏ từ đệm, dùng từ ngắn hơn cùng nghĩa.
-- Nếu cần dài hơn: thêm từ làm rõ nghĩa, không bịa thêm nội dung."""
+REWRITE_SYSTEM = """Bạn là biên tập viên phụ đề tiếng Việt.
 
-ATEMPO_HARD_LIMIT = 1.5
-WINDOW_BORROW_MAX = 0.4
+Nhiệm vụ: Nhận danh sách các đoạn phụ đề (JSON), viết lại toàn bộ sao cho:
+1. Mỗi đoạn có số từ không vượt quá max_words đã cho (tốc độ đọc không quá 120% tốc độ chuẩn).
+2. Xưng hô nhất quán xuyên suốt (chọn một cách xưng hô phù hợp và giữ nguyên).
+3. Giữ nguyên nghĩa cốt lõi, văn phong tự nhiên tiếng Việt.
+4. Nếu câu đã ngắn hơn max_words thì giữ nguyên (không cần kéo dài).
+
+Trả về JSON array với đúng cấu trúc: [{"idx": ..., "text": "..."}, ...]
+Không giải thích, không markdown, chỉ JSON thuần."""
 
 
-def ai_rewrite(text: str, target_words: int, groq_key: str, beeknoee_key: str | None) -> str:
+def ai_rewrite_batch(cues: list[dict], user_wps: float, groq_key: str, beeknoee_key: str | None) -> list[dict]:
+    """Gọi AI 1 lần để viết lại toàn bộ cues, nhất quán xưng hô + chỉnh số từ."""
     from translate_video import _make_chat_client
+    import json as _json
     client, model = _make_chat_client(groq_key, beeknoee_key)
-    current_words = count_words(text)
-    direction = "ngắn hơn" if current_words > target_words else "dài hơn"
+
+    payload = []
+    for c in cues:
+        window = c["end_sec"] - c["start_sec"]
+        max_words = max(1, int(window * user_wps * 1.2))
+        current = count_words(c["text"])
+        payload.append({
+            "idx":       c["idx"],
+            "text":      c["text"],
+            "duration":  round(window, 2),
+            "max_words": max_words,
+            "current_words": current,
+        })
+
     prompt = (
-        f"Câu gốc ({current_words} từ): {text}\n"
-        f"Yêu cầu: viết lại {direction}, mục tiêu khoảng {target_words} từ. "
-        f"Giữ nguyên nghĩa, tự nhiên."
+        f"Tốc độ đọc chuẩn: {user_wps:.2f} từ/giây. "
+        f"Mỗi đoạn có trường max_words = số từ tối đa cho phép (120% tốc độ chuẩn × thời lượng).\n\n"
+        f"Danh sách đoạn phụ đề:\n{_json.dumps(payload, ensure_ascii=False, indent=2)}"
     )
-    resp = client.chat.completions.create(
-        model=model,
-        messages=[
-            {"role": "system", "content": REWRITE_SYSTEM},
-            {"role": "user",   "content": prompt},
-        ],
-        temperature=0.2,
-    )
-    result = (resp.choices[0].message.content or "").strip().strip('"').strip("'")
-    return result if result else text
+
+    for attempt in range(3):
+        try:
+            resp = client.chat.completions.create(
+                model=model,
+                messages=[
+                    {"role": "system", "content": REWRITE_SYSTEM},
+                    {"role": "user",   "content": prompt},
+                ],
+                temperature=0.15,
+            )
+            raw = (resp.choices[0].message.content or "").strip()
+            raw = re.sub(r"```\w*\n?", "", raw).strip().rstrip("`")
+            result = _json.loads(raw)
+            by_idx = {r["idx"]: r["text"] for r in result}
+            return [{**c, "text": by_idx.get(c["idx"], c["text"])} for c in cues]
+        except Exception as e:
+            if attempt == 2:
+                print(f"  ⚠ AI rewrite batch thất bại: {e}")
+                return cues
+            time.sleep(3)
+    return cues
 
 
 def optimize_cues(cues: list[dict], groq_key: str, beeknoee_key: str | None = None, progress_cb=None) -> list[dict]:
-    import time as _time
-    result = [dict(c) for c in cues]
-    total  = len(result)
-    needs_fix = [i for i, c in enumerate(result)
-                 if abs(reading_speed_pct(c["text"], c["start_sec"], c["end_sec"])) > 10]
+    user_wps = get_user_wps()
+    needs_fix = [c for c in cues if reading_speed_pct(c["text"], c["start_sec"], c["end_sec"]) > 20]
     if not needs_fix:
-        return result
+        return cues
 
-    for step, i in enumerate(needs_fix):
-        if progress_cb:
-            progress_cb((step + 1) / len(needs_fix), desc=f"Tối ưu đoạn {i+1}/{total}...")
+    if progress_cb:
+        progress_cb(0.1, desc=f"AI viết lại {len(needs_fix)}/{len(cues)} đoạn quá dài...")
 
-        c           = result[i]
-        window      = c["end_sec"] - c["start_sec"]
-        ideal_words = max(1, round(IDEAL_WPS * window))
-        new_text    = ai_rewrite(c["text"], ideal_words, groq_key, beeknoee_key)
-        result[i]   = {**c, "text": new_text}
+    result = ai_rewrite_batch(cues, user_wps, groq_key, beeknoee_key)
 
-        pct_after = reading_speed_pct(new_text, c["start_sec"], c["end_sec"])
-        if abs(pct_after) <= 10:
-            continue
-
-        needed_window = count_words(new_text) / IDEAL_WPS
-        delta = needed_window - window
-        prev_end   = result[i-1]["end_sec"]   if i > 0         else 0.0
-        next_start = result[i+1]["start_sec"] if i < total - 1 else c["end_sec"] + 10
-        gap_before = c["start_sec"] - prev_end
-        gap_after  = next_start - c["end_sec"]
-
-        if delta > 0:
-            borrow_before = min(gap_before * WINDOW_BORROW_MAX, delta / 2)
-            borrow_after  = min(gap_after  * WINDOW_BORROW_MAX, delta - borrow_before)
-            new_start = c["start_sec"] - borrow_before
-            new_end   = c["end_sec"]   + borrow_after
-        else:
-            shrink = abs(delta) / 2
-            new_start = c["start_sec"] + shrink
-            new_end   = c["end_sec"]   - shrink
-            if new_end <= new_start:
-                new_start = c["start_sec"]
-                new_end   = c["end_sec"]
-
-        result[i] = {
-            **result[i],
-            "start":     sec_to_srt_time(new_start),
-            "end":       sec_to_srt_time(new_end),
-            "start_sec": new_start,
-            "end_sec":   new_end,
-        }
-        _time.sleep(0.3)
-
+    if progress_cb:
+        progress_cb(1.0, desc="Xong!")
     return result
 
 
@@ -255,27 +250,29 @@ def run_optimize(df: pd.DataFrame, progress=gr.Progress()):
     groq_key     = _state.get("groq_key", "")
     beeknoee_key = _state.get("beeknoee_key")
     cues         = df_to_cues(df, _state["vi_cues"])
+    user_wps     = get_user_wps()
 
-    needs_fix = [c for c in cues
-                 if abs(reading_speed_pct(c["text"], c["start_sec"], c["end_sec"])) > 10]
+    needs_fix = [c for c in cues if reading_speed_pct(c["text"], c["start_sec"], c["end_sec"]) > 20]
     if not needs_fix:
-        return df, "✅ Tất cả đoạn đã trong ngưỡng tốt, không cần tối ưu."
+        return df, f"✅ Tất cả đoạn trong ngưỡng tốt (tốc độ chuẩn: {user_wps:.1f} từ/giây)."
 
     optimized = optimize_cues(cues, groq_key, beeknoee_key=beeknoee_key, progress_cb=progress)
     _state["vi_cues"] = optimized
     fixed = sum(1 for c in optimized
-                if abs(reading_speed_pct(c["text"], c["start_sec"], c["end_sec"])) <= 10)
-    return cues_to_df(optimized, _state.get("zh_cues")), f"✓ Tối ưu xong — {fixed}/{len(needs_fix)} đoạn đã vào ngưỡng tốt"
+                if reading_speed_pct(c["text"], c["start_sec"], c["end_sec"]) <= 20)
+    return cues_to_df(optimized, _state.get("zh_cues")), (
+        f"✓ Tối ưu xong — {fixed}/{len(needs_fix)} đoạn đã vào ngưỡng "
+        f"(tốc độ chuẩn: {user_wps:.1f} từ/giây)"
+    )
 
 
 # ---------------------------------------------------------------------------
 # STEP 1: STT + Dịch
 # ---------------------------------------------------------------------------
 
-def _save_cache(work_dir: Path, vi_cues: list, video_path, bg_track):
+def _save_cache(work_dir: Path, vi_cues: list, video_path):
     cache = {
         "video_path": str(video_path),
-        "bg_track":   str(bg_track),
         "vi_cues":    vi_cues,
     }
     (work_dir / "vi_cues.json").write_text(
@@ -284,27 +281,20 @@ def _save_cache(work_dir: Path, vi_cues: list, video_path, bg_track):
 
 
 def _do_translate(zh_cues, groq_key, beeknoee_key, work_dir, progress, progress_offset=0.0):
-    """Dịch + tối ưu, lưu cache vào work_dir. Trả về vi_cues."""
+    """Dịch, lưu cache vào work_dir. Trả về vi_cues."""
     provider_name = f"Beeknoee ({BEEKNOEE_MODEL})" if beeknoee_key else "Groq LLaMA"
     video_path    = _state.get("video_path", "")
-    bg_track      = _state.get("bg_track", "")
 
     def on_chunk_done(done, total, partial):
-        pct = progress_offset + (done / total) * 0.3
+        pct = progress_offset + (done / total) * 0.4
         progress(pct, desc=f"Dịch {provider_name}: chunk {done}/{total} ({done*20}/{len(zh_cues)} đoạn)...")
-        _save_cache(work_dir, partial, video_path, bg_track)
+        _save_cache(work_dir, partial, video_path)
 
     progress(progress_offset, desc=f"Dịch Trung → Việt ({provider_name})...")
     vi_cues = translate_srt(zh_cues, groq_key, beeknoee_key=beeknoee_key, chunk_cb=on_chunk_done)
+    _save_cache(work_dir, vi_cues, video_path)
 
-    needs_fix = [c for c in vi_cues
-                 if abs(reading_speed_pct(c["text"], c["start_sec"], c["end_sec"])) > 10]
-    if needs_fix:
-        progress(progress_offset + 0.3, desc=f"Tối ưu AI {len(needs_fix)} đoạn...")
-        vi_cues = optimize_cues(vi_cues, groq_key, beeknoee_key=beeknoee_key, progress_cb=None)
-        _save_cache(work_dir, vi_cues, video_path, bg_track)
-
-    return vi_cues, len(needs_fix) if needs_fix else 0
+    return vi_cues
 
 
 def _stt_outputs(df, vi_cues_exists: bool, translate_done: bool, status: str):
@@ -320,7 +310,7 @@ def _stt_outputs(df, vi_cues_exists: bool, translate_done: bool, status: str):
 
 
 def run_stt_translate(video_file, key_input, beeknoee_input, beeknoee_tts_input,
-                      beeknoee_tts_voice_input, slow_factor, auto_translate,
+                      beeknoee_tts_voice_input, capcut_voice_sel, auto_translate,
                       progress=gr.Progress()):
     global _state
     _state = {}
@@ -331,6 +321,9 @@ def run_stt_translate(video_file, key_input, beeknoee_input, beeknoee_tts_input,
     if video_file is None:
         raise gr.Error("Chưa chọn video.")
 
+    capcut_vt   = (capcut_voice_sel or "").strip()
+    capcut_info = next((v for v in CAPCUT_VOICES_VI if v[1] == capcut_vt), None)
+
     src_path = Path(video_file)
     work_dir = _tmp_dir()
     _state.update({
@@ -339,40 +332,30 @@ def run_stt_translate(video_file, key_input, beeknoee_input, beeknoee_tts_input,
         "beeknoee_key":       beeknoee_key,
         "beeknoee_tts_model": beeknoee_tts_input.strip() or None,
         "beeknoee_tts_voice": beeknoee_tts_voice_input.strip() or None,
-        "slow_factor":        slow_factor,
+        "capcut_device_id":   os.environ.get("CAPCUT_DEVICE_ID", "7581502458217252368") if capcut_info else None,
+        "capcut_voice_type":  capcut_info[1] if capcut_info else None,
+        "capcut_resource_id": capcut_info[2] if capcut_info else None,
     })
 
     try:
-        video_path = src_path
-        if slow_factor != 1.0:
-            progress(0.05, desc=f"Kéo dãn video {slow_factor}x...")
-            slowed = work_dir / "slowed.mp4"
-            video_path = slowdown_video(video_path, slowed, slow_factor)
-
-        # Lưu bản copy video vào work_dir để không phụ thuộc path tạm của Gradio
         video_copy = work_dir / ("video" + src_path.suffix)
-        shutil.copy2(video_path, video_copy)
+        shutil.copy2(src_path, video_copy)
         video_path = video_copy
         _state["video_path"] = video_path
-
-        progress(0.2, desc="Tách audio nền...")
-        bg_track = separate_background(video_path, work_dir)
-        _state["bg_track"] = bg_track
-
         _state["video_stem"] = src_path.stem
 
         if not auto_translate:
             return (
-                gr.update(visible=False),  # translation_table
-                gr.update(visible=False),  # btn_optimize
-                gr.update(visible=False),  # btn_export_json
-                gr.update(visible=False),  # btn_render
-                gr.update(visible=False),  # btn_translate_only
-                f"✓ Tách audio xong — chờ JSON từ server",
-                gr.update(visible=True, value=src_path.stem),  # video_stem_display
+                gr.update(visible=False),
+                gr.update(visible=False),
+                gr.update(visible=False),
+                gr.update(visible=False),
+                gr.update(visible=False),
+                "✓ Đã nhận video — chờ JSON từ server",
+                gr.update(visible=True, value=src_path.stem),
             )
 
-        progress(0.35, desc="Tách audio STT...")
+        progress(0.15, desc="Tách audio STT...")
         audio_stt = work_dir / "audio_stt.mp3"
         extract_audio_for_stt(video_path, audio_stt)
 
@@ -380,19 +363,19 @@ def run_stt_translate(video_file, key_input, beeknoee_input, beeknoee_tts_input,
         zh_cues = stt_groq(audio_stt, groq_key)
         _state["zh_cues"] = zh_cues
 
-        vi_cues, fixed = _do_translate(zh_cues, groq_key, beeknoee_key, work_dir, progress, 0.6)
+        vi_cues = _do_translate(zh_cues, groq_key, beeknoee_key, work_dir, progress, 0.6)
         _state["vi_cues"] = vi_cues
 
         progress(1.0, desc="Xong!")
         df = cues_to_df(vi_cues, zh_cues)
         return (
-            gr.update(visible=True, value=df),  # translation_table
-            gr.update(visible=True),   # btn_optimize
-            gr.update(visible=True),   # btn_export_json
-            gr.update(visible=True),   # btn_render
-            gr.update(visible=False),  # btn_translate_only
-            f"✓ STT + Dịch + Tối ưu xong — {len(vi_cues)} đoạn ({fixed} đoạn đã tối ưu)",
-            gr.update(visible=False),  # video_stem_display
+            gr.update(visible=True, value=df),
+            gr.update(visible=True),
+            gr.update(visible=True),
+            gr.update(visible=True),
+            gr.update(visible=False),
+            f"✓ STT + Dịch xong — {len(vi_cues)} đoạn. Bấm '✨ Tối ưu AI' để chỉnh tốc độ.",
+            gr.update(visible=False),
         )
 
     except Exception as e:
@@ -410,19 +393,19 @@ def run_translate_only(progress=gr.Progress()):
     zh_cues      = _state["zh_cues"]
     work_dir     = _state["work_dir"]
 
-    vi_cues, fixed = _do_translate(zh_cues, groq_key, beeknoee_key, work_dir, progress, 0.0)
+    vi_cues = _do_translate(zh_cues, groq_key, beeknoee_key, work_dir, progress, 0.0)
     _state["vi_cues"] = vi_cues
 
     progress(1.0, desc="Dịch xong!")
     df = cues_to_df(vi_cues, zh_cues)
     return (
-        gr.update(visible=True, value=df),  # translation_table
-        gr.update(visible=True),   # btn_optimize
-        gr.update(visible=True),   # btn_export_json
-        gr.update(visible=True),   # btn_render
-        gr.update(visible=False),  # btn_translate_only
-        f"✓ Dịch + Tối ưu xong — {len(vi_cues)} đoạn ({fixed} đoạn đã tối ưu)",
-        gr.update(visible=False),  # video_stem_display
+        gr.update(visible=True, value=df),
+        gr.update(visible=True),
+        gr.update(visible=True),
+        gr.update(visible=True),
+        gr.update(visible=False),
+        f"✓ Dịch xong — {len(vi_cues)} đoạn. Bấm '✨ Tối ưu AI' để chỉnh tốc độ.",
+        gr.update(visible=False),
     )
 
 
@@ -430,48 +413,102 @@ def run_translate_only(progress=gr.Progress()):
 # LOAD JSON (từ server hoặc export trước)
 # ---------------------------------------------------------------------------
 
+def _parse_json_cues(json_file):
+    """Đọc file JSON, trả về (vi_cues, zh_cues, raw_dict_hoặc_None)."""
+    raw = json.loads(Path(json_file).read_text(encoding="utf-8"))
+    if isinstance(raw, list):
+        vi_cues, zh_cues = _normalize_cues(raw)
+        return vi_cues, zh_cues, None
+    vi_cues, zh_cues = _normalize_cues(raw.get("vi_cues", []))
+    return vi_cues, zh_cues, raw
+
+
 def run_load_json(json_file):
     global _state
 
     if json_file is None:
         raise gr.Error("Chưa chọn file JSON.")
 
-    raw = json.loads(Path(json_file).read_text(encoding="utf-8"))
+    vi_cues, zh_cues, raw = _parse_json_cues(json_file)
 
-    if isinstance(raw, list):
-        raise gr.Error("File JSON này không có thông tin video. Dùng file vi_cues.json được tạo từ app.")
+    # JSON cũ (array) — cần upload video riêng
+    if raw is None:
+        _state["vi_cues"]      = vi_cues
+        _state["zh_cues"]      = zh_cues
+        _state["groq_key"]     = _state.get("groq_key", os.environ.get("GROQ_API_KEY", ""))
+        _state["beeknoee_key"] = _state.get("beeknoee_key", os.environ.get("BEEKNOEE_API_KEY"))
+        df = cues_to_df(vi_cues, zh_cues or None)
+        has_video = bool(_state.get("video_path"))
+        return (
+            gr.update(visible=True, value=df),
+            gr.update(visible=True),
+            gr.update(visible=True),
+            gr.update(visible=True),
+            gr.update(visible=False),
+            f"✓ Load {len(vi_cues)} đoạn — {'sẵn sàng render' if has_video else 'upload video bên dưới rồi bấm Render'}",
+            gr.update(visible=False),
+        )
 
-    vi_cues, zh_cues = _normalize_cues(raw.get("vi_cues", []))
     video_path = Path(raw["video_path"])
-    bg_track   = Path(raw["bg_track"])
 
-    missing = []
     if not video_path.exists():
-        missing.append(f"video: {video_path}")
-    if not bg_track.exists():
-        missing.append(f"nhạc nền: {bg_track}")
-    if missing:
-        raise gr.Error("File không còn tồn tại:\n" + "\n".join(missing))
+        _state["vi_cues"]      = vi_cues
+        _state["zh_cues"]      = zh_cues
+        _state["groq_key"]     = _state.get("groq_key", os.environ.get("GROQ_API_KEY", ""))
+        _state["beeknoee_key"] = _state.get("beeknoee_key", os.environ.get("BEEKNOEE_API_KEY"))
+        df = cues_to_df(vi_cues, zh_cues or None)
+        return (
+            gr.update(visible=True, value=df),
+            gr.update(visible=True),
+            gr.update(visible=True),
+            gr.update(visible=True),
+            gr.update(visible=False),
+            f"✓ Load {len(vi_cues)} đoạn — video gốc không còn ở đường dẫn cũ, upload lại bên dưới rồi bấm Render",
+            gr.update(visible=False),
+        )
 
     _state["vi_cues"]      = vi_cues
     _state["zh_cues"]      = zh_cues
     _state["video_path"]   = video_path
-    _state["bg_track"]     = bg_track
     _state["work_dir"]     = video_path.parent
-    _state["slow_factor"]  = raw.get("slow_factor", 1.0)
     _state["groq_key"]     = _state.get("groq_key", os.environ.get("GROQ_API_KEY", ""))
     _state["beeknoee_key"] = _state.get("beeknoee_key", os.environ.get("BEEKNOEE_API_KEY"))
 
     df = cues_to_df(vi_cues, zh_cues or None)
-    stem = video_path.stem
     return (
         gr.update(visible=True, value=df),
+        gr.update(visible=True),
+        gr.update(visible=True),
+        gr.update(visible=True),
+        gr.update(visible=False),
+        f"✓ Load {len(vi_cues)} đoạn — video: {video_path.stem}",
+        gr.update(visible=False),
+    )
+
+
+def run_attach_video(video_file):
+    """Upload video cho JSON đã load."""
+    global _state
+
+    if video_file is None:
+        raise gr.Error("Chưa chọn video.")
+    if not _state.get("vi_cues"):
+        raise gr.Error("Load file JSON trước.")
+
+    src_path = Path(video_file)
+    work_dir = _tmp_dir()
+    _state["work_dir"] = work_dir
+
+    video_copy = work_dir / ("video" + src_path.suffix)
+    shutil.copy2(src_path, video_copy)
+    _state["video_path"] = video_copy
+    _state["video_stem"] = src_path.stem
+
+    vi_cues = _state["vi_cues"]
+    return (
         gr.update(visible=True),   # btn_optimize
-        gr.update(visible=True),   # btn_export_json
         gr.update(visible=True),   # btn_render
-        gr.update(visible=False),  # btn_translate_only
-        f"✓ Load {len(vi_cues)} đoạn — video: {stem}",
-        gr.update(visible=False),  # video_stem_display
+        f"✓ Đã gắn video '{src_path.stem}' — {len(vi_cues)} đoạn sẵn sàng render",
     )
 
 
@@ -504,28 +541,126 @@ def run_export_json(df: pd.DataFrame):
 
 
 # ---------------------------------------------------------------------------
+# PROMPT AI & LOAD OPTIMIZED
+# ---------------------------------------------------------------------------
+
+_OPTIMIZE_PROMPT = """Bạn là biên tập viên phụ đề tiếng Việt chuyên nghiệp.
+
+Tôi đính kèm file JSON gồm các đoạn phụ đề đã dịch từ tiếng Trung. Mỗi đoạn có:
+- "idx": số thứ tự
+- "start_sec" / "end_sec": thời gian bắt đầu/kết thúc (giây) — KHÔNG được thay đổi
+- "zh": câu gốc tiếng Trung (tham khảo)
+- "vi": bản dịch tiếng Việt hiện tại (cần tối ưu)
+- "duration": thời lượng đoạn (giây)
+- "max_words": số từ tối đa cho phép (dựa trên tốc độ đọc chuẩn × 120%)
+
+NHIỆM VỤ:
+1. Viết lại trường "vi" của từng đoạn sao cho số từ ≤ max_words
+2. Nhất quán xưng hô xuyên suốt (đọc toàn bộ để chọn cách xưng hô phù hợp rồi giữ nguyên)
+3. Giữ nguyên nghĩa cốt lõi, văn phong tự nhiên
+4. Nếu "vi" đã ≤ max_words thì giữ nguyên, không sửa
+5. KHÔNG thay đổi bất kỳ trường nào khác ngoài "vi"
+
+TRẢ VỀ: Toàn bộ file JSON với cấu trúc y hệt, chỉ trường "vi" được cập nhật. Không giải thích, không markdown."""
+
+
+def run_show_prompt(df: pd.DataFrame):
+    global _state
+    if not _state.get("vi_cues"):
+        raise gr.Error("Chưa có bản dịch. Chạy STT + Dịch trước.")
+    user_wps = get_user_wps()
+    cues = df_to_cues(df, _state["vi_cues"])
+
+    # Thêm duration + max_words vào từng cue để AI biết giới hạn
+    import json as _j
+    payload = []
+    for c in cues:
+        dur = round(c["end_sec"] - c["start_sec"], 2)
+        payload.append({
+            "idx":       c["idx"],
+            "start_sec": c["start_sec"],
+            "end_sec":   c["end_sec"],
+            "duration":  dur,
+            "max_words": max(1, int(dur * user_wps * 1.2)),
+            "zh":        c.get("zh", ""),
+            "vi":        c.get("text", ""),
+        })
+
+    note = f"\n\n[Tốc độ đọc chuẩn: {user_wps:.2f} từ/giây — đo từ tab Test Tốc Độ Đọc]"
+    prompt = _OPTIMIZE_PROMPT + note + f"\n\nFile JSON:\n{_j.dumps(payload, ensure_ascii=False, indent=2)}"
+    return gr.update(value=prompt, visible=True)
+
+
+def run_load_optimized(json_file):
+    global _state
+    if json_file is None:
+        raise gr.Error("Chưa chọn file JSON.")
+    if not _state.get("vi_cues"):
+        raise gr.Error("Chưa có bản dịch gốc trong state. Load JSON gốc trước.")
+
+    raw = json.loads(Path(json_file).read_text(encoding="utf-8"))
+    if not isinstance(raw, list):
+        raise gr.Error("File JSON phải là array.")
+
+    original = _state["vi_cues"]
+    by_idx   = {r["idx"]: r.get("vi", r.get("text", "")) for r in raw}
+    # Xóa trường "vi" cũ để cues_to_df dùng "text" đã update thay vì "vi" bị override
+    updated  = [
+        {**{k: v for k, v in c.items() if k != "vi"}, "text": by_idx.get(c["idx"], c.get("text", ""))}
+        for c in original
+    ]
+    _state["vi_cues"] = updated
+
+    changed = sum(1 for c, u in zip(original, updated) if c.get("text") != u.get("text"))
+    df = cues_to_df(updated, _state.get("zh_cues"))
+    return df, f"✓ Nạp xong — {changed}/{len(updated)} đoạn đã được cập nhật"
+
+
+# ---------------------------------------------------------------------------
 # TEST TTS
 # ---------------------------------------------------------------------------
 
-def run_test_tts(text: str, tts_model: str, tts_voice: str):
+def run_test_tts(text: str, tts_model: str, tts_voice: str, capcut_voice: str):
     if not text.strip():
         raise gr.Error("Nhập text để test.")
 
-    beeknoee_key = os.environ.get("BEEKNOEE_API_KEY") or _state.get("beeknoee_key")
-    if not beeknoee_key:
-        raise gr.Error("Chưa có Beeknoee API key.")
-
-    from openai import OpenAI
-    client = OpenAI(api_key=beeknoee_key, base_url=BEEKNOEE_BASE_URL)
-    resp = client.audio.speech.create(
-        model=tts_model.strip() or "google/google-tts",
-        voice=tts_voice.strip() or "vi",
-        input=text.strip(),
-        response_format="mp3",
-    )
     tmp = tempfile.NamedTemporaryFile(delete=False, suffix=".mp3")
-    tmp.write(resp.content)
     tmp.close()
+
+    # CapCut TTS
+    if capcut_voice:
+        device_id = os.environ.get("CAPCUT_DEVICE_ID", "7581502458217252368")
+        # Tìm resource_id từ CAPCUT_VOICES_VI
+        voice_info = next((v for v in CAPCUT_VOICES_VI if v[1] == capcut_voice), None)
+        if not voice_info:
+            raise gr.Error(f"Không tìm thấy giọng CapCut: {capcut_voice}")
+        from translate_video import capcut_tts_sync
+        capcut_tts_sync(text.strip(), voice_info[1], voice_info[2], Path(tmp.name), device_id)
+        return tmp.name
+
+    model = tts_model.strip()
+    voice = tts_voice.strip()
+
+    if not model:
+        import asyncio as _aio
+        import edge_tts
+        edge_voice = voice or "vi-VN-HoaiMyNeural"
+        async def _run_edge():
+            comm = edge_tts.Communicate(text.strip(), edge_voice)
+            await comm.save(tmp.name)
+        _aio.run(_run_edge())
+    else:
+        beeknoee_key = os.environ.get("BEEKNOEE_API_KEY") or _state.get("beeknoee_key")
+        if not beeknoee_key:
+            raise gr.Error("Chưa có Beeknoee API key.")
+        from openai import OpenAI
+        client = OpenAI(api_key=beeknoee_key, base_url=BEEKNOEE_BASE_URL)
+        resp = client.audio.speech.create(
+            model=model, voice=voice or "vi",
+            input=text.strip(), response_format="mp3",
+        )
+        Path(tmp.name).write_bytes(resp.content)
+
     return tmp.name
 
 
@@ -533,46 +668,241 @@ def run_test_tts(text: str, tts_model: str, tts_voice: str):
 # RENDER
 # ---------------------------------------------------------------------------
 
-def run_render(df: pd.DataFrame, bg_volume: float, tts_volume: float, progress=gr.Progress()):
+def run_render(df: pd.DataFrame, bg_music_file, bg_volume: float, tts_volume: float,
+               capcut_delay: float = 1.5, capcut_voice_sel: str = "",
+               progress=gr.Progress()):
     global _state
 
     if not _state.get("vi_cues"):
         raise gr.Error("Chưa có bản dịch.")
     if not _state.get("video_path"):
-        raise gr.Error("Chưa có video. Upload video trong mục 'Load JSON + Video'.")
-    if not _state.get("bg_track"):
-        raise gr.Error("Chưa tách nhạc nền.")
+        raise gr.Error("Chưa có video — upload video vào ô 'Gắn video' bên dưới rồi bấm '🎬 Gắn video' trước.")
 
-    video_path = _state["video_path"]
-    work_dir   = _state["work_dir"]
-    bg_track   = _state["bg_track"]
+    video_path = Path(_state["video_path"]).resolve()
+    work_dir   = Path(_state["work_dir"]).resolve()
     work_dir.mkdir(parents=True, exist_ok=True)
+
+    bg_music = Path(bg_music_file).resolve() if bg_music_file else None
+
+    # Ưu tiên giá trị dropdown hiện tại, fallback sang state (từ lúc STT)
+    capcut_vt = (capcut_voice_sel or "").strip()
+    capcut_info = next((v for v in CAPCUT_VOICES_VI if v[1] == capcut_vt), None)
+    capcut_device_id   = os.environ.get("CAPCUT_DEVICE_ID", "7581502458217252368") if capcut_info else _state.get("capcut_device_id")
+    capcut_voice_type  = capcut_info[1] if capcut_info else _state.get("capcut_voice_type")
+    capcut_resource_id = capcut_info[2] if capcut_info else _state.get("capcut_resource_id")
 
     vi_cues  = df_to_cues(df, _state["vi_cues"])
     srt_path = work_dir / "captions_vi.srt"
     srt_path.write_text(build_srt(vi_cues), encoding="utf-8")
 
     try:
-        progress(0.1, desc="Tạo TTS tiếng Việt...")
+        if capcut_voice_type:
+            progress(0.1, desc=f"Tạo TTS (CapCut batch: {capcut_voice_type})...")
+        else:
+            progress(0.1, desc="Tạo TTS tiếng Việt (Edge TTS)...")
         video_dur = get_audio_duration(video_path)
         tts_track = asyncio.run(build_tts_track(
             vi_cues, work_dir, video_dur,
             beeknoee_key=_state.get("beeknoee_key"),
             beeknoee_tts_model=_state.get("beeknoee_tts_model"),
             beeknoee_tts_voice=_state.get("beeknoee_tts_voice"),
+            capcut_device_id=capcut_device_id,
+            capcut_voice_type=capcut_voice_type,
+            capcut_resource_id=capcut_resource_id,
+            capcut_delay=capcut_delay,
         ))
 
         progress(0.6, desc="Render video...")
-        slow   = _state.get("slow_factor", 1.0)
-        suffix = f"_slow{slow}x" if slow != 1.0 else ""
-        stem   = Path(video_path).stem.replace("_slowed", "").replace("slowed", "")
-        output_path = work_dir / f"{stem}_vi{suffix}.mp4"
+        stem        = Path(video_path).stem
+        output_path = work_dir / f"{stem}_vi.mp4"
 
-        render_video(video_path, tts_track, bg_track, srt_path, output_path, bg_volume, tts_volume)
+        render_video(video_path, tts_track, srt_path, output_path,
+                     bg_music=bg_music, bg_volume=bg_volume, tts_volume=tts_volume)
         progress(1.0, desc="Hoàn tất!")
 
         return str(output_path), f"✓ Render xong — bấm tải về bên dưới"
 
+    except Exception as e:
+        raise gr.Error(str(e))
+
+
+
+
+# ---------------------------------------------------------------------------
+# THUMBNAIL
+# ---------------------------------------------------------------------------
+
+def _get_thumb_source(image_file, frame_file):
+    """Trả về path ảnh nguồn: frame ưu tiên nếu có, không thì dùng ảnh upload."""
+    if frame_file and Path(frame_file).exists():
+        return Path(frame_file)
+    if image_file and Path(image_file).exists():
+        return Path(image_file)
+    return None
+
+
+def _hex_to_rgba(hex_color: str, opacity_pct: float) -> tuple:
+    hex_color = hex_color.lstrip("#")
+    r, g, b = int(hex_color[0:2], 16), int(hex_color[2:4], 16), int(hex_color[4:6], 16)
+    a = int((opacity_pct / 100) * 255)
+    return r, g, b, a
+
+
+def _draw_thumbnail(src_path: Path, text: str, font_size: int, bold: bool,
+                    text_color: str, outline_color: str, outline_width: int,
+                    bg_color: str, bg_opacity: float, bg_padding: int,
+                    pos_x: float, pos_y: float, align: str) -> Path:
+    from PIL import Image, ImageDraw, ImageFont
+
+    img = Image.open(src_path).convert("RGBA")
+    W, H = img.size
+
+    # Tìm font
+    font = None
+    if bold:
+        candidates = [
+            "/System/Library/Fonts/Supplemental/Arial Bold.ttf",
+            "/System/Library/Fonts/Helvetica.ttc",
+            "/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf",
+            "/usr/share/fonts/truetype/liberation/LiberationSans-Bold.ttf",
+        ]
+    else:
+        candidates = [
+            "/System/Library/Fonts/Supplemental/Arial.ttf",
+            "/System/Library/Fonts/Helvetica.ttc",
+            "/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf",
+            "/usr/share/fonts/truetype/liberation/LiberationSans-Regular.ttf",
+        ]
+    for path in candidates:
+        if Path(path).exists():
+            try:
+                font = ImageFont.truetype(path, font_size)
+                break
+            except Exception:
+                continue
+    if font is None:
+        font = ImageFont.load_default()
+
+    if not text.strip():
+        out = tempfile.NamedTemporaryFile(delete=False, suffix=".png")
+        img.convert("RGB").save(out.name)
+        return Path(out.name)
+
+    draw_tmp = ImageDraw.Draw(img)
+    lines = text.split("\n")
+
+    # Đo kích thước từng dòng
+    line_bboxes = [draw_tmp.textbbox((0, 0), line, font=font) for line in lines]
+    line_widths  = [bb[2] - bb[0] for bb in line_bboxes]
+    line_heights = [bb[3] - bb[1] for bb in line_bboxes]
+    line_gap     = max(4, font_size // 6)
+    total_w = max(line_widths) if line_widths else 0
+    total_h = sum(line_heights) + line_gap * (len(lines) - 1)
+
+    cx = int(W * pos_x / 100)
+    cy = int(H * pos_y / 100)
+
+    # Vẽ nền chữ nếu opacity > 0
+    if bg_opacity > 0:
+        r, g, b, a = _hex_to_rgba(bg_color, bg_opacity)
+        pad = bg_padding
+        bg_layer = Image.new("RGBA", img.size, (0, 0, 0, 0))
+        bg_draw  = ImageDraw.Draw(bg_layer)
+        bg_draw.rectangle(
+            [cx - total_w // 2 - pad, cy - total_h // 2 - pad,
+             cx + total_w // 2 + pad, cy + total_h // 2 + pad],
+            fill=(r, g, b, a),
+        )
+        img = Image.alpha_composite(img, bg_layer)
+
+    draw = ImageDraw.Draw(img)
+
+    y_cursor = cy - total_h // 2
+    for i, line in enumerate(lines):
+        lw = line_widths[i]
+        lh = line_heights[i]
+        if align == "left":
+            tx = cx - total_w // 2
+        elif align == "right":
+            tx = cx + total_w // 2 - lw
+        else:
+            tx = cx - lw // 2
+
+        # Viền chữ
+        if outline_width > 0:
+            oc = outline_color
+            for dx in range(-outline_width, outline_width + 1):
+                for dy in range(-outline_width, outline_width + 1):
+                    if dx == 0 and dy == 0:
+                        continue
+                    draw.text((tx + dx, y_cursor + dy), line, font=font, fill=oc)
+
+        draw.text((tx, y_cursor), line, font=font, fill=text_color)
+        y_cursor += lh + line_gap
+
+    out = tempfile.NamedTemporaryFile(delete=False, suffix=".png")
+    img.convert("RGB").save(out.name)
+    return Path(out.name)
+
+
+def run_thumb_video_loaded(video_file):
+    """Cập nhật slider max theo độ dài video."""
+    if not video_file:
+        return gr.update(maximum=100.0, value=0.0)
+    try:
+        dur = get_audio_duration(Path(video_file))
+        return gr.update(maximum=round(dur, 1), value=0.0)
+    except Exception:
+        return gr.update(maximum=100.0, value=0.0)
+
+
+def run_capture_frame(video_file, seek_sec):
+    if not video_file:
+        raise gr.Error("Chưa upload video.")
+    from translate_video import FFMPEG_BIN, run as _run
+    out = tempfile.NamedTemporaryFile(delete=False, suffix=".png")
+    out.close()
+    _run([
+        FFMPEG_BIN, "-y", "-ss", str(seek_sec), "-i", str(video_file),
+        "-frames:v", "1", "-q:v", "2", out.name,
+    ])
+    return gr.update(value=out.name, visible=True), f"✓ Chụp frame tại {seek_sec:.1f}s"
+
+
+def run_thumb_render(image_file, frame_file, text, font_size, bold,
+                     text_color, outline_color, outline_width,
+                     bg_color, bg_opacity, bg_padding,
+                     pos_x, pos_y, align):
+    src = _get_thumb_source(image_file, frame_file)
+    if src is None:
+        raise gr.Error("Chưa có ảnh. Upload ảnh hoặc chụp frame từ video.")
+    try:
+        out = _draw_thumbnail(
+            src, text, int(font_size), bold,
+            text_color, outline_color, int(outline_width),
+            bg_color, bg_opacity, int(bg_padding),
+            pos_x, pos_y, align,
+        )
+        return str(out), "✓ Preview xong"
+    except Exception as e:
+        raise gr.Error(str(e))
+
+
+def run_thumb_export(image_file, frame_file, text, font_size, bold,
+                     text_color, outline_color, outline_width,
+                     bg_color, bg_opacity, bg_padding,
+                     pos_x, pos_y, align):
+    src = _get_thumb_source(image_file, frame_file)
+    if src is None:
+        raise gr.Error("Chưa có ảnh. Upload ảnh hoặc chụp frame từ video.")
+    try:
+        out = _draw_thumbnail(
+            src, text, int(font_size), bold,
+            text_color, outline_color, int(outline_width),
+            bg_color, bg_opacity, int(bg_padding),
+            pos_x, pos_y, align,
+        )
+        return gr.update(value=str(out), visible=True), "✓ Xuất xong — bấm tải về"
     except Exception as e:
         raise gr.Error(str(e))
 
@@ -597,38 +927,61 @@ function playErrorBeep() {
         osc.stop(ctx.currentTime + 0.8);
     } catch(e) {}
 }
+
+function playDoneChime() {
+    try {
+        const ctx = new (window.AudioContext || window.webkitAudioContext)();
+        const gain = ctx.createGain();
+        gain.connect(ctx.destination);
+        // 2 nốt: sol → do cao — nghe như "ding-dong"
+        [[784, 0, 0.15], [1046, 0.18, 0.25]].forEach(([freq, delay, dur]) => {
+            const osc = ctx.createOscillator();
+            osc.connect(gain);
+            osc.type = 'sine';
+            osc.frequency.setValueAtTime(freq, ctx.currentTime + delay);
+            gain.gain.setValueAtTime(0.0, ctx.currentTime + delay);
+            gain.gain.linearRampToValueAtTime(0.25, ctx.currentTime + delay + 0.02);
+            gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + delay + dur);
+            osc.start(ctx.currentTime + delay);
+            osc.stop(ctx.currentTime + delay + dur);
+        });
+    } catch(e) {}
+}
+
+// Theo dõi progress bar: khi ẩn đi (xong việc) → phát chime
+let _wasWorking = false;
 const observer = new MutationObserver(() => {
+    // Lỗi → beep
     document.querySelectorAll('.toast-wrap .error, .svelte-notification.error').forEach(el => {
         if (!el.dataset.beeped) { el.dataset.beeped = '1'; playErrorBeep(); }
     });
+    // Progress bar xuất hiện → đang chạy
+    const bar = document.querySelector('.progress-bar, .eta-bar, [class*="progress"]');
+    const working = bar && bar.offsetParent !== null;
+    if (_wasWorking && !working) { playDoneChime(); }
+    _wasWorking = working;
 });
-observer.observe(document.body, { childList: true, subtree: true });
+observer.observe(document.body, { childList: true, subtree: true, attributes: true });
 """
 
 TTS_MODELS = [
     ("🆓 Google TTS Free ($0)",         "google/google-tts"),
-    ("Google Standard ($4/1M)",          "google/standard"),
-    ("Google WaveNet ($16/1M)",          "google/wavenet"),
-    ("Google Neural2 ($16/1M)",         "google/neural2"),
-    ("Google Chirp 3 HD ($30/1M)",      "google/chirp3-hd"),
-    ("OpenAI TTS-1 ($15/1M)",           "openai/tts-1"),
-    ("OpenAI TTS-1 HD ($30/1M)",        "openai/tts-1-hd"),
     ("OpenAI GPT-4o Mini TTS ($12/1M)", "openai/gpt-4o-mini-tts"),
 ]
 
 TTS_VOICES = {
-    "google/google-tts": [("🇻🇳 Tiếng Việt", "vi"), ("🇺🇸 English", "en"), ("🇨🇳 中文", "zh"), ("🇯🇵 日本語", "ja")],
-    "google/standard":   [("Nữ A (miền Bắc)", "vi-VN-Standard-A"), ("Nam B", "vi-VN-Standard-B"), ("Nữ C", "vi-VN-Standard-C"), ("Nam D", "vi-VN-Standard-D")],
-    "google/wavenet":    [("Nữ A", "vi-VN-WaveNet-A"), ("Nam B", "vi-VN-WaveNet-B"), ("Nữ C", "vi-VN-WaveNet-C"), ("Nam D", "vi-VN-WaveNet-D")],
-    "google/neural2":    [("Nữ A", "vi-VN-Neural2-A"), ("Nam B", "vi-VN-Neural2-B"), ("Nữ C", "vi-VN-Neural2-C"), ("Nam D", "vi-VN-Neural2-D")],
-    "google/chirp3-hd":  [("Nữ A", "vi-VN-Chirp-HD-A"), ("Nam B", "vi-VN-Chirp-HD-B"), ("Nữ C", "vi-VN-Chirp-HD-C"), ("Nam D", "vi-VN-Chirp-HD-D"), ("Nữ F", "vi-VN-Chirp-HD-F"), ("Trung tính O", "vi-VN-Chirp-HD-O")],
-    "openai/tts-1":      [("nova", "nova"), ("alloy", "alloy"), ("echo", "echo"), ("onyx", "onyx"), ("shimmer", "shimmer"), ("ash", "ash"), ("ballad", "ballad"), ("coral", "coral"), ("sage", "sage"), ("verse", "verse"), ("fable", "fable")],
-    "openai/tts-1-hd":   [("nova", "nova"), ("alloy", "alloy"), ("echo", "echo"), ("onyx", "onyx"), ("shimmer", "shimmer"), ("ash", "ash"), ("ballad", "ballad"), ("coral", "coral"), ("sage", "sage"), ("verse", "verse"), ("fable", "fable")],
-    "openai/gpt-4o-mini-tts": [("nova", "nova"), ("alloy", "alloy"), ("echo", "echo"), ("onyx", "onyx"), ("shimmer", "shimmer"), ("ash", "ash"), ("ballad", "ballad"), ("coral", "coral"), ("sage", "sage"), ("verse", "verse"), ("fable", "fable")],
+    "google/google-tts":      [("🇻🇳 Tiếng Việt", "vi"), ("🇺🇸 English", "en"), ("🇨🇳 中文", "zh"), ("🇯🇵 日本語", "ja")],
+    "openai/gpt-4o-mini-tts": [("nova", "nova"), ("alloy", "alloy"), ("echo", "echo"), ("onyx", "onyx"), ("shimmer", "shimmer"), ("ash", "ash"), ("coral", "coral"), ("sage", "sage"), ("verse", "verse"), ("fable", "fable")],
 }
 
 
 def get_voices(model: str):
+    if not model:
+        edge_voices = [
+            ("vi-VN-HoaiMyNeural (Nữ)", "vi-VN-HoaiMyNeural"),
+            ("vi-VN-NamMinhNeural (Nam)", "vi-VN-NamMinhNeural"),
+        ]
+        return gr.update(choices=edge_voices, value="vi-VN-HoaiMyNeural")
     voices = TTS_VOICES.get(model, [("vi", "vi")])
     return gr.update(choices=voices, value=voices[0][1])
 
@@ -636,161 +989,456 @@ def get_voices(model: str):
 with gr.Blocks(title="Dịch Video Tiếng Trung → Tiếng Việt") as demo:
     gr.Markdown("# Dịch Video Tiếng Trung → Tiếng Việt")
 
-    # ── PHẦN 1: Upload video + chạy pipeline ──────────────────────────────
-    gr.Markdown("## Bước 1 — Upload & Xử lý")
-    with gr.Row():
-        with gr.Column(scale=2):
-            video_input = gr.Video(label="Upload video tiếng Trung", sources=["upload"])
-        with gr.Column(scale=1):
-            key_input = gr.Textbox(
-                label="Groq API Key (STT)",
-                placeholder="gsk_... (để trống nếu đã có trong .env)",
-                type="password",
+    with gr.Tabs():
+
+        # ══════════════════════════════════════════════════════════════════
+        # TAB 1: DỊCH VIDEO
+        # ══════════════════════════════════════════════════════════════════
+        with gr.TabItem("🎬 Dịch Video"):
+
+            # ── PHẦN 1: Upload video + chạy pipeline ──────────────────────
+            gr.Markdown("## Bước 1 — Upload & Xử lý")
+            with gr.Row():
+                with gr.Column(scale=2):
+                    video_input = gr.Video(label="Upload video tiếng Trung", sources=["upload"])
+                with gr.Column(scale=1):
+                    key_input = gr.Textbox(
+                        label="Groq API Key (STT)",
+                        placeholder="gsk_... (để trống nếu đã có trong .env)",
+                        type="password",
+                    )
+                    beeknoee_input = gr.Textbox(
+                        label="Beeknoee API Key (Dịch + TTS)",
+                        placeholder="sk-bee-... (tùy chọn)",
+                        type="password",
+                    )
+                    capcut_voice_input = gr.Dropdown(
+                        label="CapCut TTS (ưu tiên nếu chọn)",
+                        choices=[("-- Không dùng --", "")] + [(n, vt) for n, vt, _ in CAPCUT_VOICES_VI],
+                        value="BV421_vivn_streaming",
+                    )
+                    beeknoee_tts_input = gr.Dropdown(
+                        label="TTS Model (dùng khi không chọn CapCut)",
+                        choices=[("-- Edge TTS mặc định --", "")] + [(l, v) for l, v in TTS_MODELS],
+                        value="",
+                    )
+                    beeknoee_tts_voice_input = gr.Dropdown(
+                        label="TTS Voice",
+                        choices=[("vi", "vi")],
+                        value="vi",
+                    )
+                    auto_translate_toggle = gr.Checkbox(
+                        label="Tự động STT + Dịch sau khi tách audio",
+                        value=True,
+                        info="Tắt = chỉ tách audio nền, dừng lại chờ JSON bản dịch từ server",
+                    )
+                    btn_stt = gr.Button("▶ Chạy Bước 1", variant="primary")
+
+            status_stt = gr.Textbox(label="Trạng thái", interactive=False)
+            video_stem_display = gr.Textbox(interactive=False, visible=False)
+
+            # ── PHẦN 2: Khôi phục từ cache ────────────────────────────────
+            with gr.Accordion("♻️ Khôi phục bản dịch (vi_cues.json)", open=False):
+                gr.Markdown("Load file JSON bản dịch. Nếu file không có đường dẫn video (JSON cũ), upload video bên dưới để gắn vào.")
+                load_json_file = gr.File(label="Chọn file JSON bản dịch", file_types=[".json"])
+                btn_load_json  = gr.Button("📂 Load JSON", variant="secondary")
+                with gr.Group() as attach_video_group:
+                    gr.Markdown("**Upload video để gắn vào bản dịch** (cần khi JSON không có đường dẫn video):")
+                    attach_video_input  = gr.Video(label="Upload video gốc", sources=["upload"])
+                    btn_attach_video    = gr.Button("🎬 Gắn video + Tách audio nền", variant="primary")
+                    status_attach_video = gr.Textbox(label="Trạng thái", interactive=False)
+
+            # ── PHẦN 3: Test TTS ───────────────────────────────────────────
+            with gr.Accordion("🔊 Test giọng đọc TTS", open=False):
+                tts_test_text = gr.Textbox(label="Text thử", placeholder="Nhập câu tiếng Việt...")
+                with gr.Row():
+                    tts_test_capcut = gr.Dropdown(
+                        label="CapCut TTS (ưu tiên)",
+                        choices=[("-- Không dùng --", "")] + [(n, vt) for n, vt, _ in CAPCUT_VOICES_VI],
+                        value="BV421_vivn_streaming", scale=1,
+                    )
+                    tts_test_model = gr.Dropdown(
+                        label="Model khác (khi không dùng CapCut)",
+                        choices=[("-- Edge TTS --", "")] + [(l, v) for l, v in TTS_MODELS],
+                        value="", scale=1,
+                    )
+                    tts_test_voice = gr.Dropdown(
+                        label="Voice",
+                        choices=[("vi-VN-HoaiMyNeural (Nữ)", "vi-VN-HoaiMyNeural"), ("vi-VN-NamMinhNeural (Nam)", "vi-VN-NamMinhNeural")],
+                        value="vi-VN-HoaiMyNeural", scale=1,
+                    )
+                    btn_test_tts = gr.Button("▶ Test", variant="secondary", scale=1)
+                tts_test_audio = gr.Audio(label="Kết quả", interactive=False)
+
+            # ── PHẦN 3b: Nạp bản tối ưu từ AI ngoài ─────────────────────
+            with gr.Accordion("🤖 Nạp bản tối ưu từ AI (Claude/ChatGPT...)", open=True):
+                gr.Markdown(
+                    "1. Xuất JSON bên dưới → bấm **📋 Copy Prompt** → paste vào AI bất kỳ\n"
+                    "2. AI trả về file JSON đã tối ưu → tải về → upload vào đây"
+                )
+                optimized_json_input = gr.File(
+                    label="Upload file JSON đã tối ưu từ AI",
+                    file_types=[".json"],
+                )
+                btn_load_optimized = gr.Button("📥 Nạp vào bảng", variant="primary")
+                status_load_optimized = gr.Textbox(label="Trạng thái", interactive=False)
+
+            # ── PHẦN 4: Bảng dịch + nút hành động ────────────────────────
+            gr.Markdown("## Chỉnh sửa bản dịch")
+            gr.Markdown("Bấm vào ô **Bản dịch** để sửa trực tiếp.")
+
+            translation_table = gr.Dataframe(
+                headers=["#", "Bắt đầu", "Kết thúc", "Tiếng Trung", "Bản dịch", "Tốc độ đọc"],
+                datatype=["number", "str", "str", "str", "str", "str"],
+                column_count=(6, "fixed"),
+                interactive=True,
+                wrap=True,
+                visible=False,
+                column_widths=["4%", "9%", "9%", "30%", "30%", "18%"],
             )
-            beeknoee_input = gr.Textbox(
-                label="Beeknoee API Key (Dịch + TTS)",
-                placeholder="sk-bee-... (tùy chọn)",
-                type="password",
+
+            btn_translate_only = gr.Button("▶ Dịch Trung → Việt", variant="primary", visible=False)
+
+            with gr.Row():
+                bg_music_input = gr.Audio(
+                    label="🎵 Nhạc nền (tùy chọn — sẽ loop tự động)",
+                    type="filepath", sources=["upload"], scale=2,
+                )
+            with gr.Row():
+                bg_volume_slider    = gr.Slider(0.0, 2.0, value=0.3, step=0.05, label="Âm lượng nhạc nền")
+                tts_volume_slider   = gr.Slider(0.0, 3.0, value=1.8, step=0.05, label="Âm lượng lồng tiếng")
+                capcut_delay_slider = gr.Slider(0.5, 5.0, value=1.5, step=0.5, label="Delay CapCut TTS (giây/đoạn)")
+
+            with gr.Row():
+                btn_optimize    = gr.Button("✨ Tối ưu AI",       variant="secondary", visible=False)
+                btn_export_json = gr.Button("💾 Xuất JSON",        variant="secondary", visible=False)
+                btn_copy_prompt = gr.Button("📋 Xem Prompt AI",   variant="secondary", visible=True)
+                btn_render      = gr.Button("🎬 Render Video",     variant="primary",   visible=False)
+
+            json_download  = gr.File(label="Tải JSON bản dịch", visible=False, interactive=False)
+            prompt_display = gr.Textbox(
+                label="Prompt — copy đoạn này, paste vào AI rồi đính kèm file JSON vừa tải",
+                interactive=True, visible=False, lines=12,
             )
-            beeknoee_tts_input = gr.Dropdown(
-                label="TTS Model",
-                choices=[("-- Edge TTS mặc định --", "")] + [(l, v) for l, v in TTS_MODELS],
-                value="",
+            status_optimize = gr.Textbox(label="Trạng thái tối ưu", interactive=False)
+            status_render   = gr.Textbox(label="Trạng thái render",  interactive=False)
+            video_output    = gr.Video(label="Video kết quả (bấm tải về)", interactive=False)
+
+            # ── Events ────────────────────────────────────────────────────
+            _stt_outputs_list = [
+                translation_table,
+                btn_optimize, btn_export_json, btn_render, btn_translate_only,
+                status_stt, video_stem_display,
+            ]
+
+            btn_stt.click(
+                fn=run_stt_translate,
+                inputs=[video_input, key_input, beeknoee_input, beeknoee_tts_input,
+                        beeknoee_tts_voice_input, capcut_voice_input, auto_translate_toggle],
+                outputs=_stt_outputs_list,
             )
-            beeknoee_tts_voice_input = gr.Dropdown(
-                label="TTS Voice",
-                choices=[("vi", "vi")],
-                value="vi",
+
+            btn_translate_only.click(
+                fn=run_translate_only,
+                inputs=[],
+                outputs=_stt_outputs_list,
             )
-            slow_slider = gr.Slider(
-                minimum=1.0, maximum=2.0, value=1.0, step=0.1,
-                label="Kéo dãn video (1.0 = giữ nguyên)",
+
+            btn_load_json.click(
+                fn=run_load_json,
+                inputs=[load_json_file],
+                outputs=_stt_outputs_list,
             )
-            auto_translate_toggle = gr.Checkbox(
-                label="Tự động STT + Dịch sau khi tách audio",
-                value=True,
-                info="Tắt = chỉ tách audio nền, dừng lại chờ JSON bản dịch từ server",
+
+            btn_attach_video.click(
+                fn=run_attach_video,
+                inputs=[attach_video_input],
+                outputs=[btn_optimize, btn_render, status_attach_video],
             )
-            btn_stt = gr.Button("▶ Chạy Bước 1", variant="primary")
 
-    status_stt = gr.Textbox(label="Trạng thái", interactive=False)
-    video_stem_display = gr.Textbox(interactive=False, visible=False)
+            beeknoee_tts_input.change(fn=get_voices, inputs=[beeknoee_tts_input], outputs=[beeknoee_tts_voice_input])
+            tts_test_model.change(fn=get_voices, inputs=[tts_test_model], outputs=[tts_test_voice])
 
-    # ── PHẦN 2: Khôi phục từ cache ────────────────────────────────────────
-    with gr.Accordion("♻️ Khôi phục bản dịch (vi_cues.json)", open=False):
-        gr.Markdown("Load file `vi_cues.json` đã lưu trước đó để tiếp tục chỉnh sửa hoặc render lại.")
-        load_json_file = gr.File(label="Chọn file vi_cues.json", file_types=[".json"])
-        btn_load_json  = gr.Button("📂 Load", variant="secondary")
-
-    # ── PHẦN 3: Test TTS ───────────────────────────────────────────────────
-    with gr.Accordion("🔊 Test giọng đọc TTS", open=False):
-        tts_test_text = gr.Textbox(label="Text thử", placeholder="Nhập câu tiếng Việt...")
-        with gr.Row():
-            tts_test_model = gr.Dropdown(
-                label="Model", choices=[(l, v) for l, v in TTS_MODELS],
-                value="google/google-tts", scale=1,
+            btn_test_tts.click(
+                fn=run_test_tts,
+                inputs=[tts_test_text, tts_test_model, tts_test_voice, tts_test_capcut],
+                outputs=[tts_test_audio],
             )
-            tts_test_voice = gr.Dropdown(
-                label="Voice", choices=TTS_VOICES["google/google-tts"],
-                value="vi", scale=1,
+
+            translation_table.change(
+                fn=refresh_speed_col,
+                inputs=[translation_table],
+                outputs=[translation_table],
             )
-            btn_test_tts = gr.Button("▶ Test", variant="secondary", scale=1)
-        tts_test_audio = gr.Audio(label="Kết quả", interactive=False)
 
-    # ── PHẦN 4: Bảng dịch + nút hành động ─────────────────────────────────
-    gr.Markdown("## Chỉnh sửa bản dịch")
-    gr.Markdown("Bấm vào ô **Bản dịch** để sửa trực tiếp.")
+            btn_optimize.click(
+                fn=run_optimize,
+                inputs=[translation_table],
+                outputs=[translation_table, status_optimize],
+            )
 
-    translation_table = gr.Dataframe(
-        headers=["#", "Bắt đầu", "Kết thúc", "Tiếng Trung", "Bản dịch", "Tốc độ đọc"],
-        datatype=["number", "str", "str", "str", "str", "str"],
-        column_count=(6, "fixed"),
-        interactive=True,
-        wrap=True,
-        visible=False,
-        column_widths=["4%", "9%", "9%", "30%", "30%", "18%"],
-    )
+            btn_export_json.click(
+                fn=run_export_json,
+                inputs=[translation_table],
+                outputs=[json_download],
+            )
 
-    btn_translate_only = gr.Button("▶ Dịch Trung → Việt", variant="primary", visible=False)
+            btn_copy_prompt.click(
+                fn=run_show_prompt,
+                inputs=[translation_table],
+                outputs=[prompt_display],
+            )
 
-    with gr.Row():
-        bg_volume_slider  = gr.Slider(0.0, 2.0, value=0.3, step=0.05, label="Âm lượng audio gốc")
-        tts_volume_slider = gr.Slider(0.0, 3.0, value=1.8, step=0.05, label="Âm lượng lồng tiếng")
+            btn_load_optimized.click(
+                fn=run_load_optimized,
+                inputs=[optimized_json_input],
+                outputs=[translation_table, status_load_optimized],
+            )
 
-    with gr.Row():
-        btn_optimize    = gr.Button("✨ Tối ưu AI",       variant="secondary", visible=False)
-        btn_export_json = gr.Button("💾 Xuất JSON",        variant="secondary", visible=False)
-        btn_render      = gr.Button("🎬 Render Video",     variant="primary",   visible=False)
+            btn_render.click(
+                fn=run_render,
+                inputs=[translation_table, bg_music_input, bg_volume_slider, tts_volume_slider,
+                        capcut_delay_slider, capcut_voice_input],
+                outputs=[video_output, status_render],
+            )
 
-    json_download   = gr.File(label="Tải JSON bản dịch", visible=False, interactive=False)
-    status_optimize = gr.Textbox(label="Trạng thái tối ưu", interactive=False)
-    status_render   = gr.Textbox(label="Trạng thái render",  interactive=False)
-    video_output    = gr.Video(label="Video kết quả (bấm tải về)", interactive=False)
+        # ══════════════════════════════════════════════════════════════════
+        # TAB 2: TEST TỐC ĐỘ ĐỌC
+        # ══════════════════════════════════════════════════════════════════
+        with gr.TabItem("⏱️ Test Tốc Độ Đọc"):
+            gr.Markdown(
+                "## Đo tốc độ đọc\n"
+                "1. Nhập câu mẫu + chỉnh thời gian mục tiêu → **Test** → nghe thử\n"
+                "2. Chỉnh thời gian lên/xuống cho đến khi nghe vừa tai → **Lưu tốc độ**\n"
+                "3. Tốc độ lưu được dùng khi bấm **✨ Tối ưu AI** ở tab Dịch Video"
+            )
+            with gr.Row():
+                with gr.Column(scale=2):
+                    speed_text_input = gr.Textbox(
+                        label="Câu mẫu (tiếng Việt)",
+                        value="Hôm nay bạn thế nào, mọi thứ có ổn không",
+                        lines=2,
+                    )
+                    speed_duration_input = gr.Slider(
+                        label="Thời gian mục tiêu (giây) — kéo để thay đổi",
+                        minimum=1.0, maximum=20.0, value=5.0, step=0.5,
+                    )
+                    with gr.Row():
+                        speed_test_capcut = gr.Dropdown(
+                            label="Giọng CapCut",
+                            choices=[("-- Không dùng --", "")] + [(n, vt) for n, vt, _ in CAPCUT_VOICES_VI],
+                            value="BV421_vivn_streaming",
+                            scale=2,
+                        )
+                        btn_speed_test = gr.Button("▶ Test", variant="secondary", scale=1)
+                        btn_speed_save = gr.Button("✅ Lưu tốc độ", variant="primary", scale=1)
+                with gr.Column(scale=1):
+                    speed_audio_out = gr.Audio(label="Nghe thử", interactive=False)
+                    speed_result    = gr.Textbox(label="Kết quả", interactive=False, lines=6)
 
-    # ── Events ────────────────────────────────────────────────────────────
-    _stt_outputs_list = [
-        translation_table,
-        btn_optimize, btn_export_json, btn_render, btn_translate_only,
-        status_stt, video_stem_display,
-    ]
+            def run_speed_test(text: str, duration: float, capcut_voice: str):
+                text = (text or "").strip()
+                if not text:
+                    raise gr.Error("Nhập câu mẫu.")
+                # Tạo TTS raw
+                tmp_raw = tempfile.NamedTemporaryFile(delete=False, suffix=".mp3")
+                tmp_raw.close()
+                tmp_out = tempfile.NamedTemporaryFile(delete=False, suffix=".mp3")
+                tmp_out.close()
 
-    btn_stt.click(
-        fn=run_stt_translate,
-        inputs=[video_input, key_input, beeknoee_input, beeknoee_tts_input,
-                beeknoee_tts_voice_input, slow_slider, auto_translate_toggle],
-        outputs=_stt_outputs_list,
-    )
+                device_id = os.environ.get("CAPCUT_DEVICE_ID", "7581502458217252368")
+                if capcut_voice:
+                    voice_info = next((v for v in CAPCUT_VOICES_VI if v[1] == capcut_voice), None)
+                    if not voice_info:
+                        raise gr.Error(f"Không tìm thấy giọng: {capcut_voice}")
+                    from translate_video import capcut_tts_sync
+                    capcut_tts_sync(text, voice_info[1], voice_info[2], Path(tmp_raw.name), device_id)
+                else:
+                    import asyncio as _aio, edge_tts
+                    async def _edge():
+                        await edge_tts.Communicate(text, "vi-VN-HoaiMyNeural").save(tmp_raw.name)
+                    _aio.run(_edge())
 
-    btn_translate_only.click(
-        fn=run_translate_only,
-        inputs=[],
-        outputs=_stt_outputs_list,
-    )
+                # Stretch cho vừa duration mục tiêu
+                raw_dur = get_audio_duration(Path(tmp_raw.name))
+                ratio   = raw_dur / duration
+                ratio   = max(0.5, min(ratio, 3.0))
+                from translate_video import stretch_audio
+                stretch_audio(Path(tmp_raw.name), Path(tmp_out.name), ratio)
 
-    btn_load_json.click(
-        fn=run_load_json,
-        inputs=[load_json_file],
-        outputs=_stt_outputs_list,
-    )
+                words   = count_words(text)
+                wps     = words / duration
+                info = (
+                    f"Câu: {words} từ / {duration:.1f}s\n"
+                    f"Tốc độ: {wps:.2f} từ/giây\n"
+                    f"Audio gốc: {raw_dur:.2f}s → stretch {ratio:.2f}x\n\n"
+                    f"Nghe ổn? → bấm '✅ Lưu tốc độ'"
+                )
+                return tmp_out.name, info
 
-    beeknoee_tts_input.change(fn=get_voices, inputs=[beeknoee_tts_input], outputs=[beeknoee_tts_voice_input])
-    tts_test_model.change(fn=get_voices, inputs=[tts_test_model], outputs=[tts_test_voice])
+            def run_speed_save(text: str, duration: float):
+                text = (text or "").strip()
+                if not text or not duration or duration <= 0:
+                    raise gr.Error("Test trước rồi hãy lưu.")
+                words = count_words(text)
+                wps   = words / duration
+                _state["user_wps"] = wps
+                return (
+                    f"Câu: {words} từ / {duration:.1f}s\n"
+                    f"Tốc độ: {wps:.2f} từ/giây\n\n"
+                    f"→ Đoạn 5s: tối đa {int(5*wps*1.2)} từ\n"
+                    f"→ Đoạn 10s: tối đa {int(10*wps*1.2)} từ\n\n"
+                    f"✅ Đã lưu! Dùng cho Tối ưu AI."
+                )
 
-    btn_test_tts.click(
-        fn=run_test_tts,
-        inputs=[tts_test_text, tts_test_model, tts_test_voice],
-        outputs=[tts_test_audio],
-    )
+            btn_speed_test.click(
+                fn=run_speed_test,
+                inputs=[speed_text_input, speed_duration_input, speed_test_capcut],
+                outputs=[speed_audio_out, speed_result],
+            )
+            btn_speed_save.click(
+                fn=run_speed_save,
+                inputs=[speed_text_input, speed_duration_input],
+                outputs=[speed_result],
+            )
 
-    translation_table.change(
-        fn=refresh_speed_col,
-        inputs=[translation_table],
-        outputs=[translation_table],
-    )
+        # ══════════════════════════════════════════════════════════════════
+        # TAB 3: TẠO THUMBNAIL
+        # ══════════════════════════════════════════════════════════════════
+        with gr.TabItem("🖼️ Tạo Thumbnail"):
+            gr.Markdown("## Tạo Thumbnail")
 
-    btn_optimize.click(
-        fn=run_optimize,
-        inputs=[translation_table],
-        outputs=[translation_table, status_optimize],
-    )
+            with gr.Row():
+                # ── Cột trái: nguồn ảnh ───────────────────────────────────
+                with gr.Column(scale=1):
+                    gr.Markdown("### Nguồn ảnh")
+                    with gr.Tabs() as thumb_source_tabs:
+                        with gr.TabItem("Upload ảnh"):
+                            thumb_image_input = gr.Image(
+                                label="Upload ảnh",
+                                type="filepath",
+                                sources=["upload"],
+                            )
+                        with gr.TabItem("Lấy frame từ video"):
+                            thumb_video_input = gr.Video(
+                                label="Upload video",
+                                sources=["upload"],
+                            )
+                            thumb_seek_slider = gr.Slider(
+                                minimum=0.0, maximum=100.0, value=0.0, step=0.1,
+                                label="Vị trí (giây)",
+                                interactive=True,
+                            )
+                            btn_capture_frame = gr.Button("📷 Chụp frame này", variant="secondary")
+                            thumb_frame_preview = gr.Image(
+                                label="Frame đã chụp",
+                                type="filepath",
+                                interactive=False,
+                                visible=False,
+                            )
 
-    btn_export_json.click(
-        fn=run_export_json,
-        inputs=[translation_table],
-        outputs=[json_download],
-    )
+                # ── Cột giữa: tuỳ chỉnh text ──────────────────────────────
+                with gr.Column(scale=1):
+                    gr.Markdown("### Thêm chữ")
+                    thumb_text = gr.Textbox(
+                        label="Nội dung chữ",
+                        placeholder="Nhập tiêu đề hoặc chú thích...",
+                        lines=3,
+                    )
+                    with gr.Row():
+                        thumb_font_size = gr.Slider(
+                            minimum=10, maximum=200, value=60, step=2,
+                            label="Cỡ chữ (px)",
+                        )
+                        thumb_font_bold = gr.Checkbox(label="In đậm", value=True)
+                    with gr.Row():
+                        thumb_text_color = gr.ColorPicker(label="Màu chữ", value="#FFFFFF")
+                        thumb_outline_color = gr.ColorPicker(label="Màu viền chữ", value="#000000")
+                    thumb_outline_width = gr.Slider(
+                        minimum=0, maximum=20, value=3, step=1,
+                        label="Độ dày viền chữ (px, 0 = không viền)",
+                    )
+                    with gr.Row():
+                        thumb_bg_color = gr.ColorPicker(label="Màu nền chữ", value="#000000")
+                        thumb_bg_opacity = gr.Slider(
+                            minimum=0, maximum=100, value=0, step=5,
+                            label="Độ trong suốt nền chữ (%)",
+                        )
+                    thumb_bg_padding = gr.Slider(
+                        minimum=0, maximum=60, value=12, step=2,
+                        label="Padding nền chữ (px)",
+                    )
+                    gr.Markdown("**Vị trí chữ**")
+                    with gr.Row():
+                        thumb_pos_x = gr.Slider(
+                            minimum=0, maximum=100, value=50, step=1,
+                            label="X (% từ trái)",
+                        )
+                        thumb_pos_y = gr.Slider(
+                            minimum=0, maximum=100, value=85, step=1,
+                            label="Y (% từ trên)",
+                        )
+                    thumb_align = gr.Radio(
+                        choices=["left", "center", "right"],
+                        value="center",
+                        label="Căn chữ",
+                    )
 
-    btn_render.click(
-        fn=run_render,
-        inputs=[translation_table, bg_volume_slider, tts_volume_slider],
-        outputs=[video_output, status_render],
-    )
+                # ── Cột phải: preview + xuất ──────────────────────────────
+                with gr.Column(scale=1):
+                    gr.Markdown("### Preview & Xuất")
+                    btn_thumb_preview = gr.Button("👁️ Preview", variant="secondary")
+                    thumb_preview_output = gr.Image(
+                        label="Preview",
+                        type="filepath",
+                        interactive=False,
+                    )
+                    btn_thumb_export = gr.Button("⬇️ Xuất ảnh", variant="primary")
+                    thumb_export_file = gr.File(
+                        label="Tải ảnh về",
+                        visible=False,
+                        interactive=False,
+                    )
+                    thumb_status = gr.Textbox(label="Trạng thái", interactive=False)
+
+            # ── Events thumbnail ──────────────────────────────────────────
+            thumb_video_input.change(
+                fn=run_thumb_video_loaded,
+                inputs=[thumb_video_input],
+                outputs=[thumb_seek_slider],
+            )
+
+            btn_capture_frame.click(
+                fn=run_capture_frame,
+                inputs=[thumb_video_input, thumb_seek_slider],
+                outputs=[thumb_frame_preview, thumb_status],
+            )
+
+            _thumb_inputs = [
+                thumb_image_input, thumb_frame_preview,
+                thumb_text, thumb_font_size, thumb_font_bold,
+                thumb_text_color, thumb_outline_color, thumb_outline_width,
+                thumb_bg_color, thumb_bg_opacity, thumb_bg_padding,
+                thumb_pos_x, thumb_pos_y, thumb_align,
+            ]
+
+            btn_thumb_preview.click(
+                fn=run_thumb_render,
+                inputs=_thumb_inputs,
+                outputs=[thumb_preview_output, thumb_status],
+            )
+
+            btn_thumb_export.click(
+                fn=run_thumb_export,
+                inputs=_thumb_inputs,
+                outputs=[thumb_export_file, thumb_status],
+            )
 
 
 if __name__ == "__main__":
     demo.launch(
         server_name="0.0.0.0",
-        server_port=8080,
+        server_port=8003,
         share=False,
         theme=gr.themes.Soft(),
         head=f"<script>{_BEEP_JS}</script>",

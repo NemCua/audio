@@ -226,35 +226,13 @@ def stt_groq(audio_path: Path, groq_key: str) -> list[dict]:
 # STEP 3: Translate via Groq LLM
 # ---------------------------------------------------------------------------
 
-SYSTEM_PROMPT = """Bạn là dịch giả phụ đề chuyên nghiệp, chuyên dịch phim tu tiên/kiếm hiệp Trung Quốc sang tiếng Việt với văn phong cổ phong tự nhiên.
-
-MỤC TIÊU: Bản dịch có hồn, đậm chất võ hiệp — không dịch máy móc từng chữ. Giữ khí thế, cảm xúc và không khí của từng cảnh.
+SYSTEM_PROMPT = """Bạn là dịch giả phụ đề chuyên nghiệp, dịch từ tiếng Trung sang tiếng Việt.
 
 QUY TẮC BẮT BUỘC:
 1. Giữ nguyên số block và timestamp SRT — KHÔNG gộp, KHÔNG tách, KHÔNG bỏ block.
 2. Chỉ trả về SRT thuần túy, không giải thích, không markdown.
-3. Câu ngắn gọn, súc tích — đúng chất thoại phim kiếm hiệp.
-
-PHONG CÁCH DỊCH:
-- Lời thoại hào sảng, mạnh mẽ khi đấu khẩu; trang trọng khi bái sư/lễ nghi.
-- Cảnh chiến đấu: dùng từ mạnh, dứt khoát — "chém", "phá", "nghiền nát", "vạn kiếm quy tông".
-- Tránh từ hiện đại lạc điệu — không dùng "okay", "được rồi", "vâng ạ" trong bối cảnh cổ đại.
-- Thành ngữ Trung → tìm tương đương tiếng Việt cổ phong, không dịch thẳng.
-
-XƯNG HÔ CỔ PHONG (nhất quán theo nhân vật):
-- 我/吾 → ta (bề trên/cao nhân), tại hạ (khiêm tốn), tao/ta (thân mật)
-- 朕 → trẫm, 本座 → bản tọa, 本王 → bản vương, 在下 → tại hạ
-- 你 → ngươi (với kẻ thấp hơn), huynh/đệ/cô nương tùy quan hệ
-- 前辈 → tiền bối, 师父 → sư phụ, 师兄 → sư huynh, 师姐 → sư tỷ
-- 道友 → đạo hữu, 阁下 → các hạ, 贫道 → bần đạo, 贫僧 → bần tăng
-
-THUẬT NGỮ TU TIÊN (dịch nhất quán):
-- 灵石→linh thạch, 灵根→linh căn, 丹田→đan điền, 元神→nguyên thần
-- 法宝→pháp bảo, 金丹→kim đan, 元婴→nguyên anh, 渡劫→độ kiếp
-- 飞升→phi thăng, 天劫→thiên kiếp, 灵气→linh khí, 神识→thần thức
-- 剑气→kiếm khí, 真气→chân khí, 功法→công pháp, 秘境→bí cảnh
-
-HỌ TÊN: phiên âm Hán-Việt (吴→Ngô, 李→Lý, 王→Vương, 张→Trương, 赵→Triệu, 陈→Trần, 林→Lâm)."""
+3. Dịch đúng ngữ cảnh, tự nhiên — không dịch máy móc từng chữ.
+4. Giữ nguyên văn phong của video: khoa học thì giữ giọng khoa học, hài hước thì giữ hài hước, kịch tính thì giữ kịch tính."""
 
 
 BEEKNOEE_BASE_URL = "https://platform.beeknoee.com/api/v1"
@@ -370,17 +348,139 @@ def translate_srt(cues: list[dict], groq_key: str,
 # STEP 4: TTS aligned to SRT timestamps
 # ---------------------------------------------------------------------------
 
+CAPCUT_DEVICE_ID = os.environ.get("CAPCUT_DEVICE_ID", "7581502458217252368")
+CAPCUT_IID       = os.environ.get("CAPCUT_IID",       "7581504179703056144")
+
+CAPCUT_VOICES_VI = [
+    ("Nhỏ Ngọt Ngào",       "BV421_vivn_streaming",                   "7252594014782755330"),
+    ("Cô Gái Hoạt Ngôn",    "BV074_streaming",                        "7102355709945188865"),
+    ("Giọng Nữ Phổ Thông",  "vi_female_huong",                        "7264854897953083905"),
+    ("Giọng Bé",             "BV074_streaming_dsp",                    "7550087831092251920"),
+    ("Mai",                  "BV562_streaming",                        "7483736254694035984"),
+    ("Giọng Gái Mới Lớn",   "multi_female_peiqi_uranus_bigtts",       "7637458789033151751"),
+    ("Ban Mai",              "multi_female_yangguangnv_uranus_bigtts", "7637456432522218773"),
+    ("Bản Tin Nữ",           "multi_female_sisi_uranus_bigtts",        "7637455857285860629"),
+    ("Thanh Niên Tự Tin",   "BV075_streaming",                        "7102355803792740865"),
+    ("Giọng Nam Trầm",      "multi_male_felipe_uranus_bigtts",        "7637456729696996628"),
+    ("Alex Đại Đế",          "BV560_streaming",                        "7483736167565758992"),
+]
+
+
+def _capcut_session(device_id: str):
+    """Tạo session + device dict dùng chung cho CapCut API."""
+    import sys
+    sys.path.insert(0, str(BASE_DIR / "capcut-tts-api-main"))
+    from capcut_common_task_client import DEFAULT_DEVICE
+    import requests as _req
+    from copy import deepcopy
+    _session = _req.Session()
+    _session.trust_env = False
+    device = deepcopy(DEFAULT_DEVICE)
+    device["device_id"] = device_id
+    device["iid"]       = os.environ.get("CAPCUT_IID", CAPCUT_IID)
+    device["tdid"]      = device_id
+    return _session, device
+
+
+def capcut_tts_batch(texts: list[str], voice_type: str, resource_id: str,
+                     out_paths: list[Path], device_id: str):
+    """Gửi nhiều text trong 1 request CapCut TTS, lưu từng MP3 vào out_paths tương ứng."""
+    import sys
+    sys.path.insert(0, str(BASE_DIR / "capcut-tts-api-main"))
+    from capcut_common_task_client import (
+        BASE as CAPCUT_BASE,
+        tts_new_body, query_body, common_query,
+        compact_json, base_headers, make_sign_header,
+    )
+    from urllib.parse import urlencode
+    import json as _json
+
+    _session, device = _capcut_session(device_id)
+
+    babi, body = tts_new_body(texts, voice_type, resource_id, "1.0", device)
+    url = CAPCUT_BASE + "/lv/v1/common_task/new?" + urlencode(common_query(device, babi, include_region=True))
+    body_text = compact_json(body)
+    headers = base_headers(device, body_text, appid=True)
+    lh = {k.lower(): v for k, v in headers.items()}
+    headers["sign"] = make_sign_header(url, device["appvr"], lh["device-time"], device["tdid"])
+    r = _session.post(url, headers=headers, data=body_text.encode(), timeout=30)
+    d = r.json()
+    if d.get("ret") != "0":
+        raise RuntimeError(f"CapCut TTS submit lỗi: {d.get('errmsg')}")
+    task = d["data"]["tasks"][0]
+    task_id, token = task["id"], task["token"]
+
+    for _ in range(40):
+        time.sleep(1.5)
+        body2 = query_body(task_id, token, "sami_text_to_speech")
+        url2 = CAPCUT_BASE + "/lv/v1/common_task/query?" + urlencode(common_query(device, None, include_region=False))
+        body_text2 = compact_json(body2)
+        headers2 = base_headers(device, body_text2, appid=True)
+        lh2 = {k.lower(): v for k, v in headers2.items()}
+        headers2["sign"] = make_sign_header(url2, device["appvr"], lh2["device-time"], device["tdid"])
+        r2 = _session.post(url2, headers=headers2, data=body_text2.encode(), timeout=30)
+        d2 = r2.json()
+        t2 = d2["data"]["tasks"][0]
+        if t2["status"] == "succeed":
+            payload = _json.loads(t2["payload"])
+            audio_list = payload["audio_subtitles"]
+            # Map theo field "text" để tránh lệch thứ tự
+            by_text = {item["text"]: item["speech_url"] for item in audio_list}
+            for text, out_path in zip(texts, out_paths):
+                url = by_text.get(text)
+                if not url:
+                    # fallback theo index nếu text không khớp (CapCut có thể normalize)
+                    idx = texts.index(text)
+                    url = audio_list[idx]["speech_url"] if idx < len(audio_list) else None
+                if url:
+                    out_path.write_bytes(_session.get(url, timeout=30).content)
+                else:
+                    make_silent(1.0, out_path)
+            return
+        if t2["status"] == "failed":
+            raise RuntimeError(f"CapCut TTS batch failed")
+    raise RuntimeError("CapCut TTS batch timeout sau 60s")
+
+
+def capcut_tts_sync(text: str, voice_type: str, resource_id: str, out_path: Path, device_id: str):
+    """Gọi CapCut TTS API đồng bộ, lưu MP3 vào out_path."""
+    capcut_tts_batch([text], voice_type, resource_id, [out_path], device_id)
+
+
 async def tts_segment(text: str, voice: str, out_path: Path,
                       beeknoee_key: str | None = None,
                       beeknoee_tts_model: str | None = None,
-                      beeknoee_tts_voice: str | None = None):
+                      beeknoee_tts_voice: str | None = None,
+                      capcut_device_id: str | None = None,
+                      capcut_voice_type: str | None = None,
+                      capcut_resource_id: str | None = None):
     """Tạo file TTS cho 1 đoạn text, retry 3 lần nếu thất bại.
-    Nếu có beeknoee_key + beeknoee_tts_model → dùng Beeknoee TTS, không thì Edge TTS."""
+    Ưu tiên: CapCut TTS → Beeknoee TTS → Edge TTS."""
     clean = re.sub(r"[^\w\sÀ-ɏḀ-ỿ.,!?;:()\-–\"']", " ", text).strip()
     if not clean:
         clean = "."
 
-    if beeknoee_key and beeknoee_tts_model:
+    if capcut_device_id and capcut_voice_type and capcut_resource_id:
+        for attempt in range(3):
+            try:
+                loop = asyncio.get_running_loop()
+                await loop.run_in_executor(
+                    None, capcut_tts_sync,
+                    clean, capcut_voice_type, capcut_resource_id, out_path, capcut_device_id,
+                )
+                return
+            except Exception as e:
+                if attempt == 2:
+                    print(f"  ⚠ CapCut TTS thất bại, fallback Edge TTS: '{clean[:60]}' — {e}")
+                    import edge_tts as _edge
+                    try:
+                        communicate = _edge.Communicate(clean, voice)
+                        await communicate.save(str(out_path))
+                    except Exception:
+                        make_silent(1.0, out_path)
+                else:
+                    await asyncio.sleep(2)
+    elif beeknoee_key and beeknoee_tts_model:
         from openai import OpenAI
         bee_voice = beeknoee_tts_voice or "vi"
         for attempt in range(3):
@@ -421,137 +521,300 @@ async def tts_segment(text: str, voice: str, out_path: Path,
 def get_audio_duration(path: Path) -> float:
     r = run([
         "ffprobe", "-v", "error",
-        "-show_entries", "format=duration",
+        "-show_entries", "stream=duration",
         "-of", "default=noprint_wrappers=1:nokey=1",
         str(path),
     ])
-    return float(r.stdout.strip())
+    # Lấy max của tất cả stream (video + audio) để tránh thiếu nếu 1 stream ngắn hơn
+    vals = [float(x) for x in r.stdout.strip().splitlines() if x.strip()]
+    return max(vals) if vals else 0.0
 
 
 def stretch_audio(src: Path, dst: Path, ratio: float):
     """Kéo/nén audio theo ratio dùng atempo. ratio > 1 = nhanh hơn."""
     filters = ",".join(atempo_chain(ratio))
+    extra = ["-ar", "44100", "-ac", "1"] if dst.suffix.lower() == ".wav" else []
     run([
         FFMPEG_BIN, "-y", "-i", str(src),
         "-filter:a", filters,
+        *extra,
         str(dst),
     ])
 
 
 def make_silent(duration: float, dst: Path):
-    """Tạo file âm thanh im lặng duration giây."""
-    run([
-        FFMPEG_BIN, "-y",
-        "-f", "lavfi", "-i", f"anullsrc=r=24000:cl=mono",
-        "-t", f"{duration:.3f}",
-        "-acodec", "libmp3lame", "-b:a", "48k",
-        str(dst),
-    ])
+    """Tạo file âm thanh im lặng duration giây. Dùng WAV nếu dst.suffix=.wav."""
+    ext = dst.suffix.lower()
+    if ext == ".wav":
+        run([
+            FFMPEG_BIN, "-y",
+            "-f", "lavfi", "-i", "anullsrc=r=44100:cl=mono",
+            "-t", f"{duration:.6f}",
+            "-ar", "44100", "-ac", "1",
+            str(dst),
+        ])
+    else:
+        run([
+            FFMPEG_BIN, "-y",
+            "-f", "lavfi", "-i", "anullsrc=r=24000:cl=mono",
+            "-t", f"{duration:.3f}",
+            "-acodec", "libmp3lame", "-b:a", "48k",
+            str(dst),
+        ])
 
 
 async def build_tts_track(cues: list[dict], work_dir: Path, video_duration: float,
                           beeknoee_key: str | None = None,
                           beeknoee_tts_model: str | None = None,
-                          beeknoee_tts_voice: str | None = None) -> Path:
+                          beeknoee_tts_voice: str | None = None,
+                          capcut_device_id: str | None = None,
+                          capcut_voice_type: str | None = None,
+                          capcut_resource_id: str | None = None,
+                          capcut_delay: float = 1.5) -> Path:
     """
     Build track TTS đồng bộ:
     - Mỗi cue: TTS → atempo để khớp đúng window [start_sec, end_sec]
-    - Tốc độ mặc định tăng 30%, nếu vẫn dài hơn window → tăng thêm
     - Ghép tất cả cue + khoảng lặng giữa chúng thành 1 file mp3
+    - Ưu tiên: CapCut TTS → Beeknoee TTS → Edge TTS
     """
-    print(f"  → TTS {len(cues)} đoạn (Edge TTS {TTS_VOICE})...")
+    if capcut_device_id and capcut_voice_type:
+        label = f"CapCut TTS batch ({capcut_voice_type})"
+    elif beeknoee_tts_model:
+        label = f"Beeknoee ({beeknoee_tts_model})"
+    else:
+        label = f"Edge TTS ({TTS_VOICE})"
+    print(f"  → TTS {len(cues)} đoạn ({label})...")
     seg_dir = work_dir / "tts_segs"
     seg_dir.mkdir(exist_ok=True)
 
-    files_concat: list[Path] = []   # các file theo thứ tự thời gian
-    cursor = 0.0  # vị trí hiện tại trên timeline
+    # --- Pre-fetch CapCut batch -------------------------------------------
+    # Gom tất cả cue có text, gửi theo batch 10 đoạn/request thay vì từng cái
+    raw_paths: dict[int, Path] = {}   # idx → raw mp3 path
+    if capcut_device_id and capcut_voice_type and capcut_resource_id:
+        BATCH = 10
+        pending_idxs  : list[int]  = []
+        pending_texts : list[str]  = []
+        pending_paths : list[Path] = []
+
+        def _flush_batch():
+            if not pending_texts:
+                return
+            print(f"    CapCut batch {pending_idxs[0]}–{pending_idxs[-1]} ({len(pending_texts)} đoạn)...")
+            for attempt in range(3):
+                try:
+                    capcut_tts_batch(pending_texts, capcut_voice_type, capcut_resource_id,
+                                     pending_paths, capcut_device_id)
+                    return
+                except Exception as e:
+                    if attempt == 2:
+                        print(f"  ⚠ CapCut batch thất bại sau 3 lần, fallback Edge TTS: {e}")
+                        for text_fb, p in zip(pending_texts, pending_paths):
+                            if not p.exists():
+                                try:
+                                    import subprocess as _sp
+                                    _sp.run([
+                                        "python3", "-c",
+                                        f"import asyncio, edge_tts; asyncio.run(edge_tts.Communicate({repr(text_fb)}, {repr(TTS_VOICE)}).save({repr(str(p))}))"
+                                    ], timeout=30)
+                                except Exception:
+                                    make_silent(1.0, p)
+                    else:
+                        print(f"  ⚠ CapCut batch lỗi (lần {attempt+1}): {e} — thử lại sau {capcut_delay}s")
+                        time.sleep(capcut_delay)
+
+        for cue in cues:
+            text = cue["text"].strip()
+            if not text:
+                continue
+            clean = re.sub(r"[^\w\sÀ-ɏḀ-ỿ.,!?;:()\-–\"']", " ", text).strip() or "."
+            raw_path = seg_dir / f"raw_{cue['idx']:04d}.mp3"
+            raw_paths[cue["idx"]] = raw_path
+            pending_idxs.append(cue["idx"])
+            pending_texts.append(clean)
+            pending_paths.append(raw_path)
+            if len(pending_texts) >= BATCH:
+                _flush_batch()
+                pending_idxs.clear(); pending_texts.clear(); pending_paths.clear()
+                await asyncio.sleep(capcut_delay)
+        _flush_batch()  # flush batch cuối
+
+    # --- Pre-fetch Edge TTS song song cho các cue chưa có raw (không dùng CapCut) ---
+    elif not beeknoee_key:
+        edge_tasks = []
+        for cue in cues:
+            text = cue["text"].strip()
+            if not text:
+                continue
+            clean = re.sub(r"[^\w\sÀ-ɏḀ-ỿ.,!?;:()\-–\"']", " ", text).strip() or "."
+            raw_path = seg_dir / f"raw_{cue['idx']:04d}.mp3"
+            raw_paths[cue["idx"]] = raw_path
+            edge_tasks.append((clean, raw_path))
+
+        async def _edge_one(txt, path):
+            import edge_tts as _et
+            for attempt in range(3):
+                try:
+                    await _et.Communicate(txt, TTS_VOICE).save(str(path))
+                    return
+                except Exception:
+                    if attempt == 2:
+                        make_silent(1.0, path)
+                    else:
+                        await asyncio.sleep(1)
+
+        EDGE_CONCURRENT = 10
+        for i in range(0, len(edge_tasks), EDGE_CONCURRENT):
+            chunk = edge_tasks[i:i + EDGE_CONCURRENT]
+            print(f"  Edge TTS song song {i+1}–{i+len(chunk)}/{len(edge_tasks)}...")
+            await asyncio.gather(*[_edge_one(t, p) for t, p in chunk])
+
+    # Dùng adelay để pin từng segment vào timestamp tuyệt đối start_sec
+    # → không có sai số tích lũy dù trim/stretch có lệch nhỏ
+    WAV_SR = 44100
+
+    # segments: list of (start_sec, end_sec, wav_path)
+    segments: list[tuple[float, float, Path]] = []
 
     for cue in cues:
         start = cue["start_sec"]
         end   = cue["end_sec"]
-        window = end - start        # thời gian dành cho cue này (giây)
+        window = end - start
         if window <= 0:
             continue
 
-        # Khoảng lặng trước cue này
-        gap = start - cursor
-        if gap > 0.05:
-            silent_path = seg_dir / f"silent_{cue['idx']:04d}.mp3"
-            make_silent(gap, silent_path)
-            files_concat.append(silent_path)
-
         text = cue["text"].strip()
         if not text:
-            # Cue trống → im lặng bằng window
-            silent_path = seg_dir / f"empty_{cue['idx']:04d}.mp3"
-            make_silent(window, silent_path)
-            files_concat.append(silent_path)
-            cursor = end
             continue
 
-        # Tạo TTS gốc
-        raw_path = seg_dir / f"raw_{cue['idx']:04d}.mp3"
-        await tts_segment(text, TTS_VOICE, raw_path,
-                          beeknoee_key=beeknoee_key,
-                          beeknoee_tts_model=beeknoee_tts_model,
-                          beeknoee_tts_voice=beeknoee_tts_voice)
+        # Lấy raw TTS
+        raw_path = raw_paths.get(cue["idx"]) or seg_dir / f"raw_{cue['idx']:04d}.mp3"
+        if not raw_path.exists():
+            await tts_segment(text, TTS_VOICE, raw_path,
+                              beeknoee_key=beeknoee_key,
+                              beeknoee_tts_model=beeknoee_tts_model,
+                              beeknoee_tts_voice=beeknoee_tts_voice,
+                              capcut_device_id=None,
+                              capcut_voice_type=capcut_voice_type,
+                              capcut_resource_id=capcut_resource_id)
 
         raw_dur = get_audio_duration(raw_path)
 
         if raw_dur <= window:
-            # TTS ngắn hơn window → kéo dãn cho vừa khít, tối đa chậm hơn 40%
             ratio = max(raw_dur / window, 0.6)
         else:
-            # TTS dài hơn window → tăng tốc vừa đủ để khớp, cap 3x
             ratio = min(raw_dur / window, 3.0)
 
-        stretched_path = seg_dir / f"seg_{cue['idx']:04d}.mp3"
+        if raw_dur > window * 1.1:
+            print(f"  [TRIM] idx={cue['idx']} window={window:.2f}s raw={raw_dur:.2f}s ratio={ratio:.2f}")
+
+        # Stretch → WAV
+        seg_wav = seg_dir / f"seg_{cue['idx']:04d}.wav"
         if abs(ratio - 1.0) < 0.01:
-            raw_path.rename(stretched_path)
+            run([FFMPEG_BIN, "-y", "-i", str(raw_path),
+                 "-ar", str(WAV_SR), "-ac", "1", str(seg_wav)])
         else:
-            stretch_audio(raw_path, stretched_path, ratio)
+            stretch_audio(raw_path, seg_wav, ratio)
+        try:
+            raw_path.unlink()
+        except FileNotFoundError:
+            pass
+
+        actual_dur = get_audio_duration(seg_wav)
+
+        # Trim nếu vẫn dài hơn window (WAV = sample-accurate)
+        if actual_dur > window + 0.005:
+            trimmed_wav = seg_dir / f"trim_{cue['idx']:04d}.wav"
+            run([FFMPEG_BIN, "-y", "-i", str(seg_wav),
+                 "-af", f"atrim=end={window:.6f},asetpts=PTS-STARTPTS",
+                 "-ar", str(WAV_SR), "-ac", "1", str(trimmed_wav)])
             try:
-                raw_path.unlink()
+                seg_wav.unlink()
+            except FileNotFoundError:
+                pass
+            seg_wav = trimmed_wav
+            actual_dur = get_audio_duration(seg_wav)
+
+        if abs(actual_dur - window) > 0.05:
+            print(f"  [DRIFT] idx={cue['idx']} window={window:.3f}s actual={actual_dur:.3f}s diff={actual_dur-window:+.3f}s")
+
+        segments.append((start, end, seg_wav))
+
+    if not segments:
+        raise RuntimeError("Không tạo được segment TTS nào.")
+
+    # Dùng FFmpeg filter_complex với adelay để pin mỗi segment vào start_sec tuyệt đối
+    # Giới hạn 200 inputs/filter_complex của FFmpeg → chia batch nếu cần
+    ADELAY_BATCH = 150
+
+    def _mix_batch(batch: list[tuple[float, float, Path]], total_dur: float, out_wav: Path):
+        """Mix một batch segments bằng adelay+amix → 1 WAV."""
+        inputs = []
+        filter_parts = []
+        labels = []
+        for i, (st, _, wav) in enumerate(batch):
+            inputs += ["-i", str(wav)]
+            delay_ms = int(st * 1000)
+            filter_parts.append(f"[{i}]adelay={delay_ms}|{delay_ms}[d{i}]")
+            labels.append(f"[d{i}]")
+        mix_label = "".join(labels) + f"amix=inputs={len(batch)}:normalize=0[out]"
+        filter_complex = ";".join(filter_parts) + ";" + mix_label
+        run([
+            FFMPEG_BIN, "-y",
+            *inputs,
+            "-filter_complex", filter_complex,
+            "-map", "[out]",
+            "-ar", str(WAV_SR), "-ac", "1",
+            "-t", f"{total_dur:.6f}",
+            str(out_wav),
+        ])
+
+    total_dur = video_duration + 2.0
+
+    if len(segments) <= ADELAY_BATCH:
+        tts_track_wav = work_dir / "tts_track.wav"
+        _mix_batch(segments, total_dur, tts_track_wav)
+    else:
+        # Chia thành nhiều batch, mỗi batch mix riêng rồi amix lại
+        batch_wavs: list[Path] = []
+        for bi in range(0, len(segments), ADELAY_BATCH):
+            batch = segments[bi:bi + ADELAY_BATCH]
+            bwav = work_dir / f"batch_{bi:04d}.wav"
+            _mix_batch(batch, total_dur, bwav)
+            batch_wavs.append(bwav)
+
+        # Final amix các batch
+        tts_track_wav = work_dir / "tts_track.wav"
+        inputs = []
+        labels = []
+        for i, bw in enumerate(batch_wavs):
+            inputs += ["-i", str(bw)]
+            labels.append(f"[{i}]")
+        fc = "".join(labels) + f"amix=inputs={len(batch_wavs)}:normalize=0[out]"
+        run([
+            FFMPEG_BIN, "-y",
+            *inputs,
+            "-filter_complex", fc,
+            "-map", "[out]",
+            "-ar", str(WAV_SR), "-ac", "1",
+            "-t", f"{total_dur:.6f}",
+            str(tts_track_wav),
+        ])
+        for bw in batch_wavs:
+            try:
+                bw.unlink()
             except FileNotFoundError:
                 pass
 
-        actual_dur = get_audio_duration(stretched_path)
-
-        # Pad silence chỉ nếu vẫn còn thừa sau khi stretch (do cap 0.6)
-        leftover = window - actual_dur
-        if leftover > 0.05:
-            pad_path = seg_dir / f"pad_{cue['idx']:04d}.mp3"
-            make_silent(leftover, pad_path)
-            files_concat.append(stretched_path)
-            files_concat.append(pad_path)
-        else:
-            files_concat.append(stretched_path)
-
-        cursor = end
-
-    # Im lặng phần cuối video nếu cần
-    tail = video_duration - cursor
-    if tail > 0.05:
-        tail_path = seg_dir / "tail_silence.mp3"
-        make_silent(tail, tail_path)
-        files_concat.append(tail_path)
-
-    if not files_concat:
-        raise RuntimeError("Không tạo được segment TTS nào.")
-
-    # Ghép tất cả thành 1 file dùng concat demuxer
-    concat_list = work_dir / "concat_list.txt"
-    concat_list.write_text(
-        "\n".join(f"file '{f.resolve()}'" for f in files_concat), encoding="utf-8"
-    )
     tts_track = work_dir / "tts_track.mp3"
     run([
-        FFMPEG_BIN, "-y",
-        "-f", "concat", "-safe", "0",
-        "-i", str(concat_list),
+        FFMPEG_BIN, "-y", "-i", str(tts_track_wav),
         "-acodec", "libmp3lame", "-b:a", "128k",
         str(tts_track),
     ])
+    try:
+        tts_track_wav.unlink()
+    except FileNotFoundError:
+        pass
     return tts_track
 
 
@@ -596,44 +859,41 @@ def scale_cues(cues: list[dict], factor: float) -> list[dict]:
 def render_video(
     video_path: Path,
     tts_track: Path,
-    bg_track: Path,
     srt_path: Path,
     output_path: Path,
+    bg_music: Path | None = None,
     bg_volume: float = 0.3,
     tts_volume: float = 1.8,
 ):
     print("  → Render video (burn sub + mix TTS + nhạc nền)...")
 
-    # FFmpeg subtitles filter: escape ':', '\', "'" in path with backslash
     srt_escaped = (
-        str(srt_path)
+        str(Path(srt_path).resolve())
         .replace("\\", "\\\\")
         .replace(":", "\\:")
         .replace("'", "\\'")
     )
 
-    # Chữ vàng, border đen, không background box
     sub_style = (
         "FontName=Arial Unicode MS,FontSize=22,Bold=1,"
         "PrimaryColour=&H0000FFFF,OutlineColour=&H00000000,"
         "BorderStyle=1,Outline=2,Shadow=0,"
-        "Alignment=2,MarginV=18"
+        "Alignment=2,MarginV=22"
     )
 
-    # filter_complex: blur vùng sub gốc + mix audio
-    filter_complex = (
-        f"[0:v]crop=iw:ih*0.12:0:ih*0.88,boxblur=10:5[blurred];"
-        f"[0:v][blurred]overlay=0:H*0.88,subtitles={srt_escaped}:force_style='{sub_style}'[vout];"
-        f"[1:a]volume={bg_volume}[bg];"
-        f"[2:a]volume={tts_volume}[tts];"
-        f"[bg][tts]amix=inputs=2:duration=first:dropout_transition=0[aout]"
-    )
-
-    try:
-        run([
+    if bg_music:
+        # input 0: video, input 1: bg_music (loop), input 2: tts
+        filter_complex = (
+            f"[0:v]crop=iw:ih*0.15:0:ih*0.85,boxblur=10:5[blurred];"
+            f"[0:v][blurred]overlay=0:H*0.85,subtitles={srt_escaped}:force_style='{sub_style}'[vout];"
+            f"[1:a]volume={bg_volume}[bg];"
+            f"[2:a]volume={tts_volume}[tts];"
+            f"[bg][tts]amix=inputs=2:duration=first:dropout_transition=0[aout]"
+        )
+        cmd = [
             FFMPEG_BIN, "-y",
             "-i", str(video_path),
-            "-i", str(bg_track),
+            "-stream_loop", "-1", "-i", str(bg_music),
             "-i", str(tts_track),
             "-filter_complex", filter_complex,
             "-map", "[vout]",
@@ -642,7 +902,29 @@ def render_video(
             "-c:a", "aac", "-b:a", "192k",
             "-shortest",
             str(output_path),
-        ], timeout=1800)
+        ]
+    else:
+        # Không có nhạc nền — chỉ TTS
+        filter_complex = (
+            f"[0:v]crop=iw:ih*0.15:0:ih*0.85,boxblur=10:5[blurred];"
+            f"[0:v][blurred]overlay=0:H*0.85,subtitles={srt_escaped}:force_style='{sub_style}'[vout];"
+            f"[1:a]volume={tts_volume}[aout]"
+        )
+        cmd = [
+            FFMPEG_BIN, "-y",
+            "-i", str(video_path),
+            "-i", str(tts_track),
+            "-filter_complex", filter_complex,
+            "-map", "[vout]",
+            "-map", "[aout]",
+            "-c:v", "libx264", "-preset", "fast", "-crf", "23",
+            "-c:a", "aac", "-b:a", "192k",
+            "-shortest",
+            str(output_path),
+        ]
+
+    try:
+        run(cmd, timeout=1800)
     except subprocess.CalledProcessError as e:
         print("=== FFmpeg stderr ===")
         print(e.stderr[-3000:] if e.stderr else "(no stderr)")
