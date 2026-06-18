@@ -383,7 +383,7 @@ def _capcut_session(device_id: str):
 
 
 def capcut_tts_batch(texts: list[str], voice_type: str, resource_id: str,
-                     out_paths: list[Path], device_id: str):
+                     out_paths: list[Path], device_id: str, rate: str = "1.0"):
     """Gửi nhiều text trong 1 request CapCut TTS, lưu từng MP3 vào out_paths tương ứng."""
     import sys
     sys.path.insert(0, str(BASE_DIR / "capcut-tts-api-main"))
@@ -397,7 +397,7 @@ def capcut_tts_batch(texts: list[str], voice_type: str, resource_id: str,
 
     _session, device = _capcut_session(device_id)
 
-    babi, body = tts_new_body(texts, voice_type, resource_id, "1.0", device)
+    babi, body = tts_new_body(texts, voice_type, resource_id, rate, device)
     url = CAPCUT_BASE + "/lv/v1/common_task/new?" + urlencode(common_query(device, babi, include_region=True))
     body_text = compact_json(body)
     headers = base_headers(device, body_text, appid=True)
@@ -570,7 +570,8 @@ async def build_tts_track(cues: list[dict], work_dir: Path, video_duration: floa
                           capcut_device_id: str | None = None,
                           capcut_voice_type: str | None = None,
                           capcut_resource_id: str | None = None,
-                          capcut_delay: float = 1.5) -> Path:
+                          capcut_delay: float = 1.5,
+                          capcut_rate: str = "1.0") -> Path:
     """
     Build track TTS đồng bộ:
     - Mỗi cue: TTS → atempo để khớp đúng window [start_sec, end_sec]
@@ -596,18 +597,35 @@ async def build_tts_track(cues: list[dict], work_dir: Path, video_duration: floa
         pending_texts : list[str]  = []
         pending_paths : list[Path] = []
 
+        current_device_id = capcut_device_id
+
+        def _new_device_id() -> str:
+            import random
+            new_id = str(random.randint(7000000000000000000, 7999999999999999999))
+            # Cập nhật .env để lần sau dùng luôn
+            env_path = BASE_DIR / ".env"
+            if env_path.exists():
+                lines = env_path.read_text().splitlines()
+                new_lines = [f"CAPCUT_DEVICE_ID={new_id}" if l.startswith("CAPCUT_DEVICE_ID=") else l for l in lines]
+                if not any(l.startswith("CAPCUT_DEVICE_ID=") for l in lines):
+                    new_lines.append(f"CAPCUT_DEVICE_ID={new_id}")
+                env_path.write_text("\n".join(new_lines) + "\n")
+            print(f"  → Đổi device_id mới: {new_id}")
+            return new_id
+
         def _flush_batch():
+            nonlocal current_device_id
             if not pending_texts:
                 return
             print(f"    CapCut batch {pending_idxs[0]}–{pending_idxs[-1]} ({len(pending_texts)} đoạn)...")
-            for attempt in range(3):
+            for attempt in range(5):
                 try:
                     capcut_tts_batch(pending_texts, capcut_voice_type, capcut_resource_id,
-                                     pending_paths, capcut_device_id)
+                                     pending_paths, current_device_id, rate=capcut_rate)
                     return
                 except Exception as e:
-                    if attempt == 2:
-                        print(f"  ⚠ CapCut batch thất bại sau 3 lần, fallback Edge TTS: {e}")
+                    if attempt >= 4:
+                        print(f"  ⚠ CapCut batch thất bại sau 5 lần, fallback Edge TTS: {e}")
                         for text_fb, p in zip(pending_texts, pending_paths):
                             if not p.exists():
                                 try:
@@ -619,8 +637,9 @@ async def build_tts_track(cues: list[dict], work_dir: Path, video_duration: floa
                                 except Exception:
                                     make_silent(1.0, p)
                     else:
-                        print(f"  ⚠ CapCut batch lỗi (lần {attempt+1}): {e} — thử lại sau {capcut_delay}s")
-                        time.sleep(capcut_delay)
+                        print(f"  ⚠ CapCut batch lỗi (lần {attempt+1}): {e} — đổi device_id và thử lại...")
+                        current_device_id = _new_device_id()
+                        time.sleep(2)
 
         for cue in cues:
             text = cue["text"].strip()
@@ -697,45 +716,14 @@ async def build_tts_track(cues: list[dict], work_dir: Path, video_duration: floa
                               capcut_voice_type=capcut_voice_type,
                               capcut_resource_id=capcut_resource_id)
 
-        raw_dur = get_audio_duration(raw_path)
-
-        if raw_dur <= window:
-            ratio = max(raw_dur / window, 0.6)
-        else:
-            ratio = min(raw_dur / window, 3.0)
-
-        if raw_dur > window * 1.1:
-            print(f"  [TRIM] idx={cue['idx']} window={window:.2f}s raw={raw_dur:.2f}s ratio={ratio:.2f}")
-
-        # Stretch → WAV
+        # Convert sang WAV, không stretch/trim — tốc độ cố định từ rate CapCut
         seg_wav = seg_dir / f"seg_{cue['idx']:04d}.wav"
-        if abs(ratio - 1.0) < 0.01:
-            run([FFMPEG_BIN, "-y", "-i", str(raw_path),
-                 "-ar", str(WAV_SR), "-ac", "1", str(seg_wav)])
-        else:
-            stretch_audio(raw_path, seg_wav, ratio)
+        run([FFMPEG_BIN, "-y", "-i", str(raw_path),
+             "-ar", str(WAV_SR), "-ac", "1", str(seg_wav)])
         try:
             raw_path.unlink()
         except FileNotFoundError:
             pass
-
-        actual_dur = get_audio_duration(seg_wav)
-
-        # Trim nếu vẫn dài hơn window (WAV = sample-accurate)
-        if actual_dur > window + 0.005:
-            trimmed_wav = seg_dir / f"trim_{cue['idx']:04d}.wav"
-            run([FFMPEG_BIN, "-y", "-i", str(seg_wav),
-                 "-af", f"atrim=end={window:.6f},asetpts=PTS-STARTPTS",
-                 "-ar", str(WAV_SR), "-ac", "1", str(trimmed_wav)])
-            try:
-                seg_wav.unlink()
-            except FileNotFoundError:
-                pass
-            seg_wav = trimmed_wav
-            actual_dur = get_audio_duration(seg_wav)
-
-        if abs(actual_dur - window) > 0.05:
-            print(f"  [DRIFT] idx={cue['idx']} window={window:.3f}s actual={actual_dur:.3f}s diff={actual_dur-window:+.3f}s")
 
         segments.append((start, end, seg_wav))
 
@@ -881,11 +869,20 @@ def render_video(
         "Alignment=2,MarginV=22"
     )
 
+    # Watermark bounce DVD-style: bật cả ngang lẫn dọc
+    watermark_text = "nem\\_vietsub"
+    watermark = (
+        f"drawtext=text='{watermark_text}':fontsize=24:fontcolor=white@0.5:"
+        f"fontfile=/System/Library/Fonts/Helvetica.ttc:"
+        f"x=abs(mod(t*73\\,2*(w-tw))-(w-tw)):"
+        f"y=abs(mod(t*51\\,2*(h-th))-(h-th))"
+    )
+
     if bg_music:
         # input 0: video, input 1: bg_music (loop), input 2: tts
         filter_complex = (
             f"[0:v]crop=iw:ih*0.15:0:ih*0.85,boxblur=10:5[blurred];"
-            f"[0:v][blurred]overlay=0:H*0.85,subtitles={srt_escaped}:force_style='{sub_style}'[vout];"
+            f"[0:v][blurred]overlay=0:H*0.85,subtitles={srt_escaped}:force_style='{sub_style}',{watermark}[vout];"
             f"[1:a]volume={bg_volume}[bg];"
             f"[2:a]volume={tts_volume}[tts];"
             f"[bg][tts]amix=inputs=2:duration=first:dropout_transition=0[aout]"
@@ -907,7 +904,7 @@ def render_video(
         # Không có nhạc nền — chỉ TTS
         filter_complex = (
             f"[0:v]crop=iw:ih*0.15:0:ih*0.85,boxblur=10:5[blurred];"
-            f"[0:v][blurred]overlay=0:H*0.85,subtitles={srt_escaped}:force_style='{sub_style}'[vout];"
+            f"[0:v][blurred]overlay=0:H*0.85,subtitles={srt_escaped}:force_style='{sub_style}',{watermark}[vout];"
             f"[1:a]volume={tts_volume}[aout]"
         )
         cmd = [

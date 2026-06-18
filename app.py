@@ -670,6 +670,7 @@ def run_test_tts(text: str, tts_model: str, tts_voice: str, capcut_voice: str):
 
 def run_render(df: pd.DataFrame, bg_music_file, bg_volume: float, tts_volume: float,
                capcut_delay: float = 1.5, capcut_voice_sel: str = "",
+               capcut_rate: float = 1.0,
                progress=gr.Progress()):
     global _state
 
@@ -710,6 +711,7 @@ def run_render(df: pd.DataFrame, bg_music_file, bg_volume: float, tts_volume: fl
             capcut_voice_type=capcut_voice_type,
             capcut_resource_id=capcut_resource_id,
             capcut_delay=capcut_delay,
+            capcut_rate=str(round(capcut_rate, 1)),
         ))
 
         progress(0.6, desc="Render video...")
@@ -1108,6 +1110,7 @@ with gr.Blocks(title="Dịch Video Tiếng Trung → Tiếng Việt") as demo:
                 bg_volume_slider    = gr.Slider(0.0, 2.0, value=0.3, step=0.05, label="Âm lượng nhạc nền")
                 tts_volume_slider   = gr.Slider(0.0, 3.0, value=1.8, step=0.05, label="Âm lượng lồng tiếng")
                 capcut_delay_slider = gr.Slider(0.5, 5.0, value=1.5, step=0.5, label="Delay CapCut TTS (giây/đoạn)")
+                capcut_rate_slider  = gr.Slider(0.5, 2.0, value=1.0, step=0.1, label="Tốc độ đọc CapCut TTS (rate)")
 
             with gr.Row():
                 btn_optimize    = gr.Button("✨ Tối ưu AI",       variant="secondary", visible=False)
@@ -1198,7 +1201,7 @@ with gr.Blocks(title="Dịch Video Tiếng Trung → Tiếng Việt") as demo:
             btn_render.click(
                 fn=run_render,
                 inputs=[translation_table, bg_music_input, bg_volume_slider, tts_volume_slider,
-                        capcut_delay_slider, capcut_voice_input],
+                        capcut_delay_slider, capcut_voice_input, capcut_rate_slider],
                 outputs=[video_output, status_render],
             )
 
