@@ -1454,6 +1454,67 @@ with gr.Blocks(title="Dịch Video Tiếng Trung → Tiếng Việt") as demo:
                 outputs=[thumb_export_file, thumb_status],
             )
 
+        # ══════════════════════════════════════════════════════════════════
+        with gr.TabItem("🎙️ Lấy lời từ MP3"):
+        # ══════════════════════════════════════════════════════════════════
+            def run_transcribe(audio_file, language, progress=gr.Progress()):
+                if not audio_file:
+                    raise gr.Error("Chưa upload file audio.")
+                import tempfile, pathlib
+                progress(0.1, desc="Đang nhận dạng giọng nói...")
+                groq_key = os.environ.get("GROQ_API_KEY", "")
+                if not groq_key:
+                    raise gr.Error("Chưa có GROQ_API_KEY trong .env")
+
+                from groq import Groq as _Groq
+                client = _Groq(api_key=groq_key)
+
+                with open(audio_file, "rb") as f:
+                    result = client.audio.transcriptions.create(
+                        model="whisper-large-v3",
+                        file=f,
+                        language=language if language != "auto" else None,
+                        response_format="verbose_json",
+                    )
+
+                progress(0.8, desc="Xử lý kết quả...")
+                text = result.text.strip()
+
+                # Lưu ra file txt để download
+                tmp = tempfile.NamedTemporaryFile(suffix=".txt", delete=False, mode="w", encoding="utf-8")
+                tmp.write(text)
+                tmp.close()
+
+                progress(1.0, desc="Xong!")
+                return text, tmp.name, f"✓ Nhận dạng xong — {len(text)} ký tự"
+
+            with gr.Row():
+                with gr.Column(scale=1):
+                    transcribe_audio = gr.Audio(
+                        label="Upload file MP3/WAV/M4A",
+                        type="filepath", sources=["upload"],
+                    )
+                    transcribe_lang = gr.Dropdown(
+                        choices=[("Tự động nhận dạng", "auto"), ("Tiếng Việt", "vi"),
+                                 ("Tiếng Trung", "zh"), ("Tiếng Anh", "en")],
+                        value="auto", label="Ngôn ngữ"
+                    )
+                    btn_transcribe = gr.Button("🎙️ Lấy lời", variant="primary")
+                    status_transcribe = gr.Textbox(label="Trạng thái", interactive=False)
+
+                with gr.Column(scale=2):
+                    transcribe_output = gr.Textbox(
+                        label="Lời thoại", lines=20, interactive=True,
+                        placeholder="Lời thoại sẽ hiện ở đây sau khi nhận dạng..."
+                    )
+                    transcribe_download = gr.File(label="Tải file .txt")
+
+            btn_transcribe.click(
+                fn=run_transcribe,
+                inputs=[transcribe_audio, transcribe_lang],
+                outputs=[transcribe_output, transcribe_download, status_transcribe],
+            )
+
 
 if __name__ == "__main__":
     demo.launch(
