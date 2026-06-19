@@ -671,6 +671,7 @@ def run_test_tts(text: str, tts_model: str, tts_voice: str, capcut_voice: str):
 def run_render(df: pd.DataFrame, bg_music_file, bg_volume: float, tts_volume: float,
                capcut_delay: float = 1.5, capcut_voice_sel: str = "",
                capcut_rate: float = 1.0,
+               keep_original: bool = True, original_volume: float = 0.3,
                progress=gr.Progress()):
     global _state
 
@@ -714,12 +715,24 @@ def run_render(df: pd.DataFrame, bg_music_file, bg_volume: float, tts_volume: fl
             capcut_rate=str(round(capcut_rate, 1)),
         ))
 
+        # Tách vocals nếu user muốn giữ âm thanh gốc
+        original_audio = None
+        if keep_original:
+            bg_cache = work_dir / "background.wav"
+            if bg_cache.exists():
+                original_audio = bg_cache
+            else:
+                progress(0.55, desc="Tách âm thanh gốc (Demucs)...")
+                from translate_video import separate_background
+                original_audio = separate_background(video_path, work_dir)
+
         progress(0.6, desc="Render video...")
         stem        = Path(video_path).stem
         output_path = work_dir / f"{stem}_vi.mp4"
 
         render_video(video_path, tts_track, srt_path, output_path,
-                     bg_music=bg_music, bg_volume=bg_volume, tts_volume=tts_volume)
+                     bg_music=bg_music, bg_volume=bg_volume, tts_volume=tts_volume,
+                     original_audio=original_audio, original_volume=original_volume)
         progress(1.0, desc="Hoàn tất!")
 
         return str(output_path), f"✓ Render xong — bấm tải về bên dưới"
@@ -1111,6 +1124,9 @@ with gr.Blocks(title="Dịch Video Tiếng Trung → Tiếng Việt") as demo:
                 tts_volume_slider   = gr.Slider(0.0, 3.0, value=1.8, step=0.05, label="Âm lượng lồng tiếng")
                 capcut_delay_slider = gr.Slider(0.5, 5.0, value=1.5, step=0.5, label="Delay CapCut TTS (giây/đoạn)")
                 capcut_rate_slider  = gr.Slider(0.5, 2.0, value=1.0, step=0.1, label="Tốc độ đọc CapCut TTS (rate)")
+            with gr.Row():
+                keep_original_check   = gr.Checkbox(label="🔊 Giữ âm thanh gốc (tách Demucs, bỏ giọng nói)", value=True)
+                original_volume_slider = gr.Slider(0.0, 2.0, value=0.3, step=0.05, label="Âm lượng âm thanh gốc")
 
             with gr.Row():
                 btn_optimize    = gr.Button("✨ Tối ưu AI",       variant="secondary", visible=False)
@@ -1201,7 +1217,8 @@ with gr.Blocks(title="Dịch Video Tiếng Trung → Tiếng Việt") as demo:
             btn_render.click(
                 fn=run_render,
                 inputs=[translation_table, bg_music_input, bg_volume_slider, tts_volume_slider,
-                        capcut_delay_slider, capcut_voice_input, capcut_rate_slider],
+                        capcut_delay_slider, capcut_voice_input, capcut_rate_slider,
+                        keep_original_check, original_volume_slider],
                 outputs=[video_output, status_render],
             )
 

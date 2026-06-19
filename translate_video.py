@@ -852,6 +852,8 @@ def render_video(
     bg_music: Path | None = None,
     bg_volume: float = 0.3,
     tts_volume: float = 1.8,
+    original_audio: Path | None = None,
+    original_volume: float = 0.3,
 ):
     print("  → Render video (burn sub + mix TTS + nhạc nền)...")
 
@@ -878,47 +880,56 @@ def render_video(
         f"y=abs(mod(t*51\\,2*(h-th))-(h-th))"
     )
 
+    vf = f"[0:v]crop=iw:ih*0.15:0:ih*0.85,boxblur=10:5[blurred];[0:v][blurred]overlay=0:H*0.85,subtitles={srt_escaped}:force_style='{sub_style}',{watermark}[vout]"
+
+    # Xây danh sách inputs và audio filter linh hoạt
+    inputs = ["-i", str(video_path)]
+    audio_parts = []
+    audio_labels = []
+
+    # TTS luôn có
+    inputs += ["-i", str(tts_track)]
+    tts_idx = 1
+    audio_parts.append(f"[{tts_idx}:a]volume={tts_volume}[tts]")
+    audio_labels.append("[tts]")
+
+    # Nhạc nền upload (loop)
     if bg_music:
-        # input 0: video, input 1: bg_music (loop), input 2: tts
-        filter_complex = (
-            f"[0:v]crop=iw:ih*0.15:0:ih*0.85,boxblur=10:5[blurred];"
-            f"[0:v][blurred]overlay=0:H*0.85,subtitles={srt_escaped}:force_style='{sub_style}',{watermark}[vout];"
-            f"[1:a]volume={bg_volume}[bg];"
-            f"[2:a]volume={tts_volume}[tts];"
-            f"[bg][tts]amix=inputs=2:duration=first:dropout_transition=0[aout]"
-        )
-        cmd = [
-            FFMPEG_BIN, "-y",
-            "-i", str(video_path),
-            "-stream_loop", "-1", "-i", str(bg_music),
-            "-i", str(tts_track),
-            "-filter_complex", filter_complex,
-            "-map", "[vout]",
-            "-map", "[aout]",
-            "-c:v", "libx264", "-preset", "fast", "-crf", "23",
-            "-c:a", "aac", "-b:a", "192k",
-            "-shortest",
-            str(output_path),
-        ]
+        bg_idx = len(inputs) // 2
+        inputs += ["-stream_loop", "-1", "-i", str(bg_music)]
+        audio_parts.append(f"[{bg_idx}:a]volume={bg_volume}[bg]")
+        audio_labels.append("[bg]")
+
+    # Audio gốc đã tách vocals (no_vocals từ Demucs)
+    if original_audio:
+        orig_idx = len(inputs) // 2
+        inputs += ["-i", str(original_audio)]
+        audio_parts.append(f"[{orig_idx}:a]volume={original_volume}[orig]")
+        audio_labels.append("[orig]")
+
+    if len(audio_labels) == 1:
+        filter_complex = f"{vf};{audio_parts[0].replace('[tts]', '[aout]').replace('volume={tts_volume}', f'volume={tts_volume}')}"
+        # đơn giản hơn: không cần amix
+        filter_complex = f"{vf};[{tts_idx}:a]volume={tts_volume}[aout]"
     else:
-        # Không có nhạc nền — chỉ TTS
+        n = len(audio_labels)
         filter_complex = (
-            f"[0:v]crop=iw:ih*0.15:0:ih*0.85,boxblur=10:5[blurred];"
-            f"[0:v][blurred]overlay=0:H*0.85,subtitles={srt_escaped}:force_style='{sub_style}',{watermark}[vout];"
-            f"[1:a]volume={tts_volume}[aout]"
+            f"{vf};"
+            + ";".join(audio_parts)
+            + f";{''.join(audio_labels)}amix=inputs={n}:duration=first:dropout_transition=0[aout]"
         )
-        cmd = [
-            FFMPEG_BIN, "-y",
-            "-i", str(video_path),
-            "-i", str(tts_track),
-            "-filter_complex", filter_complex,
-            "-map", "[vout]",
-            "-map", "[aout]",
-            "-c:v", "libx264", "-preset", "fast", "-crf", "23",
-            "-c:a", "aac", "-b:a", "192k",
-            "-shortest",
-            str(output_path),
-        ]
+
+    cmd = [
+        FFMPEG_BIN, "-y",
+        *inputs,
+        "-filter_complex", filter_complex,
+        "-map", "[vout]",
+        "-map", "[aout]",
+        "-c:v", "libx264", "-preset", "fast", "-crf", "23",
+        "-c:a", "aac", "-b:a", "192k",
+        "-shortest",
+        str(output_path),
+    ]
 
     try:
         run(cmd, timeout=1800)
