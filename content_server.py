@@ -87,6 +87,21 @@ def _run_pipeline(job_id: str, req: GenerateRequest):
         jobs[job_id]["message"] = str(e)
 
 
+@app.post("/api/preview")
+async def preview(req: GenerateRequest):
+    """Chỉ chạy AI chia cảnh, trả về danh sách scenes để user xem trước."""
+    if not req.content.strip():
+        return JSONResponse({"error": "Chưa nhập nội dung"}, status_code=400)
+    try:
+        from content_video import ai_split_scenes
+        groq_key     = os.environ.get("GROQ_API_KEY", "")
+        beeknoee_key = os.environ.get("BEEKNOEE_API_KEY", "")
+        scenes = ai_split_scenes(req.content.strip(), groq_key, beeknoee_key=beeknoee_key)
+        return {"scenes": scenes}
+    except Exception as e:
+        return JSONResponse({"error": str(e)}, status_code=500)
+
+
 @app.post("/api/generate")
 async def generate(req: GenerateRequest, background_tasks: BackgroundTasks):
     if not req.content.strip():

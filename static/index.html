@@ -29,11 +29,11 @@
 
     .container {
       display: grid;
-      grid-template-columns: 1fr 1fr;
-      gap: 24px;
-      padding: 24px 32px;
+      grid-template-columns: 340px 1fr 1fr;
+      gap: 20px;
+      padding: 20px 24px;
       flex: 1;
-      max-width: 1400px;
+      max-width: 1600px;
       margin: 0 auto;
       width: 100%;
     }
@@ -42,21 +42,21 @@
       background: #1a1d2e;
       border: 1px solid #2d3148;
       border-radius: 12px;
-      padding: 20px;
+      padding: 18px;
       display: flex;
       flex-direction: column;
-      gap: 16px;
+      gap: 14px;
     }
 
     .panel h2 {
-      font-size: 14px;
+      font-size: 12px;
       font-weight: 600;
-      color: #94a3b8;
+      color: #64748b;
       text-transform: uppercase;
-      letter-spacing: 0.05em;
+      letter-spacing: 0.06em;
     }
 
-    label { font-size: 13px; color: #94a3b8; display: block; margin-bottom: 6px; }
+    label { font-size: 13px; color: #94a3b8; display: block; margin-bottom: 5px; }
 
     textarea {
       width: 100%;
@@ -64,11 +64,11 @@
       border: 1px solid #2d3148;
       border-radius: 8px;
       color: #e2e8f0;
-      font-size: 14px;
+      font-size: 13px;
       line-height: 1.6;
-      padding: 12px;
+      padding: 10px 12px;
       resize: vertical;
-      min-height: 280px;
+      min-height: 220px;
       outline: none;
       transition: border-color 0.2s;
     }
@@ -80,78 +80,137 @@
       border: 1px solid #2d3148;
       border-radius: 8px;
       color: #e2e8f0;
-      font-size: 14px;
-      padding: 10px 12px;
+      font-size: 13px;
+      padding: 9px 12px;
       outline: none;
       cursor: pointer;
     }
 
-    .slider-wrap {
-      display: flex;
-      align-items: center;
-      gap: 12px;
-    }
-    input[type=range] {
-      flex: 1;
-      accent-color: #7c3aed;
-      cursor: pointer;
-    }
-    .slider-val {
-      min-width: 36px;
-      text-align: right;
-      font-size: 14px;
-      color: #a78bfa;
-      font-weight: 600;
-    }
+    .slider-wrap { display: flex; align-items: center; gap: 10px; }
+    input[type=range] { flex: 1; accent-color: #7c3aed; cursor: pointer; }
+    .slider-val { min-width: 36px; text-align: right; font-size: 13px; color: #a78bfa; font-weight: 600; }
 
-    .btn-generate {
-      background: linear-gradient(135deg, #7c3aed, #5b21b6);
+    .btn-row { display: flex; gap: 8px; }
+
+    .btn {
+      flex: 1;
       border: none;
       border-radius: 8px;
-      color: #fff;
-      font-size: 15px;
+      font-size: 13px;
       font-weight: 600;
-      padding: 13px;
+      padding: 10px 12px;
       cursor: pointer;
       transition: opacity 0.2s, transform 0.1s;
-      width: 100%;
     }
-    .btn-generate:hover { opacity: 0.9; }
-    .btn-generate:active { transform: scale(0.98); }
-    .btn-generate:disabled { opacity: 0.4; cursor: not-allowed; }
+    .btn:hover { opacity: 0.88; }
+    .btn:active { transform: scale(0.97); }
+    .btn:disabled { opacity: 0.35; cursor: not-allowed; }
+    .btn-preview  { background: #1e3a5f; color: #60a5fa; border: 1px solid #1d4ed8; }
+    .btn-generate { background: linear-gradient(135deg, #7c3aed, #5b21b6); color: #fff; }
 
     /* Progress */
-    .progress-box {
-      display: none;
-      flex-direction: column;
-      gap: 8px;
-    }
+    .progress-box { display: none; flex-direction: column; gap: 7px; }
     .progress-box.active { display: flex; }
-    .progress-bar-wrap {
-      background: #0f1117;
-      border-radius: 999px;
-      height: 6px;
-      overflow: hidden;
-    }
-    .progress-bar {
-      height: 100%;
-      background: linear-gradient(90deg, #7c3aed, #a78bfa);
-      border-radius: 999px;
-      transition: width 0.4s ease;
-      width: 0%;
-    }
-    .progress-msg {
-      font-size: 13px;
-      color: #94a3b8;
-    }
+    .progress-bar-wrap { background: #0f1117; border-radius: 999px; height: 5px; overflow: hidden; }
+    .progress-bar { height: 100%; background: linear-gradient(90deg, #7c3aed, #a78bfa); border-radius: 999px; transition: width 0.4s ease; width: 0%; }
+    .progress-msg { font-size: 12px; color: #94a3b8; }
 
-    /* Output panel */
-    .output-panel {
+    .status-tag { font-size: 11px; padding: 3px 8px; border-radius: 999px; font-weight: 600; display: inline-block; }
+    .status-tag.idle    { background: #1e293b; color: #64748b; }
+    .status-tag.running { background: #312e81; color: #a5b4fc; }
+    .status-tag.done    { background: #14532d; color: #4ade80; }
+    .status-tag.error   { background: #450a0a; color: #f87171; }
+
+    .error-msg { font-size: 12px; color: #f87171; background: #450a0a; border: 1px solid #7f1d1d; border-radius: 8px; padding: 9px 12px; display: none; }
+    .error-msg.visible { display: block; }
+
+    /* ===== PREVIEW PANEL ===== */
+    .scenes-list {
       display: flex;
       flex-direction: column;
-      gap: 16px;
+      gap: 8px;
+      overflow-y: auto;
+      max-height: calc(100vh - 180px);
     }
 
+    .scene-card {
+      background: #0f1117;
+      border: 1px solid #2d3148;
+      border-radius: 8px;
+      padding: 10px 12px;
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+    .scene-card-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+    }
+    .scene-num {
+      font-size: 11px;
+      font-weight: 700;
+      color: #7c3aed;
+      background: #1e1b4b;
+      border-radius: 4px;
+      padding: 2px 6px;
+      flex-shrink: 0;
+    }
+    .scene-dur {
+      font-size: 11px;
+      color: #64748b;
+      flex-shrink: 0;
+    }
+    .scene-type-badge {
+      font-size: 10px;
+      padding: 2px 6px;
+      border-radius: 4px;
+      font-weight: 600;
+      flex-shrink: 0;
+    }
+    .scene-type-badge.video { background: #14532d; color: #4ade80; }
+    .scene-type-badge.image { background: #1e3a5f; color: #60a5fa; }
+
+    .scene-query {
+      font-size: 13px;
+      color: #e2e8f0;
+      font-weight: 500;
+    }
+    .scene-prompt {
+      font-size: 11px;
+      color: #64748b;
+      line-height: 1.5;
+      font-style: italic;
+    }
+
+    .preview-loading {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 10px;
+      padding: 40px;
+      color: #64748b;
+      font-size: 13px;
+    }
+    .spinner {
+      width: 20px; height: 20px;
+      border: 2px solid #2d3148;
+      border-top-color: #7c3aed;
+      border-radius: 50%;
+      animation: spin 0.8s linear infinite;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    .preview-empty {
+      text-align: center;
+      padding: 40px 20px;
+      color: #334155;
+      font-size: 13px;
+    }
+    .preview-empty .icon { font-size: 36px; margin-bottom: 8px; }
+
+    /* ===== OUTPUT PANEL ===== */
     .video-wrap {
       background: #0f1117;
       border: 1px solid #2d3148;
@@ -163,12 +222,8 @@
       justify-content: center;
     }
     .video-wrap video { width: 100%; height: 100%; }
-    .video-placeholder {
-      color: #334155;
-      font-size: 14px;
-      text-align: center;
-    }
-    .video-placeholder .icon { font-size: 48px; margin-bottom: 8px; }
+    .video-placeholder { color: #334155; font-size: 13px; text-align: center; }
+    .video-placeholder .icon { font-size: 40px; margin-bottom: 8px; }
 
     .btn-download {
       display: none;
@@ -176,7 +231,7 @@
       border: 1px solid #166534;
       border-radius: 8px;
       color: #4ade80;
-      font-size: 14px;
+      font-size: 13px;
       font-weight: 600;
       padding: 10px;
       cursor: pointer;
@@ -186,29 +241,6 @@
     }
     .btn-download:hover { background: #166534; }
     .btn-download.visible { display: block; }
-
-    .status-tag {
-      font-size: 12px;
-      padding: 4px 10px;
-      border-radius: 999px;
-      font-weight: 600;
-      display: inline-block;
-    }
-    .status-tag.idle    { background: #1e293b; color: #64748b; }
-    .status-tag.running { background: #312e81; color: #a5b4fc; }
-    .status-tag.done    { background: #14532d; color: #4ade80; }
-    .status-tag.error   { background: #450a0a; color: #f87171; }
-
-    .error-msg {
-      font-size: 13px;
-      color: #f87171;
-      background: #450a0a;
-      border: 1px solid #7f1d1d;
-      border-radius: 8px;
-      padding: 10px 14px;
-      display: none;
-    }
-    .error-msg.visible { display: block; }
   </style>
 </head>
 <body>
@@ -219,17 +251,18 @@
 </header>
 
 <div class="container">
-  <!-- LEFT: Input -->
+
+  <!-- COL 1: Input -->
   <div class="panel">
     <h2>Nội dung</h2>
 
     <div>
       <label>Văn bản thuyết minh</label>
-      <textarea id="content" placeholder="Dán nội dung vào đây. AI sẽ tự chia cảnh, tìm video/ảnh từ Pexels và Pixabay, rồi ghép thành video hoàn chỉnh..."></textarea>
+      <textarea id="content" placeholder="Dán nội dung vào đây..."></textarea>
     </div>
 
     <div>
-      <label>Giọng đọc CapCut TTS</label>
+      <label>Giọng đọc</label>
       <select id="voice">
         <option value="">-- Edge TTS (mặc định) --</option>
         <option value="BV421_vivn_streaming">Nhỏ Ngọt Ngào</option>
@@ -255,7 +288,10 @@
       </div>
     </div>
 
-    <button class="btn-generate" id="btn-gen" onclick="generate()">🎬 Tạo Video</button>
+    <div class="btn-row">
+      <button class="btn btn-preview" id="btn-preview" onclick="preview()">🔍 Xem AI phân tích</button>
+      <button class="btn btn-generate" id="btn-gen" onclick="generate()">🎬 Tạo Video</button>
+    </div>
 
     <div class="progress-box" id="progress-box">
       <div style="display:flex;justify-content:space-between;align-items:center">
@@ -270,14 +306,25 @@
     <div class="error-msg" id="error-msg"></div>
   </div>
 
-  <!-- RIGHT: Output -->
-  <div class="panel output-panel">
-    <h2>Kết quả</h2>
+  <!-- COL 2: Preview AI scenes -->
+  <div class="panel">
+    <h2>AI phân tích cảnh</h2>
+    <div class="scenes-list" id="scenes-list">
+      <div class="preview-empty">
+        <div class="icon">🤖</div>
+        <div>Nhấn <b>Xem AI phân tích</b> để xem<br>AI chia cảnh và chọn keyword</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- COL 3: Output video -->
+  <div class="panel">
+    <h2>Kết quả video</h2>
 
     <div class="video-wrap" id="video-wrap">
       <div class="video-placeholder">
         <div class="icon">🎬</div>
-        <div>Video sẽ hiện ở đây sau khi tạo xong</div>
+        <div>Video sẽ hiện ở đây</div>
       </div>
     </div>
 
@@ -285,13 +332,57 @@
       ⬇️ Tải xuống video
     </a>
   </div>
+
 </div>
 
 <script>
   const API = '';
   let pollTimer = null;
-  let currentJobId = null;
 
+  // ===== PREVIEW =====
+  async function preview() {
+    const content = document.getElementById('content').value.trim();
+    if (!content) { alert('Chưa nhập nội dung!'); return; }
+
+    const list = document.getElementById('scenes-list');
+    list.innerHTML = '<div class="preview-loading"><div class="spinner"></div>AI đang phân tích...</div>';
+    document.getElementById('btn-preview').disabled = true;
+
+    try {
+      const res = await fetch(`${API}/api/preview`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ content, voice: '', rate: 1.0 }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error);
+
+      const scenes = data.scenes || [];
+      if (!scenes.length) {
+        list.innerHTML = '<div class="preview-empty"><div class="icon">😕</div><div>Không chia được cảnh nào</div></div>';
+        return;
+      }
+
+      list.innerHTML = scenes.map((s, i) => `
+        <div class="scene-card">
+          <div class="scene-card-header">
+            <span class="scene-num">#${i + 1}</span>
+            <span class="scene-query">${s.query || ''}</span>
+            <span class="scene-type-badge ${s.type || 'video'}">${s.type || 'video'}</span>
+            <span class="scene-dur">${s.duration || 6}s</span>
+          </div>
+          ${s.prompt ? `<div class="scene-prompt">${s.prompt}</div>` : ''}
+        </div>
+      `).join('');
+
+    } catch (e) {
+      list.innerHTML = `<div class="error-msg visible">❌ ${e.message}</div>`;
+    } finally {
+      document.getElementById('btn-preview').disabled = false;
+    }
+  }
+
+  // ===== GENERATE =====
   async function generate() {
     const content = document.getElementById('content').value.trim();
     if (!content) { alert('Chưa nhập nội dung!'); return; }
@@ -299,17 +390,14 @@
     const voice = document.getElementById('voice').value;
     const rate  = parseFloat(document.getElementById('rate').value);
 
-    // Reset UI
     clearPoll();
     setStatus('running');
     document.getElementById('btn-gen').disabled = true;
+    document.getElementById('btn-preview').disabled = true;
     document.getElementById('btn-download').classList.remove('visible');
     document.getElementById('error-msg').classList.remove('visible');
     document.getElementById('video-wrap').innerHTML = `
-      <div class="video-placeholder">
-        <div class="icon">⏳</div>
-        <div>Đang xử lý...</div>
-      </div>`;
+      <div class="video-placeholder"><div class="icon">⏳</div><div>Đang xử lý...</div></div>`;
 
     try {
       const res = await fetch(`${API}/api/generate`, {
@@ -320,8 +408,7 @@
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || 'Lỗi server');
 
-      currentJobId = data.job_id;
-      pollTimer = setInterval(() => poll(currentJobId), 2000);
+      pollTimer = setInterval(() => poll(data.job_id), 2000);
 
     } catch (e) {
       showError(e.message);
@@ -330,7 +417,7 @@
 
   async function poll(jobId) {
     try {
-      const res = await fetch(`${API}/api/status/${jobId}`);
+      const res  = await fetch(`${API}/api/status/${jobId}`);
       const data = await res.json();
 
       document.getElementById('progress-bar').style.width = (data.progress || 0) + '%';
@@ -339,29 +426,24 @@
       if (data.status === 'done') {
         clearPoll();
         setStatus('done');
-        showVideo(jobId);
         document.getElementById('btn-gen').disabled = false;
+        document.getElementById('btn-preview').disabled = false;
+        const url = `${API}/api/download/${jobId}`;
+        document.getElementById('video-wrap').innerHTML = `<video controls autoplay src="${url}"></video>`;
+        const btn = document.getElementById('btn-download');
+        btn.href = url;
+        btn.classList.add('visible');
       } else if (data.status === 'error') {
         clearPoll();
         showError(data.message || 'Lỗi không xác định');
       }
-    } catch (e) {
-      // network hiccup, tiếp tục poll
-    }
-  }
-
-  function showVideo(jobId) {
-    const url = `${API}/api/download/${jobId}`;
-    document.getElementById('video-wrap').innerHTML =
-      `<video controls autoplay src="${url}"></video>`;
-    const btn = document.getElementById('btn-download');
-    btn.href = url;
-    btn.classList.add('visible');
+    } catch (e) { /* network hiccup */ }
   }
 
   function showError(msg) {
     setStatus('error');
     document.getElementById('btn-gen').disabled = false;
+    document.getElementById('btn-preview').disabled = false;
     const el = document.getElementById('error-msg');
     el.textContent = '❌ ' + msg;
     el.classList.add('visible');
@@ -369,8 +451,7 @@
 
   function setStatus(s) {
     const tag = document.getElementById('status-tag');
-    const box = document.getElementById('progress-box');
-    box.classList.add('active');
+    document.getElementById('progress-box').classList.add('active');
     tag.className = 'status-tag ' + s;
     tag.textContent = { running: 'Đang chạy', done: 'Hoàn tất', error: 'Lỗi' }[s] || s;
   }
