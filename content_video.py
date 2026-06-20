@@ -299,26 +299,62 @@ def process_image_clip(src: Path, dst: Path, duration: float):
 # STEP 4: TTS toàn bộ content
 # ---------------------------------------------------------------------------
 
-async def tts_content(content: str, out_path: Path, voice: str = 'vi-VN-HoaiMyNeural'):
-    """Edge TTS toàn bộ content → 1 file MP3."""
+def _probe_duration(path: Path) -> float:
+    r = subprocess.run(
+        ['ffprobe', '-v', 'quiet', '-show_entries', 'format=duration',
+         '-of', 'csv=p=0', str(path)],
+        capture_output=True, text=True,
+    )
+    return float(r.stdout.strip() or '0')
+
+
+def _split_sentences(content: str) -> list[str]:
+    import re as _re
+    sentences = [s.strip() for s in _re.split(r'(?<=[.!?।…])\s+', content) if s.strip()]
+    return sentences or [content]
+
+
+async def tts_content(content: str, out_path: Path, voice: str = 'vi-VN-HoaiMyNeural') -> list[tuple[str, float]]:
+    """Edge TTS từng câu → ghép lại, trả về [(sentence, duration), ...]."""
     import edge_tts
-    await edge_tts.Communicate(content, voice).save(str(out_path))
+
+    sentences = _split_sentences(content)
+    tmp_dir = out_path.parent / 'tts_parts'
+    tmp_dir.mkdir(exist_ok=True)
+    parts: list[Path] = []
+    durations: list[float] = []
+
+    for i, sentence in enumerate(sentences):
+        part_path = tmp_dir / f'part_{i:04d}.mp3'
+        await edge_tts.Communicate(sentence, voice).save(str(part_path))
+        dur = _probe_duration(part_path)
+        parts.append(part_path)
+        durations.append(dur)
+
+    concat_list = tmp_dir / 'parts.txt'
+    concat_list.write_text('\n'.join(f"file '{p.resolve()}'" for p in parts), encoding='utf-8')
+    subprocess.run([
+        FFMPEG_BIN, '-y', '-f', 'concat', '-safe', '0',
+        '-i', str(concat_list),
+        '-acodec', 'libmp3lame', '-b:a', '128k',
+        str(out_path),
+    ], check=True, capture_output=True)
+
+    return list(zip(sentences, durations))
 
 
 def capcut_tts_content(content: str, out_path: Path,
                        voice_type: str, resource_id: str, device_id: str,
-                       rate: str = '1.0'):
-    """CapCut TTS toàn bộ content — chia câu, sync từng câu, ghép lại."""
-    import re as _re, random
+                       rate: str = '1.0') -> list[tuple[str, float]]:
+    """CapCut TTS từng câu → ghép lại, trả về [(sentence, duration), ...]."""
+    import random
     from translate_video import capcut_tts_sync
 
-    sentences = [s.strip() for s in _re.split(r'(?<=[.!?।])\s+', content) if s.strip()]
-    if not sentences:
-        sentences = [content]
-
+    sentences = _split_sentences(content)
     tmp_dir = out_path.parent / 'tts_parts'
     tmp_dir.mkdir(exist_ok=True)
     parts: list[Path] = []
+    durations: list[float] = []
     current_device_id = device_id
 
     for i, sentence in enumerate(sentences):
@@ -326,11 +362,13 @@ def capcut_tts_content(content: str, out_path: Path,
         for attempt in range(5):
             try:
                 capcut_tts_sync(sentence, voice_type, resource_id, part_path, current_device_id)
+                dur = _probe_duration(part_path)
                 parts.append(part_path)
+                durations.append(dur)
                 break
             except Exception as e:
                 current_device_id = str(random.randint(7000000000000000000, 7999999999999999999))
-                print(f'  CapCut TTS câu {i+1} lỗi lần {attempt+1}, đổi device_id: {e}')
+                print(f'  CapCut TTS câu {i+1} lỗi lần {attempt+1}: {e}')
                 time.sleep(2)
 
     if not parts:
@@ -345,53 +383,69 @@ def capcut_tts_content(content: str, out_path: Path,
         str(out_path),
     ], check=True, capture_output=True)
 
+    return list(zip(sentences, durations))
+
 
 # ---------------------------------------------------------------------------
 # STEP 5: Ghép video theo timeline
 # ---------------------------------------------------------------------------
 
 def build_content_video(
-    scenes: list[dict],          # [{query, type, duration, clip_path}]
+    scenes: list[dict],
     tts_path: Path,
     output_path: Path,
     work_dir: Path,
+    sentence_durations: list[tuple[str, float]] | None = None,
 ):
-    """Ghép tất cả clip theo thứ tự, mix TTS audio."""
-    tts_dur_result = subprocess.run(
-        ['ffprobe', '-v', 'quiet', '-show_entries', 'format=duration',
-         '-of', 'csv=p=0', str(tts_path)],
-        capture_output=True, text=True
-    )
-    tts_duration = float(tts_dur_result.stdout.strip() or '0')
+    """Ghép clips theo timestamp TTS thật từng câu."""
+    tts_duration = _probe_duration(tts_path)
 
-    # Tổng duration của clips
-    total_clip_dur = sum(s['duration'] for s in scenes if s.get('clip_path'))
-
-    # Nếu clips ngắn hơn TTS → lặp lại clips
     clips = [s for s in scenes if s.get('clip_path')]
-    concat_clips: list[Path] = []
-    accumulated = 0.0
-    i = 0
-    while accumulated < tts_duration + 1:
-        s = clips[i % len(clips)]
-        concat_clips.append(Path(s['clip_path']))
-        accumulated += s['duration']
-        i += 1
+    if not clips:
+        raise RuntimeError('Không có clip nào hợp lệ')
 
-    # Tạo concat list
+    # Tính timestamp bắt đầu của từng scene dựa trên TTS duration thật
+    # sentence_durations: [(sentence, dur), ...] — map 1-1 với scenes nếu có
+    if sentence_durations and len(sentence_durations) >= len(clips):
+        # Tính cumulative timestamp cho từng câu
+        timestamps: list[float] = []
+        t = 0.0
+        for _, dur in sentence_durations[:len(clips)]:
+            timestamps.append(t)
+            t += dur
+        # Scene i chiếu từ timestamps[i] đến timestamps[i+1] (hoặc hết TTS)
+        scene_durations = []
+        for i, clip in enumerate(clips):
+            start = timestamps[i]
+            end = timestamps[i + 1] if i + 1 < len(timestamps) else tts_duration
+            scene_durations.append(max(end - start, 1.0))
+    else:
+        # Fallback: chia đều theo TTS duration
+        per = tts_duration / len(clips)
+        scene_durations = [per] * len(clips)
+
+    # Tạo concat list với duration đúng cho từng clip
     concat_list = work_dir / 'content_concat.txt'
-    concat_list.write_text(
-        '\n'.join(f"file '{p.resolve()}'" for p in concat_clips),
-        encoding='utf-8'
-    )
+    entries = []
+    for clip, dur in zip(clips, scene_durations):
+        clip_dur = _probe_duration(Path(clip['clip_path']))
+        if dur <= clip_dur:
+            entries.append(f"file '{Path(clip['clip_path']).resolve()}'\nduration {dur:.3f}")
+        else:
+            # Clip ngắn hơn thời gian cần → lặp lại
+            loops = int(dur / clip_dur) + 1
+            for _ in range(loops):
+                entries.append(f"file '{Path(clip['clip_path']).resolve()}'")
+            # Trim bằng cách ghi duration vào entry cuối
+            entries[-1] += f"\nduration {dur % clip_dur or clip_dur:.3f}"
 
-    # Ghép clips + mix TTS
+    concat_list.write_text('\n'.join(entries), encoding='utf-8')
+
     subprocess.run([
         FFMPEG_BIN, '-y',
         '-f', 'concat', '-safe', '0', '-i', str(concat_list),
         '-i', str(tts_path),
-        '-map', '0:v',
-        '-map', '1:a',
+        '-map', '0:v', '-map', '1:a',
         '-c:v', 'libx264', '-preset', 'fast', '-crf', '23',
         '-c:a', 'aac', '-b:a', '192k',
         '-shortest',
@@ -489,10 +543,11 @@ def run_content_video_pipeline(
     _progress(0.55, 'Tạo TTS...')
     tts_path = work_dir / 'content_tts.mp3'
     if capcut_voice_type and capcut_resource_id and capcut_device_id:
-        capcut_tts_content(content, tts_path, capcut_voice_type, capcut_resource_id,
-                           capcut_device_id, rate=capcut_rate)
+        sentence_durations = capcut_tts_content(content, tts_path, capcut_voice_type,
+                                                capcut_resource_id, capcut_device_id,
+                                                rate=capcut_rate)
     else:
-        asyncio.run(tts_content(content, tts_path, voice=edge_voice))
+        sentence_durations = asyncio.run(tts_content(content, tts_path, voice=edge_voice))
 
     # 4. Ghép video
     _progress(0.75, 'Ghép video...')
@@ -501,7 +556,8 @@ def run_content_video_pipeline(
         raise RuntimeError('Không có clip nào được tạo thành công.')
 
     output_path = work_dir / 'content_video.mp4'
-    build_content_video(valid_scenes, tts_path, output_path, work_dir)
+    build_content_video(valid_scenes, tts_path, output_path, work_dir,
+                        sentence_durations=sentence_durations)
 
     _progress(1.0, 'Hoàn tất!')
     return output_path
