@@ -1529,10 +1529,11 @@ with gr.Blocks(title="Dịch Video Tiếng Trung → Tiếng Việt") as demo:
 
                 from content_video import run_content_video_pipeline
 
-                groq_key     = os.environ.get("GROQ_API_KEY", "")
-                pexels_key   = os.environ.get("PEXELS_API_KEY", "")
-                beeknoee_key = os.environ.get("BEEKNOEE_API_KEY", "")
-                pixabay_key  = os.environ.get("PIXABAY_API_KEY", "")
+                groq_key       = os.environ.get("GROQ_API_KEY", "")
+                pexels_key     = os.environ.get("PEXELS_API_KEY", "")
+                beeknoee_key   = os.environ.get("BEEKNOEE_API_KEY", "")
+                pixabay_key    = os.environ.get("PIXABAY_API_KEY", "")
+                wan2_server_url = os.environ.get("WAN2_SERVER_URL", "")
                 if not pexels_key:
                     raise gr.Error("Chưa có PEXELS_API_KEY trong .env")
                 if not groq_key and not beeknoee_key:
@@ -1552,6 +1553,7 @@ with gr.Blocks(title="Dịch Video Tiếng Trung → Tiếng Việt") as demo:
                         pexels_key=pexels_key,
                         pixabay_key=pixabay_key,
                         beeknoee_key=beeknoee_key,
+                        wan2_server_url=wan2_server_url,
                         capcut_voice_type=capcut_info[1] if capcut_info else None,
                         capcut_resource_id=capcut_info[2] if capcut_info else None,
                         capcut_device_id=capcut_device_id,
