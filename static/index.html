@@ -1,0 +1,384 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Tạo Video Content</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: 'Segoe UI', system-ui, sans-serif;
+      background: #0f1117;
+      color: #e2e8f0;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+    }
+
+    header {
+      background: #1a1d2e;
+      border-bottom: 1px solid #2d3148;
+      padding: 16px 32px;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+    header h1 { font-size: 20px; font-weight: 600; color: #a78bfa; }
+    header span { font-size: 13px; color: #64748b; }
+
+    .container {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 24px;
+      padding: 24px 32px;
+      flex: 1;
+      max-width: 1400px;
+      margin: 0 auto;
+      width: 100%;
+    }
+
+    .panel {
+      background: #1a1d2e;
+      border: 1px solid #2d3148;
+      border-radius: 12px;
+      padding: 20px;
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+    }
+
+    .panel h2 {
+      font-size: 14px;
+      font-weight: 600;
+      color: #94a3b8;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+
+    label { font-size: 13px; color: #94a3b8; display: block; margin-bottom: 6px; }
+
+    textarea {
+      width: 100%;
+      background: #0f1117;
+      border: 1px solid #2d3148;
+      border-radius: 8px;
+      color: #e2e8f0;
+      font-size: 14px;
+      line-height: 1.6;
+      padding: 12px;
+      resize: vertical;
+      min-height: 280px;
+      outline: none;
+      transition: border-color 0.2s;
+    }
+    textarea:focus { border-color: #7c3aed; }
+
+    select {
+      width: 100%;
+      background: #0f1117;
+      border: 1px solid #2d3148;
+      border-radius: 8px;
+      color: #e2e8f0;
+      font-size: 14px;
+      padding: 10px 12px;
+      outline: none;
+      cursor: pointer;
+    }
+
+    .slider-wrap {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+    input[type=range] {
+      flex: 1;
+      accent-color: #7c3aed;
+      cursor: pointer;
+    }
+    .slider-val {
+      min-width: 36px;
+      text-align: right;
+      font-size: 14px;
+      color: #a78bfa;
+      font-weight: 600;
+    }
+
+    .btn-generate {
+      background: linear-gradient(135deg, #7c3aed, #5b21b6);
+      border: none;
+      border-radius: 8px;
+      color: #fff;
+      font-size: 15px;
+      font-weight: 600;
+      padding: 13px;
+      cursor: pointer;
+      transition: opacity 0.2s, transform 0.1s;
+      width: 100%;
+    }
+    .btn-generate:hover { opacity: 0.9; }
+    .btn-generate:active { transform: scale(0.98); }
+    .btn-generate:disabled { opacity: 0.4; cursor: not-allowed; }
+
+    /* Progress */
+    .progress-box {
+      display: none;
+      flex-direction: column;
+      gap: 8px;
+    }
+    .progress-box.active { display: flex; }
+    .progress-bar-wrap {
+      background: #0f1117;
+      border-radius: 999px;
+      height: 6px;
+      overflow: hidden;
+    }
+    .progress-bar {
+      height: 100%;
+      background: linear-gradient(90deg, #7c3aed, #a78bfa);
+      border-radius: 999px;
+      transition: width 0.4s ease;
+      width: 0%;
+    }
+    .progress-msg {
+      font-size: 13px;
+      color: #94a3b8;
+    }
+
+    /* Output panel */
+    .output-panel {
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+    }
+
+    .video-wrap {
+      background: #0f1117;
+      border: 1px solid #2d3148;
+      border-radius: 10px;
+      overflow: hidden;
+      aspect-ratio: 16/9;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .video-wrap video { width: 100%; height: 100%; }
+    .video-placeholder {
+      color: #334155;
+      font-size: 14px;
+      text-align: center;
+    }
+    .video-placeholder .icon { font-size: 48px; margin-bottom: 8px; }
+
+    .btn-download {
+      display: none;
+      background: #14532d;
+      border: 1px solid #166534;
+      border-radius: 8px;
+      color: #4ade80;
+      font-size: 14px;
+      font-weight: 600;
+      padding: 10px;
+      cursor: pointer;
+      text-align: center;
+      text-decoration: none;
+      transition: background 0.2s;
+    }
+    .btn-download:hover { background: #166534; }
+    .btn-download.visible { display: block; }
+
+    .status-tag {
+      font-size: 12px;
+      padding: 4px 10px;
+      border-radius: 999px;
+      font-weight: 600;
+      display: inline-block;
+    }
+    .status-tag.idle    { background: #1e293b; color: #64748b; }
+    .status-tag.running { background: #312e81; color: #a5b4fc; }
+    .status-tag.done    { background: #14532d; color: #4ade80; }
+    .status-tag.error   { background: #450a0a; color: #f87171; }
+
+    .error-msg {
+      font-size: 13px;
+      color: #f87171;
+      background: #450a0a;
+      border: 1px solid #7f1d1d;
+      border-radius: 8px;
+      padding: 10px 14px;
+      display: none;
+    }
+    .error-msg.visible { display: block; }
+  </style>
+</head>
+<body>
+
+<header>
+  <h1>🎞️ Tạo Video Content</h1>
+  <span>AI chia cảnh · Pexels + Pixabay · TTS tự động</span>
+</header>
+
+<div class="container">
+  <!-- LEFT: Input -->
+  <div class="panel">
+    <h2>Nội dung</h2>
+
+    <div>
+      <label>Văn bản thuyết minh</label>
+      <textarea id="content" placeholder="Dán nội dung vào đây. AI sẽ tự chia cảnh, tìm video/ảnh từ Pexels và Pixabay, rồi ghép thành video hoàn chỉnh..."></textarea>
+    </div>
+
+    <div>
+      <label>Giọng đọc CapCut TTS</label>
+      <select id="voice">
+        <option value="">-- Edge TTS (mặc định) --</option>
+        <option value="BV421_vivn_streaming">Nhỏ Ngọt Ngào</option>
+        <option value="BV074_streaming">Cô Gái Hoạt Ngôn</option>
+        <option value="vi_female_huong">Giọng Nữ Phổ Thông</option>
+        <option value="BV074_streaming_dsp">Giọng Bé</option>
+        <option value="BV562_streaming">Mai</option>
+        <option value="multi_female_peiqi_uranus_bigtts">Giọng Gái Mới Lớn</option>
+        <option value="multi_female_yangguangnv_uranus_bigtts">Ban Mai</option>
+        <option value="multi_female_sisi_uranus_bigtts">Bản Tin Nữ</option>
+        <option value="BV075_streaming">Thanh Niên Tự Tin</option>
+        <option value="multi_male_felipe_uranus_bigtts">Giọng Nam Trầm</option>
+        <option value="BV560_streaming">Alex Đại Đế</option>
+      </select>
+    </div>
+
+    <div>
+      <label>Tốc độ đọc</label>
+      <div class="slider-wrap">
+        <input type="range" id="rate" min="0.5" max="2.0" step="0.1" value="1.0"
+               oninput="document.getElementById('rate-val').textContent=parseFloat(this.value).toFixed(1)+'x'" />
+        <span class="slider-val" id="rate-val">1.0x</span>
+      </div>
+    </div>
+
+    <button class="btn-generate" id="btn-gen" onclick="generate()">🎬 Tạo Video</button>
+
+    <div class="progress-box" id="progress-box">
+      <div style="display:flex;justify-content:space-between;align-items:center">
+        <span class="progress-msg" id="progress-msg">Đang khởi động...</span>
+        <span class="status-tag running" id="status-tag">Đang chạy</span>
+      </div>
+      <div class="progress-bar-wrap">
+        <div class="progress-bar" id="progress-bar"></div>
+      </div>
+    </div>
+
+    <div class="error-msg" id="error-msg"></div>
+  </div>
+
+  <!-- RIGHT: Output -->
+  <div class="panel output-panel">
+    <h2>Kết quả</h2>
+
+    <div class="video-wrap" id="video-wrap">
+      <div class="video-placeholder">
+        <div class="icon">🎬</div>
+        <div>Video sẽ hiện ở đây sau khi tạo xong</div>
+      </div>
+    </div>
+
+    <a class="btn-download" id="btn-download" download="content_video.mp4">
+      ⬇️ Tải xuống video
+    </a>
+  </div>
+</div>
+
+<script>
+  const API = 'http://localhost:8004';
+  let pollTimer = null;
+  let currentJobId = null;
+
+  async function generate() {
+    const content = document.getElementById('content').value.trim();
+    if (!content) { alert('Chưa nhập nội dung!'); return; }
+
+    const voice = document.getElementById('voice').value;
+    const rate  = parseFloat(document.getElementById('rate').value);
+
+    // Reset UI
+    clearPoll();
+    setStatus('running');
+    document.getElementById('btn-gen').disabled = true;
+    document.getElementById('btn-download').classList.remove('visible');
+    document.getElementById('error-msg').classList.remove('visible');
+    document.getElementById('video-wrap').innerHTML = `
+      <div class="video-placeholder">
+        <div class="icon">⏳</div>
+        <div>Đang xử lý...</div>
+      </div>`;
+
+    try {
+      const res = await fetch(`${API}/api/generate`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ content, voice, rate }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Lỗi server');
+
+      currentJobId = data.job_id;
+      pollTimer = setInterval(() => poll(currentJobId), 2000);
+
+    } catch (e) {
+      showError(e.message);
+    }
+  }
+
+  async function poll(jobId) {
+    try {
+      const res = await fetch(`${API}/api/status/${jobId}`);
+      const data = await res.json();
+
+      document.getElementById('progress-bar').style.width = (data.progress || 0) + '%';
+      document.getElementById('progress-msg').textContent = data.message || '';
+
+      if (data.status === 'done') {
+        clearPoll();
+        setStatus('done');
+        showVideo(jobId);
+        document.getElementById('btn-gen').disabled = false;
+      } else if (data.status === 'error') {
+        clearPoll();
+        showError(data.message || 'Lỗi không xác định');
+      }
+    } catch (e) {
+      // network hiccup, tiếp tục poll
+    }
+  }
+
+  function showVideo(jobId) {
+    const url = `${API}/api/download/${jobId}`;
+    document.getElementById('video-wrap').innerHTML =
+      `<video controls autoplay src="${url}"></video>`;
+    const btn = document.getElementById('btn-download');
+    btn.href = url;
+    btn.classList.add('visible');
+  }
+
+  function showError(msg) {
+    setStatus('error');
+    document.getElementById('btn-gen').disabled = false;
+    const el = document.getElementById('error-msg');
+    el.textContent = '❌ ' + msg;
+    el.classList.add('visible');
+  }
+
+  function setStatus(s) {
+    const tag = document.getElementById('status-tag');
+    const box = document.getElementById('progress-box');
+    box.classList.add('active');
+    tag.className = 'status-tag ' + s;
+    tag.textContent = { running: 'Đang chạy', done: 'Hoàn tất', error: 'Lỗi' }[s] || s;
+  }
+
+  function clearPoll() {
+    if (pollTimer) { clearInterval(pollTimer); pollTimer = null; }
+  }
+</script>
+
+</body>
+</html>
