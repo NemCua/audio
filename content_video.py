@@ -88,12 +88,17 @@ Content:
         )
     r.raise_for_status()
     text = r.json()['choices'][0]['message']['content'].strip()
+    # Strip markdown code block nếu có
+    if '```' in text:
+        text = re.sub(r'```(?:json)?\s*', '', text).strip()
     start = text.find('[')
     end   = text.rfind(']') + 1
+
     if start == -1 or end == 0:
-        # Beeknoee hết tiền hoặc lỗi — fallback Groq
-        if beeknoee_key:
-            print('  ⚠ Beeknoee không trả JSON, fallback Groq...')
+        # Beeknoee không trả JSON (hết tiền?) — fallback Groq
+        print(f'  ⚠ Beeknoee không trả JSON: {text[:100]} — fallback Groq...')
+        if not groq_key:
+            raise RuntimeError('Không có GROQ_API_KEY để fallback')
         r2 = requests.post(
             'https://api.groq.com/openai/v1/chat/completions',
             headers={'Authorization': f'Bearer {groq_key}'},
@@ -108,6 +113,9 @@ Content:
         text = r2.json()['choices'][0]['message']['content'].strip()
         start = text.find('[')
         end   = text.rfind(']') + 1
+        if start == -1 or end == 0:
+            raise RuntimeError(f'Groq cũng không trả JSON: {text[:200]}')
+
     scenes = json.loads(text[start:end])
     return scenes
 
