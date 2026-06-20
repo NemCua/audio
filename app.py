@@ -1515,6 +1515,79 @@ with gr.Blocks(title="Dịch Video Tiếng Trung → Tiếng Việt") as demo:
                 outputs=[transcribe_output, transcribe_download, status_transcribe],
             )
 
+        # ══════════════════════════════════════════════════════════════════
+        with gr.TabItem("🎞️ Tạo Video Content"):
+        # ══════════════════════════════════════════════════════════════════
+            def run_content_video(
+                content_text: str,
+                cv_capcut_voice: str,
+                cv_capcut_rate: float,
+                progress=gr.Progress(),
+            ):
+                if not content_text.strip():
+                    raise gr.Error("Chưa nhập nội dung.")
+
+                from content_video import run_content_video_pipeline
+
+                groq_key     = os.environ.get("GROQ_API_KEY", "")
+                pexels_key   = os.environ.get("PEXELS_API_KEY", "")
+                beeknoee_key = os.environ.get("BEEKNOEE_API_KEY", "")
+                pixabay_key  = os.environ.get("PIXABAY_API_KEY", "")
+                if not pexels_key:
+                    raise gr.Error("Chưa có PEXELS_API_KEY trong .env")
+                if not groq_key and not beeknoee_key:
+                    raise gr.Error("Chưa có GROQ_API_KEY hoặc BEEKNOEE_API_KEY trong .env")
+
+                work_dir = Path(tempfile.mkdtemp(prefix="contentvid_")).resolve()
+
+                # CapCut voice
+                capcut_info = next((v for v in CAPCUT_VOICES_VI if v[1] == cv_capcut_voice.strip()), None)
+                capcut_device_id = os.environ.get("CAPCUT_DEVICE_ID", "7581502458217252368") if capcut_info else None
+
+                try:
+                    out = run_content_video_pipeline(
+                        content=content_text.strip(),
+                        work_dir=work_dir,
+                        groq_key=groq_key,
+                        pexels_key=pexels_key,
+                        pixabay_key=pixabay_key,
+                        beeknoee_key=beeknoee_key,
+                        capcut_voice_type=capcut_info[1] if capcut_info else None,
+                        capcut_resource_id=capcut_info[2] if capcut_info else None,
+                        capcut_device_id=capcut_device_id,
+                        capcut_rate=str(round(cv_capcut_rate, 1)),
+                        progress_cb=progress,
+                    )
+                    return str(out), f"✓ Xong — {work_dir.name}"
+                except Exception as e:
+                    raise gr.Error(str(e))
+
+            with gr.Row():
+                with gr.Column(scale=1):
+                    cv_voice_input = gr.Dropdown(
+                        choices=[("-- Edge TTS --", "")] + [(v[0], v[1]) for v in CAPCUT_VOICES_VI],
+                        value="", label="Giọng CapCut TTS (để trống = Edge TTS)",
+                    )
+                    cv_rate_slider = gr.Slider(0.5, 2.0, value=1.0, step=0.1,
+                                               label="Tốc độ đọc CapCut")
+                    btn_gen_video  = gr.Button("🎞️ Tạo Video", variant="primary")
+                    cv_status      = gr.Textbox(label="Trạng thái", interactive=False)
+
+                with gr.Column(scale=2):
+                    cv_content = gr.Textbox(
+                        label="Nội dung thuyết minh",
+                        lines=15,
+                        placeholder="Dán nội dung vào đây, AI sẽ tự chia cảnh và tìm video/ảnh từ Pexels...",
+                    )
+
+            cv_video_output = gr.Video(label="Video xuất ra")
+
+            btn_gen_video.click(
+                fn=run_content_video,
+                inputs=[cv_content, cv_voice_input, cv_rate_slider],
+                outputs=[cv_video_output, cv_status],
+            )
+
 
 if __name__ == "__main__":
     demo.launch(
