@@ -236,7 +236,7 @@ QUY TẮC BẮT BUỘC:
 
 
 BEEKNOEE_BASE_URL = "https://platform.beeknoee.com/api/v1"
-BEEKNOEE_MODEL    = "deepseek/deepseek-chat-v3.1"
+BEEKNOEE_MODEL    = "deepseek/deepseek-v3.2"
 
 
 def _make_chat_client(groq_key: str, beeknoee_key: str | None):
