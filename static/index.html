@@ -1,270 +1,163 @@
 <!DOCTYPE html>
 <html lang="vi">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Tạo Video Content</title>
-  <style>
-    * { box-sizing: border-box; margin: 0; padding: 0; }
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>Tạo Video Content</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'Segoe UI',system-ui,sans-serif;background:#0a0c14;color:#e2e8f0;min-height:100vh;display:flex;flex-direction:column}
 
-    body {
-      font-family: 'Segoe UI', system-ui, sans-serif;
-      background: #0f1117;
-      color: #e2e8f0;
-      min-height: 100vh;
-      display: flex;
-      flex-direction: column;
-    }
+header{background:#12152a;border-bottom:1px solid #1e2340;padding:14px 24px;display:flex;align-items:center;gap:12px}
+header h1{font-size:18px;font-weight:700;color:#a78bfa}
+header span{font-size:12px;color:#4b5563}
 
-    header {
-      background: #1a1d2e;
-      border-bottom: 1px solid #2d3148;
-      padding: 16px 32px;
-      display: flex;
-      align-items: center;
-      gap: 12px;
-    }
-    header h1 { font-size: 20px; font-weight: 600; color: #a78bfa; }
-    header span { font-size: 13px; color: #64748b; }
+.layout{display:grid;grid-template-columns:320px 1fr;gap:0;flex:1;overflow:hidden}
 
-    .container {
-      display: grid;
-      grid-template-columns: 340px 1fr 1fr;
-      gap: 20px;
-      padding: 20px 24px;
-      flex: 1;
-      max-width: 1600px;
-      margin: 0 auto;
-      width: 100%;
-    }
+/* LEFT SIDEBAR */
+.sidebar{background:#12152a;border-right:1px solid #1e2340;display:flex;flex-direction:column;gap:0;overflow-y:auto}
+.sidebar-section{padding:16px;border-bottom:1px solid #1e2340}
+.sidebar-section h3{font-size:11px;font-weight:700;color:#4b5563;text-transform:uppercase;letter-spacing:.07em;margin-bottom:10px}
 
-    .panel {
-      background: #1a1d2e;
-      border: 1px solid #2d3148;
-      border-radius: 12px;
-      padding: 18px;
-      display: flex;
-      flex-direction: column;
-      gap: 14px;
-    }
+textarea{width:100%;background:#0a0c14;border:1px solid #1e2340;border-radius:8px;color:#e2e8f0;font-size:13px;line-height:1.6;padding:10px;resize:vertical;min-height:180px;outline:none;transition:border-color .2s}
+textarea:focus{border-color:#7c3aed}
 
-    .panel h2 {
-      font-size: 12px;
-      font-weight: 600;
-      color: #64748b;
-      text-transform: uppercase;
-      letter-spacing: 0.06em;
-    }
+select,input[type=text]{width:100%;background:#0a0c14;border:1px solid #1e2340;border-radius:7px;color:#e2e8f0;font-size:13px;padding:8px 10px;outline:none}
 
-    label { font-size: 13px; color: #94a3b8; display: block; margin-bottom: 5px; }
+.slider-row{display:flex;align-items:center;gap:8px}
+input[type=range]{flex:1;accent-color:#7c3aed}
+.sv{min-width:32px;text-align:right;font-size:13px;color:#a78bfa;font-weight:700}
 
-    textarea {
-      width: 100%;
-      background: #0f1117;
-      border: 1px solid #2d3148;
-      border-radius: 8px;
-      color: #e2e8f0;
-      font-size: 13px;
-      line-height: 1.6;
-      padding: 10px 12px;
-      resize: vertical;
-      min-height: 220px;
-      outline: none;
-      transition: border-color 0.2s;
-    }
-    textarea:focus { border-color: #7c3aed; }
+.btn{border:none;border-radius:7px;font-size:13px;font-weight:600;padding:9px 14px;cursor:pointer;transition:opacity .15s,transform .1s;width:100%}
+.btn:hover{opacity:.88}
+.btn:active{transform:scale(.97)}
+.btn:disabled{opacity:.35;cursor:not-allowed}
+.btn-purple{background:linear-gradient(135deg,#7c3aed,#5b21b6);color:#fff}
+.btn-blue{background:#1e3a5f;color:#60a5fa;border:1px solid #1d4ed8}
+.btn-green{background:#14532d;color:#4ade80;border:1px solid #166534}
+.btn-row{display:flex;gap:8px}
 
-    select {
-      width: 100%;
-      background: #0f1117;
-      border: 1px solid #2d3148;
-      border-radius: 8px;
-      color: #e2e8f0;
-      font-size: 13px;
-      padding: 9px 12px;
-      outline: none;
-      cursor: pointer;
-    }
+.progress-box{display:none;flex-direction:column;gap:6px}
+.progress-box.on{display:flex}
+.pbar-wrap{background:#0a0c14;border-radius:999px;height:5px;overflow:hidden}
+.pbar{height:100%;background:linear-gradient(90deg,#7c3aed,#a78bfa);border-radius:999px;transition:width .4s;width:0}
+.pmsg{font-size:12px;color:#6b7280}
+.stag{font-size:11px;padding:2px 8px;border-radius:999px;font-weight:700}
+.stag.running{background:#1e1b4b;color:#a5b4fc}
+.stag.done{background:#14532d;color:#4ade80}
+.stag.error{background:#450a0a;color:#f87171}
+.errmsg{font-size:12px;color:#f87171;background:#450a0a;border:1px solid #7f1d1d;border-radius:7px;padding:8px 12px;display:none}
+.errmsg.on{display:block}
 
-    .slider-wrap { display: flex; align-items: center; gap: 10px; }
-    input[type=range] { flex: 1; accent-color: #7c3aed; cursor: pointer; }
-    .slider-val { min-width: 36px; text-align: right; font-size: 13px; color: #a78bfa; font-weight: 600; }
+/* RIGHT MAIN */
+.main{display:flex;flex-direction:column;overflow:hidden}
 
-    .btn-row { display: flex; gap: 8px; }
+/* TABS */
+.tabs{display:flex;border-bottom:1px solid #1e2340;background:#12152a}
+.tab{padding:12px 20px;font-size:13px;font-weight:600;color:#4b5563;cursor:pointer;border-bottom:2px solid transparent;transition:color .15s,border-color .15s}
+.tab.active{color:#a78bfa;border-bottom-color:#7c3aed}
 
-    .btn {
-      flex: 1;
-      border: none;
-      border-radius: 8px;
-      font-size: 13px;
-      font-weight: 600;
-      padding: 10px 12px;
-      cursor: pointer;
-      transition: opacity 0.2s, transform 0.1s;
-    }
-    .btn:hover { opacity: 0.88; }
-    .btn:active { transform: scale(0.97); }
-    .btn:disabled { opacity: 0.35; cursor: not-allowed; }
-    .btn-preview  { background: #1e3a5f; color: #60a5fa; border: 1px solid #1d4ed8; }
-    .btn-generate { background: linear-gradient(135deg, #7c3aed, #5b21b6); color: #fff; }
+.tab-content{flex:1;overflow-y:auto;padding:16px;display:none}
+.tab-content.active{display:block}
 
-    /* Progress */
-    .progress-box { display: none; flex-direction: column; gap: 7px; }
-    .progress-box.active { display: flex; }
-    .progress-bar-wrap { background: #0f1117; border-radius: 999px; height: 5px; overflow: hidden; }
-    .progress-bar { height: 100%; background: linear-gradient(90deg, #7c3aed, #a78bfa); border-radius: 999px; transition: width 0.4s ease; width: 0%; }
-    .progress-msg { font-size: 12px; color: #94a3b8; }
+/* SCENES PANEL */
+.scenes-wrap{display:flex;flex-direction:column;gap:12px}
 
-    .status-tag { font-size: 11px; padding: 3px 8px; border-radius: 999px; font-weight: 600; display: inline-block; }
-    .status-tag.idle    { background: #1e293b; color: #64748b; }
-    .status-tag.running { background: #312e81; color: #a5b4fc; }
-    .status-tag.done    { background: #14532d; color: #4ade80; }
-    .status-tag.error   { background: #450a0a; color: #f87171; }
+.scene-card{background:#12152a;border:1px solid #1e2340;border-radius:10px;overflow:hidden}
+.scene-head{display:flex;align-items:center;gap:8px;padding:10px 14px;cursor:pointer;user-select:none}
+.scene-num{font-size:11px;font-weight:800;color:#7c3aed;background:#1e1b4b;border-radius:4px;padding:2px 7px;flex-shrink:0}
+.scene-query-text{flex:1;font-size:13px;font-weight:600;color:#e2e8f0}
+.scene-dur-badge{font-size:11px;color:#6b7280;flex-shrink:0}
+.scene-selected-thumb{width:48px;height:32px;object-fit:cover;border-radius:4px;flex-shrink:0;border:2px solid #7c3aed}
+.scene-selected-label{font-size:10px;color:#4ade80;flex-shrink:0}
+.scene-expand-icon{font-size:11px;color:#4b5563;flex-shrink:0}
 
-    .error-msg { font-size: 12px; color: #f87171; background: #450a0a; border: 1px solid #7f1d1d; border-radius: 8px; padding: 9px 12px; display: none; }
-    .error-msg.visible { display: block; }
+.scene-body{display:none;padding:12px 14px;border-top:1px solid #1e2340;background:#0a0c14}
+.scene-body.open{display:block}
 
-    /* ===== PREVIEW PANEL ===== */
-    .scenes-list {
-      display: flex;
-      flex-direction: column;
-      gap: 8px;
-      overflow-y: auto;
-      max-height: calc(100vh - 180px);
-    }
+.scene-prompt-text{font-size:11px;color:#6b7280;font-style:italic;margin-bottom:10px;line-height:1.5}
 
-    .scene-card {
-      background: #0f1117;
-      border: 1px solid #2d3148;
-      border-radius: 8px;
-      padding: 10px 12px;
-      display: flex;
-      flex-direction: column;
-      gap: 6px;
-    }
-    .scene-card-header {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      gap: 8px;
-    }
-    .scene-num {
-      font-size: 11px;
-      font-weight: 700;
-      color: #7c3aed;
-      background: #1e1b4b;
-      border-radius: 4px;
-      padding: 2px 6px;
-      flex-shrink: 0;
-    }
-    .scene-dur {
-      font-size: 11px;
-      color: #64748b;
-      flex-shrink: 0;
-    }
-    .scene-type-badge {
-      font-size: 10px;
-      padding: 2px 6px;
-      border-radius: 4px;
-      font-weight: 600;
-      flex-shrink: 0;
-    }
-    .scene-type-badge.video { background: #14532d; color: #4ade80; }
-    .scene-type-badge.image { background: #1e3a5f; color: #60a5fa; }
+.query-edit-row{display:flex;gap:6px;margin-bottom:10px}
+.query-edit-row input{flex:1;font-size:12px;padding:6px 8px}
+.query-edit-row button{background:#1e3a5f;border:1px solid #1d4ed8;color:#60a5fa;border-radius:6px;font-size:12px;font-weight:600;padding:6px 12px;cursor:pointer;white-space:nowrap}
+.query-edit-row button:hover{opacity:.85}
 
-    .scene-query {
-      font-size: 13px;
-      color: #e2e8f0;
-      font-weight: 500;
-    }
-    .scene-prompt {
-      font-size: 11px;
-      color: #64748b;
-      line-height: 1.5;
-      font-style: italic;
-    }
+.custom-url-row{display:flex;gap:6px;margin-bottom:10px}
+.custom-url-row input{flex:1;font-size:12px;padding:6px 8px;font-family:monospace}
+.custom-url-row button{background:#312e81;border:1px solid #4338ca;color:#a5b4fc;border-radius:6px;font-size:12px;font-weight:600;padding:6px 12px;cursor:pointer;white-space:nowrap}
+.custom-url-row button:hover{opacity:.85}
 
-    .preview-loading {
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      gap: 10px;
-      padding: 40px;
-      color: #64748b;
-      font-size: 13px;
-    }
-    .spinner {
-      width: 20px; height: 20px;
-      border: 2px solid #2d3148;
-      border-top-color: #7c3aed;
-      border-radius: 50%;
-      animation: spin 0.8s linear infinite;
-    }
-    @keyframes spin { to { transform: rotate(360deg); } }
+.media-tabs{display:flex;gap:0;margin-bottom:10px;border:1px solid #1e2340;border-radius:7px;overflow:hidden}
+.media-tab{flex:1;padding:6px;font-size:12px;font-weight:600;text-align:center;cursor:pointer;background:#0a0c14;color:#4b5563;transition:background .15s,color .15s}
+.media-tab.active{background:#1e1b4b;color:#a78bfa}
 
-    .preview-empty {
-      text-align: center;
-      padding: 40px 20px;
-      color: #334155;
-      font-size: 13px;
-    }
-    .preview-empty .icon { font-size: 36px; margin-bottom: 8px; }
+.media-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:8px}
+.media-item{position:relative;border-radius:6px;overflow:hidden;cursor:pointer;border:2px solid transparent;transition:border-color .15s,transform .1s;aspect-ratio:16/9;background:#1e2340}
+.media-item:hover{transform:scale(1.02);border-color:#7c3aed55}
+.media-item:hover .preview-hint{opacity:1}
+.media-item.selected{border-color:#7c3aed;box-shadow:0 0 0 1px #7c3aed}
+.media-item img{width:100%;height:100%;object-fit:cover;display:block}
+.media-item .vid-badge{position:absolute;bottom:4px;left:4px;background:#000a;color:#fff;font-size:9px;font-weight:700;padding:1px 5px;border-radius:3px}
+.media-item .src-badge{position:absolute;top:4px;right:4px;font-size:9px;font-weight:700;padding:1px 5px;border-radius:3px}
+.src-badge.pexels{background:#05a081;color:#fff}
+.src-badge.pixabay{background:#2ec4b6;color:#fff}
+.media-item .check{position:absolute;top:4px;left:4px;width:18px;height:18px;background:#7c3aed;border-radius:50%;display:none;align-items:center;justify-content:center;font-size:11px;color:#fff}
+.media-item.selected .check{display:flex}
+.preview-hint{position:absolute;inset:0;background:#0008;display:flex;align-items:center;justify-content:center;font-size:20px;opacity:0;transition:opacity .15s;pointer-events:none}
 
-    /* ===== OUTPUT PANEL ===== */
-    .video-wrap {
-      background: #0f1117;
-      border: 1px solid #2d3148;
-      border-radius: 10px;
-      overflow: hidden;
-      aspect-ratio: 16/9;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-    }
-    .video-wrap video { width: 100%; height: 100%; }
-    .video-placeholder { color: #334155; font-size: 13px; text-align: center; }
-    .video-placeholder .icon { font-size: 40px; margin-bottom: 8px; }
+/* MODAL */
+.modal-overlay{position:fixed;inset:0;background:#000c;z-index:1000;display:none;align-items:center;justify-content:center}
+.modal-overlay.on{display:flex}
+.modal-box{background:#12152a;border:1px solid #1e2340;border-radius:12px;width:min(900px,95vw);max-height:92vh;display:flex;flex-direction:column;overflow:hidden}
+.modal-header{display:flex;align-items:center;gap:10px;padding:14px 18px;border-bottom:1px solid #1e2340;flex-shrink:0}
+.modal-title{flex:1;font-size:14px;font-weight:700;color:#e2e8f0}
+.modal-src{font-size:11px;font-weight:700;padding:2px 8px;border-radius:999px}
+.modal-close{background:none;border:none;color:#6b7280;font-size:20px;cursor:pointer;line-height:1;padding:2px 6px}
+.modal-close:hover{color:#e2e8f0}
+.modal-media{flex:1;overflow:hidden;background:#000;display:flex;align-items:center;justify-content:center;min-height:300px;max-height:60vh}
+.modal-media video,.modal-media img{max-width:100%;max-height:100%;object-fit:contain}
+.modal-footer{padding:14px 18px;border-top:1px solid #1e2340;display:flex;align-items:center;gap:10px;flex-shrink:0}
+.modal-info{flex:1;font-size:12px;color:#6b7280}
+.modal-select-btn{background:linear-gradient(135deg,#7c3aed,#5b21b6);color:#fff;border:none;border-radius:7px;font-size:14px;font-weight:700;padding:10px 24px;cursor:pointer;transition:opacity .15s}
+.modal-select-btn:hover{opacity:.88}
+.modal-select-btn.selected-state{background:#14532d;color:#4ade80}
 
-    .btn-download {
-      display: none;
-      background: #14532d;
-      border: 1px solid #166534;
-      border-radius: 8px;
-      color: #4ade80;
-      font-size: 13px;
-      font-weight: 600;
-      padding: 10px;
-      cursor: pointer;
-      text-align: center;
-      text-decoration: none;
-      transition: background 0.2s;
-    }
-    .btn-download:hover { background: #166534; }
-    .btn-download.visible { display: block; }
-  </style>
+.loading-grid{display:flex;align-items:center;gap:8px;padding:20px;color:#4b5563;font-size:13px}
+.spinner{width:18px;height:18px;border:2px solid #1e2340;border-top-color:#7c3aed;border-radius:50%;animation:spin .7s linear infinite;flex-shrink:0}
+@keyframes spin{to{transform:rotate(360deg)}}
+
+.no-result{padding:20px;text-align:center;color:#4b5563;font-size:12px}
+
+/* VIDEO OUTPUT */
+.video-wrap{background:#0a0c14;border:1px solid #1e2340;border-radius:10px;overflow:hidden;aspect-ratio:16/9;display:flex;align-items:center;justify-content:center;margin-bottom:12px}
+.video-wrap video{width:100%;height:100%}
+.vph{color:#1e2340;text-align:center;font-size:13px}
+.vph .icon{font-size:40px;margin-bottom:8px}
+.dl-btn{display:none;text-align:center;padding:10px;background:#14532d;border:1px solid #166534;color:#4ade80;border-radius:8px;font-size:13px;font-weight:700;text-decoration:none;transition:background .15s}
+.dl-btn:hover{background:#166534}
+.dl-btn.on{display:block}
+</style>
 </head>
 <body>
 
 <header>
   <h1>🎞️ Tạo Video Content</h1>
-  <span>AI chia cảnh · Pexels + Pixabay · TTS tự động</span>
+  <span>AI chia cảnh · chọn media · Pexels + Pixabay</span>
 </header>
 
-<div class="container">
+<div class="layout">
 
-  <!-- COL 1: Input -->
-  <div class="panel">
-    <h2>Nội dung</h2>
-
-    <div>
-      <label>Văn bản thuyết minh</label>
+  <!-- SIDEBAR -->
+  <div class="sidebar">
+    <div class="sidebar-section">
+      <h3>Nội dung</h3>
       <textarea id="content" placeholder="Dán nội dung vào đây..."></textarea>
     </div>
 
-    <div>
-      <label>Giọng đọc</label>
+    <div class="sidebar-section">
+      <h3>Giọng đọc</h3>
       <select id="voice">
-        <option value="">-- Edge TTS (mặc định) --</option>
+        <option value="">-- Edge TTS --</option>
         <option value="BV421_vivn_streaming">Nhỏ Ngọt Ngào</option>
         <option value="BV074_streaming">Cô Gái Hoạt Ngôn</option>
         <option value="vi_female_huong">Giọng Nữ Phổ Thông</option>
@@ -279,187 +172,425 @@
       </select>
     </div>
 
-    <div>
-      <label>Tốc độ đọc</label>
-      <div class="slider-wrap">
+    <div class="sidebar-section">
+      <h3>Tốc độ đọc</h3>
+      <div class="slider-row">
         <input type="range" id="rate" min="0.5" max="2.0" step="0.1" value="1.0"
-               oninput="document.getElementById('rate-val').textContent=parseFloat(this.value).toFixed(1)+'x'" />
-        <span class="slider-val" id="rate-val">1.0x</span>
+               oninput="document.getElementById('rv').textContent=parseFloat(this.value).toFixed(1)+'x'"/>
+        <span class="sv" id="rv">1.0x</span>
       </div>
     </div>
 
-    <div class="btn-row">
-      <button class="btn btn-preview" id="btn-preview" onclick="preview()">🔍 Xem AI phân tích</button>
-      <button class="btn btn-generate" id="btn-gen" onclick="generate()">🎬 Tạo Video</button>
-    </div>
-
-    <div class="progress-box" id="progress-box">
-      <div style="display:flex;justify-content:space-between;align-items:center">
-        <span class="progress-msg" id="progress-msg">Đang khởi động...</span>
-        <span class="status-tag running" id="status-tag">Đang chạy</span>
+    <div class="sidebar-section">
+      <div class="btn-row" style="margin-bottom:10px">
+        <button class="btn btn-blue" id="btn-preview" onclick="doPreview()">🤖 AI phân tích</button>
+        <button class="btn btn-purple" id="btn-gen" onclick="doGenerate()" disabled>🎬 Tạo Video</button>
       </div>
-      <div class="progress-bar-wrap">
-        <div class="progress-bar" id="progress-bar"></div>
-      </div>
-    </div>
 
-    <div class="error-msg" id="error-msg"></div>
-  </div>
-
-  <!-- COL 2: Preview AI scenes -->
-  <div class="panel">
-    <h2>AI phân tích cảnh</h2>
-    <div class="scenes-list" id="scenes-list">
-      <div class="preview-empty">
-        <div class="icon">🤖</div>
-        <div>Nhấn <b>Xem AI phân tích</b> để xem<br>AI chia cảnh và chọn keyword</div>
+      <div class="progress-box" id="pbox">
+        <div style="display:flex;justify-content:space-between;align-items:center">
+          <span class="pmsg" id="pmsg"></span>
+          <span class="stag" id="stag"></span>
+        </div>
+        <div class="pbar-wrap"><div class="pbar" id="pbar"></div></div>
       </div>
+      <div class="errmsg" id="errmsg"></div>
     </div>
   </div>
 
-  <!-- COL 3: Output video -->
-  <div class="panel">
-    <h2>Kết quả video</h2>
+  <!-- MAIN -->
+  <div class="main">
+    <div class="tabs">
+      <div class="tab active" onclick="switchTab('scenes')">🎬 Cảnh & Media</div>
+      <div class="tab" onclick="switchTab('output')">📺 Video xuất</div>
+    </div>
 
-    <div class="video-wrap" id="video-wrap">
-      <div class="video-placeholder">
-        <div class="icon">🎬</div>
-        <div>Video sẽ hiện ở đây</div>
+    <!-- TAB: SCENES -->
+    <div class="tab-content active" id="tab-scenes">
+      <div id="scenes-wrap" class="scenes-wrap">
+        <div style="text-align:center;padding:60px 20px;color:#1e2340">
+          <div style="font-size:48px;margin-bottom:12px">🤖</div>
+          <div style="font-size:14px">Nhấn <b>AI phân tích</b> để bắt đầu</div>
+        </div>
       </div>
     </div>
 
-    <a class="btn-download" id="btn-download" download="content_video.mp4">
-      ⬇️ Tải xuống video
-    </a>
+    <!-- TAB: OUTPUT -->
+    <div class="tab-content" id="tab-output">
+      <div class="video-wrap" id="video-wrap">
+        <div class="vph"><div class="icon">🎬</div><div>Video sẽ hiện ở đây</div></div>
+      </div>
+      <a class="dl-btn" id="dl-btn" download="content_video.mp4">⬇️ Tải xuống video</a>
+    </div>
   </div>
+</div>
 
+<!-- MODAL PREVIEW -->
+<div class="modal-overlay" id="modal" onclick="closeModal(event)">
+  <div class="modal-box" onclick="event.stopPropagation()">
+    <div class="modal-header">
+      <span class="modal-title" id="modal-title"></span>
+      <span class="modal-src" id="modal-src"></span>
+      <button class="modal-close" onclick="closeModal()">✕</button>
+    </div>
+    <div class="modal-media" id="modal-media"></div>
+    <div class="modal-footer">
+      <div class="modal-info" id="modal-info"></div>
+      <button class="modal-select-btn" id="modal-select-btn" onclick="modalSelect()">✓ Chọn media này</button>
+    </div>
+  </div>
 </div>
 
 <script>
-  const API = '';
-  let pollTimer = null;
+const API = '';
+let scenes = [];          // [{query, prompt, duration, media: null|{url,thumb,is_video,duration,source}}]
+let searchCache = {};     // query -> {videos, images}
+let pollTimer = null;
+let modalCtx = null;      // {sceneIdx, itemIdx, type, item}
 
-  // ===== PREVIEW =====
-  async function preview() {
-    const content = document.getElementById('content').value.trim();
-    if (!content) { alert('Chưa nhập nội dung!'); return; }
+// ===== TABS =====
+function switchTab(name) {
+  document.querySelectorAll('.tab').forEach((t,i) => t.classList.toggle('active', ['scenes','output'][i]===name));
+  document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+  document.getElementById('tab-'+name).classList.add('active');
+}
 
-    const list = document.getElementById('scenes-list');
-    list.innerHTML = '<div class="preview-loading"><div class="spinner"></div>AI đang phân tích...</div>';
-    document.getElementById('btn-preview').disabled = true;
+// ===== PREVIEW =====
+async function doPreview() {
+  const content = document.getElementById('content').value.trim();
+  if (!content) { alert('Chưa nhập nội dung!'); return; }
 
-    try {
-      const res = await fetch(`${API}/api/preview`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ content, voice: '', rate: 1.0 }),
-      });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error);
+  document.getElementById('btn-preview').disabled = true;
+  document.getElementById('btn-gen').disabled = true;
+  document.getElementById('scenes-wrap').innerHTML =
+    '<div class="loading-grid"><div class="spinner"></div>AI đang phân tích...</div>';
 
-      const scenes = data.scenes || [];
-      if (!scenes.length) {
-        list.innerHTML = '<div class="preview-empty"><div class="icon">😕</div><div>Không chia được cảnh nào</div></div>';
-        return;
-      }
+  try {
+    const res  = await fetch(`${API}/api/preview`, {
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({content}),
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error);
 
-      list.innerHTML = scenes.map((s, i) => `
-        <div class="scene-card">
-          <div class="scene-card-header">
-            <span class="scene-num">#${i + 1}</span>
-            <span class="scene-query">${s.query || ''}</span>
-            <span class="scene-type-badge ${s.type || 'video'}">${s.type || 'video'}</span>
-            <span class="scene-dur">${s.duration || 6}s</span>
-          </div>
-          ${s.prompt ? `<div class="scene-prompt">${s.prompt}</div>` : ''}
-        </div>
-      `).join('');
-
-    } catch (e) {
-      list.innerHTML = `<div class="error-msg visible">❌ ${e.message}</div>`;
-    } finally {
-      document.getElementById('btn-preview').disabled = false;
-    }
-  }
-
-  // ===== GENERATE =====
-  async function generate() {
-    const content = document.getElementById('content').value.trim();
-    if (!content) { alert('Chưa nhập nội dung!'); return; }
-
-    const voice = document.getElementById('voice').value;
-    const rate  = parseFloat(document.getElementById('rate').value);
-
-    clearPoll();
-    setStatus('running');
-    document.getElementById('btn-gen').disabled = true;
-    document.getElementById('btn-preview').disabled = true;
-    document.getElementById('btn-download').classList.remove('visible');
-    document.getElementById('error-msg').classList.remove('visible');
-    document.getElementById('video-wrap').innerHTML = `
-      <div class="video-placeholder"><div class="icon">⏳</div><div>Đang xử lý...</div></div>`;
-
-    try {
-      const res = await fetch(`${API}/api/generate`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ content, voice, rate }),
-      });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error || 'Lỗi server');
-
-      pollTimer = setInterval(() => poll(data.job_id), 2000);
-
-    } catch (e) {
-      showError(e.message);
-    }
-  }
-
-  async function poll(jobId) {
-    try {
-      const res  = await fetch(`${API}/api/status/${jobId}`);
-      const data = await res.json();
-
-      document.getElementById('progress-bar').style.width = (data.progress || 0) + '%';
-      document.getElementById('progress-msg').textContent = data.message || '';
-
-      if (data.status === 'done') {
-        clearPoll();
-        setStatus('done');
-        document.getElementById('btn-gen').disabled = false;
-        document.getElementById('btn-preview').disabled = false;
-        const url = `${API}/api/download/${jobId}`;
-        document.getElementById('video-wrap').innerHTML = `<video controls autoplay src="${url}"></video>`;
-        const btn = document.getElementById('btn-download');
-        btn.href = url;
-        btn.classList.add('visible');
-      } else if (data.status === 'error') {
-        clearPoll();
-        showError(data.message || 'Lỗi không xác định');
-      }
-    } catch (e) { /* network hiccup */ }
-  }
-
-  function showError(msg) {
-    setStatus('error');
+    scenes = (data.scenes||[]).map(s => ({...s, media: null}));
+    searchCache = {};
+    renderScenes();
     document.getElementById('btn-gen').disabled = false;
+  } catch(e) {
+    document.getElementById('scenes-wrap').innerHTML =
+      `<div class="errmsg on">❌ ${e.message}</div>`;
+  } finally {
     document.getElementById('btn-preview').disabled = false;
-    const el = document.getElementById('error-msg');
-    el.textContent = '❌ ' + msg;
-    el.classList.add('visible');
+  }
+}
+
+// ===== RENDER SCENES =====
+function renderScenes() {
+  const wrap = document.getElementById('scenes-wrap');
+  if (!scenes.length) {
+    wrap.innerHTML = '<div class="no-result">Không có cảnh nào</div>';
+    return;
+  }
+  wrap.innerHTML = scenes.map((s, i) => `
+    <div class="scene-card" id="sc-${i}">
+      <div class="scene-head" onclick="toggleScene(${i})">
+        <span class="scene-num">#${i+1}</span>
+        <span class="scene-query-text">${s.query}</span>
+        ${s.media ? `<img class="scene-selected-thumb" src="${s.media.thumb||s.media.url}" onerror="this.style.display='none'"/>
+                     <span class="scene-selected-label">✓</span>` : ''}
+        <span class="scene-dur-badge">${s.duration||6}s</span>
+        <span class="scene-expand-icon">▼</span>
+      </div>
+      <div class="scene-body" id="sb-${i}">
+        ${s.prompt ? `<div class="scene-prompt-text">${s.prompt}</div>` : ''}
+
+        <div class="query-edit-row">
+          <input type="text" id="q-${i}" value="${s.query}" placeholder="Sửa keyword..."/>
+          <button onclick="searchScene(${i})">🔍 Tìm</button>
+        </div>
+
+        <div class="custom-url-row">
+          <input type="text" id="cu-${i}" placeholder="Dán link video/ảnh từ Pexels hoặc Pixabay..."/>
+          <button onclick="useCustomUrl(${i})">Dùng link</button>
+        </div>
+
+        <div class="media-tabs">
+          <div class="media-tab active" id="mt-v-${i}" onclick="switchMediaTab(${i},'video')">🎬 Video</div>
+          <div class="media-tab" id="mt-i-${i}" onclick="switchMediaTab(${i},'image')">🖼 Ảnh</div>
+        </div>
+
+        <div id="mg-${i}" class="media-grid">
+          <div class="no-result">Nhấn 🔍 Tìm để tải kết quả</div>
+        </div>
+      </div>
+    </div>
+  `).join('');
+}
+
+function toggleScene(i) {
+  const body = document.getElementById(`sb-${i}`);
+  body.classList.toggle('open');
+  if (body.classList.contains('open') && !searchCache[scenes[i].query]) {
+    searchScene(i);
+  }
+}
+
+// ===== SEARCH =====
+let activeMediaTab = {};  // i -> 'video'|'image'
+
+function switchMediaTab(i, type) {
+  activeMediaTab[i] = type;
+  document.getElementById(`mt-v-${i}`).classList.toggle('active', type==='video');
+  document.getElementById(`mt-i-${i}`).classList.toggle('active', type==='image');
+  const cache = searchCache[scenes[i].query];
+  if (cache) renderMediaGrid(i, cache, type);
+}
+
+async function searchScene(i) {
+  const query = document.getElementById(`q-${i}`).value.trim();
+  if (!query) return;
+  scenes[i].query = query;
+
+  const grid = document.getElementById(`mg-${i}`);
+  grid.innerHTML = '<div class="loading-grid"><div class="spinner"></div>Đang tìm...</div>';
+
+  try {
+    const res  = await fetch(`${API}/api/search`, {
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({query}),
+    });
+    const data = await res.json();
+    searchCache[query] = data;
+    const type = activeMediaTab[i] || 'video';
+    renderMediaGrid(i, data, type);
+  } catch(e) {
+    grid.innerHTML = `<div class="no-result">❌ ${e.message}</div>`;
+  }
+}
+
+function renderMediaGrid(i, data, type) {
+  const items = type === 'video' ? (data.videos||[]) : (data.images||[]);
+  const grid  = document.getElementById(`mg-${i}`);
+
+  if (!items.length) {
+    grid.innerHTML = `<div class="no-result">Không tìm thấy ${type==='video'?'video':'ảnh'} nào</div>`;
+    return;
   }
 
-  function setStatus(s) {
-    const tag = document.getElementById('status-tag');
-    document.getElementById('progress-box').classList.add('active');
-    tag.className = 'status-tag ' + s;
-    tag.textContent = { running: 'Đang chạy', done: 'Hoàn tất', error: 'Lỗi' }[s] || s;
+  const selectedUrl = scenes[i].media?.url;
+  grid.innerHTML = items.map((item, j) => `
+    <div class="media-item ${selectedUrl===item.url?'selected':''}"
+         onclick="openModal(${i}, ${j}, '${type}')"
+         id="mi-${i}-${type}-${j}">
+      <img src="${item.thumb||item.url}" loading="lazy"
+           onerror="this.src='data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22/>'"/>
+      <div class="check">✓</div>
+      ${item.is_video ? `<div class="vid-badge">▶ ${item.duration||'?'}s</div>` : ''}
+      <div class="src-badge ${item.source}">${item.source}</div>
+      <div class="preview-hint">${item.is_video ? '▶' : '🔍'}</div>
+    </div>
+  `).join('');
+}
+
+// ===== MODAL =====
+function openModal(i, j, type) {
+  const cache = searchCache[scenes[i].query];
+  if (!cache) return;
+  const items = type === 'video' ? cache.videos : cache.images;
+  const item  = items[j];
+  if (!item) return;
+
+  modalCtx = {sceneIdx: i, itemIdx: j, type, item};
+
+  // Title + source badge
+  document.getElementById('modal-title').textContent = `Cảnh #${i+1} — ${scenes[i].query}`;
+  const srcEl = document.getElementById('modal-src');
+  srcEl.textContent = item.source;
+  srcEl.className = `modal-src src-badge ${item.source}`;
+
+  // Media
+  const mediaEl = document.getElementById('modal-media');
+  if (item.is_video) {
+    mediaEl.innerHTML = `<video src="${item.url}" controls autoplay muted loop style="max-width:100%;max-height:100%"></video>`;
+  } else {
+    mediaEl.innerHTML = `<img src="${item.url}" style="max-width:100%;max-height:100%;object-fit:contain"/>`;
   }
 
-  function clearPoll() {
-    if (pollTimer) { clearInterval(pollTimer); pollTimer = null; }
+  // Info
+  document.getElementById('modal-info').textContent =
+    item.is_video ? `Video · ${item.duration||'?'}s · ${item.source}` : `Ảnh · ${item.source}`;
+
+  // Button state
+  const btn = document.getElementById('modal-select-btn');
+  const isSelected = scenes[i].media?.url === item.url;
+  btn.textContent = isSelected ? '✓ Đã chọn' : '✓ Chọn media này';
+  btn.className = 'modal-select-btn' + (isSelected ? ' selected-state' : '');
+
+  document.getElementById('modal').classList.add('on');
+  document.body.style.overflow = 'hidden';
+}
+
+function closeModal(event) {
+  if (event && event.target !== document.getElementById('modal')) return;
+  // Dừng video
+  const v = document.querySelector('#modal-media video');
+  if (v) { v.pause(); v.src = ''; }
+  document.getElementById('modal').classList.remove('on');
+  document.body.style.overflow = '';
+  modalCtx = null;
+}
+
+function modalSelect() {
+  if (!modalCtx) return;
+  const {sceneIdx: i, itemIdx: j, type, item} = modalCtx;
+  selectMedia(i, j, type);
+
+  // Cập nhật button
+  const btn = document.getElementById('modal-select-btn');
+  btn.textContent = '✓ Đã chọn';
+  btn.className = 'modal-select-btn selected-state';
+
+  // Đóng modal sau 400ms
+  setTimeout(() => closeModal(), 400);
+}
+
+// Phím ESC đóng modal
+document.addEventListener('keydown', e => { if (e.key === 'Escape') closeModal(); });
+
+function selectMedia(i, j, type) {
+  const cache = searchCache[scenes[i].query];
+  if (!cache) return;
+  const items = type === 'video' ? cache.videos : cache.images;
+  const item  = items[j];
+  if (!item) return;
+
+  scenes[i].media = {
+    url: item.url,
+    thumb: item.thumb || item.url,
+    is_video: item.is_video,
+    duration: item.duration || scenes[i].duration,
+    source: item.source,
+  };
+
+  // Cập nhật selected state trong grid
+  document.querySelectorAll(`[id^="mi-${i}-${type}-"]`).forEach(el => el.classList.remove('selected'));
+  document.getElementById(`mi-${i}-${type}-${j}`).classList.add('selected');
+
+  // Cập nhật scene header
+  refreshSceneHead(i);
+}
+
+function useCustomUrl(i) {
+  const url = document.getElementById(`cu-${i}`).value.trim();
+  if (!url) return;
+
+  const isVideo = url.match(/\.(mp4|webm|mov)/i) || url.includes('video');
+  scenes[i].media = {
+    url, thumb: '', is_video: !!isVideo,
+    duration: scenes[i].duration, source: 'custom',
+  };
+  refreshSceneHead(i);
+  alert(`✓ Đã chọn ${isVideo?'video':'ảnh'} từ link`);
+}
+
+function refreshSceneHead(i) {
+  const s = scenes[i];
+  const head = document.querySelector(`#sc-${i} .scene-head`);
+  // Xóa thumb/label cũ
+  head.querySelectorAll('.scene-selected-thumb,.scene-selected-label').forEach(el=>el.remove());
+  if (s.media) {
+    const img = document.createElement('img');
+    img.className = 'scene-selected-thumb';
+    img.src = s.media.thumb || s.media.url;
+    img.onerror = () => img.style.display='none';
+    const lbl = document.createElement('span');
+    lbl.className = 'scene-selected-label';
+    lbl.textContent = '✓';
+    const dur = head.querySelector('.scene-dur-badge');
+    head.insertBefore(lbl, dur);
+    head.insertBefore(img, lbl);
   }
+}
+
+// ===== GENERATE =====
+async function doGenerate() {
+  const content = document.getElementById('content').value.trim();
+  if (!content || !scenes.length) return;
+
+  clearPoll();
+  setStatus('running','Đang khởi động...',0);
+  document.getElementById('btn-gen').disabled = true;
+  document.getElementById('btn-preview').disabled = true;
+
+  try {
+    const res = await fetch(`${API}/api/generate`, {
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({
+        content,
+        scenes: scenes.map(s => ({
+          query: s.query,
+          prompt: s.prompt||'',
+          duration: s.duration||6,
+          media: s.media || null,
+        })),
+        voice: document.getElementById('voice').value,
+        rate: parseFloat(document.getElementById('rate').value),
+      }),
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error);
+
+    pollTimer = setInterval(() => poll(data.job_id), 2000);
+  } catch(e) {
+    showError(e.message);
+  }
+}
+
+async function poll(jobId) {
+  try {
+    const res  = await fetch(`${API}/api/status/${jobId}`);
+    const data = await res.json();
+    setStatus(data.status, data.message||'', data.progress||0);
+
+    if (data.status === 'done') {
+      clearPoll();
+      document.getElementById('btn-gen').disabled = false;
+      document.getElementById('btn-preview').disabled = false;
+      switchTab('output');
+      const url = `${API}/api/download/${jobId}`;
+      document.getElementById('video-wrap').innerHTML = `<video controls autoplay src="${url}"></video>`;
+      const dl = document.getElementById('dl-btn');
+      dl.href = url; dl.classList.add('on');
+    } else if (data.status === 'error') {
+      clearPoll();
+      showError(data.message||'Lỗi không xác định');
+    }
+  } catch(e) {}
+}
+
+function setStatus(status, msg, pct) {
+  const box = document.getElementById('pbox');
+  box.classList.add('on');
+  document.getElementById('pmsg').textContent = msg;
+  document.getElementById('pbar').style.width = pct+'%';
+  const tag = document.getElementById('stag');
+  const labels = {pending:'Chờ',running:'Đang chạy',done:'Hoàn tất',error:'Lỗi'};
+  tag.textContent = labels[status]||status;
+  tag.className = 'stag '+(status==='done'?'done':status==='error'?'error':'running');
+}
+
+function showError(msg) {
+  document.getElementById('btn-gen').disabled = false;
+  document.getElementById('btn-preview').disabled = false;
+  const el = document.getElementById('errmsg');
+  el.textContent = '❌ '+msg;
+  el.classList.add('on');
+}
+
+function clearPoll() {
+  if (pollTimer) { clearInterval(pollTimer); pollTimer=null; }
+}
 </script>
-
 </body>
 </html>
