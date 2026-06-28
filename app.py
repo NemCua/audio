@@ -1087,23 +1087,17 @@ with gr.Blocks(title="Dịch Video Tiếng Trung → Tiếng Việt") as demo:
             with gr.Row():
                 bg_volume_slider    = gr.Slider(0.0, 2.0, value=0.3, step=0.05, label="Âm lượng nhạc nền")
                 tts_volume_slider   = gr.Slider(0.0, 3.0, value=1.8, step=0.05, label="Âm lượng lồng tiếng")
-                capcut_delay_slider = gr.Slider(0.5, 5.0, value=1.5, step=0.5, label="Delay CapCut TTS (giây/đoạn)")
-                capcut_rate_slider  = gr.Slider(0.5, 2.0, value=1.0, step=0.1, label="Tốc độ đọc CapCut TTS (rate)")
-            with gr.Row():
-                keep_original_check   = gr.Checkbox(label="🔊 Giữ âm thanh gốc (tách Demucs, bỏ giọng nói)", value=True)
-                original_volume_slider = gr.Slider(0.0, 2.0, value=0.3, step=0.05, label="Âm lượng âm thanh gốc")
+            capcut_delay_slider    = gr.Slider(value=1.5, visible=False)
+            capcut_rate_slider     = gr.Slider(value=1.0, visible=False)
+            keep_original_check    = gr.Checkbox(value=False, visible=False)
+            original_volume_slider = gr.Slider(value=0.3,  visible=False)
 
             with gr.Row():
-                btn_optimize    = gr.Button("✨ Tối ưu AI",       variant="secondary", visible=False)
-                btn_export_json = gr.Button("💾 Xuất JSON",        variant="secondary", visible=False)
-                btn_copy_prompt = gr.Button("📋 Xem Prompt AI",   variant="secondary", visible=True)
-                btn_render      = gr.Button("🎬 Render Video",     variant="primary",   visible=False)
+                btn_optimize    = gr.Button("✨ Tối ưu AI",   variant="secondary", visible=False)
+                btn_export_json = gr.Button("💾 Xuất JSON",    variant="secondary", visible=False)
+                btn_render      = gr.Button("🎬 Render Video", variant="primary",   visible=False)
 
-            json_download  = gr.File(label="Tải JSON bản dịch", visible=False, interactive=False)
-            prompt_display = gr.Textbox(
-                label="Prompt — copy đoạn này, paste vào AI rồi đính kèm file JSON vừa tải",
-                interactive=True, visible=False, lines=12,
-            )
+            json_download = gr.File(label="Tải JSON bản dịch", visible=False, interactive=False)
             status_optimize = gr.Textbox(label="Trạng thái tối ưu", interactive=False)
             status_render   = gr.Textbox(label="Trạng thái render",  interactive=False)
             video_output    = gr.Video(label="Video kết quả (bấm tải về)", interactive=False)
@@ -1166,11 +1160,7 @@ with gr.Blocks(title="Dịch Video Tiếng Trung → Tiếng Việt") as demo:
                 outputs=[json_download],
             )
 
-            btn_copy_prompt.click(
-                fn=run_show_prompt,
-                inputs=[translation_table],
-                outputs=[prompt_display],
-            )
+
 
             btn_render.click(
                 fn=run_render,
