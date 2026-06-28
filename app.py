@@ -1018,25 +1018,13 @@ with gr.Blocks(title="Dịch Video Tiếng Trung → Tiếng Việt") as demo:
                     video_input = gr.Video(label="Upload video tiếng Trung", sources=["upload"])
                 with gr.Column(scale=1):
                     capcut_voice_input = gr.Dropdown(
-                        label="CapCut TTS (ưu tiên nếu chọn)",
-                        choices=[("-- Không dùng --", "")] + [(n, vt) for n, vt, _ in CAPCUT_VOICES_VI],
+                        label="Giọng đọc TTS",
+                        choices=[("-- Edge TTS mặc định --", "")] + [(n, vt) for n, vt, _ in CAPCUT_VOICES_VI],
                         value="BV421_vivn_streaming",
                     )
-                    beeknoee_tts_input = gr.Dropdown(
-                        label="TTS Model (dùng khi không chọn CapCut)",
-                        choices=[("-- Edge TTS mặc định --", "")] + [(l, v) for l, v in TTS_MODELS],
-                        value="",
-                    )
-                    beeknoee_tts_voice_input = gr.Dropdown(
-                        label="TTS Voice",
-                        choices=[("vi", "vi")],
-                        value="vi",
-                    )
-                    auto_translate_toggle = gr.Checkbox(
-                        label="Tự động STT + Dịch sau khi tách audio",
-                        value=True,
-                        info="Tắt = chỉ tách audio nền, dừng lại chờ JSON bản dịch từ server",
-                    )
+                    beeknoee_tts_input    = gr.Textbox(value="",  visible=False)
+                    beeknoee_tts_voice_input = gr.Textbox(value="vi", visible=False)
+                    auto_translate_toggle = gr.Checkbox(value=True, visible=False)
                     btn_stt = gr.Button("▶ Chạy Bước 1", variant="primary")
 
             status_stt = gr.Textbox(label="Trạng thái", interactive=False)
@@ -1074,19 +1062,6 @@ with gr.Blocks(title="Dịch Video Tiếng Trung → Tiếng Việt") as demo:
                     )
                     btn_test_tts = gr.Button("▶ Test", variant="secondary", scale=1)
                 tts_test_audio = gr.Audio(label="Kết quả", interactive=False)
-
-            # ── PHẦN 3b: Nạp bản tối ưu từ AI ngoài ─────────────────────
-            with gr.Accordion("🤖 Nạp bản tối ưu từ AI (Claude/ChatGPT...)", open=True):
-                gr.Markdown(
-                    "1. Xuất JSON bên dưới → bấm **📋 Copy Prompt** → paste vào AI bất kỳ\n"
-                    "2. AI trả về file JSON đã tối ưu → tải về → upload vào đây"
-                )
-                optimized_json_input = gr.File(
-                    label="Upload file JSON đã tối ưu từ AI",
-                    file_types=[".json"],
-                )
-                btn_load_optimized = gr.Button("📥 Nạp vào bảng", variant="primary")
-                status_load_optimized = gr.Textbox(label="Trạng thái", interactive=False)
 
             # ── PHẦN 4: Bảng dịch + nút hành động ────────────────────────
             gr.Markdown("## Chỉnh sửa bản dịch")
@@ -1165,7 +1140,6 @@ with gr.Blocks(title="Dịch Video Tiếng Trung → Tiếng Việt") as demo:
                 outputs=[btn_optimize, btn_render, status_attach_video],
             )
 
-            beeknoee_tts_input.change(fn=get_voices, inputs=[beeknoee_tts_input], outputs=[beeknoee_tts_voice_input])
             tts_test_model.change(fn=get_voices, inputs=[tts_test_model], outputs=[tts_test_voice])
 
             btn_test_tts.click(
@@ -1196,12 +1170,6 @@ with gr.Blocks(title="Dịch Video Tiếng Trung → Tiếng Việt") as demo:
                 fn=run_show_prompt,
                 inputs=[translation_table],
                 outputs=[prompt_display],
-            )
-
-            btn_load_optimized.click(
-                fn=run_load_optimized,
-                inputs=[optimized_json_input],
-                outputs=[translation_table, status_load_optimized],
             )
 
             btn_render.click(
