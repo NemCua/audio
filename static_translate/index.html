@@ -1,0 +1,932 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>Dịch Video Tiếng Trung</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'Segoe UI',system-ui,sans-serif;background:#0a0c14;color:#e2e8f0;min-height:100vh;display:flex;flex-direction:column}
+
+header{background:#12152a;border-bottom:1px solid #1e2340;padding:14px 28px;display:flex;align-items:center;gap:12px}
+header h1{font-size:18px;font-weight:700;color:#a78bfa}
+header span{font-size:12px;color:#4b5563;flex:1}
+.balance-pill{background:#1e1b4b;border:1px solid #4c1d95;border-radius:999px;padding:5px 14px;display:flex;align-items:center;gap:8px;cursor:default}
+.balance-pill .bal-val{font-size:15px;font-weight:800;color:#a78bfa}
+.balance-pill .bal-lbl{font-size:11px;color:#6b7280}
+.balance-pill .top-up{font-size:11px;font-weight:700;color:#7c3aed;cursor:pointer;text-decoration:underline;text-underline-offset:2px}
+.balance-pill .top-up:hover{color:#a78bfa}
+
+.layout{display:grid;grid-template-columns:300px 1fr;flex:1;overflow:hidden}
+
+/* SIDEBAR */
+.sidebar{background:#12152a;border-right:1px solid #1e2340;display:flex;flex-direction:column;overflow-y:auto}
+.sec{padding:16px;border-bottom:1px solid #1e2340}
+.sec h3{font-size:11px;font-weight:700;color:#4b5563;text-transform:uppercase;letter-spacing:.07em;margin-bottom:10px}
+
+label{font-size:12px;color:#9ca3af;display:block;margin-bottom:4px}
+select,input[type=text],input[type=password]{width:100%;background:#0a0c14;border:1px solid #1e2340;border-radius:7px;color:#e2e8f0;font-size:13px;padding:8px 10px;outline:none;transition:border-color .2s}
+select:focus,input:focus{border-color:#7c3aed}
+
+.slider-row{display:flex;align-items:center;gap:8px}
+input[type=range]{flex:1;accent-color:#7c3aed}
+.sv{min-width:36px;text-align:right;font-size:12px;color:#a78bfa;font-weight:700}
+
+/* Upload zone */
+.drop-zone{border:2px dashed #1e2340;border-radius:10px;padding:32px 16px;text-align:center;cursor:pointer;transition:border-color .2s,background .2s;position:relative}
+.drop-zone:hover,.drop-zone.over{border-color:#7c3aed;background:#1e1b4b22}
+.drop-zone input[type=file]{position:absolute;inset:0;opacity:0;cursor:pointer}
+.drop-zone .icon{font-size:32px;margin-bottom:8px}
+.drop-zone p{font-size:13px;color:#4b5563}
+.drop-zone .fname{font-size:12px;color:#a78bfa;margin-top:6px;word-break:break-all}
+
+.btn{border:none;border-radius:7px;font-size:13px;font-weight:600;padding:10px 16px;cursor:pointer;transition:opacity .15s,transform .1s;width:100%;margin-top:8px}
+.btn:hover{opacity:.88}
+.btn:active{transform:scale(.97)}
+.btn:disabled{opacity:.35;cursor:not-allowed}
+.btn-purple{background:linear-gradient(135deg,#7c3aed,#5b21b6);color:#fff}
+.btn-blue{background:#1e3a5f;color:#60a5fa;border:1px solid #1d4ed8}
+.btn-green{background:#14532d;color:#4ade80;border:1px solid #166534}
+
+/* Progress */
+.prog-box{display:none;flex-direction:column;gap:6px;margin-top:10px}
+.prog-box.on{display:flex}
+.pbar-wrap{background:#0a0c14;border-radius:999px;height:5px;overflow:hidden}
+.pbar{height:100%;background:linear-gradient(90deg,#7c3aed,#a78bfa);border-radius:999px;transition:width .4s;width:0}
+.pmsg{font-size:12px;color:#6b7280}
+.stag{font-size:11px;padding:2px 8px;border-radius:999px;font-weight:700;align-self:flex-start}
+.stag.running{background:#1e1b4b;color:#a5b4fc}
+.stag.done{background:#14532d;color:#4ade80}
+.stag.error{background:#450a0a;color:#f87171}
+.errmsg{font-size:12px;color:#f87171;background:#450a0a;border:1px solid #7f1d1d;border-radius:7px;padding:8px 10px;display:none;margin-top:8px}
+.errmsg.on{display:block}
+
+/* MAIN */
+.main{display:flex;flex-direction:column;overflow:hidden}
+.tabs{display:flex;border-bottom:1px solid #1e2340;background:#12152a;flex-shrink:0}
+.tab{padding:12px 20px;font-size:13px;font-weight:600;color:#4b5563;cursor:pointer;border-bottom:2px solid transparent;transition:color .15s,border-color .15s}
+.tab.active{color:#a78bfa;border-bottom-color:#7c3aed}
+.tab-content{flex:1;overflow-y:auto;padding:16px;display:none}
+.tab-content.active{display:block}
+
+/* TABLE */
+.table-wrap{overflow:auto;border:1px solid #1e2340;border-radius:8px}
+table{width:100%;border-collapse:collapse;font-size:12px}
+th{background:#12152a;padding:8px 10px;text-align:left;color:#4b5563;font-weight:700;position:sticky;top:0;border-bottom:1px solid #1e2340}
+td{padding:6px 10px;border-bottom:1px solid #0a0c14;vertical-align:top}
+tr:hover td{background:#12152a44}
+td.zh{color:#6b7280}
+td.vi-cell{min-width:260px}
+td.vi-cell textarea{width:100%;background:transparent;border:none;color:#e2e8f0;font-size:12px;font-family:inherit;resize:vertical;min-height:36px;outline:none;line-height:1.5}
+td.vi-cell textarea:focus{background:#1e1b4b44}
+.ts{color:#4b5563;white-space:nowrap;font-family:monospace;font-size:11px}
+
+/* Video output */
+.video-wrap{background:#0a0c14;border:1px solid #1e2340;border-radius:10px;overflow:hidden;aspect-ratio:16/9;display:flex;align-items:center;justify-content:center;margin-bottom:12px;max-height:480px}
+.video-wrap video{width:100%;height:100%}
+.vph{color:#1e2340;text-align:center;font-size:14px}
+.vph .icon{font-size:40px;margin-bottom:8px}
+.dl-row{display:flex;gap:8px}
+.dl-btn{flex:1;display:none;text-align:center;padding:10px;border-radius:8px;font-size:13px;font-weight:700;text-decoration:none;transition:opacity .15s}
+.dl-btn:hover{opacity:.85}
+.dl-btn.on{display:block}
+.dl-video{background:#14532d;border:1px solid #166534;color:#4ade80}
+.dl-srt{background:#1e3a5f;border:1px solid #1d4ed8;color:#60a5fa}
+
+/* empty state */
+.empty{text-align:center;padding:60px 20px;color:#1e2340}
+.empty .icon{font-size:48px;margin-bottom:12px}
+
+/* Nap tien */
+.topup-wrap{max-width:480px;margin:0 auto;padding:8px 0}
+.topup-wrap h2{font-size:16px;font-weight:700;color:#a78bfa;margin-bottom:16px}
+.pkg-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:20px}
+.pkg{border:2px solid #1e2340;border-radius:10px;padding:14px 10px;text-align:center;cursor:pointer;transition:border-color .15s,background .15s}
+.pkg:hover{border-color:#7c3aed;background:#1e1b4b22}
+.pkg.selected{border-color:#7c3aed;background:#1e1b4b}
+.pkg .amount{font-size:18px;font-weight:800;color:#e2e8f0}
+.pkg .price{font-size:12px;color:#4b5563;margin-top:2px}
+.pkg .bonus{font-size:11px;color:#4ade80;font-weight:700;margin-top:3px}
+.bank-box{background:#12152a;border:1px solid #1e2340;border-radius:10px;padding:16px;margin-bottom:16px}
+.bank-box .bank-name{font-size:13px;font-weight:700;color:#e2e8f0;margin-bottom:10px}
+.bank-row{display:flex;justify-content:space-between;align-items:center;padding:5px 0;border-bottom:1px solid #0a0c14}
+.bank-row:last-child{border-bottom:none}
+.bank-row .lbl{font-size:11px;color:#4b5563}
+.bank-row .val{font-size:13px;font-weight:700;color:#e2e8f0;display:flex;align-items:center;gap:6px}
+.copy-btn{font-size:10px;padding:2px 7px;border-radius:4px;border:1px solid #1e2340;background:#0a0c14;color:#6b7280;cursor:pointer}
+.copy-btn:hover{color:#a78bfa;border-color:#7c3aed}
+.qr-wrap{text-align:center;margin:12px 0}
+.qr-wrap img{width:160px;height:160px;border-radius:8px;background:#fff;padding:6px}
+.topup-note{font-size:11px;color:#4b5563;line-height:1.6;background:#0a0c14;border-radius:8px;padding:10px 12px}
+.topup-note b{color:#a78bfa}
+
+/* ── Auth overlay ───────────────────────────────────────────────── */
+#auth-overlay{position:fixed;inset:0;background:#0a0c14;z-index:999;display:flex;align-items:center;justify-content:center}
+#auth-overlay.hidden{display:none}
+.auth-card{background:#12152a;border:1px solid #1e2340;border-radius:16px;padding:36px 32px;width:100%;max-width:380px}
+.auth-card h2{font-size:20px;font-weight:800;color:#a78bfa;margin-bottom:4px}
+.auth-card .sub{font-size:12px;color:#4b5563;margin-bottom:24px}
+.auth-field{display:flex;flex-direction:column;gap:5px;margin-bottom:14px}
+.auth-field label{font-size:11px;color:#6b7280;font-weight:600;text-transform:uppercase;letter-spacing:.5px}
+.auth-field input{background:#0a0c14;border:1px solid #1e2340;border-radius:8px;padding:10px 12px;color:#e2e8f0;font-size:14px;outline:none;transition:border-color .15s}
+.auth-field input:focus{border-color:#7c3aed}
+.auth-err{font-size:12px;color:#f87171;margin-bottom:10px;min-height:16px}
+.auth-submit{width:100%;padding:11px;border:none;border-radius:8px;background:#7c3aed;color:#fff;font-size:14px;font-weight:700;cursor:pointer;margin-top:4px;transition:background .15s}
+.auth-submit:hover{background:#6d28d9}
+.auth-submit:disabled{background:#1e2340;color:#4b5563;cursor:default}
+.auth-switch{text-align:center;font-size:12px;color:#4b5563;margin-top:14px}
+.auth-switch a{color:#a78bfa;cursor:pointer;text-decoration:underline}
+.auth-logo{text-align:center;font-size:28px;margin-bottom:16px}
+.auth-user-menu{display:flex;align-items:center;gap:8px;cursor:pointer}
+.auth-user-menu .uname{font-size:12px;color:#a78bfa;font-weight:700}
+.auth-user-menu .logout-btn{font-size:11px;color:#4b5563;background:none;border:none;cursor:pointer;padding:2px 6px;border-radius:4px}
+.auth-user-menu .logout-btn:hover{color:#f87171}
+</style>
+</head>
+<body>
+
+<!-- Auth overlay -->
+<div id="auth-overlay">
+  <div class="auth-card">
+    <div class="auth-logo">🎬</div>
+
+    <!-- Login form -->
+    <div id="auth-login-form">
+      <h2>Đăng nhập</h2>
+      <p class="sub">Dịch video Trung → Việt với AI</p>
+      <div class="auth-field">
+        <label>Email</label>
+        <input type="email" id="login-email" placeholder="you@example.com" autocomplete="email"/>
+      </div>
+      <div class="auth-field">
+        <label>Mật khẩu</label>
+        <input type="password" id="login-pw" placeholder="••••••••" autocomplete="current-password"/>
+      </div>
+      <div class="auth-err" id="login-err"></div>
+      <button class="auth-submit" id="login-btn" onclick="doLogin()">Đăng nhập</button>
+      <div class="auth-switch">Chưa có tài khoản? <a onclick="showRegister()">Đăng ký ngay</a></div>
+    </div>
+
+    <!-- Register form -->
+    <div id="auth-register-form" style="display:none">
+      <h2>Tạo tài khoản</h2>
+      <p class="sub">Miễn phí · Không cần thẻ</p>
+      <div class="auth-field">
+        <label>Tên hiển thị</label>
+        <input type="text" id="reg-name" placeholder="Tên của bạn"/>
+      </div>
+      <div class="auth-field">
+        <label>Email</label>
+        <input type="email" id="reg-email" placeholder="you@example.com" autocomplete="email"/>
+      </div>
+      <div class="auth-field">
+        <label>Mật khẩu (tối thiểu 6 ký tự)</label>
+        <input type="password" id="reg-pw" placeholder="••••••••" autocomplete="new-password"/>
+      </div>
+      <div class="auth-err" id="reg-err"></div>
+      <button class="auth-submit" id="reg-btn" onclick="doRegister()">Tạo tài khoản</button>
+      <div class="auth-switch">Đã có tài khoản? <a onclick="showLogin()">Đăng nhập</a></div>
+    </div>
+  </div>
+</div>
+
+<header>
+  <h1>🎬 Dịch Video Tiếng Trung → Tiếng Việt</h1>
+  <span>AI dịch · CapCut TTS · FFmpeg render</span>
+  <div class="balance-pill" onclick="switchTab('topup')" title="Nap tien">
+    <span class="bal-lbl">Số dư</span>
+    <span class="bal-val" id="bal-val">0đ</span>
+    <span class="top-up">+ Nạp tiền</span>
+  </div>
+  <div class="auth-user-menu" id="user-menu" style="display:none">
+    <span class="uname" id="user-display"></span>
+    <button class="logout-btn" onclick="doLogout()">Đăng xuất</button>
+  </div>
+</header>
+
+<div class="layout">
+
+  <!-- SIDEBAR -->
+  <div class="sidebar">
+
+    <!-- BƯỚC 1: Upload + Dịch -->
+    <div class="sec">
+      <h3>1. Chon video</h3>
+      <div class="drop-zone" id="drop-zone">
+        <input type="file" id="file-input" accept="video/*"/>
+        <div class="icon">🎞️</div>
+        <p>Keo tha hoac nhan de chon video</p>
+        <div class="fname" id="fname"></div>
+      </div>
+    </div>
+
+    <div class="sec">
+      <h3>2. Lay ban dich</h3>
+
+      <!-- Nhánh A: STT + AI -->
+      <div id="branch-ai">
+        <label style="font-size:11px;color:#6b7280">Groq API Key (STT)</label>
+        <input type="password" id="groq-key" placeholder="gsk_..." autocomplete="off"
+               style="margin-bottom:8px"/>
+        <button class="btn btn-purple" id="btn-start" onclick="startJob()">▶ STT + Dich AI</button>
+      </div>
+
+      <!-- Divider -->
+      <div style="display:flex;align-items:center;gap:8px;margin:8px 0">
+        <div style="flex:1;height:1px;background:#1e2340"></div>
+        <span style="font-size:11px;color:#4b5563">hoac</span>
+        <div style="flex:1;height:1px;background:#1e2340"></div>
+      </div>
+
+      <!-- Nhánh B: Nạp SRT sẵn -->
+      <div style="position:relative">
+        <button class="btn" id="btn-pick-srt"
+                style="background:#1c2b3a;color:#67e8f9;border:1px solid #164e63;margin-top:0">
+          📂 Nap SRT san co
+        </button>
+        <input type="file" id="srt-pre-input" accept=".srt,.txt"
+               style="position:absolute;inset:0;opacity:0;cursor:pointer"
+               onchange="pickSrtFile(this)"/>
+      </div>
+      <div class="fname" id="srt-fname" style="margin-top:4px"></div>
+      <button class="btn" id="btn-use-srt" onclick="useSrt()"
+              style="background:#164e63;color:#67e8f9;border:1px solid #0e7490;display:none;margin-top:6px">
+        ✓ Dung SRT nay
+      </button>
+    </div>
+
+    <!-- Progress -->
+    <div class="sec" style="padding-top:0">
+      <div class="prog-box" id="prog-box">
+        <div style="display:flex;justify-content:space-between;align-items:center">
+          <span class="pmsg" id="pmsg"></span>
+          <span class="stag" id="stag"></span>
+        </div>
+        <div class="pbar-wrap"><div class="pbar" id="pbar"></div></div>
+      </div>
+      <div class="errmsg" id="errmsg"></div>
+    </div>
+
+    <!-- BƯỚC 2: Tạo video (ẩn cho đến khi có bản dịch) -->
+    <div class="sec" id="sec-render" style="display:none">
+      <h3>3. Tao video</h3>
+      <button class="btn btn-green" id="btn-render" onclick="startRender()">🎬 Tao video</button>
+      <a class="btn btn-blue" id="dl-srt-early"
+         style="display:block;text-align:center;text-decoration:none;margin-top:6px">
+        ⬇ Tai ban dich (.srt)
+      </a>
+    </div>
+
+    <!-- Tùy chỉnh video (luôn hiển thị nhưng ở dưới) -->
+    <div class="sec">
+      <h3>Tuy chinh video</h3>
+
+      <label>Giong doc TTS</label>
+      <select id="voice" style="margin-bottom:10px">
+        <option value="BV421_vivn_streaming" selected>Nho Ngot Ngao</option>
+        <option value="BV074_streaming">Co Gai Hoat Ngon</option>
+        <option value="vi_female_huong">Giong Nu Pho Thong</option>
+        <option value="BV562_streaming">Mai</option>
+        <option value="BV075_streaming">Thanh Nien Tu Tin</option>
+        <option value="multi_male_felipe_uranus_bigtts">Giong Nam Tram</option>
+        <option value="BV560_streaming">Alex Dai De</option>
+        <option value="multi_female_peiqi_uranus_bigtts">Gai Moi Lon</option>
+        <option value="multi_female_yangguangnv_uranus_bigtts">Ban Mai</option>
+        <option value="multi_female_sisi_uranus_bigtts">Ban Tin Nu</option>
+      </select>
+
+      <label>Nhac nen (tuy chon)</label>
+      <div style="position:relative;margin-bottom:4px">
+        <button class="btn" style="background:#1c1a2e;color:#c4b5fd;border:1px solid #4c1d95;margin-top:0">
+          🎵 Chon file nhac
+        </button>
+        <input type="file" id="bg-music-input" accept="audio/*"
+               style="position:absolute;inset:0;opacity:0;cursor:pointer"
+               onchange="document.getElementById('bg-music-fname').textContent=this.files[0]?this.files[0].name:''"/>
+      </div>
+      <div class="fname" id="bg-music-fname" style="margin-bottom:10px"></div>
+
+      <label>Watermark (de trong = khong co)</label>
+      <input type="text" id="logo-text" placeholder="ten kenh, @handle..."
+             style="margin-bottom:10px"/>
+
+      <label>Toc do doc TTS</label>
+      <div class="slider-row" style="margin-bottom:8px">
+        <input type="range" id="tts-rate" min="0.5" max="2.0" step="0.05" value="1.0"
+               oninput="document.getElementById('ttsrv').textContent=parseFloat(this.value).toFixed(2)+'x'"/>
+        <span class="sv" id="ttsrv">1.00x</span>
+      </div>
+
+      <label>Am luong long tieng</label>
+      <div class="slider-row" style="margin-bottom:8px">
+        <input type="range" id="tts-vol" min="0" max="3" step="0.05" value="1.8"
+               oninput="document.getElementById('ttsv').textContent=parseFloat(this.value).toFixed(2)"/>
+        <span class="sv" id="ttsv">1.80</span>
+      </div>
+
+      <label>Am luong nhac nen</label>
+      <div class="slider-row">
+        <input type="range" id="bg-vol" min="0" max="2" step="0.05" value="0.3"
+               oninput="document.getElementById('bgv').textContent=parseFloat(this.value).toFixed(2)"/>
+        <span class="sv" id="bgv">0.30</span>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- MAIN -->
+  <div class="main">
+    <div class="tabs">
+      <div class="tab active" onclick="switchTab('output')">📺 Video kết quả</div>
+      <div class="tab" onclick="switchTab('subs')">📝 Chỉnh phụ đề</div>
+      <div class="tab" onclick="switchTab('topup')">💰 Nạp tiền</div>
+    </div>
+
+    <!-- TAB OUTPUT -->
+    <div class="tab-content active" id="tab-output">
+      <div class="video-wrap" id="video-wrap">
+        <div class="vph"><div class="icon">🎬</div><div>Video dịch sẽ hiện ở đây</div></div>
+      </div>
+      <div class="dl-row">
+        <a class="dl-btn dl-video" id="dl-video" download>⬇️ Tải video</a>
+        <a class="dl-btn dl-srt"   id="dl-srt"   download>📄 Tải SRT</a>
+      </div>
+    </div>
+
+    <!-- TAB PHỤ ĐỀ -->
+    <div class="tab-content" id="tab-subs">
+      <div class="empty" id="subs-empty">
+        <div class="icon">📝</div>
+        <div>Dịch xong sẽ hiện bảng phụ đề để xem và sửa</div>
+      </div>
+      <div id="subs-panel" style="display:none">
+        <div style="display:flex;gap:8px;margin-bottom:12px;align-items:center">
+          <span style="font-size:13px;color:#6b7280;flex:1" id="subs-info"></span>
+          <button class="btn btn-blue" style="width:auto;margin:0;padding:8px 16px"
+                  onclick="saveAndRerender()" id="btn-rerender" style="display:none">🔄 Lưu & Render lại</button>
+        </div>
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th style="width:40px">#</th>
+                <th style="width:100px">Thời gian</th>
+                <th>Tiếng Trung</th>
+                <th>Bản dịch (có thể sửa)</th>
+              </tr>
+            </thead>
+            <tbody id="subs-body"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- TAB NẠP TIỀN -->
+    <div class="tab-content" id="tab-topup">
+      <div class="topup-wrap">
+        <h2>💰 Nạp tiền vào tài khoản</h2>
+
+        <!-- Gói nạp -->
+        <div style="font-size:12px;color:#6b7280;margin-bottom:8px">Chọn gói nạp</div>
+        <div class="pkg-grid">
+          <div class="pkg selected" onclick="selectPkg(this,20000)">
+            <div class="amount">20.000đ</div>
+            <div class="price">≈ 20 phút video</div>
+          </div>
+          <div class="pkg" onclick="selectPkg(this,50000)">
+            <div class="amount">50.000đ</div>
+            <div class="price">≈ 55 phút video</div>
+            <div class="bonus">+10% bonus</div>
+          </div>
+          <div class="pkg" onclick="selectPkg(this,100000)">
+            <div class="amount">100.000đ</div>
+            <div class="price">≈ 120 phút video</div>
+            <div class="bonus">+20% bonus</div>
+          </div>
+          <div class="pkg" onclick="selectPkg(this,200000)">
+            <div class="amount">200.000đ</div>
+            <div class="price">≈ 260 phút video</div>
+            <div class="bonus">+30% bonus</div>
+          </div>
+          <div class="pkg" onclick="selectPkg(this,500000)">
+            <div class="amount">500.000đ</div>
+            <div class="price">≈ 700 phút video</div>
+            <div class="bonus">+40% bonus</div>
+          </div>
+          <div class="pkg" onclick="selectPkg(this,1000000)">
+            <div class="amount">1.000.000đ</div>
+            <div class="price">≈ 1500 phút video</div>
+            <div class="bonus">+50% bonus</div>
+          </div>
+        </div>
+
+        <!-- Thông tin chuyển khoản -->
+        <div class="bank-box">
+          <div class="bank-name">🏦 Chuyển khoản ngân hàng</div>
+          <div class="bank-row">
+            <span class="lbl">Ngân hàng</span>
+            <span class="val">MB Bank (MBBank)</span>
+          </div>
+          <div class="bank-row">
+            <span class="lbl">Số tài khoản</span>
+            <span class="val">
+              <span id="bank-acct">0123456789</span>
+              <button class="copy-btn" onclick="copyText('bank-acct')">Copy</button>
+            </span>
+          </div>
+          <div class="bank-row">
+            <span class="lbl">Tên tài khoản</span>
+            <span class="val">NGUYEN QUOC HUY</span>
+          </div>
+          <div class="bank-row">
+            <span class="lbl">Số tiền</span>
+            <span class="val" id="transfer-amount" style="color:#a78bfa">20.000đ</span>
+          </div>
+          <div class="bank-row">
+            <span class="lbl">Nội dung CK</span>
+            <span class="val">
+              <span id="transfer-note">NAPTIEN nemcuaa1</span>
+              <button class="copy-btn" onclick="copyText('transfer-note')">Copy</button>
+            </span>
+          </div>
+        </div>
+
+        <!-- QR code placeholder -->
+        <div class="qr-wrap">
+          <div style="width:160px;height:160px;background:#1e1b4b;border-radius:8px;border:2px dashed #4c1d95;display:flex;align-items:center;justify-content:center;margin:0 auto">
+            <span style="font-size:11px;color:#4b5563;text-align:center;padding:10px">QR sẽ hiện<br>sau khi tích hợp</span>
+          </div>
+        </div>
+
+        <div class="topup-note">
+          <b>Lưu ý:</b> Sau khi chuyển khoản, số dư sẽ được cộng tự động trong vòng <b>1–5 phút</b>.<br>
+          Ghi đúng nội dung chuyển khoản để hệ thống nhận diện tự động.<br>
+          Liên hệ hỗ trợ nếu sau 10 phút chưa nhận được tiền.
+        </div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<script>
+const API     = '';
+const AUTH_API = 'http://localhost:8006';
+let currentJobId = null;
+let pollTimer    = null;
+let subtitleRows = [];
+let _authToken   = null;
+
+// ── Auth helpers ────────────────────────────────────────────────
+function authHeaders() {
+  return _authToken ? { 'Authorization': 'Bearer ' + _authToken } : {};
+}
+
+function showLogin()    { document.getElementById('auth-login-form').style.display=''; document.getElementById('auth-register-form').style.display='none'; document.getElementById('login-err').textContent=''; }
+function showRegister() { document.getElementById('auth-register-form').style.display=''; document.getElementById('auth-login-form').style.display='none'; document.getElementById('reg-err').textContent=''; }
+
+function onAuthSuccess(data) {
+  _authToken = data.token;
+  localStorage.setItem('auth_token', data.token);
+  localStorage.setItem('auth_user', JSON.stringify(data.user));
+  document.getElementById('auth-overlay').classList.add('hidden');
+  document.getElementById('user-menu').style.display = 'flex';
+  document.getElementById('user-display').textContent = data.user.display_name || data.user.email;
+  document.getElementById('bal-val').textContent = (data.user.balance || 0).toLocaleString('vi-VN') + 'đ';
+  // Sync balance từ server (token mới có thể đã stale)
+  setTimeout(refreshBalance, 500);
+}
+
+async function doLogin() {
+  const email = document.getElementById('login-email').value.trim();
+  const pw    = document.getElementById('login-pw').value;
+  const errEl = document.getElementById('login-err');
+  const btn   = document.getElementById('login-btn');
+  if (!email || !pw) { errEl.textContent = 'Vui long nhap day du thong tin'; return; }
+  btn.disabled = true; btn.textContent = 'Dang nhap...';
+  try {
+    const r = await fetch(AUTH_API + '/auth/login', {
+      method: 'POST', headers: {'Content-Type':'application/json'},
+      body: JSON.stringify({email, password: pw})
+    });
+    const d = await r.json();
+    if (!r.ok) { errEl.textContent = d.detail || 'Loi dang nhap'; return; }
+    onAuthSuccess(d);
+  } catch(e) { errEl.textContent = 'Khong ket noi duoc auth server'; }
+  finally { btn.disabled = false; btn.textContent = 'Dang nhap'; }
+}
+
+async function doRegister() {
+  const name  = document.getElementById('reg-name').value.trim();
+  const email = document.getElementById('reg-email').value.trim();
+  const pw    = document.getElementById('reg-pw').value;
+  const errEl = document.getElementById('reg-err');
+  const btn   = document.getElementById('reg-btn');
+  if (!email || !pw) { errEl.textContent = 'Vui long nhap day du thong tin'; return; }
+  btn.disabled = true; btn.textContent = 'Dang ky...';
+  try {
+    const r = await fetch(AUTH_API + '/auth/register', {
+      method: 'POST', headers: {'Content-Type':'application/json'},
+      body: JSON.stringify({email, password: pw, display_name: name})
+    });
+    const d = await r.json();
+    if (!r.ok) { errEl.textContent = d.detail || 'Loi dang ky'; return; }
+    onAuthSuccess(d);
+  } catch(e) { errEl.textContent = 'Khong ket noi duoc auth server'; }
+  finally { btn.disabled = false; btn.textContent = 'Tao tai khoan'; }
+}
+
+function doLogout() {
+  _authToken = null;
+  localStorage.removeItem('auth_token');
+  localStorage.removeItem('auth_user');
+  document.getElementById('auth-overlay').classList.remove('hidden');
+  document.getElementById('user-menu').style.display = 'none';
+  showLogin();
+}
+
+// ── Restore session on load ─────────────────────────────────────
+async function restoreSession() {
+  const token = localStorage.getItem('auth_token');
+  if (!token) return;
+  try {
+    const r = await fetch(AUTH_API + '/auth/me', {
+      headers: {'Authorization': 'Bearer ' + token}
+    });
+    if (!r.ok) { localStorage.removeItem('auth_token'); localStorage.removeItem('auth_user'); return; }
+    const user = await r.json();
+    onAuthSuccess({ token, user });
+  } catch(e) { /* auth server offline — keep overlay */ }
+}
+
+// Enter on password fields
+document.getElementById('login-pw').addEventListener('keydown', e => { if(e.key==='Enter') doLogin(); });
+document.getElementById('reg-pw').addEventListener('keydown', e => { if(e.key==='Enter') doRegister(); });
+
+// ── Load saved key ──────────────────────────────────────────────
+window.addEventListener('load', async () => {
+  await restoreSession();
+  const saved = localStorage.getItem('groq_key');
+  if (saved) document.getElementById('groq-key').value = saved;
+});
+document.getElementById('groq-key').addEventListener('change', e => {
+  localStorage.setItem('groq_key', e.target.value.trim());
+});
+
+// ── Authenticated fetch wrapper ─────────────────────────────────
+async function apiFetch(url, opts = {}) {
+  opts.headers = { ...authHeaders(), ...(opts.headers || {}) };
+  const r = await fetch(url, opts);
+  if (r.status === 401) { doLogout(); throw new Error('Phien dang nhap het han'); }
+  return r;
+}
+
+// ── Drag & Drop video ───────────────────────────────────────────
+const dz = document.getElementById('drop-zone');
+dz.addEventListener('dragover', e => { e.preventDefault(); dz.classList.add('over'); });
+dz.addEventListener('dragleave', () => dz.classList.remove('over'));
+dz.addEventListener('drop', e => {
+  e.preventDefault(); dz.classList.remove('over');
+  const f = e.dataTransfer.files[0];
+  if (f) setFile(f);
+});
+document.getElementById('file-input').addEventListener('change', e => {
+  if (e.target.files[0]) setFile(e.target.files[0]);
+});
+function setFile(f) {
+  document.getElementById('fname').textContent = f.name;
+  dz._file = f;
+}
+
+// ── Pick SRT truoc ──────────────────────────────────────────────
+let preSrtFile = null;
+function pickSrtFile(input) {
+  preSrtFile = input.files[0] || null;
+  document.getElementById('srt-fname').textContent = preSrtFile ? preSrtFile.name : '';
+  document.getElementById('btn-use-srt').style.display = preSrtFile ? 'block' : 'none';
+}
+
+async function useSrt() {
+  const file = dz._file || document.getElementById('file-input').files[0];
+  if (!file) { alert('Chon video truoc!'); return; }
+  if (!preSrtFile) { alert('Chon file SRT truoc!'); return; }
+
+  clearPoll();
+  setStatus('running', 'Dang upload...', 0);
+  document.getElementById('btn-start').disabled   = true;
+  document.getElementById('btn-use-srt').disabled = true;
+  document.getElementById('errmsg').classList.remove('on');
+
+  const fd = new FormData();
+  fd.append('file',       file);
+  fd.append('srt',        preSrtFile);
+  fd.append('voice',      document.getElementById('voice').value);
+  fd.append('bg_volume',  document.getElementById('bg-vol').value);
+  fd.append('tts_volume', document.getElementById('tts-vol').value);
+
+  try {
+    const res  = await apiFetch(`${API}/api/upload-with-srt`, { method: 'POST', body: fd });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || res.statusText);
+    currentJobId = data.job_id;
+    subtitleRows = data.rows || [];
+    renderTable();
+    showSrtPanel(currentJobId);
+    document.getElementById('btn-start').disabled         = false;
+    document.getElementById('btn-use-srt').disabled       = false;
+    setStatus('translated', 'SRT da nap — nhan Tao video', 100);
+    switchTab('subs');
+  } catch(e) {
+    showError(e.message);
+    document.getElementById('btn-use-srt').disabled = false;
+  }
+}
+
+// ── Switch tabs ─────────────────────────────────────────────────
+function switchTab(name) {
+  const names = ['output','subs','topup'];
+  document.querySelectorAll('.tab').forEach((t,i) =>
+    t.classList.toggle('active', names[i] === name));
+  document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+  document.getElementById('tab-'+name).classList.add('active');
+}
+
+let _selectedPkg = 20000;
+function selectPkg(el, amount) {
+  document.querySelectorAll('.pkg').forEach(p => p.classList.remove('selected'));
+  el.classList.add('selected');
+  _selectedPkg = amount;
+  document.getElementById('transfer-amount').textContent = amount.toLocaleString('vi-VN') + 'đ';
+}
+
+function copyText(elId) {
+  const txt = document.getElementById(elId).textContent.trim();
+  navigator.clipboard.writeText(txt).then(() => {
+    const btn = document.querySelector(`#${elId} ~ .copy-btn`) || document.querySelector(`[onclick="copyText('${elId}')"]`);
+    const orig = btn.textContent;
+    btn.textContent = '✓';
+    setTimeout(() => btn.textContent = orig, 1200);
+  });
+}
+
+// ── STEP 1: Upload + Dich ───────────────────────────────────────
+async function startJob() {
+  const file = dz._file || document.getElementById('file-input').files[0];
+  if (!file) { alert('Chua chon video!'); return; }
+  const groqKey = document.getElementById('groq-key').value.trim();
+  if (!groqKey) { alert('Nhap Groq API Key truoc!'); return; }
+
+  clearPoll();
+  setStatus('running', 'Dang upload...', 0);
+  document.getElementById('btn-start').disabled  = true;
+  document.getElementById('sec-render').style.display = 'none';
+  document.getElementById('errmsg').classList.remove('on');
+  document.getElementById('btn-rerender').style.display = 'none';
+
+  const fd = new FormData();
+  fd.append('file',       file);
+  fd.append('voice',      document.getElementById('voice').value);
+  fd.append('bg_volume',  document.getElementById('bg-vol').value);
+  fd.append('tts_volume', document.getElementById('tts-vol').value);
+  fd.append('groq_key',   groqKey);
+
+  try {
+    const res  = await apiFetch(`${API}/api/upload`, { method: 'POST', body: fd });
+    const data = await res.json();
+    if (res.status === 402) { showError(data.error); document.getElementById('btn-start').disabled = false; return; }
+    if (!res.ok) throw new Error(data.error || res.statusText);
+    currentJobId = data.job_id;
+    if (data.cost > 0) updateBalanceDisplay(data.cost);
+    pollTimer = setInterval(pollTranslate, 2000);
+  } catch(e) {
+    showError(e.message);
+    document.getElementById('btn-start').disabled = false;
+  }
+}
+
+async function pollTranslate() {
+  if (!currentJobId) return;
+  try {
+    const res  = await apiFetch(`${API}/api/status/${currentJobId}`);
+    const data = await res.json();
+    setStatus(data.status, data.message || '', data.progress || 0);
+
+    if (data.status === 'translated') {
+      clearPoll();
+      document.getElementById('btn-start').disabled = false;
+      document.getElementById('sec-render').style.display = 'block';
+      showSrtPanel(currentJobId);
+      await loadSubtitles(currentJobId);
+      switchTab('subs');
+    } else if (data.status === 'error') {
+      clearPoll();
+      showError(data.message || 'Loi khong xac dinh');
+    }
+  } catch(e) {}
+}
+
+// ── STEP 2: Tao video ───────────────────────────────────────────
+async function startRender() {
+  if (!currentJobId) return;
+  document.getElementById('btn-render').disabled   = true;
+  document.getElementById('btn-rerender').style.display = 'none';
+  setStatus('rendering', 'Bat dau TTS...', 0);
+
+  const fd = new FormData();
+  fd.append('voice',       document.getElementById('voice').value);
+  fd.append('bg_volume',   document.getElementById('bg-vol').value);
+  fd.append('tts_volume',  document.getElementById('tts-vol').value);
+  fd.append('speed_ratio', document.getElementById('tts-rate').value);
+  fd.append('logo_text', document.getElementById('logo-text').value);
+  const bgFile = document.getElementById('bg-music-input').files[0];
+  if (bgFile) fd.append('bg_music', bgFile);
+
+  await apiFetch(`${API}/api/render/${currentJobId}`, { method: 'POST', body: fd });
+
+  pollTimer = setInterval(pollRender, 2000);
+}
+
+async function pollRender() {
+  if (!currentJobId) return;
+  try {
+    const res  = await apiFetch(`${API}/api/status/${currentJobId}`);
+    const data = await res.json();
+    setStatus(data.status, data.message || '', data.progress || 0);
+
+    if (data.status === 'done') {
+      clearPoll();
+      document.getElementById('btn-render').disabled = false;
+      document.getElementById('btn-rerender').style.display = 'inline-block';
+      await showVideo(currentJobId);
+      refreshBalance();
+    } else if (data.status === 'error') {
+      clearPoll();
+      document.getElementById('btn-render').disabled = false;
+      showError(data.message || 'Loi render');
+      refreshBalance();
+    }
+  } catch(e) {}
+}
+
+async function refreshBalance() {
+  try {
+    const r = await apiFetch(`${API}/api/me/balance`);
+    if (!r.ok) return;
+    const d = await r.json();
+    document.getElementById('bal-val').textContent = (d.balance || 0).toLocaleString('vi-VN') + 'đ';
+  } catch(e) {}
+}
+
+function updateBalanceDisplay(deducted) {
+  const el  = document.getElementById('bal-val');
+  const cur = parseInt(el.textContent.replace(/\D/g,'')) || 0;
+  el.textContent = Math.max(0, cur - deducted).toLocaleString('vi-VN') + 'đ';
+}
+
+// ── Show video ──────────────────────────────────────────────────
+async function showVideo(jobId) {
+  switchTab('output');
+
+  // Fetch video as blob (cần auth header)
+  const vRes  = await apiFetch(`${API}/api/download/${jobId}`);
+  const vBlob = await vRes.blob();
+  const vUrl  = URL.createObjectURL(vBlob);
+  document.getElementById('video-wrap').innerHTML =
+    `<video controls src="${vUrl}" style="width:100%;height:100%"></video>`;
+
+  const dlv = document.getElementById('dl-video');
+  dlv.href = vUrl;
+  dlv.setAttribute('download', `video_vi.mp4`);
+  dlv.classList.add('on');
+
+  // Fetch SRT as blob
+  const sRes  = await apiFetch(`${API}/api/download-srt/${jobId}`);
+  const sBlob = await sRes.blob();
+  const sUrl  = URL.createObjectURL(sBlob);
+  const dls   = document.getElementById('dl-srt');
+  dls.href = sUrl;
+  dls.setAttribute('download', `captions_vi.srt`);
+  dls.classList.add('on');
+}
+
+// ── Subtitles ───────────────────────────────────────────────────
+async function loadSubtitles(jobId) {
+  try {
+    const res  = await apiFetch(`${API}/api/cues/${jobId}`);
+    const data = await res.json();
+    subtitleRows = data.rows || [];
+    renderTable();
+  } catch(e) {}
+}
+
+function renderTable() {
+  document.getElementById('subs-empty').style.display = 'none';
+  document.getElementById('subs-panel').style.display = 'block';
+  document.getElementById('subs-info').textContent =
+    `${subtitleRows.length} doan — co the sua ban dich truoc khi tao video`;
+
+  const tbody = document.getElementById('subs-body');
+  tbody.innerHTML = subtitleRows.map((r, i) => `
+    <tr>
+      <td class="ts">${r.idx}</td>
+      <td class="ts">${r.start}<br>${r.end}</td>
+      <td class="zh">${esc(r.zh)}</td>
+      <td class="vi-cell">
+        <textarea data-idx="${r.idx}" oninput="onViEdit(${i},this.value)">${esc(r.vi)}</textarea>
+      </td>
+    </tr>
+  `).join('');
+}
+
+function esc(s) {
+  return (s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+function onViEdit(i, val) { subtitleRows[i].vi = val; }
+
+async function showSrtPanel(jobId) {
+  const sec = document.getElementById('sec-render');
+  sec.style.display = 'block';
+  const dl = document.getElementById('dl-srt-early');
+  dl.onclick = async (e) => {
+    e.preventDefault();
+    const r    = await apiFetch(`${API}/api/download-srt/${jobId}`);
+    const blob = await r.blob();
+    const url  = URL.createObjectURL(blob);
+    const a    = document.createElement('a');
+    a.href = url; a.download = 'captions_vi.srt';
+    a.click(); URL.revokeObjectURL(url);
+  };
+}
+
+async function loadSrtFile(input) {
+  if (!currentJobId || !input.files[0]) return;
+  const btn = document.getElementById('btn-load-srt');
+  btn.disabled = true;
+  btn.textContent = 'Dang nap...';
+
+  const fd = new FormData();
+  fd.append('file', input.files[0]);
+
+  try {
+    const res  = await apiFetch(`${API}/api/load-srt/${currentJobId}`, { method: 'POST', body: fd });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || res.statusText);
+    subtitleRows = data.rows || [];
+    renderTable();
+    switchTab('subs');
+    btn.textContent = 'Da nap xong!';
+  } catch(e) {
+    alert('Loi: ' + e.message);
+    btn.textContent = 'Nap SRT tu may';
+  } finally {
+    btn.disabled = false;
+    input.value = '';
+  }
+}
+
+async function saveAndRerender() {
+  if (!currentJobId) return;
+  const btn = document.getElementById('btn-rerender');
+  btn.disabled = true;
+
+  await apiFetch(`${API}/api/save-cues/${currentJobId}`, {
+    method: 'POST',
+    headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify({ rows: subtitleRows }),
+  });
+
+  await startRender();
+
+  btn.disabled = false;
+}
+
+// ── Helpers ─────────────────────────────────────────────────────
+function setStatus(status, msg, pct) {
+  document.getElementById('prog-box').classList.add('on');
+  document.getElementById('pmsg').textContent = msg;
+  document.getElementById('pbar').style.width = pct + '%';
+  const tag = document.getElementById('stag');
+  const labels = {
+    pending:'Cho', running:'Dang chay', translated:'Da dich',
+    rendering:'Render', done:'Hoan tat', error:'Loi'
+  };
+  tag.textContent = labels[status] || status;
+  tag.className   = 'stag ' + (status==='done'||status==='translated'?'done':status==='error'?'error':'running');
+}
+
+function showError(msg) {
+  document.getElementById('btn-start').disabled  = false;
+  document.getElementById('btn-render').disabled = false;
+  const el = document.getElementById('errmsg');
+  el.textContent = '! ' + msg;
+  el.classList.add('on');
+  document.getElementById('stag').className   = 'stag error';
+  document.getElementById('stag').textContent = 'Loi';
+}
+
+function clearPoll() {
+  if (pollTimer) { clearInterval(pollTimer); pollTimer = null; }
+}
+</script>
+</body>
+</html>
