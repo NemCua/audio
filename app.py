@@ -8,6 +8,7 @@ Mở:   http://localhost:8080
 import asyncio
 import json
 import os
+import re
 import shutil
 import tempfile
 import time
@@ -22,9 +23,9 @@ from translate_video import (
     build_srt, build_tts_track,
     extract_audio_for_stt,
     get_audio_duration,
-    parse_srt, render_video,
-    scale_cues, sec_to_srt_time,
-    srt_time_to_sec, stt_groq,
+    render_video,
+    srt_time_to_sec,
+    stt_groq,
     translate_srt,
     CAPCUT_VOICES_VI,
 )
@@ -38,8 +39,7 @@ if _env_file.exists():
             _k, _v = _line.split("=", 1)
             os.environ.setdefault(_k.strip(), _v.strip())
 
-# State toàn cục
-_state: dict = {}
+# _state đã chuyển sang gr.State() per-session — xem bên dưới trong gr.Blocks
 
 # ---------------------------------------------------------------------------
 # HELPERS
@@ -65,7 +65,7 @@ def count_words(text: str) -> int:
 
 
 def get_user_wps() -> float:
-    return _state.get("user_wps") or DEFAULT_WPS
+    return DEFAULT_WPS
 
 
 def reading_speed_label(text: str, start_sec: float, end_sec: float) -> str:
@@ -242,28 +242,27 @@ def optimize_cues(cues: list[dict], groq_key: str, beeknoee_key: str | None = No
     return result
 
 
-def run_optimize(df: pd.DataFrame, progress=gr.Progress()):
-    global _state
-    if not _state.get("vi_cues"):
+def run_optimize(df: pd.DataFrame, state: dict, progress=gr.Progress()):
+    if not state.get("vi_cues"):
         raise gr.Error("Chưa chạy STT + Dịch.")
 
-    groq_key     = _state.get("groq_key", "")
-    beeknoee_key = _state.get("beeknoee_key")
-    cues         = df_to_cues(df, _state["vi_cues"])
+    groq_key     = state.get("groq_key", "")
+    beeknoee_key = state.get("beeknoee_key")
+    cues         = df_to_cues(df, state["vi_cues"])
     user_wps     = get_user_wps()
 
     needs_fix = [c for c in cues if reading_speed_pct(c["text"], c["start_sec"], c["end_sec"]) > 20]
     if not needs_fix:
-        return df, f"✅ Tất cả đoạn trong ngưỡng tốt (tốc độ chuẩn: {user_wps:.1f} từ/giây)."
+        return df, f"✅ Tất cả đoạn trong ngưỡng tốt (tốc độ chuẩn: {user_wps:.1f} từ/giây).", state
 
     optimized = optimize_cues(cues, groq_key, beeknoee_key=beeknoee_key, progress_cb=progress)
-    _state["vi_cues"] = optimized
+    state["vi_cues"] = optimized
     fixed = sum(1 for c in optimized
                 if reading_speed_pct(c["text"], c["start_sec"], c["end_sec"]) <= 20)
-    return cues_to_df(optimized, _state.get("zh_cues")), (
+    return cues_to_df(optimized, state.get("zh_cues")), (
         f"✓ Tối ưu xong — {fixed}/{len(needs_fix)} đoạn đã vào ngưỡng "
         f"(tốc độ chuẩn: {user_wps:.1f} từ/giây)"
-    )
+    ), state
 
 
 # ---------------------------------------------------------------------------
@@ -280,10 +279,9 @@ def _save_cache(work_dir: Path, vi_cues: list, video_path):
     )
 
 
-def _do_translate(zh_cues, groq_key, beeknoee_key, work_dir, progress, progress_offset=0.0):
+def _do_translate(zh_cues, groq_key, beeknoee_key, work_dir, progress, progress_offset=0.0, video_path=""):
     """Dịch, lưu cache vào work_dir. Trả về vi_cues."""
     provider_name = f"Beeknoee ({BEEKNOEE_MODEL})" if beeknoee_key else "Groq LLaMA"
-    video_path    = _state.get("video_path", "")
 
     def on_chunk_done(done, total, partial):
         pct = progress_offset + (done / total) * 0.4
@@ -297,23 +295,11 @@ def _do_translate(zh_cues, groq_key, beeknoee_key, work_dir, progress, progress_
     return vi_cues
 
 
-def _stt_outputs(df, vi_cues_exists: bool, translate_done: bool, status: str):
-    return (
-        df,
-        gr.update(visible=True, value=df),
-        gr.update(visible=vi_cues_exists),   # btn_optimize
-        gr.update(visible=vi_cues_exists),   # btn_export_json
-        gr.update(visible=vi_cues_exists),   # btn_render
-        gr.update(visible=not translate_done and not vi_cues_exists is False),  # btn_translate_only — show khi STT xong chưa dịch
-        status,
-    )
-
 
 def run_stt_translate(video_file, beeknoee_tts_input,
                       beeknoee_tts_voice_input, capcut_voice_sel, auto_translate,
-                      progress=gr.Progress()):
-    global _state
-    _state = {}
+                      state: dict, progress=gr.Progress()):
+    state = {}
 
     groq_key     = get_groq_key("")
     beeknoee_key = get_beeknoee_key("")
@@ -326,7 +312,7 @@ def run_stt_translate(video_file, beeknoee_tts_input,
 
     src_path = Path(video_file)
     work_dir = _tmp_dir()
-    _state.update({
+    state = {
         "work_dir":           work_dir,
         "groq_key":           groq_key,
         "beeknoee_key":       beeknoee_key,
@@ -335,14 +321,14 @@ def run_stt_translate(video_file, beeknoee_tts_input,
         "capcut_device_id":   os.environ.get("CAPCUT_DEVICE_ID", "7581502458217252368") if capcut_info else None,
         "capcut_voice_type":  capcut_info[1] if capcut_info else None,
         "capcut_resource_id": capcut_info[2] if capcut_info else None,
-    })
+    }
 
     try:
         video_copy = work_dir / ("video" + src_path.suffix)
         shutil.copy2(src_path, video_copy)
         video_path = video_copy
-        _state["video_path"] = video_path
-        _state["video_stem"] = src_path.stem
+        state["video_path"] = video_path
+        state["video_stem"] = src_path.stem
 
         if not auto_translate:
             return (
@@ -353,6 +339,7 @@ def run_stt_translate(video_file, beeknoee_tts_input,
                 gr.update(visible=False),
                 "✓ Đã nhận video — chờ JSON từ server",
                 gr.update(visible=True, value=src_path.stem),
+                state,
             )
 
         progress(0.15, desc="Tách audio STT...")
@@ -361,10 +348,10 @@ def run_stt_translate(video_file, beeknoee_tts_input,
 
         progress(0.5, desc="STT Groq Whisper...")
         zh_cues = stt_groq(audio_stt, groq_key)
-        _state["zh_cues"] = zh_cues
+        state["zh_cues"] = zh_cues
 
-        vi_cues = _do_translate(zh_cues, groq_key, beeknoee_key, work_dir, progress, 0.6)
-        _state["vi_cues"] = vi_cues
+        vi_cues = _do_translate(zh_cues, groq_key, beeknoee_key, work_dir, progress, 0.6, video_path)
+        state["vi_cues"] = vi_cues
 
         progress(1.0, desc="Xong!")
         df = cues_to_df(vi_cues, zh_cues)
@@ -374,8 +361,9 @@ def run_stt_translate(video_file, beeknoee_tts_input,
             gr.update(visible=True),
             gr.update(visible=True),
             gr.update(visible=False),
-            f"✓ STT + Dịch xong — {len(vi_cues)} đoạn. Bấm '✨ Tối ưu AI' để chỉnh tốc độ.",
+            f"✓ STT + Dịch xong — {len(vi_cues)} đoạn.",
             gr.update(visible=False),
+            state,
         )
 
     except Exception as e:
@@ -383,18 +371,17 @@ def run_stt_translate(video_file, beeknoee_tts_input,
         raise gr.Error(str(e))
 
 
-def run_translate_only(progress=gr.Progress()):
-    global _state
-    if not _state.get("zh_cues"):
+def run_translate_only(state: dict, progress=gr.Progress()):
+    if not state.get("zh_cues"):
         raise gr.Error("Chưa có dữ liệu STT. Chạy Bước 1 trước.")
 
-    groq_key     = _state.get("groq_key", "")
-    beeknoee_key = _state.get("beeknoee_key")
-    zh_cues      = _state["zh_cues"]
-    work_dir     = _state["work_dir"]
+    groq_key     = state.get("groq_key", "")
+    beeknoee_key = state.get("beeknoee_key")
+    zh_cues      = state["zh_cues"]
+    work_dir     = state["work_dir"]
 
-    vi_cues = _do_translate(zh_cues, groq_key, beeknoee_key, work_dir, progress, 0.0)
-    _state["vi_cues"] = vi_cues
+    vi_cues = _do_translate(zh_cues, groq_key, beeknoee_key, work_dir, progress, 0.0, state.get("video_path", ""))
+    state["vi_cues"] = vi_cues
 
     progress(1.0, desc="Dịch xong!")
     df = cues_to_df(vi_cues, zh_cues)
@@ -404,8 +391,9 @@ def run_translate_only(progress=gr.Progress()):
         gr.update(visible=True),
         gr.update(visible=True),
         gr.update(visible=False),
-        f"✓ Dịch xong — {len(vi_cues)} đoạn. Bấm '✨ Tối ưu AI' để chỉnh tốc độ.",
+        f"✓ Dịch xong — {len(vi_cues)} đoạn.",
         gr.update(visible=False),
+        state,
     )
 
 
@@ -423,92 +411,64 @@ def _parse_json_cues(json_file):
     return vi_cues, zh_cues, raw
 
 
-def run_load_json(json_file):
-    global _state
-
+def run_load_json(json_file, state: dict):
     if json_file is None:
         raise gr.Error("Chưa chọn file JSON.")
 
     vi_cues, zh_cues, raw = _parse_json_cues(json_file)
+    groq_key     = os.environ.get("GROQ_API_KEY", "")
+    beeknoee_key = os.environ.get("BEEKNOEE_API_KEY")
 
-    # JSON cũ (array) — cần upload video riêng
-    if raw is None:
-        _state["vi_cues"]      = vi_cues
-        _state["zh_cues"]      = zh_cues
-        _state["groq_key"]     = _state.get("groq_key", os.environ.get("GROQ_API_KEY", ""))
-        _state["beeknoee_key"] = _state.get("beeknoee_key", os.environ.get("BEEKNOEE_API_KEY"))
-        df = cues_to_df(vi_cues, zh_cues or None)
-        has_video = bool(_state.get("video_path"))
-        return (
-            gr.update(visible=True, value=df),
-            gr.update(visible=True),
-            gr.update(visible=True),
-            gr.update(visible=True),
-            gr.update(visible=False),
-            f"✓ Load {len(vi_cues)} đoạn — {'sẵn sàng render' if has_video else 'upload video bên dưới rồi bấm Render'}",
-            gr.update(visible=False),
-        )
-
-    video_path = Path(raw["video_path"])
-
-    if not video_path.exists():
-        _state["vi_cues"]      = vi_cues
-        _state["zh_cues"]      = zh_cues
-        _state["groq_key"]     = _state.get("groq_key", os.environ.get("GROQ_API_KEY", ""))
-        _state["beeknoee_key"] = _state.get("beeknoee_key", os.environ.get("BEEKNOEE_API_KEY"))
-        df = cues_to_df(vi_cues, zh_cues or None)
-        return (
-            gr.update(visible=True, value=df),
-            gr.update(visible=True),
-            gr.update(visible=True),
-            gr.update(visible=True),
-            gr.update(visible=False),
-            f"✓ Load {len(vi_cues)} đoạn — video gốc không còn ở đường dẫn cũ, upload lại bên dưới rồi bấm Render",
-            gr.update(visible=False),
-        )
-
-    _state["vi_cues"]      = vi_cues
-    _state["zh_cues"]      = zh_cues
-    _state["video_path"]   = video_path
-    _state["work_dir"]     = video_path.parent
-    _state["groq_key"]     = _state.get("groq_key", os.environ.get("GROQ_API_KEY", ""))
-    _state["beeknoee_key"] = _state.get("beeknoee_key", os.environ.get("BEEKNOEE_API_KEY"))
+    def _make_state(video_path=None):
+        s = {**state, "vi_cues": vi_cues, "zh_cues": zh_cues,
+             "groq_key": groq_key, "beeknoee_key": beeknoee_key}
+        if video_path:
+            s["video_path"] = video_path
+            s["work_dir"]   = Path(video_path).parent
+        return s
 
     df = cues_to_df(vi_cues, zh_cues or None)
-    return (
-        gr.update(visible=True, value=df),
-        gr.update(visible=True),
-        gr.update(visible=True),
-        gr.update(visible=True),
-        gr.update(visible=False),
-        f"✓ Load {len(vi_cues)} đoạn — video: {video_path.stem}",
-        gr.update(visible=False),
-    )
+    ok = (gr.update(visible=True, value=df),
+          gr.update(visible=True), gr.update(visible=True),
+          gr.update(visible=True), gr.update(visible=False))
+
+    if raw is None:
+        has_video = bool(state.get("video_path"))
+        return (*ok,
+                f"✓ Load {len(vi_cues)} đoạn — {'sẵn sàng render' if has_video else 'upload video bên dưới rồi bấm Render'}",
+                gr.update(visible=False), _make_state())
+
+    video_path = Path(raw["video_path"])
+    if not video_path.exists():
+        return (*ok,
+                f"✓ Load {len(vi_cues)} đoạn — video gốc không còn, upload lại bên dưới rồi bấm Render",
+                gr.update(visible=False), _make_state())
+
+    return (*ok,
+            f"✓ Load {len(vi_cues)} đoạn — video: {video_path.stem}",
+            gr.update(visible=False), _make_state(video_path))
 
 
-def run_attach_video(video_file):
+def run_attach_video(video_file, state: dict):
     """Upload video cho JSON đã load."""
-    global _state
-
     if video_file is None:
         raise gr.Error("Chưa chọn video.")
-    if not _state.get("vi_cues"):
+    if not state.get("vi_cues"):
         raise gr.Error("Load file JSON trước.")
 
     src_path = Path(video_file)
     work_dir = _tmp_dir()
-    _state["work_dir"] = work_dir
-
     video_copy = work_dir / ("video" + src_path.suffix)
     shutil.copy2(src_path, video_copy)
-    _state["video_path"] = video_copy
-    _state["video_stem"] = src_path.stem
+    state["work_dir"]   = work_dir
+    state["video_path"] = video_copy
+    state["video_stem"] = src_path.stem
 
-    vi_cues = _state["vi_cues"]
     return (
-        gr.update(visible=True),   # btn_optimize
-        gr.update(visible=True),   # btn_render
-        f"✓ Đã gắn video '{src_path.stem}' — {len(vi_cues)} đoạn sẵn sàng render",
+        gr.update(visible=True),
+        gr.update(visible=True),
+        f"✓ Đã gắn video '{src_path.stem}' — {len(state['vi_cues'])} đoạn sẵn sàng render",
+        state,
     )
 
 
@@ -516,13 +476,12 @@ def run_attach_video(video_file):
 # EXPORT JSON
 # ---------------------------------------------------------------------------
 
-def run_export_json(df: pd.DataFrame):
-    global _state
-    if not _state.get("vi_cues") and not _state.get("zh_cues"):
+def run_export_json(df: pd.DataFrame, state: dict):
+    if not state.get("vi_cues") and not state.get("zh_cues"):
         raise gr.Error("Chưa có bản dịch để xuất.")
 
-    vi_cues = df_to_cues(df, _state.get("vi_cues", []))
-    zh_map  = {c["idx"]: c["text"] for c in _state.get("zh_cues", [])}
+    vi_cues = df_to_cues(df, state.get("vi_cues", []))
+    zh_map  = {c["idx"]: c["text"] for c in state.get("zh_cues", [])}
 
     export = [{
         "idx":       c["idx"],
@@ -541,79 +500,8 @@ def run_export_json(df: pd.DataFrame):
 
 
 # ---------------------------------------------------------------------------
-# PROMPT AI & LOAD OPTIMIZED
-# ---------------------------------------------------------------------------
-
-_OPTIMIZE_PROMPT = """Bạn là biên tập viên phụ đề tiếng Việt chuyên nghiệp.
-
-Tôi đính kèm file JSON gồm các đoạn phụ đề đã dịch từ tiếng Trung. Mỗi đoạn có:
-- "idx": số thứ tự
-- "start_sec" / "end_sec": thời gian bắt đầu/kết thúc (giây) — KHÔNG được thay đổi
-- "zh": câu gốc tiếng Trung (tham khảo)
-- "vi": bản dịch tiếng Việt hiện tại (cần tối ưu)
-- "duration": thời lượng đoạn (giây)
-- "max_words": số từ tối đa cho phép (dựa trên tốc độ đọc chuẩn × 120%)
-
-NHIỆM VỤ:
-1. Viết lại trường "vi" của từng đoạn sao cho số từ ≤ max_words
-2. Nhất quán xưng hô xuyên suốt (đọc toàn bộ để chọn cách xưng hô phù hợp rồi giữ nguyên)
-3. Giữ nguyên nghĩa cốt lõi, văn phong tự nhiên
-4. Nếu "vi" đã ≤ max_words thì giữ nguyên, không sửa
-5. KHÔNG thay đổi bất kỳ trường nào khác ngoài "vi"
-
-TRẢ VỀ: Toàn bộ file JSON với cấu trúc y hệt, chỉ trường "vi" được cập nhật. Không giải thích, không markdown."""
 
 
-def run_show_prompt(df: pd.DataFrame):
-    global _state
-    if not _state.get("vi_cues"):
-        raise gr.Error("Chưa có bản dịch. Chạy STT + Dịch trước.")
-    user_wps = get_user_wps()
-    cues = df_to_cues(df, _state["vi_cues"])
-
-    # Thêm duration + max_words vào từng cue để AI biết giới hạn
-    import json as _j
-    payload = []
-    for c in cues:
-        dur = round(c["end_sec"] - c["start_sec"], 2)
-        payload.append({
-            "idx":       c["idx"],
-            "start_sec": c["start_sec"],
-            "end_sec":   c["end_sec"],
-            "duration":  dur,
-            "max_words": max(1, int(dur * user_wps * 1.2)),
-            "zh":        c.get("zh", ""),
-            "vi":        c.get("text", ""),
-        })
-
-    note = f"\n\n[Tốc độ đọc chuẩn: {user_wps:.2f} từ/giây — đo từ tab Test Tốc Độ Đọc]"
-    prompt = _OPTIMIZE_PROMPT + note + f"\n\nFile JSON:\n{_j.dumps(payload, ensure_ascii=False, indent=2)}"
-    return gr.update(value=prompt, visible=True)
-
-
-def run_load_optimized(json_file):
-    global _state
-    if json_file is None:
-        raise gr.Error("Chưa chọn file JSON.")
-    if not _state.get("vi_cues"):
-        raise gr.Error("Chưa có bản dịch gốc trong state. Load JSON gốc trước.")
-
-    raw = json.loads(Path(json_file).read_text(encoding="utf-8"))
-    if not isinstance(raw, list):
-        raise gr.Error("File JSON phải là array.")
-
-    original = _state["vi_cues"]
-    by_idx   = {r["idx"]: r.get("vi", r.get("text", "")) for r in raw}
-    # Xóa trường "vi" cũ để cues_to_df dùng "text" đã update thay vì "vi" bị override
-    updated  = [
-        {**{k: v for k, v in c.items() if k != "vi"}, "text": by_idx.get(c["idx"], c.get("text", ""))}
-        for c in original
-    ]
-    _state["vi_cues"] = updated
-
-    changed = sum(1 for c, u in zip(original, updated) if c.get("text") != u.get("text"))
-    df = cues_to_df(updated, _state.get("zh_cues"))
-    return df, f"✓ Nạp xong — {changed}/{len(updated)} đoạn đã được cập nhật"
 
 
 # ---------------------------------------------------------------------------
@@ -650,7 +538,7 @@ def run_test_tts(text: str, tts_model: str, tts_voice: str, capcut_voice: str):
             await comm.save(tmp.name)
         _aio.run(_run_edge())
     else:
-        beeknoee_key = os.environ.get("BEEKNOEE_API_KEY") or _state.get("beeknoee_key")
+        beeknoee_key = os.environ.get("BEEKNOEE_API_KEY", "")
         if not beeknoee_key:
             raise gr.Error("Chưa có Beeknoee API key.")
         from openai import OpenAI
@@ -669,45 +557,37 @@ def run_test_tts(text: str, tts_model: str, tts_voice: str, capcut_voice: str):
 # ---------------------------------------------------------------------------
 
 def run_render(df: pd.DataFrame, bg_music_file, bg_volume: float, tts_volume: float,
-               capcut_delay: float = 1.5, capcut_voice_sel: str = "",
-               capcut_rate: float = 1.0,
-               keep_original: bool = True, original_volume: float = 0.3,
-               progress=gr.Progress()):
-    global _state
-
-    if not _state.get("vi_cues"):
+               capcut_delay: float, capcut_voice_sel: str, capcut_rate: float,
+               keep_original: bool, original_volume: float,
+               state: dict, progress=gr.Progress()):
+    if not state.get("vi_cues"):
         raise gr.Error("Chưa có bản dịch.")
-    if not _state.get("video_path"):
-        raise gr.Error("Chưa có video — upload video vào ô 'Gắn video' bên dưới rồi bấm '🎬 Gắn video' trước.")
+    if not state.get("video_path"):
+        raise gr.Error("Chưa có video — upload video vào ô 'Gắn video' bên dưới trước.")
 
-    video_path = Path(_state["video_path"]).resolve()
-    work_dir   = Path(_state["work_dir"]).resolve()
+    video_path = Path(state["video_path"]).resolve()
+    work_dir   = Path(state["work_dir"]).resolve()
     work_dir.mkdir(parents=True, exist_ok=True)
 
-    bg_music = Path(bg_music_file).resolve() if bg_music_file else None
-
-    # Ưu tiên giá trị dropdown hiện tại, fallback sang state (từ lúc STT)
-    capcut_vt = (capcut_voice_sel or "").strip()
+    bg_music    = Path(bg_music_file).resolve() if bg_music_file else None
+    capcut_vt   = (capcut_voice_sel or "").strip()
     capcut_info = next((v for v in CAPCUT_VOICES_VI if v[1] == capcut_vt), None)
-    capcut_device_id   = os.environ.get("CAPCUT_DEVICE_ID", "7581502458217252368") if capcut_info else _state.get("capcut_device_id")
-    capcut_voice_type  = capcut_info[1] if capcut_info else _state.get("capcut_voice_type")
-    capcut_resource_id = capcut_info[2] if capcut_info else _state.get("capcut_resource_id")
+    capcut_device_id   = os.environ.get("CAPCUT_DEVICE_ID", "7581502458217252368") if capcut_info else state.get("capcut_device_id")
+    capcut_voice_type  = capcut_info[1] if capcut_info else state.get("capcut_voice_type")
+    capcut_resource_id = capcut_info[2] if capcut_info else state.get("capcut_resource_id")
 
-    vi_cues  = df_to_cues(df, _state["vi_cues"])
+    vi_cues  = df_to_cues(df, state["vi_cues"])
     srt_path = work_dir / "captions_vi.srt"
     srt_path.write_text(build_srt(vi_cues), encoding="utf-8")
 
     try:
-        if capcut_voice_type:
-            progress(0.1, desc=f"Tạo TTS (CapCut batch: {capcut_voice_type})...")
-        else:
-            progress(0.1, desc="Tạo TTS tiếng Việt (Edge TTS)...")
+        progress(0.1, desc=f"Tạo TTS ({capcut_voice_type or 'Edge TTS'})...")
         video_dur = get_audio_duration(video_path)
         tts_track = asyncio.run(build_tts_track(
             vi_cues, work_dir, video_dur,
-            beeknoee_key=_state.get("beeknoee_key"),
-            beeknoee_tts_model=_state.get("beeknoee_tts_model"),
-            beeknoee_tts_voice=_state.get("beeknoee_tts_voice"),
+            beeknoee_key=state.get("beeknoee_key"),
+            beeknoee_tts_model=state.get("beeknoee_tts_model"),
+            beeknoee_tts_voice=state.get("beeknoee_tts_voice"),
             capcut_device_id=capcut_device_id,
             capcut_voice_type=capcut_voice_type,
             capcut_resource_id=capcut_resource_id,
@@ -715,27 +595,13 @@ def run_render(df: pd.DataFrame, bg_music_file, bg_volume: float, tts_volume: fl
             capcut_rate=str(round(capcut_rate, 1)),
         ))
 
-        # Tách vocals nếu user muốn giữ âm thanh gốc
-        original_audio = None
-        if keep_original:
-            bg_cache = work_dir / "background.wav"
-            if bg_cache.exists():
-                original_audio = bg_cache
-            else:
-                progress(0.55, desc="Tách âm thanh gốc (Demucs)...")
-                from translate_video import separate_background
-                original_audio = separate_background(video_path, work_dir)
-
         progress(0.6, desc="Render video...")
-        stem        = Path(video_path).stem
-        output_path = work_dir / f"{stem}_vi.mp4"
-
+        output_path = work_dir / f"{Path(video_path).stem}_vi.mp4"
         render_video(video_path, tts_track, srt_path, output_path,
                      bg_music=bg_music, bg_volume=bg_volume, tts_volume=tts_volume,
-                     original_audio=original_audio, original_volume=original_volume)
+                     original_audio=None, original_volume=0.0)
         progress(1.0, desc="Hoàn tất!")
-
-        return str(output_path), f"✓ Render xong — bấm tải về bên dưới"
+        return str(output_path), "✓ Render xong — bấm tải về bên dưới"
 
     except Exception as e:
         raise gr.Error(str(e))
@@ -1003,6 +869,7 @@ def get_voices(model: str):
 
 with gr.Blocks(title="Dịch Video Tiếng Trung → Tiếng Việt") as demo:
     gr.Markdown("# Dịch Video Tiếng Trung → Tiếng Việt")
+    session_state = gr.State({})
 
     with gr.Tabs():
 
@@ -1103,35 +970,36 @@ with gr.Blocks(title="Dịch Video Tiếng Trung → Tiếng Việt") as demo:
             video_output    = gr.Video(label="Video kết quả (bấm tải về)", interactive=False)
 
             # ── Events ────────────────────────────────────────────────────
-            _stt_outputs_list = [
+            _stt_outs = [
                 translation_table,
                 btn_optimize, btn_export_json, btn_render, btn_translate_only,
-                status_stt, video_stem_display,
+                status_stt, video_stem_display, session_state,
             ]
 
             btn_stt.click(
                 fn=run_stt_translate,
                 inputs=[video_input, beeknoee_tts_input,
-                        beeknoee_tts_voice_input, capcut_voice_input, auto_translate_toggle],
-                outputs=_stt_outputs_list,
+                        beeknoee_tts_voice_input, capcut_voice_input,
+                        auto_translate_toggle, session_state],
+                outputs=_stt_outs,
             )
 
             btn_translate_only.click(
                 fn=run_translate_only,
-                inputs=[],
-                outputs=_stt_outputs_list,
+                inputs=[session_state],
+                outputs=_stt_outs,
             )
 
             btn_load_json.click(
                 fn=run_load_json,
-                inputs=[load_json_file],
-                outputs=_stt_outputs_list,
+                inputs=[load_json_file, session_state],
+                outputs=_stt_outs,
             )
 
             btn_attach_video.click(
                 fn=run_attach_video,
-                inputs=[attach_video_input],
-                outputs=[btn_optimize, btn_render, status_attach_video],
+                inputs=[attach_video_input, session_state],
+                outputs=[btn_optimize, btn_render, status_attach_video, session_state],
             )
 
             tts_test_model.change(fn=get_voices, inputs=[tts_test_model], outputs=[tts_test_voice])
@@ -1150,23 +1018,21 @@ with gr.Blocks(title="Dịch Video Tiếng Trung → Tiếng Việt") as demo:
 
             btn_optimize.click(
                 fn=run_optimize,
-                inputs=[translation_table],
-                outputs=[translation_table, status_optimize],
+                inputs=[translation_table, session_state],
+                outputs=[translation_table, status_optimize, session_state],
             )
 
             btn_export_json.click(
                 fn=run_export_json,
-                inputs=[translation_table],
+                inputs=[translation_table, session_state],
                 outputs=[json_download],
             )
-
-
 
             btn_render.click(
                 fn=run_render,
                 inputs=[translation_table, bg_music_input, bg_volume_slider, tts_volume_slider,
                         capcut_delay_slider, capcut_voice_input, capcut_rate_slider,
-                        keep_original_check, original_volume_slider],
+                        keep_original_check, original_volume_slider, session_state],
                 outputs=[video_output, status_render],
             )
 
