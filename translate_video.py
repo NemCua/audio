@@ -44,7 +44,7 @@ TTS_VOICE        = "vi-VN-HoaiMyNeural"
 TTS_SPEED_BOOST  = 1.00   # không tăng tốc mặc định, tự khớp theo window
 ATEMPO_MAX       = 2.0    # FFmpeg atempo tối đa 2.0x mỗi filter
 ATEMPO_MIN       = 0.5
-CHUNK_BLOCKS     = 20     # số block SRT mỗi lần gửi dịch
+CHUNK_BLOCKS     = 12     # số block SRT mỗi lần gửi dịch — nhỏ hơn giảm nguy cơ model gộp block
 CONTEXT_BLOCKS   = 4      # số block context giữ lại giữa các chunk
 DEMUCS_MODEL     = "htdemucs"   # model Demucs tách vocals
 BG_VOLUME        = 0.9    # âm lượng nhạc nền so với gốc (0.0-1.0)
@@ -228,17 +228,21 @@ def stt_groq(audio_path: Path, groq_key: str) -> list[dict]:
 
 SYSTEM_PROMPT = """Bạn là dịch giả phụ đề tiếng Việt, dịch từ tiếng Trung sang tiếng Việt dùng để đọc thành tiếng (TTS).
 
-QUY TẮC BẮT BUỘC VỀ ĐỊNH DẠNG:
-1. Giữ nguyên số block và timestamp SRT — KHÔNG gộp, KHÔNG tách, KHÔNG bỏ block nào.
-2. Chỉ trả về SRT thuần túy, không giải thích, không markdown.
+=== ĐỊNH DẠNG ĐẦU RA — VI PHẠM = SAI HOÀN TOÀN ===
+- Trả về đúng SRT thuần túy, KHÔNG markdown, KHÔNG giải thích.
+- Mỗi block đầu vào phải có ĐÚNG MỘT block đầu ra tương ứng, giữ nguyên số thứ tự và timestamp.
+- TUYỆT ĐỐI KHÔNG gộp 2 block thành 1, KHÔNG bỏ block, KHÔNG tách 1 block thành nhiều block.
+- Nếu một câu tiếng Trung ngắn, dịch ngắn tương ứng — đừng bù thêm cho dài.
 
-QUY TẮC DỊCH THUẬT:
-3. Dịch tự nhiên như người Việt nói chuyện thật sự — không dịch từng chữ, không cứng nhắc.
-4. Đảm bảo đủ chủ ngữ và vị ngữ, câu hoàn chỉnh, người nghe hiểu ngay khi nghe lần đầu.
-5. Ưu tiên từ thuần Việt, hạn chế tối đa từ Hán Việt — ví dụ: dùng "cá voi sát thủ" không phải "hổ kình", "nổ tung" không phải "bùng phát", "tốc độ" không phải "tốc lực".
-6. Giữ nguyên văn phong: khoa học thì rõ ràng, hài hước thì thoải mái, kịch tính thì mạnh mẽ.
-7. KHÔNG dùng các ký tự: dấu gạch ngang (-), gạch dưới (_), gạch chéo (/), dấu hỏi chấm (?), ngoặc đơn () — vì bản dịch sẽ được đọc bằng TTS.
-8. Nếu có tên riêng hoặc thuật ngữ khoa học, giữ nguyên tên gốc hoặc dùng cách phiên âm phổ biến nhất ở Việt Nam."""
+=== CHẤT LƯỢNG DỊCH ===
+- Dịch tự nhiên như người Việt nói chuyện thực sự, không cứng nhắc, không dịch từng chữ.
+- Câu phải đủ chủ ngữ và vị ngữ để người nghe hiểu ngay lần đầu khi nghe TTS.
+- Dùng từ thuần Việt, hạn chế Hán Việt: "cá voi sát thủ" không phải "hổ kình", "nổ tung" không phải "bùng phát", "chiều dài" không phải "độ dài".
+- Giữ văn phong gốc: khoa học thì rõ ràng, hài hước thì thoải mái, kịch tính thì mạnh mẽ.
+- Tên riêng và thuật ngữ khoa học: giữ nguyên hoặc dùng cách phiên âm phổ biến nhất ở Việt Nam.
+
+=== KÝ TỰ BỊ CẤM (TTS sẽ đọc sai) ===
+Không dùng: - _ / ( ) ... và dấu chấm hỏi cuối câu thay bằng dấu chấm."""
 
 
 BEEKNOEE_BASE_URL = "https://platform.beeknoee.com/api/v1"
@@ -266,7 +270,7 @@ def translate_chunk(cues: list[dict], context_cues: list[dict],
         prompt += f"[NGỮ CẢNH ĐÃ DỊCH - chỉ tham chiếu xưng hô/tên, KHÔNG dịch lại]:\n{ctx_srt}\n\n"
 
     src_srt = build_srt(cues)
-    prompt += f"[DỊCH {len(cues)} BLOCK SRT SAU, giữ nguyên index và timestamp]:\n{src_srt}"
+    prompt += f"Dịch ĐÚNG {len(cues)} block sau, đầu ra phải có ĐÚNG {len(cues)} block, không hơn không kém:\n\n{src_srt}"
 
     max_attempts = 5
     backoff = 5  # giây, tăng dần khi gặp 429
