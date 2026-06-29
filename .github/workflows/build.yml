@@ -66,9 +66,17 @@ jobs:
         run: |
           mkdir -p electron\resources\python
           copy dist\translate_server.exe electron\resources\python\
-          copy auth_server.exe electron\resources\python\
+          copy dist\auth_server.exe electron\resources\python\
           xcopy static_translate electron\resources\python\static_translate\ /E /I /Y
         shell: cmd
+
+      - name: Create .env file
+        shell: cmd
+        env:
+          BEEKNOEE_API_KEY: ${{ secrets.BEEKNOEE_API_KEY }}
+        run: |
+          echo BEEKNOEE_API_KEY=%BEEKNOEE_API_KEY% > electron\resources\python\.env
+          echo FFMPEG_BIN=ffmpeg >> electron\resources\python\.env
 
       - name: Setup Node.js
         uses: actions/setup-node@v4

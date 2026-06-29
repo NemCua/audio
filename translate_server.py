@@ -651,7 +651,7 @@ async def load_srt(job_id: str, request: Request, file: UploadFile = File(...)):
 
 
 # ── Proxy /auth/* → auth_server :8006 ───────────────────────────────────────
-AUTH_ORIGIN = "http://127.0.0.1:8006"
+AUTH_ORIGIN = os.getenv("AUTH_ORIGIN", "https://audio-hdtf.onrender.com")
 
 @app.api_route("/auth/{path:path}", methods=["GET","POST","PUT","DELETE","OPTIONS"])
 async def auth_proxy(path: str, request: Request):
