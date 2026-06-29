@@ -12,6 +12,7 @@ import shutil
 import subprocess
 import tempfile
 import uuid
+import httpx
 from contextlib import contextmanager
 from pathlib import Path
 from typing import Optional
@@ -120,6 +121,12 @@ def decode_user_id(token: str) -> int | None:
 
 app = FastAPI()
 app.add_middleware(CORSMiddleware, allow_origins=["*"], allow_methods=["*"], allow_headers=["*"])
+
+@app.middleware("http")
+async def ngrok_skip_warning(request: Request, call_next):
+    response = await call_next(request)
+    response.headers["ngrok-skip-browser-warning"] = "1"
+    return response
 
 @app.middleware("http")
 async def auth_guard(request: Request, call_next):
@@ -627,6 +634,26 @@ async def load_srt(job_id: str, request: Request, file: UploadFile = File(...)):
                 "zh": zh_map.get(c["idx"], ""), "vi": c.get("text", "")}
                for c in new_cues]
     return {"ok": True, "rows": rows}
+
+
+# ── Proxy /auth/* → auth_server :8006 ───────────────────────────────────────
+AUTH_ORIGIN = "http://127.0.0.1:8006"
+
+@app.api_route("/auth/{path:path}", methods=["GET","POST","PUT","DELETE","OPTIONS"])
+async def auth_proxy(path: str, request: Request):
+    url = f"{AUTH_ORIGIN}/auth/{path}"
+    headers = {k: v for k, v in request.headers.items()
+               if k.lower() not in ("host", "content-length")}
+    body = await request.body()
+    async with httpx.AsyncClient() as client:
+        resp = await client.request(
+            method=request.method, url=url,
+            headers=headers, content=body,
+            params=dict(request.query_params),
+        )
+    return JSONResponse(status_code=resp.status_code,
+                        content=resp.json() if resp.content else {},
+                        headers=dict(resp.headers))
 
 
 # Serve static — phải đặt cuối
