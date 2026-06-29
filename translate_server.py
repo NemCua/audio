@@ -4,6 +4,20 @@ translate_server.py — FastAPI port 8005
 Web UI cho tab Dịch Video (thay thế Gradio)
 """
 
+import sys, io, os
+os.environ.setdefault("PYTHONUTF8", "1")
+for _s in ("stdout", "stderr"):
+    _stream = getattr(sys, _s)
+    if hasattr(_stream, "reconfigure"):
+        try:
+            _stream.reconfigure(encoding="utf-8", errors="replace")
+        except Exception:
+            pass
+    if hasattr(_stream, "buffer"):
+        setattr(sys, _s, io.TextIOWrapper(
+            _stream.buffer, encoding="utf-8", errors="replace", line_buffering=True
+        ))
+
 import asyncio
 import json
 import math

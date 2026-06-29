@@ -5,6 +5,20 @@ Chạy: python3 app.py
 Mở:   http://localhost:8080
 """
 
+import sys, io, os
+os.environ.setdefault("PYTHONUTF8", "1")
+for _s in ("stdout", "stderr"):
+    _stream = getattr(sys, _s)
+    if hasattr(_stream, "reconfigure"):
+        try:
+            _stream.reconfigure(encoding="utf-8", errors="replace")
+        except Exception:
+            pass
+    if hasattr(_stream, "buffer"):
+        setattr(sys, _s, io.TextIOWrapper(
+            _stream.buffer, encoding="utf-8", errors="replace", line_buffering=True
+        ))
+
 import asyncio
 import json
 import os
@@ -493,10 +507,12 @@ def run_export_json(df: pd.DataFrame, state: dict):
         "vi":        c["text"],
     } for c in vi_cues]
 
-    tmp = tempfile.NamedTemporaryFile(delete=False, suffix=".json", mode="w", encoding="utf-8")
-    json.dump(export, tmp, ensure_ascii=False, indent=2)
-    tmp.close()
-    return gr.update(value=tmp.name, visible=True)
+    # Save to Gradio temp dir so it can be served on Windows without PermissionError
+    _gtmp = Path(os.environ.get("GRADIO_TEMP_DIR") or tempfile.gettempdir())
+    _gtmp.mkdir(parents=True, exist_ok=True)
+    _json_path = _gtmp / f"export_{int(time.time())}.json"
+    _json_path.write_text(json.dumps(export, ensure_ascii=False, indent=2), encoding="utf-8")
+    return gr.update(value=str(_json_path), visible=True)
 
 
 # ---------------------------------------------------------------------------
@@ -1084,10 +1100,39 @@ with gr.Blocks(title="Dịch Video Tiếng Trung → Tiếng Việt") as demo:
 
 
 if __name__ == "__main__":
+    # On Windows, set GRADIO_TEMP_DIR to avoid PermissionError with default %TEMP%
+    if sys.platform == "win32" and not os.environ.get("GRADIO_TEMP_DIR"):
+        _gradio_tmp = Path(BASE_DIR) / ".gradio_tmp"
+        _gradio_tmp.mkdir(exist_ok=True)
+        os.environ["GRADIO_TEMP_DIR"] = str(_gradio_tmp)
+
+    # On Windows, anyio.open_file raises PermissionError on freshly-written
+    # temp files (Defender scan, write-handle not released). Retry 5x with backoff.
+    if sys.platform == "win32":
+        import asyncio as _asyncio
+        import anyio._core._fileio as _anyio_fileio
+        _orig_open_file = _anyio_fileio.open_file
+        async def _patched_open_file(file, mode="r", *args, **kwargs):
+            for _i in range(5):
+                try:
+                    return await _orig_open_file(file, mode, *args, **kwargs)
+                except PermissionError:
+                    if _i < 4:
+                        await _asyncio.sleep(0.2 * (_i + 1))
+                    else:
+                        raise
+        _anyio_fileio.open_file = _patched_open_file
+        import anyio
+        anyio.open_file = _patched_open_file
+
     demo.launch(
         server_name="0.0.0.0",
         server_port=8003,
         share=False,
         theme=gr.themes.Soft(),
         head=f"<script>{_BEEP_JS}</script>",
+        allowed_paths=[
+            str(Path(BASE_DIR) / ".gradio_tmp"),
+            tempfile.gettempdir(),
+        ],
     )

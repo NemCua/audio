@@ -3,16 +3,30 @@
 translate_video.py
 Nhận video tiếng Trung từ thư mục input/, tự động:
   1. Tách audio đầy đủ (FFmpeg) + tách vocals/background (Demucs)
-  2. STT tiếng Trung → SRT (Groq Whisper)
-  3. Dịch Trung → Việt (Groq LLM)
+  2. STT tiếng Trung -> SRT (Groq Whisper)
+  3. Dịch Trung -> Việt (Groq LLM)
   4. TTS tiếng Việt đồng bộ theo timestamp (Edge TTS + FFmpeg atempo)
-  5. Mix TTS + nhạc nền gốc → burn subtitle → output/
+  5. Mix TTS + nhạc nền gốc -> burn subtitle -> output/
 
 Cách dùng:
   python3 translate_video.py
   python3 translate_video.py --input path/to/video.mp4
   python3 translate_video.py --key YOUR_GROQ_KEY  (override .env)
 """
+
+import sys, io, os
+os.environ.setdefault("PYTHONUTF8", "1")
+for _s in ("stdout", "stderr"):
+    _stream = getattr(sys, _s)
+    if hasattr(_stream, "reconfigure"):
+        try:
+            _stream.reconfigure(encoding="utf-8", errors="replace")
+        except Exception:
+            pass
+    if hasattr(_stream, "buffer"):
+        setattr(sys, _s, io.TextIOWrapper(
+            _stream.buffer, encoding="utf-8", errors="replace", line_buffering=True
+        ))
 
 import argparse
 import asyncio
@@ -40,6 +54,40 @@ OUTPUT_DIR = BASE_DIR / "output"
 WORK_DIR   = BASE_DIR / "workdir"
 
 FFMPEG_BIN       = os.environ.get("FFMPEG_BIN", "ffmpeg")
+
+def _best_video_codec() -> tuple[list[str], list[str]]:
+    """Trả về (encode_flags, decode_flags) tối ưu theo platform/GPU."""
+    import subprocess as _sp
+    if sys.platform == "darwin":
+        return ["-c:v", "h264_videotoolbox", "-q:v", "50"], []
+    # Windows/Linux: thử NVENC trước
+    _test_input = [FFMPEG_BIN, "-f", "lavfi", "-i", "color=black:size=1280x720:rate=30", "-t", "0.1"]
+    try:
+        r = _sp.run(
+            _test_input + ["-c:v", "h264_nvenc", "-preset", "p4", "-rc", "constqp", "-qp", "23", "-f", "null", "-"],
+            capture_output=True, timeout=10
+        )
+        if r.returncode == 0:
+            print("[codec] h264_nvenc OK -> dùng NVENC (GPU)")
+            return ["-c:v", "h264_nvenc", "-preset", "p4", "-rc", "constqp", "-qp", "23"], ["-hwaccel", "cuda"]
+    except Exception:
+        pass
+    # Thử Windows Media Foundation (hardware via DirectX/GPU)
+    if sys.platform == "win32":
+        try:
+            r = _sp.run(
+                _test_input + ["-c:v", "h264_mf", "-f", "null", "-"],
+                capture_output=True, timeout=10
+            )
+            if r.returncode == 0:
+                print("[codec] h264_mf OK -> dùng Media Foundation (GPU hardware)")
+                return ["-c:v", "h264_mf", "-q:v", "25"], []
+        except Exception:
+            pass
+    print("[codec] fallback -> libx264 (CPU), preset ultrafast")
+    return ["-c:v", "libx264", "-preset", "ultrafast", "-crf", "23"], []
+
+_VIDEO_ENC, _VIDEO_DEC = _best_video_codec()
 TTS_VOICE        = "vi-VN-HoaiMyNeural"
 TTS_SPEED_BOOST  = 1.00   # không tăng tốc mặc định, tự khớp theo window
 ATEMPO_MAX       = 2.0    # FFmpeg atempo tối đa 2.0x mỗi filter
@@ -54,8 +102,8 @@ BG_VOLUME        = 0.9    # âm lượng nhạc nền so với gốc (0.0-1.0)
 # HELPERS
 # ---------------------------------------------------------------------------
 
-def run(cmd: list[str], timeout: int = 300, check: bool = True) -> subprocess.CompletedProcess:
-    result = subprocess.run(cmd, capture_output=True, text=True, timeout=timeout, check=False)
+def run(cmd: list[str], timeout: int = 300, check: bool = True, cwd=None) -> subprocess.CompletedProcess:
+    result = subprocess.run(cmd, capture_output=True, text=True, timeout=timeout, check=False, cwd=cwd)
     if check and result.returncode != 0:
         raise subprocess.CalledProcessError(
             result.returncode, result.args,
@@ -81,7 +129,7 @@ def sec_to_srt_time(sec: float) -> str:
 
 
 def parse_srt(text: str) -> list[dict]:
-    """Parse SRT text → list of {idx, start, end, start_sec, end_sec, text}"""
+    """Parse SRT text -> list of {idx, start, end, start_sec, end_sec, text}"""
     blocks = re.split(r"\n\s*\n", text.strip())
     cues = []
     for block in blocks:
@@ -132,7 +180,7 @@ def atempo_chain(ratio: float) -> list[str]:
 
 def extract_audio_for_stt(video_path: Path, audio_path: Path):
     """Tách audio chất lượng thấp tối ưu cho Whisper STT (16kHz mono 32kbps)."""
-    print("  → Tách audio cho STT (16kHz mono 32kbps)...")
+    print("  -> Tách audio cho STT (16kHz mono 32kbps)...")
     run([
         FFMPEG_BIN, "-y", "-i", str(video_path),
         "-vn", "-acodec", "libmp3lame",
@@ -152,7 +200,7 @@ def extract_audio_for_stt(video_path: Path, audio_path: Path):
 
 def separate_background(video_path: Path, work_dir: Path) -> Path:
     """Dùng Demucs tách vocals, giữ lại nhạc nền (no_vocals)."""
-    print("  → Tách audio nền (Demucs)...")
+    print("  -> Tách audio nền (Demucs)...")
 
     full_audio = work_dir / "full_audio.wav"
     run([
@@ -193,7 +241,7 @@ def separate_background(video_path: Path, work_dir: Path) -> Path:
 # ---------------------------------------------------------------------------
 
 def stt_groq(audio_path: Path, groq_key: str) -> list[dict]:
-    print("  → STT Groq Whisper (zh)...")
+    print("  -> STT Groq Whisper (zh)...")
     from groq import Groq
     client = Groq(api_key=groq_key)
     with open(audio_path, "rb") as f:
@@ -246,7 +294,7 @@ SYSTEM_PROMPT = """Bạn là dịch giả phụ đề tiếng Việt chuyên ngh
 - Ngôi thứ 2 số ít chỉ được dùng MỘT từ duy nhất: "bạn" HOẶC "ngươi" HOẶC "mày" — không trộn lẫn dù chỉ một lần.
 - Video dạng "what if / giả sử / nếu bạn là..." (narrator nói với khán giả): luôn dùng "bạn", KHÔNG dùng cậu/mày/ngươi dù câu có vẻ thân mật.
 - Ngôi thứ nhất số nhiều: "chúng tôi / chúng ta / bọn tao" — chọn một, không đổi.
-- Nếu ngữ cảnh đã dịch cho thấy xưng hô cụ thể → bắt buộc dùng đúng theo.
+- Nếu ngữ cảnh đã dịch cho thấy xưng hô cụ thể -> bắt buộc dùng đúng theo.
 
 === CHẤT LƯỢNG DỊCH ===
 - Tự động nhận diện ngôn ngữ nguồn (Anh, Trung, Nhật, Hàn, Tây Ban Nha, Pháp...) và dịch sang tiếng Việt.
@@ -401,7 +449,7 @@ def translate_srt(cues: list[dict], groq_key: str,
 
     provider = "Beeknoee" if beeknoee_key else "Groq"
 
-    print(f"  → Dich {len(cues)} block SRT ({provider}), chunk={CHUNK_BLOCKS}, parallel={PARALLEL_CHUNKS}...")
+    print(f"  -> Dich {len(cues)} block SRT ({provider}), chunk={CHUNK_BLOCKS}, parallel={PARALLEL_CHUNKS}...")
     chunks = [cues[i:i + CHUNK_BLOCKS] for i in range(0, len(cues), CHUNK_BLOCKS)]
     total  = len(chunks)
 
@@ -556,7 +604,7 @@ async def tts_segment(text: str, voice: str, out_path: Path,
                       capcut_voice_type: str | None = None,
                       capcut_resource_id: str | None = None):
     """Tạo file TTS cho 1 đoạn text, retry 3 lần nếu thất bại.
-    Ưu tiên: CapCut TTS → Beeknoee TTS → Edge TTS."""
+    Ưu tiên: CapCut TTS -> Beeknoee TTS -> Edge TTS."""
     clean = re.sub(r"[^\w\sÀ-ɏḀ-ỿ.,!?;:()\-–\"']", " ", text).strip()
     if not clean:
         clean = "."
@@ -677,9 +725,9 @@ async def build_tts_track(cues: list[dict], work_dir: Path, video_duration: floa
                           progress_cb=None) -> Path:
     """
     Build track TTS đồng bộ:
-    - Mỗi cue: TTS → atempo để khớp đúng window [start_sec, end_sec]
+    - Mỗi cue: TTS -> atempo để khớp đúng window [start_sec, end_sec]
     - Ghép tất cả cue + khoảng lặng giữa chúng thành 1 file mp3
-    - Ưu tiên: CapCut TTS → Beeknoee TTS → Edge TTS
+    - Ưu tiên: CapCut TTS -> Beeknoee TTS -> Edge TTS
     """
     if capcut_device_id and capcut_voice_type:
         label = f"CapCut TTS batch ({capcut_voice_type})"
@@ -687,13 +735,13 @@ async def build_tts_track(cues: list[dict], work_dir: Path, video_duration: floa
         label = f"Beeknoee ({beeknoee_tts_model})"
     else:
         label = f"Edge TTS ({TTS_VOICE})"
-    print(f"  → TTS {len(cues)} đoạn ({label})...")
+    print(f"  -> TTS {len(cues)} đoạn ({label})...")
     seg_dir = work_dir / "tts_segs"
     seg_dir.mkdir(exist_ok=True)
 
     # --- Pre-fetch CapCut batch -------------------------------------------
     # Gom tất cả cue có text, gửi theo batch 10 đoạn/request thay vì từng cái
-    raw_paths: dict[int, Path] = {}   # idx → raw mp3 path
+    raw_paths: dict[int, Path] = {}   # idx -> raw mp3 path
     total_cues = len([c for c in cues if c["text"].strip()])
 
     if capcut_device_id and capcut_voice_type and capcut_resource_id:
@@ -716,7 +764,7 @@ async def build_tts_track(cues: list[dict], work_dir: Path, video_duration: floa
                 if not any(l.startswith("CAPCUT_DEVICE_ID=") for l in lines):
                     new_lines.append(f"CAPCUT_DEVICE_ID={new_id}")
                 env_path.write_text("\n".join(new_lines) + "\n")
-            print(f"  → Đổi device_id mới: {new_id}")
+            print(f"  -> Đổi device_id mới: {new_id}")
             return new_id
 
         def _flush_batch():
@@ -800,7 +848,7 @@ async def build_tts_track(cues: list[dict], work_dir: Path, video_duration: floa
             await asyncio.gather(*[_edge_one(t, p) for t, p in chunk])
 
     # Dùng adelay để pin từng segment vào timestamp tuyệt đối start_sec
-    # → không có sai số tích lũy dù trim/stretch có lệch nhỏ
+    # -> không có sai số tích lũy dù trim/stretch có lệch nhỏ
     WAV_SR = 44100
 
     # segments: list of (start_sec, end_sec, wav_path)
@@ -853,11 +901,11 @@ async def build_tts_track(cues: list[dict], work_dir: Path, video_duration: floa
         raise RuntimeError("Không tạo được segment TTS nào.")
 
     # Dùng FFmpeg filter_complex với adelay để pin mỗi segment vào start_sec tuyệt đối
-    # Giới hạn 200 inputs/filter_complex của FFmpeg → chia batch nếu cần
+    # Giới hạn 200 inputs/filter_complex của FFmpeg -> chia batch nếu cần
     ADELAY_BATCH = 150
 
     def _mix_batch(batch: list[tuple[float, float, Path]], total_dur: float, out_wav: Path):
-        """Mix một batch segments bằng adelay+amix → 1 WAV."""
+        """Mix một batch segments bằng adelay+amix -> 1 WAV."""
         inputs = []
         filter_parts = []
         labels = []
@@ -934,17 +982,17 @@ async def build_tts_track(cues: list[dict], work_dir: Path, video_duration: floa
 
 def slowdown_video(video_path: Path, out_path: Path, factor: float) -> Path:
     """
-    Kéo dãn video factor lần (vd factor=1.2 → chậm hơn 20%).
+    Kéo dãn video factor lần (vd factor=1.2 -> chậm hơn 20%).
     setpts=factor*PTS cho video, atempo=1/factor cho audio gốc.
     """
-    print(f"  → Kéo dãn video {factor}x (chậm lại {(factor-1)*100:.0f}%)...")
+    print(f"  -> Kéo dãn video {factor}x (chậm lại {(factor-1)*100:.0f}%)...")
     atempo = 1.0 / factor
     af_filters = ",".join(atempo_chain(atempo))
     run([
         FFMPEG_BIN, "-y", "-i", str(video_path),
         "-vf", f"setpts={factor:.4f}*PTS",
         "-af", af_filters,
-        "-c:v", "libx264", "-preset", "fast", "-crf", "20",
+        *_VIDEO_ENC,
         "-c:a", "aac", "-b:a", "192k",
         str(out_path),
     ], timeout=1800)
@@ -985,10 +1033,14 @@ def render_video(
     logo_color: str = "#ffffff",
     watermark: str = "nem_vietsub",
 ):
-    print("  → Render video (burn sub + mix TTS + nhạc nền)...")
+    print("  -> Render video (burn sub + mix TTS + nhạc nền)...")
 
+    # On Windows, FFmpeg subtitles filter cannot parse drive-letter paths (C:\...).
+    # Fix: run ffmpeg with cwd=work_dir and use just the filename (relative).
+    _ffmpeg_cwd = str(Path(srt_path).parent) if sys.platform == "win32" else None
+    _srt_name = Path(srt_path).name if sys.platform == "win32" else str(Path(srt_path).resolve())
     srt_escaped = (
-        str(Path(srt_path).resolve())
+        _srt_name
         .replace("\\", "\\\\")
         .replace(":", "\\:")
         .replace("'", "\\'")
@@ -1003,9 +1055,13 @@ def render_video(
 
     # Watermark bounce DVD-style
     wm_text = watermark.replace("_", "\\_").replace("'", "\\'").replace(":", "\\:") if watermark.strip() else ""
+    _wm_font = (
+        "C\\\\:/Windows/Fonts/arial.ttf" if sys.platform == "win32"
+        else "/System/Library/Fonts/Helvetica.ttc"
+    )
     wm_filter = (
         f"drawtext=text='{wm_text}':fontsize=24:fontcolor=white@0.5:"
-        f"fontfile=/System/Library/Fonts/Helvetica.ttc:"
+        f"fontfile={_wm_font}:"
         f"x=abs(mod(t*73\\,2*(w-tw))-(w-tw)):"
         f"y=abs(mod(t*51\\,2*(h-th))-(h-th))"
     ) if wm_text else ""
@@ -1059,14 +1115,18 @@ def render_video(
             f"[vbase][logo]overlay={px}:{py}[vout]"
         )
     elif _has_text_logo:
-        # hex color #rrggbb → ffmpeg fontcolor
+        # hex color #rrggbb -> ffmpeg fontcolor
         txt = logo_text.strip().replace("'", "\\'").replace(":", "\\:")
         fc  = logo_color.lstrip("#")
         fc  = f"0x{fc}ff" if len(fc) == 6 else "white"
+        _logo_font = (
+            "C\\\\:/Windows/Fonts/arial.ttf" if sys.platform == "win32"
+            else "/System/Library/Fonts/Helvetica.ttc"
+        )
         vf_base = (
             f"{base_vf},"
             f"drawtext=text='{txt}':fontsize={logo_fontsize}:fontcolor={fc}:"
-            f"fontfile=/System/Library/Fonts/Helvetica.ttc:"
+            f"fontfile={_logo_font}:"
             f"x={px}:y={py}:box=1:boxcolor=black@0.4:boxborderw=4[vout]"
         )
     else:
@@ -1088,14 +1148,14 @@ def render_video(
         "-filter_complex", filter_complex,
         "-map", "[vout]",
         "-map", "[aout]",
-        "-c:v", "libx264", "-preset", "fast", "-crf", "23",
+        *_VIDEO_ENC,
         "-c:a", "aac", "-b:a", "192k",
         "-shortest",
         str(output_path),
     ]
 
     try:
-        run(cmd, timeout=1800)
+        run(cmd, timeout=1800, cwd=_ffmpeg_cwd)
     except subprocess.CalledProcessError as e:
         print("=== FFmpeg stderr ===")
         print(e.stderr[-3000:] if e.stderr else "(no stderr)")
@@ -1115,7 +1175,7 @@ def find_input_video(input_dir: Path) -> Path:
 
 
 def main():
-    parser = argparse.ArgumentParser(description="Dịch video tiếng Trung → tiếng Việt")
+    parser = argparse.ArgumentParser(description="Dịch video tiếng Trung -> tiếng Việt")
     parser.add_argument("--key",   default=None,  help="Groq API key (mặc định: đọc từ .env)")
     parser.add_argument("--input", default=None,  help="Đường dẫn video (mặc định: lấy từ input/)")
     parser.add_argument("--slow",  type=float, default=1.0,
@@ -1169,7 +1229,7 @@ def main():
         print(f"       {len(zh_cues)} segments")
 
         # 4. Dịch
-        print("\n[4/6] Dịch Trung → Việt (Groq LLM)")
+        print("\n[4/6] Dịch Trung -> Việt (Groq LLM)")
         vi_cues = translate_srt(zh_cues, groq_key)
         srt_vi_path.write_text(build_srt(vi_cues), encoding="utf-8")
 
