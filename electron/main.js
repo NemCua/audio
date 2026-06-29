@@ -1,0 +1,127 @@
+const { app, BrowserWindow, dialog } = require('electron')
+const { spawn } = require('child_process')
+const path = require('path')
+const http = require('http')
+
+let mainWindow = null
+let serverProcess = null
+let authProcess = null
+
+const PORT = 8005
+const AUTH_PORT = 8006
+
+// Tìm python executable
+function getPythonPath() {
+  if (process.platform === 'win32') {
+    const candidates = [
+      path.join(process.env.LOCALAPPDATA || '', 'Programs', 'Python', 'Python313', 'python.exe'),
+      path.join(process.env.LOCALAPPDATA || '', 'Programs', 'Python', 'Python312', 'python.exe'),
+      path.join(process.env.LOCALAPPDATA || '', 'Programs', 'Python', 'Python311', 'python.exe'),
+      'python',
+      'python3',
+    ]
+    return candidates[0] // electron-builder sẽ bundle python riêng sau
+  }
+  return 'python3'
+}
+
+// Tìm thư mục chứa Python scripts
+function getScriptsDir() {
+  if (app.isPackaged) {
+    return path.join(process.resourcesPath, 'python')
+  }
+  return path.join(__dirname, '..')
+}
+
+function startServers() {
+  const python = getPythonPath()
+  const scriptsDir = getScriptsDir()
+
+  console.log('Scripts dir:', scriptsDir)
+  console.log('Python:', python)
+
+  // Khởi động auth server
+  authProcess = spawn(python, [path.join(scriptsDir, 'auth_server.py')], {
+    cwd: scriptsDir,
+    env: { ...process.env, PYTHONUNBUFFERED: '1', PYTHONUTF8: '1' },
+  })
+  authProcess.stdout.on('data', d => console.log('[auth]', d.toString()))
+  authProcess.stderr.on('data', d => console.log('[auth-err]', d.toString()))
+
+  // Khởi động translate server
+  serverProcess = spawn(python, [path.join(scriptsDir, 'translate_server.py')], {
+    cwd: scriptsDir,
+    env: { ...process.env, PYTHONUNBUFFERED: '1', PYTHONUTF8: '1' },
+  })
+  serverProcess.stdout.on('data', d => console.log('[server]', d.toString()))
+  serverProcess.stderr.on('data', d => console.log('[server-err]', d.toString()))
+}
+
+function waitForServer(retries = 30) {
+  return new Promise((resolve, reject) => {
+    const check = (n) => {
+      http.get(`http://localhost:${PORT}/`, res => {
+        if (res.statusCode < 500) resolve()
+        else if (n > 0) setTimeout(() => check(n - 1), 1000)
+        else reject(new Error('Server không khởi động được'))
+      }).on('error', () => {
+        if (n > 0) setTimeout(() => check(n - 1), 1000)
+        else reject(new Error('Server không khởi động được'))
+      })
+    }
+    check(retries)
+  })
+}
+
+function createWindow() {
+  mainWindow = new BrowserWindow({
+    width: 1280,
+    height: 800,
+    minWidth: 900,
+    minHeight: 600,
+    title: 'Dịch Video',
+    webPreferences: {
+      preload: path.join(__dirname, 'preload.js'),
+      nodeIntegration: false,
+      contextIsolation: true,
+    },
+  })
+
+  mainWindow.loadURL(`http://localhost:${PORT}`)
+  mainWindow.on('closed', () => { mainWindow = null })
+}
+
+app.whenReady().then(async () => {
+  startServers()
+
+  // Hiện splash trong khi chờ server
+  const splash = new BrowserWindow({
+    width: 400, height: 300,
+    frame: false, alwaysOnTop: true,
+    webPreferences: { nodeIntegration: false }
+  })
+  splash.loadURL(`data:text/html,<html><body style="background:#0a0c14;color:#a78bfa;font-family:sans-serif;display:flex;align-items:center;justify-content:center;height:100vh;margin:0;flex-direction:column"><h2>Dịch Video</h2><p style="color:#4b5563">Đang khởi động server...</p></body></html>`)
+
+  try {
+    await waitForServer(30)
+    splash.close()
+    createWindow()
+  } catch (e) {
+    splash.close()
+    dialog.showErrorBox('Lỗi khởi động', 'Không thể khởi động server Python.\nKiểm tra Python đã được cài đặt chưa.')
+    app.quit()
+  }
+})
+
+app.on('window-all-closed', () => {
+  if (process.platform !== 'darwin') app.quit()
+})
+
+app.on('activate', () => {
+  if (mainWindow === null) createWindow()
+})
+
+app.on('before-quit', () => {
+  if (serverProcess) serverProcess.kill()
+  if (authProcess) authProcess.kill()
+})

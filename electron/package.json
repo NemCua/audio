@@ -1,0 +1,49 @@
+{
+  "name": "dich-video",
+  "version": "1.0.0",
+  "description": "App dịch video đa ngôn ngữ sang tiếng Việt",
+  "main": "main.js",
+  "scripts": {
+    "start": "electron .",
+    "build:win": "electron-builder --win --x64",
+    "build:mac": "electron-builder --mac"
+  },
+  "build": {
+    "appId": "com.dichvideo.app",
+    "productName": "Dich Video",
+    "directories": {
+      "output": "dist"
+    },
+    "files": [
+      "main.js",
+      "preload.js"
+    ],
+    "extraResources": [
+      {
+        "from": "../",
+        "to": "python",
+        "filter": [
+          "translate_server.py",
+          "auth_server.py",
+          "translate_video.py",
+          "static_translate/**",
+          ".env"
+        ]
+      }
+    ],
+    "win": {
+      "target": "nsis"
+    },
+    "mac": {
+      "target": "dmg"
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true
+    }
+  },
+  "devDependencies": {
+    "electron": "^42.5.1",
+    "electron-builder": "^26.15.3"
+  }
+}
