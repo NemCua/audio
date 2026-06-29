@@ -45,30 +45,22 @@ jobs:
             --collect-all=google.genai `
             translate_server.py
 
-      - name: Build auth_server.exe
+      - name: Download FFmpeg for Windows
+        shell: cmd
         run: |
-          pyinstaller --onefile --name auth_server `
-            --hidden-import=uvicorn.logging `
-            --hidden-import=uvicorn.loops `
-            --hidden-import=uvicorn.loops.auto `
-            --hidden-import=uvicorn.protocols `
-            --hidden-import=uvicorn.protocols.http `
-            --hidden-import=uvicorn.protocols.http.auto `
-            --hidden-import=uvicorn.lifespan `
-            --hidden-import=uvicorn.lifespan.off `
-            --hidden-import=starlette `
-            --hidden-import=psycopg2 `
-            --hidden-import=jose `
-            --hidden-import=bcrypt `
-            auth_server.py
+          curl -L https://github.com/BtbN/FFmpeg-Builds/releases/download/latest/ffmpeg-master-latest-win64-gpl.zip -o ffmpeg.zip
+          tar -xf ffmpeg.zip
+          move ffmpeg-master-latest-win64-gpl\bin\ffmpeg.exe ffmpeg.exe
+          move ffmpeg-master-latest-win64-gpl\bin\ffprobe.exe ffprobe.exe
 
       - name: Copy binaries to electron resources
-        run: |
-          mkdir -p electron\resources\python
-          copy dist\translate_server.exe electron\resources\python\
-          copy dist\auth_server.exe electron\resources\python\
-          xcopy static_translate electron\resources\python\static_translate\ /E /I /Y
         shell: cmd
+        run: |
+          mkdir electron\resources\python
+          copy dist\translate_server.exe electron\resources\python\
+          copy ffmpeg.exe electron\resources\python\
+          copy ffprobe.exe electron\resources\python\
+          xcopy static_translate electron\resources\python\static_translate\ /E /I /Y
 
       - name: Create .env file
         shell: cmd
