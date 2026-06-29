@@ -3,10 +3,15 @@
   "version": "1.0.0",
   "description": "App dịch video đa ngôn ngữ sang tiếng Việt",
   "main": "main.js",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/NemCua/audio.git"
+  },
+  "author": "NemCua",
   "scripts": {
     "start": "electron .",
-    "build:win": "electron-builder --win --x64",
-    "build:mac": "electron-builder --mac"
+    "build:win": "electron-builder --win --x64 --publish never",
+    "build:mac": "electron-builder --mac --publish never"
   },
   "build": {
     "appId": "com.dichvideo.app",
