@@ -16,3 +16,4 @@ workdir/
 *.mp4
 *.wav
 *.srt
+electron/node_modules/

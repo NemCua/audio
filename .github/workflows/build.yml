@@ -73,16 +73,16 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: '20'
+          node-version: '22'
 
       - name: Install Electron dependencies
         working-directory: electron
-        run: npm install
+        run: npm install --ignore-scripts
 
       - name: Build Electron app
         working-directory: electron
         env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          CSC_IDENTITY_AUTO_DISCOVERY: false
         run: npx electron-builder --win --x64 --publish never
 
       - name: Upload installer
