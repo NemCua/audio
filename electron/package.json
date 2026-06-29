@@ -20,15 +20,8 @@
     ],
     "extraResources": [
       {
-        "from": "../",
-        "to": "python",
-        "filter": [
-          "translate_server.py",
-          "auth_server.py",
-          "translate_video.py",
-          "static_translate/**",
-          ".env"
-        ]
+        "from": "resources/python",
+        "to": "python"
       }
     ],
     "win": {

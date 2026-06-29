@@ -10,22 +10,7 @@ let authProcess = null
 const PORT = 8005
 const AUTH_PORT = 8006
 
-// Tìm python executable
-function getPythonPath() {
-  if (process.platform === 'win32') {
-    const candidates = [
-      path.join(process.env.LOCALAPPDATA || '', 'Programs', 'Python', 'Python313', 'python.exe'),
-      path.join(process.env.LOCALAPPDATA || '', 'Programs', 'Python', 'Python312', 'python.exe'),
-      path.join(process.env.LOCALAPPDATA || '', 'Programs', 'Python', 'Python311', 'python.exe'),
-      'python',
-      'python3',
-    ]
-    return candidates[0] // electron-builder sẽ bundle python riêng sau
-  }
-  return 'python3'
-}
-
-// Tìm thư mục chứa Python scripts
+// Tìm thư mục chứa server binaries / scripts
 function getScriptsDir() {
   if (app.isPackaged) {
     return path.join(process.resourcesPath, 'python')
@@ -34,25 +19,33 @@ function getScriptsDir() {
 }
 
 function startServers() {
-  const python = getPythonPath()
   const scriptsDir = getScriptsDir()
-
   console.log('Scripts dir:', scriptsDir)
-  console.log('Python:', python)
 
-  // Khởi động auth server
-  authProcess = spawn(python, [path.join(scriptsDir, 'auth_server.py')], {
-    cwd: scriptsDir,
-    env: { ...process.env, PYTHONUNBUFFERED: '1', PYTHONUTF8: '1' },
-  })
+  let authCmd, authArgs, serverCmd, serverArgs
+  const env = { ...process.env, PYTHONUNBUFFERED: '1', PYTHONUTF8: '1' }
+
+  if (app.isPackaged) {
+    // Dùng file .exe đã được PyInstaller bundle
+    const ext = process.platform === 'win32' ? '.exe' : ''
+    authCmd = path.join(scriptsDir, `auth_server${ext}`)
+    authArgs = []
+    serverCmd = path.join(scriptsDir, `translate_server${ext}`)
+    serverArgs = []
+  } else {
+    // Dev mode: gọi python trực tiếp
+    const python = process.platform === 'win32' ? 'python' : 'python3'
+    authCmd = python
+    authArgs = [path.join(scriptsDir, 'auth_server.py')]
+    serverCmd = python
+    serverArgs = [path.join(scriptsDir, 'translate_server.py')]
+  }
+
+  authProcess = spawn(authCmd, authArgs, { cwd: scriptsDir, env })
   authProcess.stdout.on('data', d => console.log('[auth]', d.toString()))
   authProcess.stderr.on('data', d => console.log('[auth-err]', d.toString()))
 
-  // Khởi động translate server
-  serverProcess = spawn(python, [path.join(scriptsDir, 'translate_server.py')], {
-    cwd: scriptsDir,
-    env: { ...process.env, PYTHONUNBUFFERED: '1', PYTHONUTF8: '1' },
-  })
+  serverProcess = spawn(serverCmd, serverArgs, { cwd: scriptsDir, env })
   serverProcess.stdout.on('data', d => console.log('[server]', d.toString()))
   serverProcess.stderr.on('data', d => console.log('[server-err]', d.toString()))
 }

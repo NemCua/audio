@@ -1,0 +1,93 @@
+name: Build Windows App
+
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+
+jobs:
+  build-windows:
+    runs-on: windows-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install Python dependencies
+        run: |
+          pip install --upgrade pip
+          pip install fastapi uvicorn httpx python-dotenv python-jose[cryptography] bcrypt psycopg2-binary pydantic google-genai pyinstaller
+
+      - name: Build translate_server.exe
+        run: |
+          pyinstaller --onefile --name translate_server `
+            --hidden-import=uvicorn.logging `
+            --hidden-import=uvicorn.loops `
+            --hidden-import=uvicorn.loops.auto `
+            --hidden-import=uvicorn.protocols `
+            --hidden-import=uvicorn.protocols.http `
+            --hidden-import=uvicorn.protocols.http.auto `
+            --hidden-import=uvicorn.protocols.websockets `
+            --hidden-import=uvicorn.protocols.websockets.auto `
+            --hidden-import=uvicorn.lifespan `
+            --hidden-import=uvicorn.lifespan.off `
+            --hidden-import=starlette `
+            --hidden-import=psycopg2 `
+            --hidden-import=jose `
+            --hidden-import=bcrypt `
+            --hidden-import=google.genai `
+            --collect-all=google.genai `
+            translate_server.py
+
+      - name: Build auth_server.exe
+        run: |
+          pyinstaller --onefile --name auth_server `
+            --hidden-import=uvicorn.logging `
+            --hidden-import=uvicorn.loops `
+            --hidden-import=uvicorn.loops.auto `
+            --hidden-import=uvicorn.protocols `
+            --hidden-import=uvicorn.protocols.http `
+            --hidden-import=uvicorn.protocols.http.auto `
+            --hidden-import=uvicorn.lifespan `
+            --hidden-import=uvicorn.lifespan.off `
+            --hidden-import=starlette `
+            --hidden-import=psycopg2 `
+            --hidden-import=jose `
+            --hidden-import=bcrypt `
+            auth_server.py
+
+      - name: Copy binaries to electron resources
+        run: |
+          mkdir -p electron\resources\python
+          copy dist\translate_server.exe electron\resources\python\
+          copy auth_server.exe electron\resources\python\
+          xcopy static_translate electron\resources\python\static_translate\ /E /I /Y
+        shell: cmd
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Install Electron dependencies
+        working-directory: electron
+        run: npm install
+
+      - name: Build Electron app
+        working-directory: electron
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: npm run build:win
+
+      - name: Upload installer
+        uses: actions/upload-artifact@v4
+        with:
+          name: DichVideo-Windows
+          path: electron/dist/*.exe
+          retention-days: 30
