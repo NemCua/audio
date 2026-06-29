@@ -97,7 +97,7 @@ td.vi-cell textarea:focus{background:#1e1b4b44}
 .empty{text-align:center;padding:60px 20px;color:#1e2340}
 .empty .icon{font-size:48px;margin-bottom:12px}
 
-/* Nap tien */
+/* Nạp tiền */
 .topup-wrap{max-width:480px;margin:0 auto;padding:8px 0}
 .topup-wrap h2{font-size:16px;font-weight:700;color:#a78bfa;margin-bottom:16px}
 .pkg-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:20px}
@@ -193,10 +193,9 @@ td.vi-cell textarea:focus{background:#1e1b4b44}
 <header>
   <h1>🎬 Dịch Video Tiếng Trung → Tiếng Việt</h1>
   <span>AI dịch · CapCut TTS · FFmpeg render</span>
-  <div class="balance-pill" onclick="switchTab('topup')" title="Nap tien">
+  <div class="balance-pill" title="Số dư tài khoản">
     <span class="bal-lbl">Số dư</span>
     <span class="bal-val" id="bal-val">0đ</span>
-    <span class="top-up">+ Nạp tiền</span>
   </div>
   <div class="auth-user-menu" id="user-menu" style="display:none">
     <span class="uname" id="user-display"></span>
@@ -211,30 +210,30 @@ td.vi-cell textarea:focus{background:#1e1b4b44}
 
     <!-- BƯỚC 1: Upload + Dịch -->
     <div class="sec">
-      <h3>1. Chon video</h3>
+      <h3>1. Chọn video</h3>
       <div class="drop-zone" id="drop-zone">
         <input type="file" id="file-input" accept="video/*"/>
         <div class="icon">🎞️</div>
-        <p>Keo tha hoac nhan de chon video</p>
+        <p>Kéo thả hoặc nhấn để chọn video</p>
         <div class="fname" id="fname"></div>
       </div>
     </div>
 
     <div class="sec">
-      <h3>2. Lay ban dich</h3>
+      <h3>2. Lấy bản dịch</h3>
 
       <!-- Nhánh A: STT + AI -->
       <div id="branch-ai">
         <label style="font-size:11px;color:#6b7280">Groq API Key (STT)</label>
         <input type="password" id="groq-key" placeholder="gsk_..." autocomplete="off"
                style="margin-bottom:8px"/>
-        <button class="btn btn-purple" id="btn-start" onclick="startJob()">▶ STT + Dich AI</button>
+        <button class="btn btn-purple" id="btn-start" onclick="startJob()">▶ STT + Dịch AI</button>
       </div>
 
       <!-- Divider -->
       <div style="display:flex;align-items:center;gap:8px;margin:8px 0">
         <div style="flex:1;height:1px;background:#1e2340"></div>
-        <span style="font-size:11px;color:#4b5563">hoac</span>
+        <span style="font-size:11px;color:#4b5563">hoặc</span>
         <div style="flex:1;height:1px;background:#1e2340"></div>
       </div>
 
@@ -242,7 +241,7 @@ td.vi-cell textarea:focus{background:#1e1b4b44}
       <div style="position:relative">
         <button class="btn" id="btn-pick-srt"
                 style="background:#1c2b3a;color:#67e8f9;border:1px solid #164e63;margin-top:0">
-          📂 Nap SRT san co
+          📂 Nạp SRT sẵn có
         </button>
         <input type="file" id="srt-pre-input" accept=".srt,.txt"
                style="position:absolute;inset:0;opacity:0;cursor:pointer"
@@ -251,7 +250,7 @@ td.vi-cell textarea:focus{background:#1e1b4b44}
       <div class="fname" id="srt-fname" style="margin-top:4px"></div>
       <button class="btn" id="btn-use-srt" onclick="useSrt()"
               style="background:#164e63;color:#67e8f9;border:1px solid #0e7490;display:none;margin-top:6px">
-        ✓ Dung SRT nay
+        ✓ Dùng SRT này
       </button>
     </div>
 
@@ -269,33 +268,33 @@ td.vi-cell textarea:focus{background:#1e1b4b44}
 
     <!-- BƯỚC 2: Tạo video (ẩn cho đến khi có bản dịch) -->
     <div class="sec" id="sec-render" style="display:none">
-      <h3>3. Tao video</h3>
-      <button class="btn btn-green" id="btn-render" onclick="startRender()">🎬 Tao video</button>
+      <h3>3. Tạo video</h3>
+      <button class="btn btn-green" id="btn-render" onclick="startRender()">🎬 Tạo video</button>
       <a class="btn btn-blue" id="dl-srt-early"
          style="display:block;text-align:center;text-decoration:none;margin-top:6px">
-        ⬇ Tai ban dich (.srt)
+        ⬇ Tải bản dịch (.srt)
       </a>
     </div>
 
     <!-- Tùy chỉnh video (luôn hiển thị nhưng ở dưới) -->
     <div class="sec">
-      <h3>Tuy chinh video</h3>
+      <h3>Tùy chỉnh video</h3>
 
       <label>Giong doc TTS</label>
       <select id="voice" style="margin-bottom:10px">
-        <option value="BV421_vivn_streaming" selected>Nho Ngot Ngao</option>
-        <option value="BV074_streaming">Co Gai Hoat Ngon</option>
-        <option value="vi_female_huong">Giong Nu Pho Thong</option>
+        <option value="BV421_vivn_streaming" selected>Nhỏ Ngọt Ngào</option>
+        <option value="BV074_streaming">Cô Gái Hoạt Ngôn</option>
+        <option value="vi_female_huong">Giọng Nữ Phổ Thông</option>
         <option value="BV562_streaming">Mai</option>
-        <option value="BV075_streaming">Thanh Nien Tu Tin</option>
-        <option value="multi_male_felipe_uranus_bigtts">Giong Nam Tram</option>
-        <option value="BV560_streaming">Alex Dai De</option>
-        <option value="multi_female_peiqi_uranus_bigtts">Gai Moi Lon</option>
-        <option value="multi_female_yangguangnv_uranus_bigtts">Ban Mai</option>
-        <option value="multi_female_sisi_uranus_bigtts">Ban Tin Nu</option>
+        <option value="BV075_streaming">Thanh Niên Tự Tin</option>
+        <option value="multi_male_felipe_uranus_bigtts">Giọng Nam Trầm</option>
+        <option value="BV560_streaming">Alex Đại Đế</option>
+        <option value="multi_female_peiqi_uranus_bigtts">Gái Mới Lớn</option>
+        <option value="multi_female_yangguangnv_uranus_bigtts">Bình Minh</option>
+        <option value="multi_female_sisi_uranus_bigtts">Bản Tin Nữ</option>
       </select>
 
-      <label>Nhac nen (tuy chon)</label>
+      <label>Nhạc nền (tùy chọn)</label>
       <div style="position:relative;margin-bottom:4px">
         <button class="btn" style="background:#1c1a2e;color:#c4b5fd;border:1px solid #4c1d95;margin-top:0">
           🎵 Chon file nhac
@@ -306,25 +305,25 @@ td.vi-cell textarea:focus{background:#1e1b4b44}
       </div>
       <div class="fname" id="bg-music-fname" style="margin-bottom:10px"></div>
 
-      <label>Watermark (de trong = khong co)</label>
-      <input type="text" id="logo-text" placeholder="ten kenh, @handle..."
+      <label>Watermark (để trống = không có)</label>
+      <input type="text" id="logo-text" placeholder="tên kênh, @handle..."
              style="margin-bottom:10px"/>
 
-      <label>Toc do doc TTS</label>
+      <label>Tốc độ đọc TTS</label>
       <div class="slider-row" style="margin-bottom:8px">
         <input type="range" id="tts-rate" min="0.5" max="2.0" step="0.05" value="1.0"
                oninput="document.getElementById('ttsrv').textContent=parseFloat(this.value).toFixed(2)+'x'"/>
         <span class="sv" id="ttsrv">1.00x</span>
       </div>
 
-      <label>Am luong long tieng</label>
+      <label>Âm lượng lồng tiếng</label>
       <div class="slider-row" style="margin-bottom:8px">
         <input type="range" id="tts-vol" min="0" max="3" step="0.05" value="1.8"
                oninput="document.getElementById('ttsv').textContent=parseFloat(this.value).toFixed(2)"/>
         <span class="sv" id="ttsv">1.80</span>
       </div>
 
-      <label>Am luong nhac nen</label>
+      <label>Âm lượng nhạc nền</label>
       <div class="slider-row">
         <input type="range" id="bg-vol" min="0" max="2" step="0.05" value="0.3"
                oninput="document.getElementById('bgv').textContent=parseFloat(this.value).toFixed(2)"/>
@@ -339,7 +338,6 @@ td.vi-cell textarea:focus{background:#1e1b4b44}
     <div class="tabs">
       <div class="tab active" onclick="switchTab('output')">📺 Video kết quả</div>
       <div class="tab" onclick="switchTab('subs')">📝 Chỉnh phụ đề</div>
-      <div class="tab" onclick="switchTab('topup')">💰 Nạp tiền</div>
     </div>
 
     <!-- TAB OUTPUT -->
@@ -382,7 +380,7 @@ td.vi-cell textarea:focus{background:#1e1b4b44}
     </div>
 
     <!-- TAB NẠP TIỀN -->
-    <div class="tab-content" id="tab-topup">
+    <div class="tab-content" id="tab-topup" style="display:none">
       <div class="topup-wrap">
         <h2>💰 Nạp tiền vào tài khoản</h2>
 
@@ -503,17 +501,17 @@ async function doLogin() {
   const errEl = document.getElementById('login-err');
   const btn   = document.getElementById('login-btn');
   if (!email || !pw) { errEl.textContent = 'Vui long nhap day du thong tin'; return; }
-  btn.disabled = true; btn.textContent = 'Dang nhap...';
+  btn.disabled = true; btn.textContent = 'Đang nhập...';
   try {
     const r = await fetch(AUTH_API + '/auth/login', {
       method: 'POST', headers: {'Content-Type':'application/json'},
       body: JSON.stringify({email, password: pw})
     });
     const d = await r.json();
-    if (!r.ok) { errEl.textContent = d.detail || 'Loi dang nhap'; return; }
+    if (!r.ok) { errEl.textContent = d.detail || 'Lỗi đăng nhập'; return; }
     onAuthSuccess(d);
   } catch(e) { errEl.textContent = 'Khong ket noi duoc auth server'; }
-  finally { btn.disabled = false; btn.textContent = 'Dang nhap'; }
+  finally { btn.disabled = false; btn.textContent = 'Đăng nhập'; }
 }
 
 async function doRegister() {
@@ -523,17 +521,17 @@ async function doRegister() {
   const errEl = document.getElementById('reg-err');
   const btn   = document.getElementById('reg-btn');
   if (!email || !pw) { errEl.textContent = 'Vui long nhap day du thong tin'; return; }
-  btn.disabled = true; btn.textContent = 'Dang ky...';
+  btn.disabled = true; btn.textContent = 'Đang ký...';
   try {
     const r = await fetch(AUTH_API + '/auth/register', {
       method: 'POST', headers: {'Content-Type':'application/json'},
       body: JSON.stringify({email, password: pw, display_name: name})
     });
     const d = await r.json();
-    if (!r.ok) { errEl.textContent = d.detail || 'Loi dang ky'; return; }
+    if (!r.ok) { errEl.textContent = d.detail || 'Lỗi đăng ký'; return; }
     onAuthSuccess(d);
   } catch(e) { errEl.textContent = 'Khong ket noi duoc auth server'; }
-  finally { btn.disabled = false; btn.textContent = 'Tao tai khoan'; }
+  finally { btn.disabled = false; btn.textContent = 'Tạo tài khoản'; }
 }
 
 function doLogout() {
@@ -612,7 +610,7 @@ async function useSrt() {
   if (!preSrtFile) { alert('Chon file SRT truoc!'); return; }
 
   clearPoll();
-  setStatus('running', 'Dang upload...', 0);
+  setStatus('running', 'Đang upload...', 0);
   document.getElementById('btn-start').disabled   = true;
   document.getElementById('btn-use-srt').disabled = true;
   document.getElementById('errmsg').classList.remove('on');
@@ -634,7 +632,7 @@ async function useSrt() {
     showSrtPanel(currentJobId);
     document.getElementById('btn-start').disabled         = false;
     document.getElementById('btn-use-srt').disabled       = false;
-    setStatus('translated', 'SRT da nap — nhan Tao video', 100);
+    setStatus('translated', 'SRT đã nạp — nhấn Tạo video', 100);
     switchTab('subs');
   } catch(e) {
     showError(e.message);
@@ -677,7 +675,7 @@ async function startJob() {
   if (!groqKey) { alert('Nhap Groq API Key truoc!'); return; }
 
   clearPoll();
-  setStatus('running', 'Dang upload...', 0);
+  setStatus('running', 'Đang upload...', 0);
   document.getElementById('btn-start').disabled  = true;
   document.getElementById('sec-render').style.display = 'none';
   document.getElementById('errmsg').classList.remove('on');
@@ -720,17 +718,17 @@ async function pollTranslate() {
       switchTab('subs');
     } else if (data.status === 'error') {
       clearPoll();
-      showError(data.message || 'Loi khong xac dinh');
+      showError(data.message || 'Lỗi không xác định');
     }
   } catch(e) {}
 }
 
-// ── STEP 2: Tao video ───────────────────────────────────────────
+// ── STEP 2: Tạo video ───────────────────────────────────────────
 async function startRender() {
   if (!currentJobId) return;
   document.getElementById('btn-render').disabled   = true;
   document.getElementById('btn-rerender').style.display = 'none';
-  setStatus('rendering', 'Bat dau TTS...', 0);
+  setStatus('rendering', 'Bắt đầu TTS...', 0);
 
   const fd = new FormData();
   fd.append('voice',       document.getElementById('voice').value);
@@ -762,7 +760,7 @@ async function pollRender() {
     } else if (data.status === 'error') {
       clearPoll();
       document.getElementById('btn-render').disabled = false;
-      showError(data.message || 'Loi render');
+      showError(data.message || 'Lỗi render');
       refreshBalance();
     }
   } catch(e) {}
@@ -823,7 +821,7 @@ function renderTable() {
   document.getElementById('subs-empty').style.display = 'none';
   document.getElementById('subs-panel').style.display = 'block';
   document.getElementById('subs-info').textContent =
-    `${subtitleRows.length} doan — co the sua ban dich truoc khi tao video`;
+    `${subtitleRows.length} đoạn — có thể sửa bản dịch trước khi tạo video`;
 
   const tbody = document.getElementById('subs-body');
   tbody.innerHTML = subtitleRows.map((r, i) => `
@@ -862,7 +860,7 @@ async function loadSrtFile(input) {
   if (!currentJobId || !input.files[0]) return;
   const btn = document.getElementById('btn-load-srt');
   btn.disabled = true;
-  btn.textContent = 'Dang nap...';
+  btn.textContent = 'Đang nạp...';
 
   const fd = new FormData();
   fd.append('file', input.files[0]);
@@ -874,10 +872,10 @@ async function loadSrtFile(input) {
     subtitleRows = data.rows || [];
     renderTable();
     switchTab('subs');
-    btn.textContent = 'Da nap xong!';
+    btn.textContent = 'Đã nạp xong!';
   } catch(e) {
-    alert('Loi: ' + e.message);
-    btn.textContent = 'Nap SRT tu may';
+    alert('Lỗi: ' + e.message);
+    btn.textContent = 'Nạp SRT từ máy';
   } finally {
     btn.disabled = false;
     input.value = '';
@@ -907,8 +905,8 @@ function setStatus(status, msg, pct) {
   document.getElementById('pbar').style.width = pct + '%';
   const tag = document.getElementById('stag');
   const labels = {
-    pending:'Cho', running:'Dang chay', translated:'Da dich',
-    rendering:'Render', done:'Hoan tat', error:'Loi'
+    pending:'Chờ', running:'Đang chạy', translated:'Đã dịch',
+    rendering:'Render', done:'Hoàn tất', error:'Lỗi'
   };
   tag.textContent = labels[status] || status;
   tag.className   = 'stag ' + (status==='done'||status==='translated'?'done':status==='error'?'error':'running');
@@ -921,7 +919,7 @@ function showError(msg) {
   el.textContent = '! ' + msg;
   el.classList.add('on');
   document.getElementById('stag').className   = 'stag error';
-  document.getElementById('stag').textContent = 'Loi';
+  document.getElementById('stag').textContent = 'Lỗi';
 }
 
 function clearPoll() {

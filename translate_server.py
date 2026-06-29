@@ -35,8 +35,8 @@ AUTH_ALGORITHM  = "HS256"
 FFMPEG_BIN      = os.getenv("FFMPEG_BIN", "ffmpeg")
 FFPROBE_BIN     = str(Path(FFMPEG_BIN).parent / "ffprobe")
 
-PRICE_PER_MIN   = 250   # đồng / phút
-FREE_THRESHOLD  = 5 * 60  # ≤ 5 phút → miễn phí
+PRICE_PER_MIN   = 85    # đồng / phút
+FREE_THRESHOLD  = 3 * 60  # ≤ 3 phút → miễn phí
 
 # Routes that don't require auth
 _PUBLIC_PATHS = {"/", "/auth/login", "/auth/register"}

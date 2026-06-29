@@ -1037,6 +1037,52 @@ with gr.Blocks(title="Dịch Video Tiếng Trung → Tiếng Việt") as demo:
             )
 
 
+        # ══════════════════════════════════════════════════════════════════
+        # TAB: LỒNG TIẾNG VIDEO
+        # ══════════════════════════════════════════════════════════════════
+        with gr.TabItem("🔊 Lồng tiếng"):
+            gr.Markdown("## Ghép âm thanh vào video\nGiữ nguyên âm thanh gốc, thêm audio mới đè lên.")
+            with gr.Row():
+                with gr.Column():
+                    dub_video_input = gr.Video(label="Video gốc")
+                    dub_audio_input = gr.Audio(label="File âm thanh", type="filepath")
+                    dub_audio_vol   = gr.Slider(0.1, 3.0, value=1.0, step=0.05, label="Âm lượng audio mới")
+                    dub_btn         = gr.Button("🎬 Ghép âm thanh", variant="primary")
+                    dub_status      = gr.Textbox(label="Trạng thái", interactive=False)
+                with gr.Column():
+                    dub_output = gr.Video(label="Video kết quả")
+
+            def run_dub(video_path, audio_path, audio_vol):
+                if not video_path:
+                    return None, "❌ Chưa chọn video"
+                if not audio_path:
+                    return None, "❌ Chưa chọn file âm thanh"
+                import subprocess, tempfile
+                from translate_video import FFMPEG_BIN as _FFMPEG
+                out = Path(tempfile.mkdtemp()) / "dubbed.mp4"
+                cmd = [
+                    _FFMPEG, "-y",
+                    "-i", video_path,
+                    "-i", audio_path,
+                    "-filter_complex",
+                    f"[1:a]volume={audio_vol}[a1];[0:a][a1]amix=inputs=2:duration=first:dropout_transition=0[aout]",
+                    "-map", "0:v",
+                    "-map", "[aout]",
+                    "-c:v", "copy",
+                    "-c:a", "aac",
+                    str(out),
+                ]
+                try:
+                    subprocess.run(cmd, check=True, capture_output=True)
+                    return str(out), "✅ Hoàn tất!"
+                except subprocess.CalledProcessError as e:
+                    return None, f"❌ Lỗi: {e.stderr.decode()[-300:]}"
+
+            dub_btn.click(fn=run_dub,
+                          inputs=[dub_video_input, dub_audio_input, dub_audio_vol],
+                          outputs=[dub_output, dub_status])
+
+
 if __name__ == "__main__":
     demo.launch(
         server_name="0.0.0.0",
