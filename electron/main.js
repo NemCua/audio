@@ -36,8 +36,14 @@ function startServers() {
 
   // Auth chạy trên Render, không cần spawn auth_server local
   serverProcess = spawn(serverCmd, serverArgs, { cwd: scriptsDir, env })
-  serverProcess.stdout.on('data', d => console.log('[server]', d.toString()))
-  serverProcess.stderr.on('data', d => console.log('[server-err]', d.toString()))
+  let serverLog = ''
+  serverProcess.stdout.on('data', d => { serverLog += d.toString(); console.log('[server]', d.toString()) })
+  serverProcess.stderr.on('data', d => { serverLog += d.toString(); console.log('[server-err]', d.toString()) })
+  serverProcess.on('exit', (code) => {
+    if (code !== 0 && code !== null) {
+      dialog.showErrorBox('Server bị tắt', `translate_server thoát với code ${code}\n\nLog:\n${serverLog.slice(-2000)}`)
+    }
+  })
 }
 
 function waitForServer(retries = 30) {
