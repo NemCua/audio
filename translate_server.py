@@ -42,7 +42,9 @@ from fastapi.staticfiles import StaticFiles
 from jose import JWTError, jwt
 from pydantic import BaseModel
 
-load_dotenv()
+# Khi frozen (PyInstaller), load .env cạnh exe; khi dev, load từ thư mục script
+_env_base = Path(sys.executable).parent if getattr(sys, 'frozen', False) else Path(__file__).parent
+load_dotenv(_env_base / ".env")
 
 AUTH_SECRET_KEY = os.getenv("AUTH_SECRET_KEY", "")
 DATABASE_URL    = os.getenv("DATABASE_URL", "")
@@ -671,7 +673,9 @@ async def auth_proxy(path: str, request: Request):
 
 
 # Serve static — phải đặt cuối
-static_dir = Path(__file__).parent / "static_translate"
+# Khi PyInstaller --onefile, __file__ trỏ vào temp dir. Dùng sys.executable để lấy đúng thư mục exe.
+_base = Path(sys.executable).parent if getattr(sys, 'frozen', False) else Path(__file__).parent
+static_dir = _base / "static_translate"
 static_dir.mkdir(exist_ok=True)
 app.mount("/", StaticFiles(directory=str(static_dir), html=True), name="static")
 
