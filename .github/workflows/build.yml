@@ -62,13 +62,17 @@ jobs:
           copy ffprobe.exe electron\resources\python\
           xcopy static_translate electron\resources\python\static_translate\ /E /I /Y
 
-      - name: Create .env file
+      - name: Create .env file and debug launcher
         shell: cmd
         env:
           BEEKNOEE_API_KEY: ${{ secrets.BEEKNOEE_API_KEY }}
         run: |
           echo BEEKNOEE_API_KEY=%BEEKNOEE_API_KEY% > electron\resources\python\.env
           echo FFMPEG_BIN=ffmpeg >> electron\resources\python\.env
+          echo @echo off > electron\resources\python\run_server.bat
+          echo cd /d "%~dp0" >> electron\resources\python\run_server.bat
+          echo translate_server.exe >> electron\resources\python\run_server.bat
+          echo pause >> electron\resources\python\run_server.bat
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
