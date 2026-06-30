@@ -22,7 +22,7 @@ jobs:
       - name: Install Python dependencies
         run: |
           pip install --upgrade pip
-          pip install fastapi uvicorn httpx python-dotenv python-jose[cryptography] bcrypt psycopg2-binary pydantic google-genai pyinstaller
+          pip install fastapi uvicorn httpx python-dotenv python-jose[cryptography] bcrypt psycopg2-binary pydantic google-genai python-multipart pyinstaller
 
       - name: Build translate_server.exe
         run: |
