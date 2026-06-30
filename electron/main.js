@@ -5,7 +5,6 @@ const http = require('http')
 
 let mainWindow = null
 let serverProcess = null
-let authProcess = null
 
 const PORT = 8005
 const AUTH_PORT = 8006
@@ -22,29 +21,20 @@ function startServers() {
   const scriptsDir = getScriptsDir()
   console.log('Scripts dir:', scriptsDir)
 
-  let authCmd, authArgs, serverCmd, serverArgs
   const env = { ...process.env, PYTHONUNBUFFERED: '1', PYTHONUTF8: '1' }
 
+  let serverCmd, serverArgs
   if (app.isPackaged) {
-    // Dùng file .exe đã được PyInstaller bundle
     const ext = process.platform === 'win32' ? '.exe' : ''
-    authCmd = path.join(scriptsDir, `auth_server${ext}`)
-    authArgs = []
     serverCmd = path.join(scriptsDir, `translate_server${ext}`)
     serverArgs = []
   } else {
-    // Dev mode: gọi python trực tiếp
     const python = process.platform === 'win32' ? 'python' : 'python3'
-    authCmd = python
-    authArgs = [path.join(scriptsDir, 'auth_server.py')]
     serverCmd = python
     serverArgs = [path.join(scriptsDir, 'translate_server.py')]
   }
 
-  authProcess = spawn(authCmd, authArgs, { cwd: scriptsDir, env })
-  authProcess.stdout.on('data', d => console.log('[auth]', d.toString()))
-  authProcess.stderr.on('data', d => console.log('[auth-err]', d.toString()))
-
+  // Auth chạy trên Render, không cần spawn auth_server local
   serverProcess = spawn(serverCmd, serverArgs, { cwd: scriptsDir, env })
   serverProcess.stdout.on('data', d => console.log('[server]', d.toString()))
   serverProcess.stderr.on('data', d => console.log('[server-err]', d.toString()))
@@ -116,5 +106,4 @@ app.on('activate', () => {
 
 app.on('before-quit', () => {
   if (serverProcess) serverProcess.kill()
-  if (authProcess) authProcess.kill()
 })
