@@ -55,8 +55,12 @@ def init_db():
                     hashed_pw    TEXT NOT NULL,
                     display_name TEXT DEFAULT '',
                     balance      INTEGER DEFAULT 0,
+                    settings     JSONB DEFAULT '{}',
                     created_at   TIMESTAMPTZ DEFAULT NOW()
                 )
+            """)
+            cur.execute("""
+                ALTER TABLE users ADD COLUMN IF NOT EXISTS settings JSONB DEFAULT '{}'
             """)
             cur.execute("""
                 CREATE TABLE IF NOT EXISTS topup_txns (
@@ -190,6 +194,20 @@ def get_transactions(user_id: int = Depends(verify_token)):
             )
             rows = cur.fetchall()
     return [dict(r) for r in rows]
+
+@app.get("/auth/settings")
+def get_settings(user_id: int = Depends(verify_token)):
+    row = get_user_by_id(user_id)
+    return row.get("settings") or {}
+
+@app.put("/auth/settings")
+def save_settings(payload: dict, user_id: int = Depends(verify_token)):
+    import json as _json
+    with get_db() as conn:
+        with conn.cursor() as cur:
+            cur.execute("UPDATE users SET settings=%s WHERE id=%s",
+                        (_json.dumps(payload), user_id))
+    return {"ok": True}
 
 if __name__ == "__main__":
     import uvicorn

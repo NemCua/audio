@@ -264,12 +264,27 @@ td.vi-cell textarea:focus{background:#1e1b4b44}
         <div class="pbar-wrap"><div class="pbar" id="pbar"></div></div>
       </div>
       <div class="errmsg" id="errmsg"></div>
+      <div id="log-box" style="display:none;margin-top:8px">
+        <div style="font-size:11px;color:#94a3b8;margin-bottom:4px">Log tiến trình</div>
+        <textarea id="log-area" readonly
+          style="width:100%;height:160px;background:#0f172a;color:#94a3b8;font-size:11px;
+                 font-family:monospace;border:1px solid #334155;border-radius:6px;
+                 padding:8px;resize:vertical;box-sizing:border-box"></textarea>
+      </div>
     </div>
 
     <!-- BƯỚC 2: Tạo video (ẩn cho đến khi có bản dịch) -->
     <div class="sec" id="sec-render" style="display:none">
       <h3>3. Tạo video</h3>
-      <button class="btn btn-green" id="btn-render" onclick="startRender()">🎬 Tạo video</button>
+      <label style="margin-bottom:4px">Thời lượng preview</label>
+      <div class="slider-row" style="margin-bottom:6px">
+        <input type="range" id="preview-secs" min="30" max="600" step="10" value="180"
+               oninput="document.getElementById('preview-label').textContent=fmtSecs(+this.value)"/>
+        <span class="sv" id="preview-label">3m0s</span>
+      </div>
+      <button class="btn" style="background:#e67e22;color:#fff;width:100%;margin-bottom:6px"
+              id="btn-preview" onclick="startPreview()">👁 Preview</button>
+      <button class="btn btn-green" id="btn-render" onclick="startRender()">🎬 Tạo video full</button>
       <a class="btn btn-blue" id="dl-srt-early"
          style="display:block;text-align:center;text-decoration:none;margin-top:6px">
         ⬇ Tải bản dịch (.srt)
@@ -353,6 +368,7 @@ td.vi-cell textarea:focus{background:#1e1b4b44}
     <div class="tabs">
       <div class="tab active" onclick="switchTab('output')">📺 Video kết quả</div>
       <div class="tab" onclick="switchTab('subs')">📝 Chỉnh phụ đề</div>
+      <div class="tab" onclick="switchTab('settings')">⚙️ Cài đặt</div>
     </div>
 
     <!-- TAB OUTPUT -->
@@ -376,7 +392,7 @@ td.vi-cell textarea:focus{background:#1e1b4b44}
         <div style="display:flex;gap:8px;margin-bottom:12px;align-items:center">
           <span style="font-size:13px;color:#6b7280;flex:1" id="subs-info"></span>
           <button class="btn btn-blue" style="width:auto;margin:0;padding:8px 16px"
-                  onclick="saveAndRerender()" id="btn-rerender" style="display:none">🔄 Lưu & Render lại</button>
+                  onclick="saveCues()" id="btn-save">💾 Lưu bản dịch</button>
         </div>
         <div class="table-wrap">
           <table>
@@ -391,6 +407,34 @@ td.vi-cell textarea:focus{background:#1e1b4b44}
             <tbody id="subs-body"></tbody>
           </table>
         </div>
+      </div>
+    </div>
+
+    <!-- TAB CÀI ĐẶT -->
+    <div class="tab-content" id="tab-settings" style="display:none">
+      <div style="max-width:520px;margin:0 auto;padding:8px 0">
+        <h2 style="font-size:16px;font-weight:700;color:#a78bfa;margin-bottom:20px">⚙️ Cài đặt tài khoản</h2>
+
+        <div style="background:#12152a;border:1px solid #1e2340;border-radius:10px;padding:20px;margin-bottom:16px">
+          <h3 style="font-size:12px;font-weight:700;color:#4b5563;text-transform:uppercase;letter-spacing:.07em;margin-bottom:14px">API Keys</h3>
+          <label style="font-size:12px;color:#9ca3af;display:block;margin-bottom:4px">Groq API Key</label>
+          <input type="password" id="st-groq-key" placeholder="gsk_..." style="margin-bottom:4px"/>
+          <div style="font-size:11px;color:#4b5563;margin-bottom:12px">Dùng cho STT (Whisper). Lấy tại console.groq.com</div>
+        </div>
+
+        <div style="background:#12152a;border:1px solid #1e2340;border-radius:10px;padding:20px;margin-bottom:16px">
+          <h3 style="font-size:12px;font-weight:700;color:#4b5563;text-transform:uppercase;letter-spacing:.07em;margin-bottom:14px">Render</h3>
+          <label style="font-size:12px;color:#9ca3af;display:block;margin-bottom:6px">Preset encode FFmpeg</label>
+          <select id="st-preset">
+            <option value="ultrafast">ultrafast — CPU thấp, file lớn</option>
+            <option value="veryfast">veryfast — cân bằng</option>
+            <option value="fast">fast — file nhỏ, CPU cao</option>
+          </select>
+          <div style="font-size:11px;color:#4b5563;margin-top:6px">Không ảnh hưởng chất lượng hình ảnh</div>
+        </div>
+
+        <button class="btn btn-purple" onclick="saveSettings()" id="btn-save-settings">💾 Lưu cài đặt</button>
+        <div id="settings-msg" style="font-size:12px;color:#4ade80;margin-top:8px;display:none">✓ Đã lưu</div>
       </div>
     </div>
 
@@ -506,8 +550,40 @@ function onAuthSuccess(data) {
   document.getElementById('user-menu').style.display = 'flex';
   document.getElementById('user-display').textContent = data.user.display_name || data.user.email;
   document.getElementById('bal-val').textContent = (data.user.balance || 0).toLocaleString('vi-VN') + 'đ';
-  // Sync balance từ server (token mới có thể đã stale)
   setTimeout(refreshBalance, 500);
+  loadSettings();
+}
+
+async function loadSettings() {
+  try {
+    const res  = await apiFetch(`${AUTH}/auth/settings`);
+    if (!res.ok) return;
+    const s = await res.json();
+    if (s.groq_key)  document.getElementById('st-groq-key').value  = s.groq_key;
+    if (s.encode_preset) document.getElementById('st-preset').value = s.encode_preset;
+    // Sync groq key vào ô nhập liệu chính
+    if (s.groq_key)  document.getElementById('groq-key').value = s.groq_key;
+  } catch(e) {}
+}
+
+async function saveSettings() {
+  const btn = document.getElementById('btn-save-settings');
+  btn.disabled = true;
+  const payload = {
+    groq_key:       document.getElementById('st-groq-key').value.trim(),
+    encode_preset:  document.getElementById('st-preset').value,
+  };
+  // Sync groq key vào ô nhập liệu chính
+  if (payload.groq_key) document.getElementById('groq-key').value = payload.groq_key;
+  await apiFetch(`${AUTH}/auth/settings`, {
+    method: 'PUT',
+    headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify(payload),
+  });
+  const msg = document.getElementById('settings-msg');
+  msg.style.display = 'block';
+  setTimeout(() => { msg.style.display = 'none'; }, 2000);
+  btn.disabled = false;
 }
 
 async function doLogin() {
@@ -694,7 +770,6 @@ async function startJob() {
   document.getElementById('btn-start').disabled  = true;
   document.getElementById('sec-render').style.display = 'none';
   document.getElementById('errmsg').classList.remove('on');
-  document.getElementById('btn-rerender').style.display = 'none';
 
   const fd = new FormData();
   fd.append('file',       file);
@@ -742,8 +817,11 @@ async function pollTranslate() {
 async function startRender() {
   if (!currentJobId) return;
   document.getElementById('btn-render').disabled   = true;
-  document.getElementById('btn-rerender').style.display = 'none';
   setStatus('rendering', 'Bắt đầu TTS...', 0);
+  _pollJobId = null;
+  _logFrom   = 0;
+  document.getElementById('log-area').value = '';
+  document.getElementById('log-box').style.display = 'none';
 
   const fd = new FormData();
   fd.append('voice',       document.getElementById('voice').value);
@@ -751,6 +829,7 @@ async function startRender() {
   fd.append('tts_volume',  document.getElementById('tts-vol').value);
   fd.append('speed_ratio', document.getElementById('tts-rate').value);
   fd.append('logo_text', document.getElementById('logo-text').value);
+  fd.append('encode_preset', document.getElementById('st-preset').value);
   const bgFile = document.getElementById('bg-music-input').files[0];
   if (bgFile) fd.append('bg_music', bgFile);
   const keepOrig = document.getElementById('keep-original').checked;
@@ -762,26 +841,67 @@ async function startRender() {
   pollTimer = setInterval(pollRender, 2000);
 }
 
+let _logFrom = 0;
+let _pollJobId = null;
+
+function _appendLog(lines) {
+  if (!lines || !lines.length) return;
+  const area = document.getElementById('log-area');
+  document.getElementById('log-box').style.display = 'block';
+  area.value += lines.join('\n') + '\n';
+  area.scrollTop = area.scrollHeight;
+}
+
 async function pollRender() {
-  if (!currentJobId) return;
+  const jobId = _pollJobId || currentJobId;
+  if (!jobId) return;
   try {
-    const res  = await apiFetch(`${API}/api/status/${currentJobId}`);
+    const res  = await apiFetch(`${API}/api/status/${jobId}?log_from=${_logFrom}`);
     const data = await res.json();
     setStatus(data.status, data.message || '', data.progress || 0);
+    if (data.log) { _appendLog(data.log); _logFrom = data.log_total || _logFrom; }
 
     if (data.status === 'done') {
       clearPoll();
       document.getElementById('btn-render').disabled = false;
-      document.getElementById('btn-rerender').style.display = 'inline-block';
-      await showVideo(currentJobId);
+      document.getElementById('btn-preview').disabled = false;
+      await showVideo(jobId);
       refreshBalance();
     } else if (data.status === 'error') {
       clearPoll();
       document.getElementById('btn-render').disabled = false;
+      document.getElementById('btn-preview').disabled = false;
       showError(data.message || 'Lỗi render');
       refreshBalance();
     }
   } catch(e) {}
+}
+
+async function startPreview() {
+  if (!currentJobId) return;
+  document.getElementById('btn-preview').disabled = true;
+  document.getElementById('btn-render').disabled  = true;
+  document.getElementById('log-area').value = '';
+  document.getElementById('log-box').style.display = 'none';
+  _logFrom = 0;
+  setStatus('rendering', 'Đang tạo preview 3 phút đầu...', 0);
+
+  const fd = new FormData();
+  fd.append('voice',            document.getElementById('voice').value);
+  fd.append('bg_volume',        document.getElementById('bg-vol').value);
+  fd.append('tts_volume',       document.getElementById('tts-vol').value);
+  fd.append('speed_ratio',      document.getElementById('tts-rate').value);
+  fd.append('logo_text',        document.getElementById('logo-text').value);
+  fd.append('keep_original',    document.getElementById('keep-original').checked ? 'true' : 'false');
+  fd.append('original_volume',  document.getElementById('orig-vol').value);
+  fd.append('preview_secs',     document.getElementById('preview-secs').value);
+
+  const res  = await apiFetch(`${API}/api/preview/${currentJobId}`, { method: 'POST', body: fd });
+  const data = await res.json();
+  if (!data.ok) { showError(data.error || 'Lỗi preview'); return; }
+
+  _pollJobId = data.preview_job_id;
+  pollTimer  = setInterval(pollRender, 2000);
 }
 
 async function refreshBalance() {
@@ -900,10 +1020,12 @@ async function loadSrtFile(input) {
   }
 }
 
-async function saveAndRerender() {
+async function saveCues() {
   if (!currentJobId) return;
-  const btn = document.getElementById('btn-rerender');
+  const btn = document.getElementById('btn-save');
+  const orig = btn.textContent;
   btn.disabled = true;
+  btn.textContent = 'Đang lưu...';
 
   await apiFetch(`${API}/api/save-cues/${currentJobId}`, {
     method: 'POST',
@@ -911,9 +1033,8 @@ async function saveAndRerender() {
     body: JSON.stringify({ rows: subtitleRows }),
   });
 
-  await startRender();
-
-  btn.disabled = false;
+  btn.textContent = '✓ Đã lưu';
+  setTimeout(() => { btn.textContent = orig; btn.disabled = false; }, 1500);
 }
 
 // ── Helpers ─────────────────────────────────────────────────────
@@ -942,6 +1063,11 @@ function showError(msg) {
 
 function clearPoll() {
   if (pollTimer) { clearInterval(pollTimer); pollTimer = null; }
+}
+
+function fmtSecs(s) {
+  const m = Math.floor(s / 60), sec = s % 60;
+  return m > 0 ? `${m}m${sec}s` : `${sec}s`;
 }
 
 document.getElementById('keep-original').addEventListener('change', function() {

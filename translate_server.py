@@ -5,12 +5,15 @@ Web UI cho tab Dịch Video (thay thế Gradio)
 """
 
 import asyncio
+import io
 import json
 import math
 import os
 import shutil
 import subprocess
+import sys
 import tempfile
+import threading
 import uuid
 import httpx
 from contextlib import contextmanager
@@ -169,6 +172,35 @@ def _prog(job_id: str, pct: float, msg: str):
     jobs[job_id]["progress"] = int(pct * 100)
     jobs[job_id]["message"]  = msg
 
+def _log(job_id: str, line: str):
+    buf = jobs[job_id].setdefault("log", [])
+    buf.append(line)
+    if len(buf) > 2000:
+        buf.pop(0)
+
+class _LogCapture:
+    """Redirect stdout/stderr của thread hiện tại vào job log."""
+    def __init__(self, job_id: str):
+        self.job_id = job_id
+        self._orig_write = None
+
+    def __enter__(self):
+        orig_stdout = sys.stdout
+        job_id = self.job_id
+        class _W:
+            def write(self, s):
+                if s.strip():
+                    _log(job_id, s.rstrip())
+                orig_stdout.write(s)
+            def flush(self): orig_stdout.flush()
+            def __getattr__(self, a): return getattr(orig_stdout, a)
+        self._orig = orig_stdout
+        sys.stdout = _W()
+        return self
+
+    def __exit__(self, *_):
+        sys.stdout = self._orig
+
 
 def _run_translate_pipeline(job_id: str, video_path: str, req: TranslateRequest):
     """Bước 1: STT + Dịch — dừng lại để người dùng xem/sửa phụ đề."""
@@ -238,15 +270,18 @@ def _run_render(job_id: str, voice: str, bg_volume: float, tts_volume: float,
                 logo_pos: str = "topright", logo_size: int = 100,
                 logo_tab: str = "none", logo_text: str = "",
                 logo_fontsize: int = 28, logo_color: str = "#ffffff",
-                keep_original: bool = False, original_volume: float = 0.3):
+                keep_original: bool = False, original_volume: float = 0.3,
+                encode_preset: str = "ultrafast"):
     """Bước 2: TTS CapCut + render video."""
     from translate_video import (
         build_srt, build_tts_track, render_video, get_audio_duration, CAPCUT_VOICES_VI,
     )
 
     job = jobs[job_id]
-    jobs[job_id].update(status="rendering", progress=0, message="Bắt đầu tạo TTS...")
+    jobs[job_id].update(status="rendering", progress=0, message="Bắt đầu tạo TTS...", log=[])
 
+    cap = _LogCapture(job_id)
+    cap.__enter__()
     try:
         work_dir   = Path(job["work_dir"])
         video_path = Path(job["video_path"])
@@ -292,7 +327,8 @@ def _run_render(job_id: str, voice: str, bg_volume: float, tts_volume: float,
                      original_audio=orig_audio_path, original_volume=original_volume,
                      logo=Path(logo_path) if logo_path else None,
                      logo_pos=logo_pos, logo_size=logo_size,
-                     watermark=logo_text)
+                     watermark=logo_text,
+                     encode_preset=encode_preset)
 
         jobs[job_id].update(status="done", progress=100,
                             message="Hoàn tất!", output=str(output_path))
@@ -301,6 +337,8 @@ def _run_render(job_id: str, voice: str, bg_volume: float, tts_volume: float,
         import traceback; traceback.print_exc()
         jobs[job_id].update(status="error", message=str(e))
         _maybe_refund(job_id)
+    finally:
+        cap.__exit__(None, None, None)
 
 
 def _maybe_refund(job_id: str):
@@ -475,10 +513,14 @@ def _get_job(job_id: str, user_id: int):
 
 
 @app.get("/api/status/{job_id}")
-async def status(job_id: str, request: Request):
+async def status(job_id: str, request: Request, log_from: int = 0):
     job, err = _get_job(job_id, request.state.user_id)
     if err: return err
-    return {k: v for k, v in job.items() if k not in ("vi_cues", "zh_cues")}
+    result = {k: v for k, v in job.items() if k not in ("vi_cues", "zh_cues", "log")}
+    all_log = job.get("log", [])
+    result["log"] = all_log[log_from:]
+    result["log_total"] = len(all_log)
+    return result
 
 
 @app.get("/api/cues/{job_id}")
@@ -532,6 +574,7 @@ async def render(
     logo_color:       str   = Form("#ffffff"),
     keep_original:    bool  = Form(False),
     original_volume:  float = Form(0.3),
+    encode_preset:    str   = Form("ultrafast"),
     bg_music:         Optional[UploadFile] = File(None),
     logo:             Optional[UploadFile] = File(None),
 ):
@@ -561,7 +604,7 @@ async def render(
         "1.0", speed_ratio, bg_music_path,
         logo_path, logo_pos, logo_size,
         logo_tab, logo_text.strip(), logo_fontsize, logo_color,
-        keep_original, original_volume,
+        keep_original, original_volume, encode_preset,
     )
     return {"ok": True}
 
@@ -587,6 +630,68 @@ async def rerender(
     return await render(job_id, request, background_tasks, voice, bg_volume, tts_volume,
                         speed_ratio, logo_pos, logo_size, logo_tab, logo_text,
                         logo_fontsize, logo_color, bg_music, logo)
+
+
+PREVIEW_SECS = 180  # 3 phút
+
+@app.post("/api/preview/{job_id}")
+async def preview(
+    job_id:           str,
+    request:          Request,
+    background_tasks: BackgroundTasks,
+    voice:            str   = Form("BV421_vivn_streaming"),
+    bg_volume:        float = Form(0.3),
+    tts_volume:       float = Form(1.8),
+    speed_ratio:      float = Form(1.0),
+    logo_text:        str   = Form(""),
+    keep_original:    bool  = Form(False),
+    original_volume:  float = Form(0.3),
+    preview_secs:     int   = Form(180),
+):
+    job, err = _get_job(job_id, request.state.user_id)
+    if err: return err
+    if job.get("status") not in ("translated", "done", "error"):
+        return JSONResponse({"error": "Job chua san sang"}, status_code=400)
+
+    work_dir   = Path(job["work_dir"])
+    video_path = Path(job["video_path"])
+    vi_cues    = job["vi_cues"]
+
+    # Cắt cues trong thời lượng preview
+    preview_cues = [c for c in vi_cues if c.get("start_sec", 0) < preview_secs]
+    if not preview_cues:
+        return JSONResponse({"error": "Không có phụ đề trong 3 phút đầu"}, status_code=400)
+
+    # Tạo subdir riêng cho preview
+    prev_dir = work_dir / "preview"
+    prev_dir.mkdir(exist_ok=True)
+
+    # Cắt video 3p đầu bằng FFmpeg (nhanh, không re-encode)
+    prev_video = prev_dir / "video_preview.mp4"
+    subprocess.run([
+        FFMPEG_BIN, "-y", "-i", str(video_path),
+        "-t", str(preview_secs), "-c", "copy", str(prev_video)
+    ], capture_output=True)
+
+    # Tạo preview job tạm trong jobs dict (dùng chung job_id + suffix)
+    prev_job_id = f"{job_id}_preview"
+    jobs[prev_job_id] = {
+        **{k: v for k, v in job.items() if k not in ("log",)},
+        "work_dir":   str(prev_dir),
+        "video_path": str(prev_video),
+        "vi_cues":    preview_cues,
+        "status":     "translated",
+        "is_preview": True,
+    }
+
+    background_tasks.add_task(
+        _run_render, prev_job_id, voice, bg_volume, tts_volume,
+        "1.0", speed_ratio, None,
+        None, "topright", 100,
+        "text", logo_text.strip(), 28, "#ffffff",
+        keep_original, original_volume,
+    )
+    return {"ok": True, "preview_job_id": prev_job_id}
 
 
 @app.get("/api/download/{job_id}")

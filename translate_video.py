@@ -926,6 +926,7 @@ def render_video(
     logo_fontsize: int = 28,
     logo_color: str = "#ffffff",
     watermark: str = "nem_vietsub",
+    encode_preset: str = "ultrafast",
 ):
     print("  → Render video (burn sub + mix TTS + nhạc nền)...")
 
@@ -940,7 +941,7 @@ def render_video(
         "FontName=Arial Unicode MS,FontSize=22,Bold=1,"
         "PrimaryColour=&H0000FFFF,OutlineColour=&H00000000,"
         "BorderStyle=1,Outline=2,Shadow=0,"
-        "Alignment=2,MarginV=28"
+        "Alignment=2,MarginV=32"
     )
 
     # Watermark bounce DVD-style
@@ -1030,7 +1031,7 @@ def render_video(
         "-filter_complex", filter_complex,
         "-map", "[vout]",
         "-map", "[aout]",
-        "-c:v", "libx264", "-preset", "fast", "-crf", "23",
+        "-c:v", "libx264", "-preset", encode_preset, "-crf", "23",
         "-c:a", "aac", "-b:a", "192k",
         "-movflags", "+faststart",
         "-shortest",
