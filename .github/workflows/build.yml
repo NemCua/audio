@@ -63,20 +63,21 @@ jobs:
           xcopy static_translate electron\resources\python\static_translate\ /E /I /Y
 
       - name: Create .env file and debug launcher
-        shell: cmd
+        shell: pwsh
         env:
           BEEKNOEE_API_KEY: ${{ secrets.BEEKNOEE_API_KEY }}
           AUTH_SECRET_KEY: ${{ secrets.AUTH_SECRET_KEY }}
           DATABASE_URL: ${{ secrets.DATABASE_URL }}
         run: |
-          echo BEEKNOEE_API_KEY=%BEEKNOEE_API_KEY% > electron\resources\python\.env
-          echo AUTH_SECRET_KEY=%AUTH_SECRET_KEY% >> electron\resources\python\.env
-          echo DATABASE_URL=%DATABASE_URL% >> electron\resources\python\.env
-          echo FFMPEG_BIN=ffmpeg >> electron\resources\python\.env
-          echo @echo off > electron\resources\python\run_server.bat
-          echo cd /d "%~dp0" >> electron\resources\python\run_server.bat
-          echo translate_server.exe >> electron\resources\python\run_server.bat
-          echo pause >> electron\resources\python\run_server.bat
+          $envContent = @"
+          BEEKNOEE_API_KEY=$env:BEEKNOEE_API_KEY
+          AUTH_SECRET_KEY=$env:AUTH_SECRET_KEY
+          DATABASE_URL=$env:DATABASE_URL
+          FFMPEG_BIN=ffmpeg
+          "@
+          $envContent | Set-Content -Path "electron\resources\python\.env" -Encoding UTF8
+          $batContent = "@echo off`ncd /d `"%~dp0`"`ntranslate_server.exe`npause"
+          $batContent | Set-Content -Path "electron\resources\python\run_server.bat" -Encoding ASCII
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
