@@ -237,7 +237,8 @@ def _run_render(job_id: str, voice: str, bg_volume: float, tts_volume: float,
                 logo_path: str | None = None,
                 logo_pos: str = "topright", logo_size: int = 100,
                 logo_tab: str = "none", logo_text: str = "",
-                logo_fontsize: int = 28, logo_color: str = "#ffffff"):
+                logo_fontsize: int = 28, logo_color: str = "#ffffff",
+                keep_original: bool = False, original_volume: float = 0.3):
     """Bước 2: TTS CapCut + render video."""
     from translate_video import (
         build_srt, build_tts_track, render_video, get_audio_duration, CAPCUT_VOICES_VI,
@@ -280,10 +281,15 @@ def _run_render(job_id: str, voice: str, bg_volume: float, tts_volume: float,
 
         _prog(job_id, 0.85, "Render video...")
         output_path = work_dir / f"{video_path.stem}_vi.mp4"
+        orig_audio_path = None
+        if keep_original:
+            orig_audio_path = work_dir / "original_audio.wav"
+            from translate_video import extract_audio_for_stt
+            extract_audio_for_stt(video_path, orig_audio_path)
         render_video(video_path, tts_track, srt_path, output_path,
                      bg_music=Path(bg_music_path) if bg_music_path else None,
                      bg_volume=bg_volume, tts_volume=tts_volume,
-                     original_audio=None, original_volume=0.0,
+                     original_audio=orig_audio_path, original_volume=original_volume,
                      logo=Path(logo_path) if logo_path else None,
                      logo_pos=logo_pos, logo_size=logo_size,
                      watermark=logo_text)
@@ -511,21 +517,23 @@ async def save_cues(job_id: str, body: dict, request: Request):
 
 @app.post("/api/render/{job_id}")
 async def render(
-    job_id:       str,
-    request:      Request,
+    job_id:           str,
+    request:          Request,
     background_tasks: BackgroundTasks,
-    voice:        str   = Form("BV421_vivn_streaming"),
-    bg_volume:    float = Form(0.3),
-    tts_volume:   float = Form(1.8),
-    speed_ratio:  float = Form(1.0),
-    logo_pos:     str   = Form("topright"),
-    logo_size:    int   = Form(100),
-    logo_tab:     str   = Form("none"),
-    logo_text:    str   = Form(""),
-    logo_fontsize:int   = Form(28),
-    logo_color:   str   = Form("#ffffff"),
-    bg_music:     Optional[UploadFile] = File(None),
-    logo:         Optional[UploadFile] = File(None),
+    voice:            str   = Form("BV421_vivn_streaming"),
+    bg_volume:        float = Form(0.3),
+    tts_volume:       float = Form(1.8),
+    speed_ratio:      float = Form(1.0),
+    logo_pos:         str   = Form("topright"),
+    logo_size:        int   = Form(100),
+    logo_tab:         str   = Form("none"),
+    logo_text:        str   = Form(""),
+    logo_fontsize:    int   = Form(28),
+    logo_color:       str   = Form("#ffffff"),
+    keep_original:    bool  = Form(False),
+    original_volume:  float = Form(0.3),
+    bg_music:         Optional[UploadFile] = File(None),
+    logo:             Optional[UploadFile] = File(None),
 ):
     job, err = _get_job(job_id, request.state.user_id)
     if err: return err
@@ -553,6 +561,7 @@ async def render(
         "1.0", speed_ratio, bg_music_path,
         logo_path, logo_pos, logo_size,
         logo_tab, logo_text.strip(), logo_fontsize, logo_color,
+        keep_original, original_volume,
     )
     return {"ok": True}
 

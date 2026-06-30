@@ -329,6 +329,21 @@ td.vi-cell textarea:focus{background:#1e1b4b44}
                oninput="document.getElementById('bgv').textContent=parseFloat(this.value).toFixed(2)"/>
         <span class="sv" id="bgv">0.30</span>
       </div>
+
+      <div style="margin-top:10px">
+        <label style="display:flex;align-items:center;gap:8px;cursor:pointer">
+          <input type="checkbox" id="keep-original"/>
+          Giữ âm thanh gốc
+        </label>
+        <div id="orig-vol-row" style="display:none;margin-top:6px">
+          <label>Âm lượng gốc</label>
+          <div class="slider-row">
+            <input type="range" id="orig-vol" min="0" max="2" step="0.05" value="0.3"
+                   oninput="document.getElementById('origv').textContent=parseFloat(this.value).toFixed(2)"/>
+            <span class="sv" id="origv">0.30</span>
+          </div>
+        </div>
+      </div>
     </div>
 
   </div>
@@ -738,6 +753,9 @@ async function startRender() {
   fd.append('logo_text', document.getElementById('logo-text').value);
   const bgFile = document.getElementById('bg-music-input').files[0];
   if (bgFile) fd.append('bg_music', bgFile);
+  const keepOrig = document.getElementById('keep-original').checked;
+  fd.append('keep_original',   keepOrig ? 'true' : 'false');
+  fd.append('original_volume', document.getElementById('orig-vol').value);
 
   await apiFetch(`${API}/api/render/${currentJobId}`, { method: 'POST', body: fd });
 
@@ -925,6 +943,10 @@ function showError(msg) {
 function clearPoll() {
   if (pollTimer) { clearInterval(pollTimer); pollTimer = null; }
 }
+
+document.getElementById('keep-original').addEventListener('change', function() {
+  document.getElementById('orig-vol-row').style.display = this.checked ? 'block' : 'none';
+});
 </script>
 </body>
 </html>

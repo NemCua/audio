@@ -559,6 +559,7 @@ def run_test_tts(text: str, tts_model: str, tts_voice: str, capcut_voice: str):
 def run_render(df: pd.DataFrame, bg_music_file, bg_volume: float, tts_volume: float,
                capcut_delay: float, capcut_voice_sel: str, capcut_rate: float,
                keep_original: bool, original_volume: float,
+               watermark: str,
                state: dict, progress=gr.Progress()):
     if not state.get("vi_cues"):
         raise gr.Error("Chưa có bản dịch.")
@@ -599,9 +600,16 @@ def run_render(df: pd.DataFrame, bg_music_file, bg_volume: float, tts_volume: fl
         output_path = work_dir / f"{Path(video_path).stem}_vi.mp4"
         render_video(video_path, tts_track, srt_path, output_path,
                      bg_music=bg_music, bg_volume=bg_volume, tts_volume=tts_volume,
-                     original_audio=None, original_volume=0.0)
+                     original_audio=None, original_volume=0.0,
+                     watermark=watermark)
         progress(1.0, desc="Hoàn tất!")
-        return str(output_path), "✓ Render xong — bấm tải về bên dưới"
+        # Copy to a named temp file so Gradio can serve it correctly
+        import tempfile, shutil
+        suffix = Path(output_path).suffix
+        tmp = tempfile.NamedTemporaryFile(delete=False, suffix=suffix, dir=None)
+        tmp.close()
+        shutil.copy2(str(output_path), tmp.name)
+        return tmp.name, "✓ Render xong — bấm tải về bên dưới"
 
     except Exception as e:
         raise gr.Error(str(e))
@@ -868,7 +876,9 @@ def get_voices(model: str):
 
 
 with gr.Blocks(title="Dịch Video Tiếng Trung → Tiếng Việt") as demo:
-    gr.Markdown("# Dịch Video Tiếng Trung → Tiếng Việt")
+    app_title = gr.Textbox(value="Dịch Video Tiếng Trung → Tiếng Việt", label="Tên ứng dụng", interactive=True)
+    title_md = gr.Markdown("# Dịch Video Tiếng Trung → Tiếng Việt")
+    app_title.change(fn=lambda t: f"# {t}", inputs=app_title, outputs=title_md)
     session_state = gr.State({})
 
     with gr.Tabs():
@@ -954,6 +964,7 @@ with gr.Blocks(title="Dịch Video Tiếng Trung → Tiếng Việt") as demo:
             with gr.Row():
                 bg_volume_slider    = gr.Slider(0.0, 2.0, value=0.3, step=0.05, label="Âm lượng nhạc nền")
                 tts_volume_slider   = gr.Slider(0.0, 3.0, value=1.8, step=0.05, label="Âm lượng lồng tiếng")
+            watermark_input        = gr.Textbox(value="nem_vietsub", label="Tên logo DVD (để trống nếu không muốn)")
             capcut_delay_slider    = gr.Slider(value=1.5, visible=False)
             capcut_rate_slider     = gr.Slider(value=1.0, visible=False)
             keep_original_check    = gr.Checkbox(value=False, visible=False)
@@ -967,7 +978,7 @@ with gr.Blocks(title="Dịch Video Tiếng Trung → Tiếng Việt") as demo:
             json_download = gr.File(label="Tải JSON bản dịch", visible=False, interactive=False)
             status_optimize = gr.Textbox(label="Trạng thái tối ưu", interactive=False)
             status_render   = gr.Textbox(label="Trạng thái render",  interactive=False)
-            video_output    = gr.Video(label="Video kết quả (bấm tải về)", interactive=False)
+            video_output    = gr.File(label="Video kết quả (bấm tải về)", interactive=False)
 
             # ── Events ────────────────────────────────────────────────────
             _stt_outs = [
@@ -1032,7 +1043,7 @@ with gr.Blocks(title="Dịch Video Tiếng Trung → Tiếng Việt") as demo:
                 fn=run_render,
                 inputs=[translation_table, bg_music_input, bg_volume_slider, tts_volume_slider,
                         capcut_delay_slider, capcut_voice_input, capcut_rate_slider,
-                        keep_original_check, original_volume_slider, session_state],
+                        keep_original_check, original_volume_slider, watermark_input, session_state],
                 outputs=[video_output, status_render],
             )
 
