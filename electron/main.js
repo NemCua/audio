@@ -17,7 +17,19 @@ function getScriptsDir() {
   return path.join(__dirname, '..')
 }
 
-function startServers() {
+function isPortInUse(port) {
+  return new Promise(resolve => {
+    http.get(`http://localhost:${port}/`, res => resolve(true)).on('error', () => resolve(false))
+  })
+}
+
+async function startServers() {
+  // Nếu port đã có server chạy rồi thì dùng luôn, không spawn thêm
+  if (await isPortInUse(PORT)) {
+    console.log(`Port ${PORT} already in use, skipping server spawn`)
+    return
+  }
+
   const scriptsDir = getScriptsDir()
   console.log('Scripts dir:', scriptsDir)
 
@@ -34,7 +46,6 @@ function startServers() {
     serverArgs = [path.join(scriptsDir, 'translate_server.py')]
   }
 
-  // Auth chạy trên Render, không cần spawn auth_server local
   serverProcess = spawn(serverCmd, serverArgs, { cwd: scriptsDir, env })
   let serverLog = ''
   serverProcess.stdout.on('data', d => { serverLog += d.toString(); console.log('[server]', d.toString()) })
