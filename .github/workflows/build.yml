@@ -41,7 +41,11 @@ jobs:
             --hidden-import=psycopg2 `
             --hidden-import=jose `
             --hidden-import=bcrypt `
-            --hidden-import=google.genai `
+            --hidden-import=httpx `
+            --hidden-import=anyio `
+            --hidden-import=sniffio `
+            --hidden-import=certifi `
+            --collect-all=httpx `
             --collect-all=google.genai `
             translate_server.py
 
