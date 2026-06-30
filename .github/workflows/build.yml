@@ -66,8 +66,12 @@ jobs:
         shell: cmd
         env:
           BEEKNOEE_API_KEY: ${{ secrets.BEEKNOEE_API_KEY }}
+          AUTH_SECRET_KEY: ${{ secrets.AUTH_SECRET_KEY }}
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
         run: |
           echo BEEKNOEE_API_KEY=%BEEKNOEE_API_KEY% > electron\resources\python\.env
+          echo AUTH_SECRET_KEY=%AUTH_SECRET_KEY% >> electron\resources\python\.env
+          echo DATABASE_URL=%DATABASE_URL% >> electron\resources\python\.env
           echo FFMPEG_BIN=ffmpeg >> electron\resources\python\.env
           echo @echo off > electron\resources\python\run_server.bat
           echo cd /d "%~dp0" >> electron\resources\python\run_server.bat
