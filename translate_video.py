@@ -927,6 +927,7 @@ def render_video(
     logo_color: str = "#ffffff",
     watermark: str = "nem_vietsub",
     encode_preset: str = "ultrafast",
+    thumbnail: Path | None = None,
 ):
     print("  → Render video (burn sub + mix TTS + nhạc nền)...")
 
@@ -1044,6 +1045,35 @@ def render_video(
         print("=== FFmpeg stderr ===")
         print(e.stderr[-3000:] if e.stderr else "(no stderr)")
         raise RuntimeError(f"FFmpeg lỗi (exit {e.returncode}):\n{e.stderr[-1000:] if e.stderr else ''}") from e
+
+    if thumbnail and Path(thumbnail).exists():
+        print("  → Ghép ảnh bìa 0.5s vào đầu video...")
+        tmp_out = output_path.with_suffix(".thumb_tmp.mp4")
+        # Lấy width/height từ video để scale ảnh cho khớp
+        probe = subprocess.run([
+            str(Path(FFMPEG_BIN).parent / "ffprobe"), "-v", "quiet",
+            "-select_streams", "v:0", "-show_entries", "stream=width,height",
+            "-of", "csv=p=0", str(output_path)
+        ], capture_output=True, text=True)
+        wh = probe.stdout.strip().split(",")
+        vw, vh = (int(wh[0]), int(wh[1])) if len(wh) == 2 else (1080, 1920)
+
+        run([
+            FFMPEG_BIN, "-y",
+            "-loop", "1", "-t", "0.15", "-i", str(thumbnail),
+            "-i", str(output_path),
+            "-filter_complex",
+            f"[0:v]scale={vw}:{vh}:force_original_aspect_ratio=decrease,"
+            f"pad={vw}:{vh}:(ow-iw)/2:(oh-ih)/2,setsar=1[thumb];"
+            f"[thumb][1:v]concat=n=2:v=1:a=0[vout];"
+            f"[1:a]acopy[aout]",
+            "-map", "[vout]", "-map", "[aout]",
+            "-c:v", "libx264", "-preset", encode_preset, "-crf", "23",
+            "-c:a", "aac", "-b:a", "192k",
+            "-movflags", "+faststart",
+            str(tmp_out)
+        ], timeout=300)
+        tmp_out.replace(output_path)
 
 
 # ---------------------------------------------------------------------------

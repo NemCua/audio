@@ -271,7 +271,7 @@ def _run_render(job_id: str, voice: str, bg_volume: float, tts_volume: float,
                 logo_tab: str = "none", logo_text: str = "",
                 logo_fontsize: int = 28, logo_color: str = "#ffffff",
                 keep_original: bool = False, original_volume: float = 0.3,
-                encode_preset: str = "ultrafast"):
+                encode_preset: str = "ultrafast", thumbnail_path: str | None = None):
     """Bước 2: TTS CapCut + render video."""
     from translate_video import (
         build_srt, build_tts_track, render_video, get_audio_duration, CAPCUT_VOICES_VI,
@@ -328,7 +328,8 @@ def _run_render(job_id: str, voice: str, bg_volume: float, tts_volume: float,
                      logo=Path(logo_path) if logo_path else None,
                      logo_pos=logo_pos, logo_size=logo_size,
                      watermark=logo_text,
-                     encode_preset=encode_preset)
+                     encode_preset=encode_preset,
+                     thumbnail=Path(thumbnail_path) if thumbnail_path else None)
 
         jobs[job_id].update(status="done", progress=100,
                             message="Hoàn tất!", output=str(output_path))
@@ -577,6 +578,7 @@ async def render(
     encode_preset:    str   = Form("ultrafast"),
     bg_music:         Optional[UploadFile] = File(None),
     logo:             Optional[UploadFile] = File(None),
+    thumbnail:        Optional[UploadFile] = File(None),
 ):
     job, err = _get_job(job_id, request.state.user_id)
     if err: return err
@@ -599,12 +601,19 @@ async def render(
         p.write_bytes(await logo.read())
         logo_path = str(p)
 
+    thumbnail_path = None
+    if thumbnail and thumbnail.filename:
+        suffix = Path(thumbnail.filename).suffix or ".jpg"
+        p = work_dir / f"thumbnail{suffix}"
+        p.write_bytes(await thumbnail.read())
+        thumbnail_path = str(p)
+
     background_tasks.add_task(
         _run_render, job_id, voice, bg_volume, tts_volume,
         "1.0", speed_ratio, bg_music_path,
         logo_path, logo_pos, logo_size,
         logo_tab, logo_text.strip(), logo_fontsize, logo_color,
-        keep_original, original_volume, encode_preset,
+        keep_original, original_volume, encode_preset, thumbnail_path,
     )
     return {"ok": True}
 
@@ -647,6 +656,8 @@ async def preview(
     keep_original:    bool  = Form(False),
     original_volume:  float = Form(0.3),
     preview_secs:     int   = Form(180),
+    thumbnail:        Optional[UploadFile] = File(None),
+    bg_music:         Optional[UploadFile] = File(None),
 ):
     job, err = _get_job(job_id, request.state.user_id)
     if err: return err
@@ -684,12 +695,26 @@ async def preview(
         "is_preview": True,
     }
 
+    thumbnail_path = None
+    if thumbnail and thumbnail.filename:
+        suffix = Path(thumbnail.filename).suffix or ".jpg"
+        p = prev_dir / f"thumbnail{suffix}"
+        p.write_bytes(await thumbnail.read())
+        thumbnail_path = str(p)
+
+    bg_music_path = None
+    if bg_music and bg_music.filename:
+        suffix = Path(bg_music.filename).suffix or ".mp3"
+        p = prev_dir / f"bg_music{suffix}"
+        p.write_bytes(await bg_music.read())
+        bg_music_path = str(p)
+
     background_tasks.add_task(
         _run_render, prev_job_id, voice, bg_volume, tts_volume,
-        "1.0", speed_ratio, None,
+        "1.0", speed_ratio, bg_music_path,
         None, "topright", 100,
         "text", logo_text.strip(), 28, "#ffffff",
-        keep_original, original_volume,
+        keep_original, original_volume, "ultrafast", thumbnail_path,
     )
     return {"ok": True, "preview_job_id": prev_job_id}
 
@@ -706,6 +731,24 @@ async def download(job_id: str, request: Request):
     fname = job.get("filename", "video.mp4")
     stem  = Path(fname).stem
     return FileResponse(out, media_type="video/mp4", filename=f"{stem}_vi.mp4")
+
+
+@app.get("/api/frame/{job_id}")
+async def get_frame(job_id: str, request: Request):
+    job, err = _get_job(job_id, request.state.user_id)
+    if err: return err
+    video_path = job.get("video_path")
+    if not video_path or not Path(video_path).exists():
+        return JSONResponse({"error": "Chua co video"}, status_code=404)
+    work_dir = Path(job["work_dir"])
+    frame_path = work_dir / "preview_frame.jpg"
+    subprocess.run([
+        FFMPEG_BIN, "-y", "-ss", "10", "-i", str(video_path),
+        "-vframes", "1", "-q:v", "2", str(frame_path)
+    ], capture_output=True)
+    if not frame_path.exists():
+        return JSONResponse({"error": "Khong lay duoc frame"}, status_code=500)
+    return FileResponse(frame_path, media_type="image/jpeg")
 
 
 @app.get("/api/download-srt/{job_id}")

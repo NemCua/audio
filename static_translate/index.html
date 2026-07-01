@@ -141,6 +141,21 @@ td.vi-cell textarea:focus{background:#1e1b4b44}
 .auth-user-menu .uname{font-size:12px;color:#a78bfa;font-weight:700}
 .auth-user-menu .logout-btn{font-size:11px;color:#4b5563;background:none;border:none;cursor:pointer;padding:2px 6px;border-radius:4px}
 .auth-user-menu .logout-btn:hover{color:#f87171}
+
+/* Layout canvas editor */
+.layout-editor{display:flex;gap:16px;height:100%;overflow:hidden}
+.canvas-wrap{flex:1;position:relative;background:#000;border-radius:8px;overflow:hidden;display:flex;align-items:center;justify-content:center;min-height:300px}
+.canvas-wrap img#frame-img{display:block;width:100%;height:auto;user-select:none;pointer-events:none}
+#layout-canvas{position:absolute;inset:0;width:100%;height:100%;cursor:default}
+.layout-panel{width:220px;flex-shrink:0;overflow-y:auto;display:flex;flex-direction:column;gap:10px}
+.layout-panel .lp-sec{background:#12152a;border:1px solid #1e2340;border-radius:8px;padding:12px}
+.layout-panel .lp-sec h4{font-size:11px;font-weight:700;color:#4b5563;text-transform:uppercase;letter-spacing:.07em;margin-bottom:10px}
+.lp-row{display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;gap:8px}
+.lp-row label{font-size:11px;color:#9ca3af;flex-shrink:0}
+.lp-row input[type=range]{flex:1;accent-color:#7c3aed}
+.lp-row input[type=color]{width:32px;height:24px;border:none;border-radius:4px;cursor:pointer;background:none;padding:0}
+.lp-row .sv{min-width:28px;font-size:11px;color:#a78bfa;text-align:right}
+.layout-hint{font-size:11px;color:#4b5563;text-align:center;margin-top:8px}
 </style>
 </head>
 <body>
@@ -320,6 +335,17 @@ td.vi-cell textarea:focus{background:#1e1b4b44}
       </div>
       <div class="fname" id="bg-music-fname" style="margin-bottom:10px"></div>
 
+      <label style="margin-top:8px;display:block">Ảnh bìa (0.5s đầu video)</label>
+      <div style="position:relative;margin-bottom:4px">
+        <button class="btn" style="background:#1e2340;color:#94a3b8;font-size:12px;padding:7px;margin:0">
+          🖼 Chọn ảnh bìa
+        </button>
+        <input type="file" id="thumbnail-input" accept="image/*"
+               style="position:absolute;inset:0;opacity:0;cursor:pointer"
+               onchange="document.getElementById('thumbnail-fname').textContent=this.files[0]?this.files[0].name:''"/>
+      </div>
+      <div class="fname" id="thumbnail-fname" style="margin-bottom:10px"></div>
+
       <label>Watermark (để trống = không có)</label>
       <input type="text" id="logo-text" placeholder="tên kênh, @handle..."
              style="margin-bottom:10px"/>
@@ -368,6 +394,7 @@ td.vi-cell textarea:focus{background:#1e1b4b44}
     <div class="tabs">
       <div class="tab active" onclick="switchTab('output')">📺 Video kết quả</div>
       <div class="tab" onclick="switchTab('subs')">📝 Chỉnh phụ đề</div>
+      <div class="tab" onclick="switchTab('layout');onLayoutTabOpen()">🎨 Bố cục</div>
       <div class="tab" onclick="switchTab('settings')">⚙️ Cài đặt</div>
     </div>
 
@@ -406,6 +433,50 @@ td.vi-cell textarea:focus{background:#1e1b4b44}
             </thead>
             <tbody id="subs-body"></tbody>
           </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- TAB BỐ CỤC -->
+    <div class="tab-content" id="tab-layout" style="display:none;padding:12px">
+      <div class="layout-editor">
+        <!-- Canvas -->
+        <div class="canvas-wrap" id="canvas-wrap">
+          <img id="frame-img" src="" alt="" style="display:none"/>
+          <div style="color:#1e2340;text-align:center" id="frame-placeholder">
+            <div style="font-size:32px;margin-bottom:8px">🖼</div>
+            <div style="font-size:12px">Upload video để xem preview</div>
+          </div>
+          <canvas id="layout-canvas"></canvas>
+        </div>
+        <!-- Panel -->
+        <div class="layout-panel">
+          <!-- Sub -->
+          <div class="lp-sec">
+            <h4>📝 Phụ đề</h4>
+            <div class="lp-row"><label>Màu chữ</label><input type="color" id="lp-sub-color" value="#ffff00"/></div>
+            <div class="lp-row"><label>Nền opacity</label><input type="range" id="lp-sub-bg-opacity" min="0" max="1" step="0.05" value="0.5" oninput="this.nextElementSibling.textContent=Math.round(this.value*100)+'%';drawLayout()"/><span class="sv">50%</span></div>
+            <div class="lp-row"><label>Màu nền</label><input type="color" id="lp-sub-bg-color" value="#000000"/></div>
+            <div class="lp-row"><label>Cỡ chữ</label><input type="range" id="lp-sub-size" min="12" max="48" step="1" value="22" oninput="this.nextElementSibling.textContent=this.value+'px';drawLayout()"/><span class="sv">22px</span></div>
+            <div class="layout-hint">Kéo thả ô phụ đề để đặt vị trí</div>
+          </div>
+          <!-- Che logo -->
+          <div class="lp-sec">
+            <h4>⬛ Che logo gốc</h4>
+            <div class="lp-row"><label>Màu</label><input type="color" id="lp-cover-color" value="#000000"/></div>
+            <div class="lp-row"><label>Opacity</label><input type="range" id="lp-cover-opacity" min="0" max="1" step="0.05" value="1" oninput="this.nextElementSibling.textContent=Math.round(this.value*100)+'%';drawLayout()"/><span class="sv">100%</span></div>
+            <button class="btn" style="background:#1e2340;color:#94a3b8;font-size:11px;padding:6px;margin-top:4px"
+                    onclick="addCoverBox()">+ Thêm vùng che</button>
+            <button class="btn" style="background:#450a0a;color:#f87171;font-size:11px;padding:6px;margin-top:4px"
+                    onclick="removeCoverBox()">✕ Xóa vùng đang chọn</button>
+          </div>
+          <!-- Watermark -->
+          <div class="lp-sec">
+            <h4>💧 Watermark</h4>
+            <div class="lp-row"><label>Opacity</label><input type="range" id="lp-wm-opacity" min="0" max="1" step="0.05" value="0.5" oninput="this.nextElementSibling.textContent=Math.round(this.value*100)+'%';drawLayout()"/><span class="sv">50%</span></div>
+            <div class="layout-hint">Kéo thả watermark để đặt vị trí</div>
+          </div>
+          <button class="btn btn-purple" onclick="applyLayout()">✓ Áp dụng bố cục</button>
         </div>
       </div>
     </div>
@@ -724,6 +795,7 @@ async function useSrt() {
     document.getElementById('btn-start').disabled         = false;
     document.getElementById('btn-use-srt').disabled       = false;
     setStatus('translated', 'SRT đã nạp — nhấn Tạo video', 100);
+    lcInit();
     switchTab('subs');
   } catch(e) {
     showError(e.message);
@@ -733,11 +805,15 @@ async function useSrt() {
 
 // ── Switch tabs ─────────────────────────────────────────────────
 function switchTab(name) {
-  const names = ['output','subs','topup'];
+  const names = ['output','subs','layout','settings','topup'];
   document.querySelectorAll('.tab').forEach((t,i) =>
     t.classList.toggle('active', names[i] === name));
-  document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
-  document.getElementById('tab-'+name).classList.add('active');
+  document.querySelectorAll('.tab-content').forEach(c => {
+    c.classList.remove('active');
+    c.style.display = 'none';
+  });
+  const el = document.getElementById('tab-'+name);
+  if (el) { el.style.display = 'block'; el.classList.add('active'); }
 }
 
 let _selectedPkg = 20000;
@@ -805,6 +881,7 @@ async function pollTranslate() {
       document.getElementById('sec-render').style.display = 'block';
       showSrtPanel(currentJobId);
       await loadSubtitles(currentJobId);
+      lcInit();
       switchTab('subs');
     } else if (data.status === 'error') {
       clearPoll();
@@ -832,6 +909,8 @@ async function startRender() {
   fd.append('encode_preset', document.getElementById('st-preset').value);
   const bgFile = document.getElementById('bg-music-input').files[0];
   if (bgFile) fd.append('bg_music', bgFile);
+  const thumbFile = document.getElementById('thumbnail-input').files[0];
+  if (thumbFile) fd.append('thumbnail', thumbFile);
   const keepOrig = document.getElementById('keep-original').checked;
   fd.append('keep_original',   keepOrig ? 'true' : 'false');
   fd.append('original_volume', document.getElementById('orig-vol').value);
@@ -895,6 +974,10 @@ async function startPreview() {
   fd.append('keep_original',    document.getElementById('keep-original').checked ? 'true' : 'false');
   fd.append('original_volume',  document.getElementById('orig-vol').value);
   fd.append('preview_secs',     document.getElementById('preview-secs').value);
+  const thumbFile2 = document.getElementById('thumbnail-input').files[0];
+  if (thumbFile2) fd.append('thumbnail', thumbFile2);
+  const bgFile2 = document.getElementById('bg-music-input').files[0];
+  if (bgFile2) fd.append('bg_music', bgFile2);
 
   const res  = await apiFetch(`${API}/api/preview/${currentJobId}`, { method: 'POST', body: fd });
   const data = await res.json();
@@ -1073,6 +1156,269 @@ function fmtSecs(s) {
 document.getElementById('keep-original').addEventListener('change', function() {
   document.getElementById('orig-vol-row').style.display = this.checked ? 'block' : 'none';
 });
+
+// ── Layout canvas editor ────────────────────────────────────────
+const LC = {
+  canvas: null, ctx: null, img: null,
+  W: 0, H: 0,           // canvas display size
+  vW: 0, vH: 0,         // video native size (from img)
+  // elements
+  sub:   { x: 0.5, y: 0.88, w: 0.8, h: 0.08 },  // relative coords
+  wm:    { x: 0.85, y: 0.05 },
+  covers: [],            // [{x,y,w,h}] relative
+  selected: null,        // 'sub'|'wm'|'cover:N'
+  drag: null,            // {target, ox, oy, mode:'move'|'resize'}
+};
+
+function lcInit() {
+  LC.canvas = document.getElementById('layout-canvas');
+  LC.ctx    = LC.canvas.getContext('2d');
+  LC.canvas.addEventListener('mousedown', lcMouseDown);
+  LC.canvas.addEventListener('mousemove', lcMouseMove);
+  LC.canvas.addEventListener('mouseup',   lcMouseUp);
+  LC.canvas.addEventListener('mouseleave',lcMouseUp);
+  // color inputs trigger redraw
+  ['lp-sub-color','lp-sub-bg-color','lp-cover-color'].forEach(id =>
+    document.getElementById(id).addEventListener('input', drawLayout));
+}
+
+async function lcLoadFrame() {
+  if (!currentJobId) return;
+  const res = await apiFetch(`${API}/api/frame/${currentJobId}`);
+  if (!res.ok) return;
+  const blob = await res.blob();
+  const url  = URL.createObjectURL(blob);
+  const img  = document.getElementById('frame-img');
+  img.onload = () => {
+    LC.img = img;
+    LC.vW  = img.naturalWidth;
+    LC.vH  = img.naturalHeight;
+    document.getElementById('frame-placeholder').style.display = 'none';
+    img.style.display = 'block';
+    lcResize();
+    drawLayout();
+  };
+  img.src = url;
+}
+
+function lcResize() {
+  const wrap = document.getElementById('canvas-wrap');
+  LC.W = wrap.clientWidth;
+  LC.H = LC.img ? Math.round(LC.W * LC.vH / LC.vW) : wrap.clientHeight;
+  LC.canvas.width  = LC.W;
+  LC.canvas.height = LC.H;
+  drawLayout();
+}
+
+function drawLayout() {
+  const c = LC.ctx;
+  if (!c) return;
+  c.clearRect(0, 0, LC.W, LC.H);
+
+  // Sub box
+  const s = LC.sub;
+  const sx = s.x * LC.W, sy = s.y * LC.H, sw = s.w * LC.W, sh = s.h * LC.H;
+  const subBgColor = document.getElementById('lp-sub-bg-color').value;
+  const subOpacity = parseFloat(document.getElementById('lp-sub-bg-opacity').value);
+  const subColor   = document.getElementById('lp-sub-color').value;
+  const subSize    = parseInt(document.getElementById('lp-sub-size').value);
+  c.save();
+  c.globalAlpha = subOpacity;
+  c.fillStyle   = subBgColor;
+  c.fillRect(sx - sw/2, sy - sh/2, sw, sh);
+  c.restore();
+  c.save();
+  c.globalAlpha = 1;
+  c.fillStyle   = subColor;
+  c.font        = `bold ${subSize}px Arial`;
+  c.textAlign   = 'center';
+  c.textBaseline= 'middle';
+  c.fillText('Phụ đề mẫu', sx, sy);
+  c.restore();
+  _drawHandle(sx - sw/2, sy - sh/2, sw, sh, LC.selected === 'sub');
+
+  // Watermark
+  const wmText    = document.getElementById('logo-text')?.value || 'watermark';
+  const wmOpacity = parseFloat(document.getElementById('lp-wm-opacity').value);
+  const wx = LC.wm.x * LC.W, wy = LC.wm.y * LC.H;
+  c.save();
+  c.globalAlpha   = wmOpacity;
+  c.fillStyle     = '#ffffff';
+  c.font          = 'bold 14px Arial';
+  c.textAlign     = 'center';
+  c.textBaseline  = 'middle';
+  c.fillText(wmText, wx, wy);
+  c.restore();
+  if (LC.selected === 'wm') _drawDot(wx, wy);
+
+  // Cover boxes
+  const coverColor   = document.getElementById('lp-cover-color').value;
+  const coverOpacity = parseFloat(document.getElementById('lp-cover-opacity').value);
+  LC.covers.forEach((cv, i) => {
+    const cx = cv.x * LC.W, cy = cv.y * LC.H, cw = cv.w * LC.W, ch = cv.h * LC.H;
+    c.save();
+    c.globalAlpha = coverOpacity;
+    c.fillStyle   = coverColor;
+    c.fillRect(cx, cy, cw, ch);
+    c.restore();
+    _drawHandle(cx, cy, cw, ch, LC.selected === `cover:${i}`);
+  });
+}
+
+function _drawHandle(x, y, w, h, active) {
+  const c = LC.ctx;
+  c.save();
+  c.strokeStyle = active ? '#a78bfa' : '#4b5563';
+  c.lineWidth   = active ? 2 : 1;
+  c.setLineDash([4, 3]);
+  c.strokeRect(x, y, w, h);
+  if (active) {
+    c.fillStyle = '#a78bfa';
+    c.fillRect(x + w - 6, y + h - 6, 8, 8);
+  }
+  c.restore();
+}
+
+function _drawDot(x, y) {
+  const c = LC.ctx;
+  c.save();
+  c.strokeStyle = '#a78bfa';
+  c.lineWidth   = 2;
+  c.beginPath(); c.arc(x, y, 8, 0, Math.PI*2); c.stroke();
+  c.restore();
+}
+
+function lcMouseDown(e) {
+  const {x, y} = _lcPos(e);
+  // Check resize handle of selected
+  const hit = _lcHitTest(x, y);
+  LC.selected = hit ? hit.id : null;
+  if (hit) {
+    LC.drag = { ...hit, ox: x, oy: y };
+  }
+  drawLayout();
+}
+
+function lcMouseMove(e) {
+  if (!LC.drag) { _lcSetCursor(e); return; }
+  const {x, y} = _lcPos(e);
+  const dx = (x - LC.drag.ox) / LC.W;
+  const dy = (y - LC.drag.oy) / LC.H;
+  LC.drag.ox = x; LC.drag.oy = y;
+
+  if (LC.drag.mode === 'resize') {
+    if (LC.drag.id === 'sub') { LC.sub.w = Math.max(0.05, LC.sub.w + dx); LC.sub.h = Math.max(0.02, LC.sub.h + dy); }
+    else if (LC.drag.id.startsWith('cover:')) {
+      const i = parseInt(LC.drag.id.split(':')[1]);
+      LC.covers[i].w = Math.max(0.02, LC.covers[i].w + dx);
+      LC.covers[i].h = Math.max(0.02, LC.covers[i].h + dy);
+    }
+  } else {
+    if (LC.drag.id === 'sub') { LC.sub.x = Math.min(1, Math.max(0, LC.sub.x + dx)); LC.sub.y = Math.min(1, Math.max(0, LC.sub.y + dy)); }
+    else if (LC.drag.id === 'wm') { LC.wm.x = Math.min(1, Math.max(0, LC.wm.x + dx)); LC.wm.y = Math.min(1, Math.max(0, LC.wm.y + dy)); }
+    else if (LC.drag.id.startsWith('cover:')) {
+      const i = parseInt(LC.drag.id.split(':')[1]);
+      LC.covers[i].x = Math.min(1, Math.max(0, LC.covers[i].x + dx));
+      LC.covers[i].y = Math.min(1, Math.max(0, LC.covers[i].y + dy));
+    }
+  }
+  drawLayout();
+}
+
+function lcMouseUp() { LC.drag = null; }
+
+function _lcPos(e) {
+  const r = LC.canvas.getBoundingClientRect();
+  return { x: e.clientX - r.left, y: e.clientY - r.top };
+}
+
+function _lcHitTest(x, y) {
+  // Sub resize handle
+  const s = LC.sub;
+  const sx = s.x*LC.W - s.w*LC.W/2, sy = s.y*LC.H - s.h*LC.H/2;
+  const sw = s.w*LC.W, sh = s.h*LC.H;
+  if (LC.selected === 'sub' && x >= sx+sw-10 && x <= sx+sw+4 && y >= sy+sh-10 && y <= sy+sh+4)
+    return { id: 'sub', mode: 'resize' };
+  if (x >= sx && x <= sx+sw && y >= sy && y <= sy+sh)
+    return { id: 'sub', mode: 'move' };
+
+  // Watermark
+  const wx = LC.wm.x*LC.W, wy = LC.wm.y*LC.H;
+  if (Math.abs(x-wx) < 40 && Math.abs(y-wy) < 20)
+    return { id: 'wm', mode: 'move' };
+
+  // Covers
+  for (let i = LC.covers.length - 1; i >= 0; i--) {
+    const cv = LC.covers[i];
+    const cx = cv.x*LC.W, cy = cv.y*LC.H, cw = cv.w*LC.W, ch = cv.h*LC.H;
+    if (LC.selected === `cover:${i}` && x >= cx+cw-10 && x <= cx+cw+4 && y >= cy+ch-10 && y <= cy+ch+4)
+      return { id: `cover:${i}`, mode: 'resize' };
+    if (x >= cx && x <= cx+cw && y >= cy && y <= cy+ch)
+      return { id: `cover:${i}`, mode: 'move' };
+  }
+  return null;
+}
+
+function _lcSetCursor(e) {
+  const {x, y} = _lcPos(e);
+  const hit = _lcHitTest(x, y);
+  LC.canvas.style.cursor = hit ? (hit.mode === 'resize' ? 'se-resize' : 'move') : 'default';
+}
+
+function addCoverBox() {
+  LC.covers.push({ x: 0.1, y: 0.05, w: 0.2, h: 0.08 });
+  LC.selected = `cover:${LC.covers.length - 1}`;
+  drawLayout();
+}
+
+function removeCoverBox() {
+  if (!LC.selected || !LC.selected.startsWith('cover:')) return;
+  const i = parseInt(LC.selected.split(':')[1]);
+  LC.covers.splice(i, 1);
+  LC.selected = null;
+  drawLayout();
+}
+
+function applyLayout() {
+  // Lưu vào localStorage để dùng khi render
+  const layout = {
+    sub: { ...LC.sub, color: document.getElementById('lp-sub-color').value,
+           bgColor: document.getElementById('lp-sub-bg-color').value,
+           bgOpacity: document.getElementById('lp-sub-bg-opacity').value,
+           fontSize: document.getElementById('lp-sub-size').value },
+    wm:  { ...LC.wm, opacity: document.getElementById('lp-wm-opacity').value },
+    covers: LC.covers.map(cv => ({...cv,
+           color: document.getElementById('lp-cover-color').value,
+           opacity: document.getElementById('lp-cover-opacity').value })),
+  };
+  localStorage.setItem('video_layout', JSON.stringify(layout));
+  // Visual feedback
+  const btn = event.target;
+  const orig = btn.textContent;
+  btn.textContent = '✓ Đã áp dụng!';
+  btn.style.background = '#14532d';
+  setTimeout(() => { btn.textContent = orig; btn.style.background = ''; }, 1500);
+}
+
+let _lcInited = false;
+function onLayoutTabOpen() {
+  if (!_lcInited) { lcInit(); _lcInited = true; }
+  const saved = localStorage.getItem('video_layout');
+  if (saved) {
+    try {
+      const l = JSON.parse(saved);
+      if (l.sub)    Object.assign(LC.sub, l.sub);
+      if (l.wm)     Object.assign(LC.wm,  l.wm);
+      if (l.covers) LC.covers = l.covers;
+    } catch(e) {}
+  }
+  // Đợi tab visible rồi mới resize + load frame
+  requestAnimationFrame(() => {
+    lcResize();
+    if (!LC.img && currentJobId) lcLoadFrame();
+    else if (LC.img) drawLayout();
+  });
+}
 </script>
 </body>
 </html>
