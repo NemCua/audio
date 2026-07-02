@@ -661,15 +661,21 @@ async def auth_proxy(path: str, request: Request):
     headers = {k: v for k, v in request.headers.items()
                if k.lower() not in ("host", "content-length")}
     body = await request.body()
-    async with httpx.AsyncClient() as client:
-        resp = await client.request(
-            method=request.method, url=url,
-            headers=headers, content=body,
-            params=dict(request.query_params),
-        )
-    return JSONResponse(status_code=resp.status_code,
-                        content=resp.json() if resp.content else {},
-                        headers=dict(resp.headers))
+    try:
+        import ssl as _ssl
+        _ctx = _ssl.create_default_context()  # dùng Windows cert store, không cần certifi
+        async with httpx.AsyncClient(verify=_ctx, timeout=30.0) as client:
+            resp = await client.request(
+                method=request.method, url=url,
+                headers=headers, content=body,
+                params=dict(request.query_params),
+            )
+        return JSONResponse(status_code=resp.status_code,
+                            content=resp.json() if resp.content else {},
+                            headers=dict(resp.headers))
+    except Exception as e:
+        return JSONResponse(status_code=502,
+                            content={"detail": f"Không kết nối được auth server: {e}"})
 
 
 # Serve static — phải đặt cuối
