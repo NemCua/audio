@@ -657,24 +657,31 @@ AUTH_ORIGIN = os.getenv("AUTH_ORIGIN", "https://audio-hdtf.onrender.com")
 
 @app.api_route("/auth/{path:path}", methods=["GET","POST","PUT","DELETE","OPTIONS"])
 async def auth_proxy(path: str, request: Request):
+    import asyncio as _asyncio, ssl as _ssl
+    import urllib.request as _urllib_req, urllib.error as _urllib_err
+    from urllib.parse import urlencode as _urlencode
+
     url = f"{AUTH_ORIGIN}/auth/{path}"
-    headers = {k: v for k, v in request.headers.items()
-               if k.lower() not in ("host", "content-length")}
+    if request.query_params:
+        url += "?" + _urlencode(dict(request.query_params))
+
     body = await request.body()
+    _skip = {"host", "content-length", "transfer-encoding", "accept-encoding", "connection"}
+    fwd_headers = {k: v for k, v in request.headers.items() if k.lower() not in _skip}
+
+    def _sync_request():
+        ctx = _ssl.create_default_context()
+        req = _urllib_req.Request(url, data=body or None, headers=fwd_headers, method=request.method)
+        try:
+            with _urllib_req.urlopen(req, context=ctx, timeout=30) as r:
+                return r.read(), r.status, r.headers.get("Content-Type", "application/json")
+        except _urllib_err.HTTPError as e:
+            return e.read(), e.code, e.headers.get("Content-Type", "application/json")
+
     try:
-        import ssl as _ssl
-        _ctx = _ssl.create_default_context()  # dùng Windows cert store, không cần certifi
-        async with httpx.AsyncClient(verify=_ctx, timeout=30.0) as client:
-            resp = await client.request(
-                method=request.method, url=url,
-                headers=headers, content=body,
-                params=dict(request.query_params),
-            )
-        return Response(
-            content=resp.content,
-            status_code=resp.status_code,
-            media_type=resp.headers.get("content-type", "application/json"),
-        )
+        loop = _asyncio.get_event_loop()
+        raw, status_code, content_type = await loop.run_in_executor(None, _sync_request)
+        return Response(content=raw, status_code=status_code, media_type=content_type)
     except Exception as e:
         return JSONResponse(status_code=502,
                             content={"detail": f"Không kết nối được auth server: {e}"})
