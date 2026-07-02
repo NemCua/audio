@@ -37,7 +37,7 @@ from dotenv import load_dotenv
 from fastapi import FastAPI, BackgroundTasks, UploadFile, File, Form, Request
 from starlette import status as http_status
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import FileResponse, JSONResponse
+from fastapi.responses import FileResponse, JSONResponse, Response
 from fastapi.staticfiles import StaticFiles
 from jose import JWTError, jwt
 from pydantic import BaseModel
@@ -670,9 +670,11 @@ async def auth_proxy(path: str, request: Request):
                 headers=headers, content=body,
                 params=dict(request.query_params),
             )
-        return JSONResponse(status_code=resp.status_code,
-                            content=resp.json() if resp.content else {},
-                            headers=dict(resp.headers))
+        return Response(
+            content=resp.content,
+            status_code=resp.status_code,
+            media_type=resp.headers.get("content-type", "application/json"),
+        )
     except Exception as e:
         return JSONResponse(status_code=502,
                             content={"detail": f"Không kết nối được auth server: {e}"})
