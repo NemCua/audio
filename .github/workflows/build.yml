@@ -22,7 +22,7 @@ jobs:
       - name: Install Python dependencies
         run: |
           pip install --upgrade pip
-          pip install fastapi uvicorn httpx python-dotenv python-jose[cryptography] bcrypt psycopg2-binary pydantic google-genai python-multipart groq pyinstaller
+          pip install fastapi uvicorn httpx python-dotenv python-jose[cryptography] bcrypt psycopg2-binary pydantic google-genai python-multipart groq requests pyinstaller
 
       - name: Build translate_server.exe
         run: |
@@ -48,6 +48,7 @@ jobs:
             --collect-all=httpx `
             --collect-all=google.genai `
             --collect-all=groq `
+            --add-data "capcut-tts-api-main;capcut-tts-api-main" `
             translate_server.py
 
       - name: Download FFmpeg for Windows
