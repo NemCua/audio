@@ -92,6 +92,18 @@ jobs:
         working-directory: electron
         run: npm install --ignore-scripts
 
+      - name: Set version from git tag
+        shell: pwsh
+        run: |
+          $tag = "${{ github.ref_name }}"
+          $version = $tag.TrimStart('v')
+          if ($version -match '^\d+\.\d+\.\d+') {
+            $pkg = Get-Content electron/package.json | ConvertFrom-Json
+            $pkg.version = $version
+            $pkg | ConvertTo-Json -Depth 10 | Set-Content electron/package.json -Encoding UTF8
+            Write-Host "Version set to $version"
+          }
+
       - name: Build Electron app
         working-directory: electron
         env:
