@@ -1,4 +1,4 @@
-const { app, BrowserWindow, dialog } = require('electron')
+const { app, BrowserWindow, dialog, globalShortcut } = require('electron')
 const { spawn } = require('child_process')
 const path = require('path')
 const http = require('http')
@@ -89,6 +89,11 @@ function createWindow() {
 
   mainWindow.loadURL(`http://localhost:${PORT}`)
   mainWindow.on('closed', () => { mainWindow = null })
+
+  // F12 mở DevTools để debug
+  globalShortcut.register('F12', () => {
+    if (mainWindow) mainWindow.webContents.toggleDevTools()
+  })
 }
 
 app.whenReady().then(async () => {

@@ -510,7 +510,7 @@ async function doLogin() {
     const d = await r.json();
     if (!r.ok) { errEl.textContent = d.detail || 'Lỗi đăng nhập'; return; }
     onAuthSuccess(d);
-  } catch(e) { errEl.textContent = 'Khong ket noi duoc auth server'; }
+  } catch(e) { errEl.textContent = 'Lỗi: ' + (e.message || e); }
   finally { btn.disabled = false; btn.textContent = 'Đăng nhập'; }
 }
 
@@ -530,7 +530,7 @@ async function doRegister() {
     const d = await r.json();
     if (!r.ok) { errEl.textContent = d.detail || 'Lỗi đăng ký'; return; }
     onAuthSuccess(d);
-  } catch(e) { errEl.textContent = 'Khong ket noi duoc auth server'; }
+  } catch(e) { errEl.textContent = 'Lỗi: ' + (e.message || e); }
   finally { btn.disabled = false; btn.textContent = 'Tạo tài khoản'; }
 }
 
