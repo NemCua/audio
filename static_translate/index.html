@@ -690,7 +690,7 @@ async function startJob() {
 
   try {
     const res  = await apiFetch(`${API}/api/upload`, { method: 'POST', body: fd });
-    const data = await res.json();
+    let data; try { data = await res.json(); } catch { data = { error: `Server lỗi ${res.status}: ${res.statusText}` }; }
     if (res.status === 402) { showError(data.error); document.getElementById('btn-start').disabled = false; return; }
     if (!res.ok) throw new Error(data.error || res.statusText);
     currentJobId = data.job_id;

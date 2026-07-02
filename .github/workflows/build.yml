@@ -22,7 +22,7 @@ jobs:
       - name: Install Python dependencies
         run: |
           pip install --upgrade pip
-          pip install fastapi uvicorn httpx python-dotenv python-jose[cryptography] bcrypt psycopg2-binary pydantic google-genai python-multipart groq requests pyinstaller
+          pip install fastapi uvicorn httpx python-dotenv python-jose[cryptography] bcrypt psycopg2-binary pydantic google-genai python-multipart groq openai requests pyinstaller
 
       - name: Build translate_server.exe
         run: |
@@ -38,7 +38,7 @@ jobs:
             --hidden-import=uvicorn.lifespan `
             --hidden-import=uvicorn.lifespan.off `
             --hidden-import=starlette `
-            --hidden-import=psycopg2 `
+            --collect-all=psycopg2 `
             --hidden-import=jose `
             --hidden-import=bcrypt `
             --hidden-import=httpx `
@@ -48,6 +48,7 @@ jobs:
             --collect-all=httpx `
             --collect-all=google.genai `
             --collect-all=groq `
+            --collect-all=openai `
             --add-data "capcut-tts-api-main;capcut-tts-api-main" `
             translate_server.py
 

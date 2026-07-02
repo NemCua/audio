@@ -347,8 +347,12 @@ async def video_cost(request: Request, file: UploadFile = File(...)):
             "can_afford":    balance >= cost,
             "free":          cost == 0,
         }
+    except Exception as e:
+        import traceback; traceback.print_exc()
+        return JSONResponse({"error": f"Loi server: {e}"}, status_code=500)
     finally:
-        os.unlink(tmp.name)
+        try: os.unlink(tmp.name)
+        except Exception: pass
 
 
 @app.post("/api/upload")
@@ -367,30 +371,36 @@ async def upload_video(
     tmp.write(await file.read())
     tmp.close()
 
-    duration = get_video_duration(tmp.name)
-    cost     = calc_cost(duration)
+    try:
+        duration = get_video_duration(tmp.name)
+        cost     = calc_cost(duration)
 
-    if cost > 0:
-        ok = db_deduct(user_id, cost, f"Dich video: {file.filename} ({round(duration/60,1)} phut)")
-        if not ok:
-            os.unlink(tmp.name)
-            balance = db_get_balance(user_id)
-            return JSONResponse(
-                {"error": f"So du khong du. Can {cost:,}d, hien co {balance:,}d"},
-                status_code=402
-            )
+        if cost > 0:
+            ok = db_deduct(user_id, cost, f"Dich video: {file.filename} ({round(duration/60,1)} phut)")
+            if not ok:
+                os.unlink(tmp.name)
+                balance = db_get_balance(user_id)
+                return JSONResponse(
+                    {"error": f"So du khong du. Can {cost:,}d, hien co {balance:,}d"},
+                    status_code=402
+                )
 
-    job_id = str(uuid.uuid4())
-    req    = TranslateRequest(job_id=job_id, voice=voice,
-                              bg_volume=bg_volume, tts_volume=tts_volume,
-                              groq_key=groq_key)
-    jobs[job_id] = {
-        "status": "pending", "progress": 0, "message": "Dang cho...",
-        "filename": file.filename,
-        "user_id": user_id, "cost": cost, "duration_secs": round(duration, 1),
-    }
-    background_tasks.add_task(_run_translate_pipeline, job_id, tmp.name, req)
-    return {"job_id": job_id, "cost": cost, "duration_secs": round(duration, 1)}
+        job_id = str(uuid.uuid4())
+        req    = TranslateRequest(job_id=job_id, voice=voice,
+                                  bg_volume=bg_volume, tts_volume=tts_volume,
+                                  groq_key=groq_key)
+        jobs[job_id] = {
+            "status": "pending", "progress": 0, "message": "Dang cho...",
+            "filename": file.filename,
+            "user_id": user_id, "cost": cost, "duration_secs": round(duration, 1),
+        }
+        background_tasks.add_task(_run_translate_pipeline, job_id, tmp.name, req)
+        return {"job_id": job_id, "cost": cost, "duration_secs": round(duration, 1)}
+    except Exception as e:
+        import traceback; traceback.print_exc()
+        try: os.unlink(tmp.name)
+        except Exception: pass
+        return JSONResponse({"error": f"Loi server: {e}"}, status_code=500)
 
 
 @app.post("/api/upload-with-srt")
