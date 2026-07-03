@@ -264,6 +264,8 @@ td.vi-cell textarea:focus{background:#1e1b4b44}
         <div class="pbar-wrap"><div class="pbar" id="pbar"></div></div>
       </div>
       <div class="errmsg" id="errmsg"></div>
+      <!-- Log panel -->
+      <div id="log-panel" style="display:none;margin-top:8px;background:#0d1117;border:1px solid #30363d;border-radius:6px;padding:8px 10px;max-height:180px;overflow-y:auto;font-family:monospace;font-size:11px;color:#8b949e;line-height:1.5"></div>
     </div>
 
     <!-- BƯỚC 2: Tạo video (ẩn cho đến khi có bản dịch) -->
@@ -751,8 +753,14 @@ async function pollRender() {
     const data = await res.json();
     setStatus(data.status, data.message || '', data.progress || 0);
 
+    // Hiện log panel khi đang render TTS
+    if (data.status === 'rendering') {
+      fetchJobLogs(currentJobId);
+    }
+
     if (data.status === 'done') {
       clearPoll();
+      document.getElementById('log-panel').style.display = 'none';
       document.getElementById('btn-render').disabled = false;
       document.getElementById('btn-rerender').style.display = 'inline-block';
       await showVideo(currentJobId);
@@ -764,6 +772,27 @@ async function pollRender() {
       refreshBalance();
     }
   } catch(e) {}
+}
+
+async function fetchJobLogs(jobId) {
+  try {
+    const res  = await apiFetch(`${API}/api/logs/${jobId}`);
+    if (!res.ok) return;
+    const data = await res.json();
+    const logs = data.logs || [];
+    if (!logs.length) return;
+    const panel = document.getElementById('log-panel');
+    panel.style.display = 'block';
+    panel.innerHTML = logs.map(l => {
+      const col = l.includes('⚠') ? '#f85149' : l.includes('✓') ? '#3fb950' : '#8b949e';
+      return `<div style="color:${col}">${escHtml(l)}</div>`;
+    }).join('');
+    panel.scrollTop = panel.scrollHeight;
+  } catch(e) {}
+}
+
+function escHtml(s) {
+  return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
 }
 
 async function refreshBalance() {

@@ -184,6 +184,14 @@ class TranslateRequest(BaseModel):
 def _prog(job_id: str, pct: float, msg: str):
     jobs[job_id]["progress"] = int(pct * 100)
     jobs[job_id]["message"]  = msg
+    _save_jobs()
+
+def _job_log(job_id: str, msg: str):
+    if "logs" not in jobs[job_id]:
+        jobs[job_id]["logs"] = []
+    jobs[job_id]["logs"].append(msg)
+    if len(jobs[job_id]["logs"]) > 200:
+        jobs[job_id]["logs"] = jobs[job_id]["logs"][-200:]
 
 
 def _run_translate_pipeline(job_id: str, video_path: str, req: TranslateRequest):
@@ -270,6 +278,7 @@ def _run_render(job_id: str, voice: str, bg_volume: float, tts_volume: float,
         srt_path.write_text(build_srt(vi_cues), encoding="utf-8")
 
         _prog(job_id, 0.1, "Tạo TTS (CapCut)...")
+        jobs[job_id]["logs"] = []
         capcut_info        = next((v for v in CAPCUT_VOICES_VI if v[1] == voice), None)
         capcut_device_id   = os.environ.get("CAPCUT_DEVICE_ID", "") if capcut_info else None
         capcut_voice_type  = capcut_info[1] if capcut_info else None
@@ -278,6 +287,9 @@ def _run_render(job_id: str, voice: str, bg_volume: float, tts_volume: float,
         def _tts_progress(done: int, total: int):
             pct = 0.1 + 0.7 * (done / total) if total else 0.1
             _prog(job_id, pct, f"TTS {done}/{total} đoạn...")
+
+        def _tts_log(msg: str):
+            _job_log(job_id, msg)
 
         video_dur = get_audio_duration(video_path)
         tts_track = asyncio.run(build_tts_track(
@@ -292,6 +304,7 @@ def _run_render(job_id: str, voice: str, bg_volume: float, tts_volume: float,
             capcut_rate=capcut_rate,
             speed_ratio=speed_ratio,
             progress_cb=_tts_progress,
+            log_cb=_tts_log,
         ))
 
         _prog(job_id, 0.85, "Render video...")
@@ -499,6 +512,13 @@ async def status(job_id: str, request: Request):
     job, err = _get_job(job_id, request.state.user_id)
     if err: return err
     return {k: v for k, v in job.items() if k not in ("vi_cues", "zh_cues")}
+
+
+@app.get("/api/logs/{job_id}")
+async def get_logs(job_id: str, request: Request):
+    job, err = _get_job(job_id, request.state.user_id)
+    if err: return err
+    return JSONResponse({"logs": job.get("logs", [])})
 
 
 @app.get("/api/cues/{job_id}")

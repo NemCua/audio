@@ -676,18 +676,24 @@ async def build_tts_track(cues: list[dict], work_dir: Path, video_duration: floa
                           capcut_delay: float = 1.5,
                           capcut_rate: str = "1.0",
                           speed_ratio: float = 1.0,
-                          progress_cb=None) -> Path:
+                          progress_cb=None,
+                          log_cb=None) -> Path:
     """
     Build track TTS đồng bộ:
     - Mỗi cue: TTS -> atempo để khớp đúng window [start_sec, end_sec]
     - Ghép tất cả cue + khoảng lặng giữa chúng thành 1 file mp3
     - Ưu tiên: CapCut TTS -> Beeknoee TTS -> Edge TTS
     """
+    def _log(msg: str):
+        print(msg, flush=True)
+        if log_cb:
+            log_cb(msg)
+
     if capcut_device_id and capcut_voice_type:
         label = f"CapCut TTS batch ({capcut_voice_type})"
     else:
         label = "CapCut TTS (thiếu device_id)"
-    print(f"  -> TTS {len(cues)} đoạn ({label})...")
+    _log(f"  -> TTS {len(cues)} đoạn ({label})...")
     seg_dir = work_dir / "tts_segs"
     seg_dir.mkdir(exist_ok=True)
 
@@ -723,7 +729,9 @@ async def build_tts_track(cues: list[dict], work_dir: Path, video_duration: floa
             nonlocal current_device_id, done_cues
             if not pending_texts:
                 return
-            print(f"    CapCut batch {pending_idxs[0]}–{pending_idxs[-1]} ({len(pending_texts)} đoạn)...")
+            _log(f"CapCut batch {pending_idxs[0]}–{pending_idxs[-1]} ({len(pending_texts)} đoạn)...")
+            if progress_cb:
+                progress_cb(done_cues, total_cues)
             attempt = 0
             while True:
                 try:
@@ -732,10 +740,14 @@ async def build_tts_track(cues: list[dict], work_dir: Path, video_duration: floa
                     done_cues += len(pending_texts)
                     if progress_cb:
                         progress_cb(done_cues, total_cues)
+                    _log(f"✓ Batch xong — {done_cues}/{total_cues} đoạn")
                     return
                 except Exception as e:
                     attempt += 1
-                    print(f"  ⚠ CapCut batch lỗi (lần {attempt}): {e} — đổi device_id và thử lại...")
+                    msg = f"⚠ CapCut batch lỗi lần {attempt}: {str(e)[:80]} — đổi device_id..."
+                    _log(msg)
+                    if progress_cb:
+                        progress_cb(done_cues, total_cues)
                     current_device_id = _new_device_id()
                     time.sleep(min(2 * attempt, 10))
 
