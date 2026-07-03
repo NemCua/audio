@@ -10,7 +10,7 @@ from pathlib import Path
 from typing import Optional
 
 from dotenv import load_dotenv
-from fastapi import FastAPI, BackgroundTasks
+from fastapi import FastAPI, BackgroundTasks, UploadFile, File
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
@@ -213,10 +213,14 @@ def _run_pipeline(job_id: str, req: GenerateRequest):
                 scenes_out.append({'query': scene.query, 'duration': duration, 'clip_path': None})
                 continue
 
-            # Download
-            ext = '.mp4' if media.is_video else '.jpg'
+            # Download hoặc copy local
+            ext = '.mp4' if media.is_video else Path(media.url).suffix or '.jpg'
             raw = media_dir / f'raw_{i:04d}{ext}'
-            download_file(media.url, raw)
+            if media.source == 'local' and Path(media.url).exists():
+                import shutil as _sh
+                _sh.copy2(media.url, raw)
+            else:
+                download_file(media.url, raw)
 
             try:
                 if media.is_video:
@@ -271,6 +275,14 @@ def _run_pipeline(job_id: str, req: GenerateRequest):
 # ---------------------------------------------------------------------------
 # Endpoints
 # ---------------------------------------------------------------------------
+
+@app.post("/api/upload-image")
+async def upload_image(file: UploadFile = File(...)):
+    suffix = Path(file.filename).suffix.lower() or ".jpg"
+    tmp = Path(tempfile.mkdtemp(prefix="cv_upload_")) / f"upload{suffix}"
+    tmp.write_bytes(await file.read())
+    return {"path": str(tmp)}
+
 
 @app.post("/api/preview")
 async def preview(req: PreviewRequest):

@@ -11,6 +11,7 @@ Tạo video từ text content:
 import asyncio
 import os
 import re
+import shutil
 import subprocess
 import tempfile
 import time
@@ -31,53 +32,123 @@ def ai_split_scenes(content: str, groq_key: str, beeknoee_key: str = '') -> list
     """Dùng Claude Sonnet (Beeknoee) hoặc Groq để chia content thành cảnh B-roll."""
     import requests, json
 
-    prompt = f'''You are an expert science communicator AND cinematic video director.
+    prompt = f'''You are an expert video director creating a B-roll footage plan for a Vietnamese science narration video.
 
-Your task: read the content deeply, identify EVERY distinct concept, term, phenomenon, or type that needs its own visual explanation, then assign a cinematic B-roll prompt to each one.
+═══ SUPREME PRINCIPLE ═══
+For every scene, answer three questions:
+1. What is the viewer HEARING right now?
+2. What do they need to SEE to understand it?
+3. What FEELING must be created at this moment?
+These three questions override all rules below.
 
-KEY RULE — concept splitting:
-- If content mentions "Type Ia and Type II supernovae" → TWO scenes: one for Type Ia, one for Type II
-- If content explains "black holes have two types: stellar and supermassive" → TWO scenes
-- If content lists steps of a process → one scene per step
-- If a sentence introduces a new technical term, mechanism, or named phenomenon → it gets its OWN scene
-- Do NOT merge different concepts into one scene just to save scenes
-- A 500-word article should typically produce 8-15 scenes minimum
+═══ STEP 1: READ THE ENTIRE CONTENT FIRST ═══
+Before splitting, understand the overall theme, tone, metaphors, and emotional arc of the whole piece.
 
-For each scene, write a cinematic visual prompt that:
-- Visualizes EXACTLY that one concept — be specific, not generic
-- Uses real visual analogies when abstract: spaghettification → show stretching object near black hole (NOT spaghetti food)
-- Uses cinematic language: camera angles, lighting, motion, atmosphere
-- Is achievable as stock footage or AI video (no real faces, no text overlays)
+═══ STEP 2: SPLIT INTO SCENES ═══
+Split by IDEA, not by sentence. One scene = one idea a single visual can serve.
+- If one sentence has two ideas → split into two scenes
+- If three sentences share one idea → merge into one scene
+- Ideal spoken duration per scene: 4–10 seconds
+- Scene boundaries: topic shift, transition words (but, however, then, meanwhile), tone shift (explain→conclude, describe→question)
+- Include the EXACT spoken text for each scene in the "text" field — this is used to calculate audio duration
 
-Stock footage search query rules (query field):
-- Must be in ENGLISH, 2-4 words
-- Must describe what a camera would actually capture
-- Example: concept="spaghettification" → query="object stretching gravity" NOT "spaghetti noodles"
-- Example: concept="Type Ia supernova" → query="white dwarf explosion space"
-- Example: concept="Type II supernova" → query="massive star core collapse"
+═══ STEP 3: CLASSIFY SCENE TYPE ═══
+Pick the type that drives the highest visual demand:
+- HOOK: shocking/counter-intuitive opener → strong, surprising visual
+- CONCRETE_OBJECT: a thing that can be filmed (sun, whale, volcano) → direct footage
+- ABSTRACT_CONCEPT: idea, force, relationship (time, gravity, entropy) → visual metaphor
+- HISTORICAL_EVENT: past event that can't be filmed → CGI reconstruction or archive footage
+- MECHANISM: how something works (photosynthesis, fusion) → animation or close-up sequence
+- DATA: numbers, ratios, comparisons → data visualization, scale comparison
+- EMOTIONAL_MOMENT: philosophical, reflective closing → slow, symbolic, wide shot
+- TRANSITION: short connector sentence → light visual, no heavy investment
 
-Return ONLY a JSON array, no markdown, no explanation:
-[{{"query": "stock footage search term", "prompt": "full cinematic visual description...", "duration": 6}}, ...]
+═══ STEP 4: VISUAL STRATEGY ═══
+- DIRECT: show exactly what's being described (works for concrete objects)
+- METAPHOR: show something else that represents the idea (for abstract concepts)
+  * Time passing → hourglass, clock hands, calendar pages, timelapse sunrise
+  * Infinity → galaxy panorama, infinite mirrors, ocean horizon
+  * Insignificance → person tiny in mountains, pale blue dot, dust in sunlight
+  * Connection → neuron network, forest roots, lightning between clouds
+  * Chaos → boiling water, fire, storm, crowd
+  * Order → crystal growing, snowflake macro, geometric pattern
+  * New life → seedling sprouting, egg hatching, sunrise
+  * Death/loss → falling leaves, sunset, candle extinguishing, star fading
+- SIMULATION: CGI/animation for things too small, too large, too old, or invisible
+- REFLECTION: show effects/traces instead of the thing itself (wind→grass moving, gravity→compass spinning)
+
+═══ STEP 5: BUILD THREE-TIER KEYWORDS ═══
+Formula: [OBJECT] + [STATE/ACTION] + [ENVIRONMENT] + [SHOT STYLE]
+- tier1: ideal, specific, may be hard to find
+- tier2: fallback, still good
+- tier3: rescue, always findable
+
+Shot style words: close up, aerial, macro, timelapse, slow motion, cgi, cinematic, drone, microscope, 3d animation, wide shot, silhouette
+
+ALWAYS use ENGLISH keywords. Never Vietnamese for the query fields.
+
+═══ COMMON ABSTRACT → VISUAL MAPPINGS ═══
+time scale/compression → calendar year countdown, hourglass, clock ticking cinematic
+human insignificance → pale blue dot earth space, tiny human vast landscape
+all of history in seconds → clock final seconds countdown, timeline fast scroll
+empire/civilization → ancient ruins aerial, city timelapse rise fall
+war/conflict → battlefield aerial cinematic, explosion slow motion
+invention/discovery → lightbulb moment, laboratory experiment
+
+═══ QUALITY RULES ═══
+1. Prefer video with MOTION over static images
+2. Specific > generic (polar bear swimming Arctic > animal in water)
+3. Match visual ENERGY to narration energy (slow narration → slow visual)
+4. Use contrast to emphasize opposites
+5. Show SCALE whenever size is mentioned
+6. Save strongest visuals for biggest reveals
+7. Vary shot types — don't stack 3 close-ups in a row
+
+═══ OUTPUT FORMAT ═══
+Return ONLY a valid JSON array, no markdown, no explanation:
+[
+  {{
+    "text": "exact spoken Vietnamese text for this scene",
+    "type": "SCENE_TYPE",
+    "query": "tier1 english stock footage keywords",
+    "query2": "tier2 fallback keywords",
+    "query3": "tier3 rescue keywords",
+    "query_vi": "nghĩa tiếng Việt của query chính, 3-6 từ",
+    "vi_note": "1 câu tiếng Việt giải thích tại sao chọn hình ảnh này",
+    "strategy": "DIRECT|METAPHOR|SIMULATION|REFLECTION",
+    "duration": 6
+  }},
+  ...
+]
 
 Content to analyze:
 {content}'''
 
     # Dùng Claude Sonnet qua Beeknoee nếu có key — hiểu ngữ cảnh tốt hơn
     if beeknoee_key:
-        r = requests.post(
-            'https://platform.beeknoee.com/api/v1/chat/completions',
-            headers={
-                'Authorization': f'Bearer {beeknoee_key}',
-                'Content-Type': 'application/json',
-            },
-            json={
-                'model': 'claude-sonnet-4-6',
-                'max_tokens': 4096,
-                'messages': [{'role': 'user', 'content': prompt}],
-            },
-            timeout=120,
-        )
-    else:
+        try:
+            r = requests.post(
+                'https://platform.beeknoee.com/api/v1/chat/completions',
+                headers={
+                    'Authorization': f'Bearer {beeknoee_key}',
+                    'Content-Type': 'application/json',
+                },
+                json={
+                    'model': 'claude-sonnet-4-6',
+                    'max_tokens': 8000,
+                    'messages': [{'role': 'user', 'content': prompt}],
+                },
+                timeout=90,
+            )
+            if r.status_code >= 500:
+                print(f'  ⚠ Beeknoee lỗi {r.status_code} — fallback Groq...')
+                beeknoee_key = None
+            else:
+                r.raise_for_status()
+        except (requests.exceptions.Timeout, requests.exceptions.ConnectionError) as e:
+            print(f'  ⚠ Beeknoee lỗi kết nối ({e.__class__.__name__}) — fallback Groq...')
+            beeknoee_key = None
+    if not beeknoee_key:
         r = requests.post(
             'https://api.groq.com/openai/v1/chat/completions',
             headers={'Authorization': f'Bearer {groq_key}'},
@@ -85,8 +156,9 @@ Content to analyze:
                 'model': 'llama-3.3-70b-versatile',
                 'messages': [{'role': 'user', 'content': prompt}],
                 'temperature': 0.3,
+                'max_tokens': 8000,
             },
-            timeout=60,
+            timeout=120,
         )
     r.raise_for_status()
     text = r.json()['choices'][0]['message']['content'].strip()
@@ -108,8 +180,9 @@ Content to analyze:
                 'model': 'llama-3.3-70b-versatile',
                 'messages': [{'role': 'user', 'content': prompt}],
                 'temperature': 0.3,
+                'max_tokens': 8000,
             },
-            timeout=60,
+            timeout=120,
         )
         r2.raise_for_status()
         text = r2.json()['choices'][0]['message']['content'].strip()
@@ -118,7 +191,17 @@ Content to analyze:
         if start == -1 or end == 0:
             raise RuntimeError(f'Groq cũng không trả JSON: {text[:200]}')
 
-    scenes = json.loads(text[start:end])
+    raw = text[start:end] if (start != -1 and end > 0) else text[start:] if start != -1 else text
+    # Nếu JSON bị cắt giữa chừng, thử parse phần hợp lệ
+    try:
+        scenes = json.loads(raw)
+    except json.JSONDecodeError:
+        # Cắt đến object cuối cùng hoàn chỉnh
+        last_brace = raw.rfind('}')
+        if last_brace == -1:
+            raise RuntimeError(f'Không parse được JSON: {raw[:300]}')
+        fixed = raw[:last_brace+1] + ']'
+        scenes = json.loads(fixed)
     return scenes
 
 
@@ -278,16 +361,13 @@ def process_video_clip(src: Path, dst: Path, duration: float):
 
 
 def process_image_clip(src: Path, dst: Path, duration: float):
-    """Ảnh tĩnh + zoom in nhẹ trong duration giây."""
+    """Ảnh tĩnh đứng im trong duration giây."""
     frames = int(duration * FPS)
     subprocess.run([
         FFMPEG_BIN, '-y',
         '-loop', '1', '-i', str(src),
-        '-vf', f'scale=iw*1.2:ih*1.2:force_original_aspect_ratio=increase,'
-               f'crop={TARGET_W}:{TARGET_H},'
-               f'zoompan=z=\'min(zoom+0.002,1.15)\':'
-               f'x=\'iw/2-(iw/zoom/2)\':y=\'ih/2-(ih/zoom/2)\':'
-               f'd={frames}:s={TARGET_W}x{TARGET_H}:fps={FPS},'
+        '-vf', f'scale={TARGET_W}:{TARGET_H}:force_original_aspect_ratio=decrease,'
+               f'pad={TARGET_W}:{TARGET_H}:(ow-iw)/2:(oh-ih)/2:black,'
                f'setsar=1',
         '-frames:v', str(frames),
         '-r', str(FPS),
@@ -463,7 +543,7 @@ def run_content_video_pipeline(
     content: str,
     work_dir: Path,
     groq_key: str,
-    pexels_key: str,
+    pexels_key: str = '',
     pixabay_key: str = '',
     beeknoee_key: str = '',
     wan2_server_url: str = '',
@@ -472,6 +552,7 @@ def run_content_video_pipeline(
     capcut_device_id: str | None = None,
     capcut_rate: str = '1.0',
     edge_voice: str = 'vi-VN-HoaiMyNeural',
+    local_images: list | None = None,
     progress_cb=None,
 ) -> Path:
     def _progress(pct, msg):
@@ -492,48 +573,63 @@ def run_content_video_pipeline(
 
     # 2. Download + xử lý từng cảnh
     used_ids: set = set()
+    local_imgs = list(local_images) if local_images else []
+    local_idx = 0
+
     for i, scene in enumerate(scenes):
         _progress(0.10 + 0.40 * i / len(scenes),
-                  f'Tải media {i+1}/{len(scenes)}: {scene["query"]}')
+                  f'Xử lý cảnh {i+1}/{len(scenes)}: {scene["query"]}')
 
         duration = float(scene.get('duration', 6))
         clip_path = clips_dir / f'clip_{i:04d}.mp4'
         raw_path = media_dir / f'raw_{i:04d}'
 
-        # Tìm video: Pexels → Pixabay → broad query
-        broad_query = ' '.join(scene['query'].split()[:-1]) or scene['query']
-        media_info = search_pexels_video(scene['query'], pexels_key, used_ids)
-        if not media_info and pixabay_key:
-            media_info = search_pixabay_video(scene['query'], pixabay_key, used_ids)
-        if not media_info:
-            media_info = search_pexels_video(broad_query, pexels_key, used_ids)
-        if not media_info and pixabay_key:
-            media_info = search_pixabay_video(broad_query, pixabay_key, used_ids)
-
-        if media_info:
-            raw_path = raw_path.with_suffix('.mp4')
-            download_file(media_info['url'], raw_path)
-            actual_dur = min(duration, float(media_info.get('duration', duration)), 8.0)
+        # Ưu tiên ảnh local nếu có
+        if local_imgs:
+            src_img = Path(local_imgs[local_idx % len(local_imgs)])
+            local_idx += 1
+            dst_img = raw_path.with_suffix(src_img.suffix)
+            shutil.copy2(src_img, dst_img)
             try:
-                process_video_clip(raw_path, clip_path, actual_dur)
-                scene['duration'] = actual_dur
+                process_image_clip(dst_img, clip_path, duration)
             except subprocess.CalledProcessError:
                 scene['clip_path'] = None
                 continue
         else:
-            # Ảnh last resort
-            img_info = search_pexels_image(scene['query'], pexels_key, used_ids)
-            if not img_info:
-                print(f'  ⚠ Không có media cho: {scene["query"]}')
-                scene['clip_path'] = None
-                continue
-            raw_path = raw_path.with_suffix('.jpg')
-            download_file(img_info['url'], raw_path)
-            try:
-                process_image_clip(raw_path, clip_path, duration)
-            except subprocess.CalledProcessError:
-                scene['clip_path'] = None
-                continue
+            # Tìm video: Pexels → Pixabay → broad query
+            broad_query = ' '.join(scene['query'].split()[:-1]) or scene['query']
+            media_info = search_pexels_video(scene['query'], pexels_key, used_ids) if pexels_key else None
+            if not media_info and pixabay_key:
+                media_info = search_pixabay_video(scene['query'], pixabay_key, used_ids)
+            if not media_info and pexels_key:
+                media_info = search_pexels_video(broad_query, pexels_key, used_ids)
+            if not media_info and pixabay_key:
+                media_info = search_pixabay_video(broad_query, pixabay_key, used_ids)
+
+            if media_info:
+                raw_path = raw_path.with_suffix('.mp4')
+                download_file(media_info['url'], raw_path)
+                actual_dur = min(duration, float(media_info.get('duration', duration)), 8.0)
+                try:
+                    process_video_clip(raw_path, clip_path, actual_dur)
+                    scene['duration'] = actual_dur
+                except subprocess.CalledProcessError:
+                    scene['clip_path'] = None
+                    continue
+            else:
+                # Ảnh last resort từ Pexels
+                img_info = search_pexels_image(scene['query'], pexels_key, used_ids) if pexels_key else None
+                if not img_info:
+                    print(f'  ⚠ Không có media cho: {scene["query"]}')
+                    scene['clip_path'] = None
+                    continue
+                raw_path = raw_path.with_suffix('.jpg')
+                download_file(img_info['url'], raw_path)
+                try:
+                    process_image_clip(raw_path, clip_path, duration)
+                except subprocess.CalledProcessError:
+                    scene['clip_path'] = None
+                    continue
 
         if clip_path.exists():
             scene['clip_path'] = str(clip_path)

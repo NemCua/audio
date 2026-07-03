@@ -1101,6 +1101,7 @@ with gr.Blocks(title="Dịch Video Tiếng Trung → Tiếng Việt") as demo:
                 content_text: str,
                 cv_capcut_voice: str,
                 cv_capcut_rate: float,
+                local_images,
                 progress=gr.Progress(),
             ):
                 if not content_text.strip():
@@ -1114,10 +1115,16 @@ with gr.Blocks(title="Dịch Video Tiếng Trung → Tiếng Việt") as demo:
                 pixabay_key     = os.environ.get("PIXABAY_API_KEY", "")
                 wan2_server_url = os.environ.get("WAN2_SERVER_URL", "")
 
-                if not pexels_key:
-                    raise gr.Error("Chưa có PEXELS_API_KEY trong .env")
                 if not groq_key and not beeknoee_key:
                     raise gr.Error("Chưa có GROQ_API_KEY hoặc BEEKNOEE_API_KEY trong .env")
+
+                # Danh sách ảnh local nếu có upload
+                local_image_paths = []
+                if local_images:
+                    for f in (local_images if isinstance(local_images, list) else [local_images]):
+                        p = Path(f) if isinstance(f, str) else Path(f.name)
+                        if p.exists():
+                            local_image_paths.append(p)
 
                 work_dir = Path(tempfile.mkdtemp(prefix="contentvid_")).resolve()
                 capcut_info = next((v for v in CAPCUT_VOICES_VI if v[1] == cv_capcut_voice.strip()), None)
@@ -1136,6 +1143,7 @@ with gr.Blocks(title="Dịch Video Tiếng Trung → Tiếng Việt") as demo:
                         capcut_resource_id=capcut_info[2] if capcut_info else None,
                         capcut_device_id=capcut_device_id,
                         capcut_rate=str(round(cv_capcut_rate, 1)),
+                        local_images=local_image_paths,
                         progress_cb=progress,
                     )
                     return str(out), f"✓ Xong — {work_dir.name}"
@@ -1150,20 +1158,25 @@ with gr.Blocks(title="Dịch Video Tiếng Trung → Tiếng Việt") as demo:
                     )
                     cv_rate_slider = gr.Slider(0.5, 2.0, value=1.0, step=0.1,
                                                label="Tốc độ đọc CapCut")
+                    cv_local_images = gr.File(
+                        label="Ảnh từ máy (tùy chọn — dùng thay Pexels/Pixabay)",
+                        file_count="multiple",
+                        file_types=["image"],
+                    )
                     btn_gen_video  = gr.Button("🎞️ Tạo Video", variant="primary")
                     cv_status      = gr.Textbox(label="Trạng thái", interactive=False)
                 with gr.Column(scale=2):
                     cv_content = gr.Textbox(
                         label="Nội dung thuyết minh",
                         lines=15,
-                        placeholder="Dán nội dung vào đây, AI sẽ tự chia cảnh và tìm video/ảnh từ Pexels/Pixabay...",
+                        placeholder="Dán nội dung vào đây. Nếu có upload ảnh từ máy sẽ dùng ảnh đó, không thì tìm từ Pexels/Pixabay...",
                     )
 
             cv_video_output = gr.Video(label="Video xuất ra")
 
             btn_gen_video.click(
                 fn=run_content_video,
-                inputs=[cv_content, cv_voice_input, cv_rate_slider],
+                inputs=[cv_content, cv_voice_input, cv_rate_slider, cv_local_images],
                 outputs=[cv_video_output, cv_status],
             )
 

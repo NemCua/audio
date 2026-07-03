@@ -296,23 +296,43 @@ function renderScenes() {
     <div class="scene-card" id="sc-${i}">
       <div class="scene-head" onclick="toggleScene(${i})">
         <span class="scene-num">#${i+1}</span>
-        <span class="scene-query-text">${s.query}</span>
+        <span class="scene-query-text">${s.query}${s.query_vi ? ` <span style="font-size:11px;color:#6b7280;font-weight:400">— ${s.query_vi}</span>` : ''}</span>
         ${s.media ? `<img class="scene-selected-thumb" src="${s.media.thumb||s.media.url}" onerror="this.style.display='none'"/>
                      <span class="scene-selected-label">✓</span>` : ''}
         <span class="scene-dur-badge">${s.duration||6}s</span>
         <span class="scene-expand-icon">▼</span>
       </div>
       <div class="scene-body" id="sb-${i}">
-        ${s.prompt ? `<div class="scene-prompt-text">${s.prompt}</div>` : ''}
+        ${s.text ? `<div class="scene-prompt-text" style="color:#c4b5fd;border-left:2px solid #7c3aed;padding-left:8px;margin-bottom:8px">"${s.text}"</div>` : ''}
+        ${(s.type||s.strategy) ? `<div style="display:flex;gap:6px;margin-bottom:8px;flex-wrap:wrap">
+          ${s.type ? `<span style="font-size:10px;background:#1e3a5f;color:#60a5fa;border-radius:4px;padding:2px 7px">${s.type}</span>` : ''}
+          ${s.strategy ? `<span style="font-size:10px;background:#14532d;color:#4ade80;border-radius:4px;padding:2px 7px">${s.strategy}</span>` : ''}
+        </div>` : ''}
+        ${s.vi_note ? `<div style="font-size:11px;color:#a78bfa;margin-bottom:8px;font-style:italic">💡 ${s.vi_note}</div>` : ''}
 
         <div class="query-edit-row">
-          <input type="text" id="q-${i}" value="${s.query}" placeholder="Sửa keyword..."/>
+          <input type="text" id="q-${i}" value="${s.query}" placeholder="Tier 1 — keyword lý tưởng..."/>
           <button onclick="searchScene(${i})">🔍 Tìm</button>
         </div>
+        ${s.query2 ? `<div style="display:flex;gap:6px;margin-bottom:6px;font-size:11px;color:#6b7280;align-items:center">
+          <span style="flex-shrink:0">Tier 2:</span>
+          <span style="cursor:pointer;color:#60a5fa" onclick="document.getElementById('q-${i}').value='${s.query2.replace(/'/g,"\\'")}';searchScene(${i})">${s.query2}</span>
+        </div>` : ''}
+        ${s.query3 ? `<div style="display:flex;gap:6px;margin-bottom:6px;font-size:11px;color:#6b7280;align-items:center">
+          <span style="flex-shrink:0">Tier 3:</span>
+          <span style="cursor:pointer;color:#60a5fa" onclick="document.getElementById('q-${i}').value='${s.query3.replace(/'/g,"\\'")}';searchScene(${i})">${s.query3}</span>
+        </div>` : ''}
 
         <div class="custom-url-row">
           <input type="text" id="cu-${i}" placeholder="Dán link video/ảnh từ Pexels hoặc Pixabay..."/>
           <button onclick="useCustomUrl(${i})">Dùng link</button>
+        </div>
+        <div class="custom-url-row" style="margin-top:6px">
+          <label style="flex:1;display:flex;align-items:center;gap:8px;background:#0a0c14;border:1px solid #1e2340;border-radius:7px;padding:6px 10px;cursor:pointer;font-size:12px;color:#a78bfa">
+            <span>📁 Upload ảnh từ máy</span>
+            <input type="file" accept="image/*" style="display:none" onchange="useLocalImage(${i}, this)"/>
+          </label>
+          <span id="local-label-${i}" style="font-size:11px;color:#4ade80;display:none">✓ Đã chọn</span>
         </div>
 
         <div class="media-tabs">
@@ -479,6 +499,36 @@ function selectMedia(i, j, type) {
 
   // Cập nhật scene header
   refreshSceneHead(i);
+}
+
+async function useLocalImage(i, input) {
+  const file = input.files[0];
+  if (!file) return;
+
+  const label = document.getElementById(`local-label-${i}`);
+  label.style.display = 'inline';
+  label.textContent = '⏳ Đang upload...';
+
+  try {
+    const fd = new FormData();
+    fd.append('file', file);
+    const res = await fetch(`${API}/api/upload-image`, { method: 'POST', body: fd });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || 'Upload thất bại');
+
+    const objUrl = URL.createObjectURL(file);
+    scenes[i].media = {
+      url: data.path,       // server path để FFmpeg dùng
+      thumb: objUrl,        // preview local
+      is_video: false,
+      duration: scenes[i].duration,
+      source: 'local',
+    };
+    label.textContent = `✓ ${file.name}`;
+    refreshSceneHead(i);
+  } catch(e) {
+    label.textContent = '❌ ' + e.message;
+  }
 }
 
 function useCustomUrl(i) {
