@@ -597,74 +597,28 @@ def capcut_tts_sync(text: str, voice_type: str, resource_id: str, out_path: Path
 
 
 async def tts_segment(text: str, voice: str, out_path: Path,
-                      beeknoee_key: str | None = None,
-                      beeknoee_tts_model: str | None = None,
-                      beeknoee_tts_voice: str | None = None,
                       capcut_device_id: str | None = None,
                       capcut_voice_type: str | None = None,
-                      capcut_resource_id: str | None = None):
-    """Tạo file TTS cho 1 đoạn text, retry 3 lần nếu thất bại.
-    Ưu tiên: CapCut TTS -> Beeknoee TTS -> Edge TTS."""
-    clean = re.sub(r"[^\w\sÀ-ɏḀ-ỿ.,!?;:()\-–\"']", " ", text).strip()
-    if not clean:
-        clean = "."
-
-    if capcut_device_id and capcut_voice_type and capcut_resource_id:
-        for attempt in range(3):
-            try:
-                loop = asyncio.get_running_loop()
-                await loop.run_in_executor(
-                    None, capcut_tts_sync,
-                    clean, capcut_voice_type, capcut_resource_id, out_path, capcut_device_id,
-                )
-                return
-            except Exception as e:
-                if attempt == 2:
-                    print(f"  ⚠ CapCut TTS thất bại, fallback Edge TTS: '{clean[:60]}' — {e}")
-                    import edge_tts as _edge
-                    try:
-                        communicate = _edge.Communicate(clean, voice)
-                        await communicate.save(str(out_path))
-                    except Exception:
-                        make_silent(1.0, out_path)
-                else:
-                    await asyncio.sleep(2)
-    elif beeknoee_key and beeknoee_tts_model:
-        from openai import OpenAI
-        bee_voice = beeknoee_tts_voice or "vi"
-        for attempt in range(3):
-            try:
-                def _call():
-                    client = OpenAI(api_key=beeknoee_key, base_url=BEEKNOEE_BASE_URL)
-                    resp = client.audio.speech.create(
-                        model=beeknoee_tts_model,
-                        voice=bee_voice,
-                        input=clean,
-                        response_format="mp3",
-                    )
-                    out_path.write_bytes(resp.content)
-                loop = asyncio.get_running_loop()
-                await loop.run_in_executor(None, _call)
-                return
-            except Exception as e:
-                if attempt == 2:
-                    print(f"  ⚠ Beeknoee TTS fallback silent: '{clean[:60]}' — {e}")
-                    make_silent(1.0, out_path)
-                else:
-                    await asyncio.sleep(1)
-    else:
-        import edge_tts
-        for attempt in range(3):
-            try:
-                communicate = edge_tts.Communicate(clean, voice)
-                await communicate.save(str(out_path))
-                return
-            except Exception as e:
-                if attempt == 2:
-                    print(f"  ⚠ TTS fallback silent: '{clean[:60]}' — {e}")
-                    make_silent(1.0, out_path)
-                else:
-                    await asyncio.sleep(1)
+                      capcut_resource_id: str | None = None,
+                      **_ignored):
+    """Tạo file TTS cho 1 đoạn text dùng CapCut TTS, retry vô hạn + đổi device_id khi bị block."""
+    import random as _random
+    clean = re.sub(r"[^\w\sÀ-ɏḀ-ỿ.,!?;:()\-–\"']", " ", text).strip() or "."
+    current_did = capcut_device_id
+    attempt = 0
+    while True:
+        try:
+            loop = asyncio.get_running_loop()
+            await loop.run_in_executor(
+                None, capcut_tts_sync,
+                clean, capcut_voice_type, capcut_resource_id, out_path, current_did,
+            )
+            return
+        except Exception as e:
+            attempt += 1
+            print(f"  ⚠ CapCut TTS lần {attempt}: '{clean[:60]}' — {e}, đổi device_id và thử lại...")
+            current_did = str(_random.randint(7000000000000000000, 7999999999999999999))
+            await asyncio.sleep(min(2 * attempt, 10))
 
 
 def get_audio_duration(path: Path) -> float:
@@ -731,10 +685,8 @@ async def build_tts_track(cues: list[dict], work_dir: Path, video_duration: floa
     """
     if capcut_device_id and capcut_voice_type:
         label = f"CapCut TTS batch ({capcut_voice_type})"
-    elif beeknoee_tts_model:
-        label = f"Beeknoee ({beeknoee_tts_model})"
     else:
-        label = f"Edge TTS ({TTS_VOICE})"
+        label = "CapCut TTS (thiếu device_id)"
     print(f"  -> TTS {len(cues)} đoạn ({label})...")
     seg_dir = work_dir / "tts_segs"
     seg_dir.mkdir(exist_ok=True)
@@ -772,7 +724,8 @@ async def build_tts_track(cues: list[dict], work_dir: Path, video_duration: floa
             if not pending_texts:
                 return
             print(f"    CapCut batch {pending_idxs[0]}–{pending_idxs[-1]} ({len(pending_texts)} đoạn)...")
-            for attempt in range(5):
+            attempt = 0
+            while True:
                 try:
                     capcut_tts_batch(pending_texts, capcut_voice_type, capcut_resource_id,
                                      pending_paths, current_device_id, rate=capcut_rate)
@@ -781,25 +734,10 @@ async def build_tts_track(cues: list[dict], work_dir: Path, video_duration: floa
                         progress_cb(done_cues, total_cues)
                     return
                 except Exception as e:
-                    if attempt >= 4:
-                        print(f"  ⚠ CapCut batch thất bại sau 5 lần, fallback Edge TTS: {e}")
-                        for text_fb, p in zip(pending_texts, pending_paths):
-                            if not p.exists():
-                                try:
-                                    import subprocess as _sp
-                                    _sp.run([
-                                        "python3", "-c",
-                                        f"import asyncio, edge_tts; asyncio.run(edge_tts.Communicate({repr(text_fb)}, {repr(TTS_VOICE)}).save({repr(str(p))}))"
-                                    ], timeout=30)
-                                except Exception:
-                                    make_silent(1.0, p)
-                        done_cues += len(pending_texts)
-                        if progress_cb:
-                            progress_cb(done_cues, total_cues)
-                    else:
-                        print(f"  ⚠ CapCut batch lỗi (lần {attempt+1}): {e} — đổi device_id và thử lại...")
-                        current_device_id = _new_device_id()
-                        time.sleep(2)
+                    attempt += 1
+                    print(f"  ⚠ CapCut batch lỗi (lần {attempt}): {e} — đổi device_id và thử lại...")
+                    current_device_id = _new_device_id()
+                    time.sleep(min(2 * attempt, 10))
 
         for cue in cues:
             text = cue["text"].strip()
@@ -817,35 +755,6 @@ async def build_tts_track(cues: list[dict], work_dir: Path, video_duration: floa
                 await asyncio.sleep(capcut_delay)
         _flush_batch()  # flush batch cuối
 
-    # --- Pre-fetch Edge TTS song song cho các cue chưa có raw (không dùng CapCut) ---
-    elif not beeknoee_key:
-        edge_tasks = []
-        for cue in cues:
-            text = cue["text"].strip()
-            if not text:
-                continue
-            clean = re.sub(r"[^\w\sÀ-ɏḀ-ỿ.,!?;:()\-–\"']", " ", text).strip() or "."
-            raw_path = seg_dir / f"raw_{cue['idx']:04d}.mp3"
-            raw_paths[cue["idx"]] = raw_path
-            edge_tasks.append((clean, raw_path))
-
-        async def _edge_one(txt, path):
-            import edge_tts as _et
-            for attempt in range(3):
-                try:
-                    await _et.Communicate(txt, TTS_VOICE).save(str(path))
-                    return
-                except Exception:
-                    if attempt == 2:
-                        make_silent(1.0, path)
-                    else:
-                        await asyncio.sleep(1)
-
-        EDGE_CONCURRENT = 10
-        for i in range(0, len(edge_tasks), EDGE_CONCURRENT):
-            chunk = edge_tasks[i:i + EDGE_CONCURRENT]
-            print(f"  Edge TTS song song {i+1}–{i+len(chunk)}/{len(edge_tasks)}...")
-            await asyncio.gather(*[_edge_one(t, p) for t, p in chunk])
 
     # Dùng adelay để pin từng segment vào timestamp tuyệt đối start_sec
     # -> không có sai số tích lũy dù trim/stretch có lệch nhỏ
@@ -869,10 +778,7 @@ async def build_tts_track(cues: list[dict], work_dir: Path, video_duration: floa
         raw_path = raw_paths.get(cue["idx"]) or seg_dir / f"raw_{cue['idx']:04d}.mp3"
         if not raw_path.exists():
             await tts_segment(text, TTS_VOICE, raw_path,
-                              beeknoee_key=beeknoee_key,
-                              beeknoee_tts_model=beeknoee_tts_model,
-                              beeknoee_tts_voice=beeknoee_tts_voice,
-                              capcut_device_id=None,
+                              capcut_device_id=capcut_device_id,
                               capcut_voice_type=capcut_voice_type,
                               capcut_resource_id=capcut_resource_id)
 
