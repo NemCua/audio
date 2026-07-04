@@ -396,6 +396,7 @@ td.vi-cell textarea:focus{background:#1e1b4b44}
       <div class="tab" onclick="switchTab('subs')">📝 Chỉnh phụ đề</div>
       <div class="tab" onclick="switchTab('layout');onLayoutTabOpen()">🎨 Bố cục</div>
       <div class="tab" onclick="switchTab('settings')">⚙️ Cài đặt</div>
+      <div class="tab" onclick="switchTab('tiktok')">🚀 Upload TikTok</div>
     </div>
 
     <!-- TAB OUTPUT -->
@@ -406,6 +407,11 @@ td.vi-cell textarea:focus{background:#1e1b4b44}
       <div class="dl-row">
         <a class="dl-btn dl-video" id="dl-video" download>⬇️ Tải video</a>
         <a class="dl-btn dl-srt"   id="dl-srt"   download>📄 Tải SRT</a>
+      </div>
+      <div id="tiktok-quick-upload" style="display:none;margin-top:10px">
+        <button class="btn" style="background:#1a1a2e;border:1px solid #7c3aed;color:#a78bfa;width:100%;padding:10px;border-radius:8px;font-size:13px;font-weight:700;cursor:pointer" onclick="quickUploadTikTok()">
+          🚀 Upload lên TikTok
+        </button>
       </div>
     </div>
 
@@ -594,6 +600,101 @@ td.vi-cell textarea:focus{background:#1e1b4b44}
       </div>
     </div>
 
+    <!-- TAB TIKTOK UPLOAD -->
+    <div class="tab-content" id="tab-tiktok" style="display:none">
+      <div style="max-width:520px;margin:0 auto;padding:8px 0">
+        <h2 style="font-size:15px;font-weight:700;color:#a78bfa;margin-bottom:16px">🚀 Upload lên TikTok</h2>
+
+        <!-- Thông tin TikTok -->
+        <div style="background:#12152a;border:1px solid #1e2340;border-radius:10px;padding:14px;margin-bottom:12px">
+          <div style="font-size:11px;color:#6b7280;margin-bottom:6px;text-transform:uppercase;letter-spacing:.05em">Tài khoản TikTok</div>
+          <input id="tt-user" type="text" placeholder="Username TikTok (vd: nemcua)" style="width:100%;background:#0a0c14;border:1px solid #1e2340;border-radius:7px;color:#e2e8f0;font-size:13px;padding:8px 10px;outline:none;margin-bottom:8px"/>
+          <div style="font-size:11px;color:#6b7280;margin-bottom:6px">Tiêu đề video</div>
+          <input id="tt-title" type="text" placeholder="Tiêu đề (tối đa 2200 ký tự)" maxlength="2200" style="width:100%;background:#0a0c14;border:1px solid #1e2340;border-radius:7px;color:#e2e8f0;font-size:13px;padding:8px 10px;outline:none;margin-bottom:8px"/>
+          <div style="font-size:11px;color:#6b7280;margin-bottom:6px">Mô tả</div>
+          <textarea id="tt-desc" placeholder="Mô tả (tùy chọn)" rows="3" style="width:100%;background:#0a0c14;border:1px solid #1e2340;border-radius:7px;color:#e2e8f0;font-size:13px;padding:8px 10px;outline:none;resize:vertical"></textarea>
+          <div style="display:flex;gap:8px;margin-top:8px;align-items:center">
+            <div style="flex:1">
+              <div style="font-size:11px;color:#6b7280;margin-bottom:4px">Chế độ đăng</div>
+              <select id="tt-mode" style="width:100%;background:#0a0c14;border:1px solid #1e2340;border-radius:7px;color:#e2e8f0;font-size:12px;padding:7px 8px">
+                <option value="DIRECT_POST">Đăng thẳng</option>
+                <option value="MEDIA_UPLOAD">Lưu nháp (inbox)</option>
+              </select>
+            </div>
+            <div style="flex:1">
+              <div style="font-size:11px;color:#6b7280;margin-bottom:4px">Quyền riêng tư</div>
+              <select id="tt-privacy" style="width:100%;background:#0a0c14;border:1px solid #1e2340;border-radius:7px;color:#e2e8f0;font-size:12px;padding:7px 8px">
+                <option value="PUBLIC_TO_EVERYONE">Công khai</option>
+                <option value="FOLLOWER_OF_CREATOR">Người theo dõi</option>
+                <option value="MUTUAL_FOLLOW_FRIENDS">Bạn bè</option>
+                <option value="SELF_ONLY">Chỉ mình tôi</option>
+              </select>
+            </div>
+          </div>
+          <div style="margin-top:10px">
+            <div style="font-size:11px;color:#6b7280;margin-bottom:4px">🖼️ Frame ảnh bìa (giây từ đầu video)</div>
+            <div style="display:flex;gap:8px;align-items:center">
+              <input id="tt-cover-sec" type="number" min="0" step="0.5" placeholder="0" value="0"
+                     style="width:100px;background:#0a0c14;border:1px solid #1e2340;border-radius:7px;color:#e2e8f0;font-size:12px;padding:7px 10px;outline:none"/>
+              <span style="font-size:11px;color:#6b7280">giây</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Upload video vừa dịch -->
+        <div style="background:#12152a;border:1px solid #1e2340;border-radius:10px;padding:14px;margin-bottom:12px">
+          <div style="font-size:12px;font-weight:700;color:#e2e8f0;margin-bottom:10px">📺 Video vừa dịch</div>
+          <div id="tt-current-video" style="font-size:12px;color:#6b7280;padding:8px;background:#0a0c14;border-radius:6px;margin-bottom:10px">Chưa có video — render xong sẽ hiện ở đây</div>
+          <button class="btn btn-purple" onclick="uploadCurrentVideo()" id="btn-upload-current" disabled style="width:100%">🚀 Upload video này lên TikTok</button>
+        </div>
+
+        <!-- Upload từ thư mục -->
+        <div style="background:#12152a;border:1px solid #1e2340;border-radius:10px;padding:14px;margin-bottom:12px">
+          <div style="font-size:12px;font-weight:700;color:#e2e8f0;margin-bottom:10px">📁 Upload từ thư mục</div>
+          <div style="display:flex;gap:6px;margin-bottom:10px">
+            <input id="tt-folder" type="text" value="/Users/nguyenquochuy/movetiktok" placeholder="/Users/tên/output hoặc ~/Desktop/videos" style="flex:1;background:#0a0c14;border:1px solid #1e2340;border-radius:7px;color:#e2e8f0;font-size:12px;padding:7px 10px;outline:none"/>
+            <button class="btn btn-blue" style="width:auto;padding:7px 14px;margin:0;font-size:12px" onclick="loadFolder()">📂 Mở</button>
+          </div>
+          <div id="tt-file-list" style="display:none">
+            <div style="font-size:11px;color:#6b7280;margin-bottom:6px" id="tt-file-count"></div>
+            <div id="tt-files" style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;max-height:360px;overflow-y:auto"></div>
+          </div>
+        </div>
+
+        <!-- Status -->
+        <div id="tt-status" style="display:none;background:#12152a;border:1px solid #1e2340;border-radius:8px;padding:12px;font-size:12px;color:#e2e8f0"></div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<!-- Modal xem video TikTok -->
+<div id="tt-modal" style="display:none;position:fixed;inset:0;background:#000000cc;z-index:9999;align-items:center;justify-content:center" onclick="if(event.target===this)closeVideoModal()">
+  <div style="background:#12152a;border:1px solid #1e2340;border-radius:12px;width:min(400px,92vw);overflow:hidden">
+    <div style="padding:14px 16px;border-bottom:1px solid #1e2340;display:flex;align-items:center;gap:10px">
+      <span style="flex:1;font-size:13px;font-weight:700;color:#e2e8f0" id="tt-modal-title"></span>
+      <button onclick="closeVideoModal()" style="background:none;border:none;color:#6b7280;font-size:18px;cursor:pointer;line-height:1">✕</button>
+    </div>
+    <div style="background:#0a0c14;aspect-ratio:9/16;max-height:60vh;overflow:hidden;display:flex;align-items:center;justify-content:center">
+      <img id="tt-modal-video" src="" style="width:100%;height:100%;object-fit:contain"/>
+    </div>
+    <div style="padding:10px 16px;font-size:10px;color:#4b5563;word-break:break-all" id="tt-modal-name"></div>
+    <div style="padding:10px 16px;border-top:1px solid #1e2340">
+      <div style="font-size:11px;color:#6b7280;margin-bottom:6px">🖼️ Frame ảnh bìa</div>
+      <div style="display:flex;gap:8px;align-items:center">
+        <input id="tt-modal-cover-sec" type="number" min="0" step="0.5" value="0" placeholder="0"
+               style="width:80px;background:#0a0c14;border:1px solid #1e2340;border-radius:7px;color:#e2e8f0;font-size:12px;padding:6px 8px;outline:none"
+               oninput="previewCoverThumb(this.value)"/>
+        <span style="font-size:11px;color:#6b7280">giây</span>
+        <img id="tt-modal-cover-preview" src="" alt=""
+             style="display:none;width:40px;height:72px;object-fit:cover;border-radius:4px;border:1px solid #7c3aed"/>
+      </div>
+    </div>
+    <div style="padding:12px 16px;border-top:1px solid #1e2340;display:flex;gap:8px">
+      <button onclick="closeVideoModal()" style="flex:1;background:#1e2340;border:none;color:#6b7280;border-radius:7px;padding:9px;font-size:13px;cursor:pointer">Hủy</button>
+      <button onclick="uploadSelectedModal()" style="flex:2;background:#7c3aed;border:none;color:#fff;border-radius:7px;padding:9px;font-size:13px;font-weight:700;cursor:pointer">🚀 Upload lên TikTok</button>
+    </div>
   </div>
 </div>
 
@@ -623,6 +724,7 @@ function onAuthSuccess(data) {
   document.getElementById('bal-val').textContent = (data.user.balance || 0).toLocaleString('vi-VN') + 'đ';
   setTimeout(refreshBalance, 500);
   loadSettings();
+  loadTikTokDefaultUser();
 }
 
 async function loadSettings() {
@@ -805,7 +907,7 @@ async function useSrt() {
 
 // ── Switch tabs ─────────────────────────────────────────────────
 function switchTab(name) {
-  const names = ['output','subs','layout','settings','topup'];
+  const names = ['output','subs','layout','settings','topup','tiktok'];
   document.querySelectorAll('.tab').forEach((t,i) =>
     t.classList.toggle('active', names[i] === name));
   document.querySelectorAll('.tab-content').forEach(c => {
@@ -1017,6 +1119,14 @@ async function showVideo(jobId) {
   dlv.href = vUrl;
   dlv.setAttribute('download', `video_vi.mp4`);
   dlv.classList.add('on');
+
+  // Hiện nút upload TikTok
+  document.getElementById('tiktok-quick-upload').style.display = 'block';
+  // Cập nhật tab TikTok
+  const cv = document.getElementById('tt-current-video');
+  if (cv) { cv.textContent = `✅ Video job: ${jobId} — sẵn sàng upload`; cv.style.color = '#4ade80'; }
+  const btnUp = document.getElementById('btn-upload-current');
+  if (btnUp) btnUp.disabled = false;
 
   // Fetch SRT as blob
   const sRes  = await apiFetch(`${API}/api/download-srt/${jobId}`);
@@ -1418,6 +1528,174 @@ function onLayoutTabOpen() {
     if (!LC.img && currentJobId) lcLoadFrame();
     else if (LC.img) drawLayout();
   });
+}
+
+// ── TikTok Upload ────────────────────────────────────────────────
+let _ttVideoPath = null;
+let _ttSelectedPath = null;
+
+// Load default TikTok user từ env
+async function loadTikTokDefaultUser() {
+  try {
+    const res = await apiFetch(`${API}/api/tiktok-default-user`);
+    const data = await res.json();
+    if (data.user) document.getElementById('tt-user').value = data.user;
+  } catch(e) {}
+}
+
+function ttGetParams() {
+  const coverSec = parseFloat(document.getElementById('tt-cover-sec').value) || 0;
+  return {
+    tiktok_user: document.getElementById('tt-user').value.trim(),
+    title:       document.getElementById('tt-title').value.trim(),
+    description: document.getElementById('tt-desc').value.trim(),
+    privacy_level: document.getElementById('tt-privacy').value,
+    post_mode:   document.getElementById('tt-mode').value,
+    cover_timestamp_ms: Math.round(coverSec * 1000),
+  };
+}
+
+function ttSetStatus(msg, ok) {
+  const el = document.getElementById('tt-status');
+  el.style.display = 'block';
+  el.style.color = ok === false ? '#f87171' : ok === true ? '#4ade80' : '#e2e8f0';
+  el.textContent = msg;
+}
+
+async function uploadCurrentVideo() {
+  const p = ttGetParams();
+  if (!p.tiktok_user) { ttSetStatus('❌ Nhập username TikTok trước', false); return; }
+  if (!currentJobId)   { ttSetStatus('❌ Chưa có video', false); return; }
+  ttSetStatus('⏳ Đang upload...');
+  document.getElementById('btn-upload-current').disabled = true;
+  try {
+    const res  = await apiFetch(`${API}/api/tiktok-upload`, {
+      method: 'POST', headers: {'Content-Type':'application/json'},
+      body: JSON.stringify({ job_id: currentJobId, ...p }),
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.detail || JSON.stringify(data));
+    ttSetStatus('✅ Upload thành công! ' + (data.request_id ? `request_id: ${data.request_id}` : ''), true);
+  } catch(e) {
+    ttSetStatus('❌ ' + e.message, false);
+  } finally {
+    document.getElementById('btn-upload-current').disabled = false;
+  }
+}
+
+async function quickUploadTikTok() {
+  switchTab('tiktok');
+  document.getElementById('btn-upload-current').scrollIntoView({ behavior: 'smooth' });
+}
+
+async function loadFolder() {
+  const folder = document.getElementById('tt-folder').value.trim();
+  if (!folder) return;
+  try {
+    const res  = await apiFetch(`${API}/api/upload-folder?folder=${encodeURIComponent(folder)}`);
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.detail);
+    document.getElementById('tt-file-list').style.display = 'block';
+    document.getElementById('tt-file-count').textContent = `${data.files.length} video`;
+    document.getElementById('tt-files').innerHTML = data.files.map((f, idx) => {
+      const safeP = f.path.replace(/\\/g,'\\\\').replace(/'/g,"\\'");
+      return `
+      <div style="background:#0a0c14;border-radius:8px;border:2px solid #1e2340;overflow:hidden;cursor:pointer;transition:border-color .15s"
+           onmouseover="this.style.borderColor='#7c3aed'" onmouseout="this.style.borderColor='#1e2340'"
+           onclick="openVideoModal('${safeP}','${f.name.replace(/'/g,"\\'")}')">
+        <div style="position:relative;aspect-ratio:9/16;background:#0a0c14;overflow:hidden">
+          <img src="${API}/api/video-thumb?path=${encodeURIComponent(f.path)}"
+               style="width:100%;height:100%;object-fit:cover"
+               onerror="this.style.display='none';this.nextElementSibling.style.display='flex'"/>
+          <div style="display:none;position:absolute;inset:0;align-items:center;justify-content:center;font-size:32px">🎬</div>
+          <div style="position:absolute;bottom:4px;right:4px;background:#00000099;color:#fff;font-size:9px;padding:2px 5px;border-radius:4px">${f.size_mb}MB</div>
+        </div>
+        <div style="padding:6px 8px">
+          <div style="font-size:11px;color:#e2e8f0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis" title="${f.name}">${f.name}</div>
+        </div>
+      </div>`;
+    }).join('');
+  } catch(e) {
+    ttSetStatus('❌ ' + e.message, false);
+  }
+}
+
+// Modal xem video
+function openVideoModal(path, name) {
+  _ttSelectedPath = path;
+  const m = document.getElementById('tt-modal');
+  document.getElementById('tt-modal-title').textContent = name;
+  document.getElementById('tt-modal-video').src = `${API}/api/video-thumb?path=${encodeURIComponent(path)}`;
+  document.getElementById('tt-modal-name').textContent = path;
+  document.getElementById('tt-modal-cover-sec').value = '0';
+  document.getElementById('tt-modal-cover-preview').style.display = 'none';
+  m.style.display = 'flex';
+}
+function closeVideoModal() {
+  document.getElementById('tt-modal').style.display = 'none';
+  document.getElementById('tt-modal-video').src = '';
+}
+
+let _coverThumbTimer = null;
+function previewCoverThumb(sec) {
+  clearTimeout(_coverThumbTimer);
+  const s = parseFloat(sec);
+  if (isNaN(s) || !_ttSelectedPath) return;
+  _coverThumbTimer = setTimeout(() => {
+    const img = document.getElementById('tt-modal-cover-preview');
+    img.style.display = 'block';
+    img.src = `${API}/api/video-thumb?path=${encodeURIComponent(_ttSelectedPath)}&t=${s}`;
+  }, 400);
+}
+
+async function uploadSelectedModal() {
+  if (!_ttSelectedPath) return;
+  const modalCoverSec = parseFloat(document.getElementById('tt-modal-cover-sec').value) || 0;
+  // Sync cover giây từ modal về input chính
+  document.getElementById('tt-cover-sec').value = modalCoverSec;
+  closeVideoModal();
+  const p = ttGetParams();
+  if (!p.tiktok_user) { ttSetStatus('❌ Nhập username TikTok trước', false); return; }
+  ttSetStatus('⏳ Đang upload ' + _ttSelectedPath.split('/').pop() + '...');
+  try {
+    const res  = await apiFetch(`${API}/api/tiktok-upload`, {
+      method: 'POST', headers: {'Content-Type':'application/json'},
+      body: JSON.stringify({ video_path: _ttSelectedPath, ...p }),
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.detail || JSON.stringify(data));
+    ttSetStatus('✅ Upload thành công! ' + (data.request_id ? `ID: ${data.request_id}` : ''), true);
+  } catch(e) {
+    ttSetStatus('❌ ' + e.message, false);
+  }
+}
+
+function selectFile(path, el) {
+  _ttSelectedPath = path;
+  document.querySelectorAll('#tt-files > div').forEach(d => d.style.borderColor = 'transparent');
+  el.style.borderColor = '#7c3aed';
+}
+
+async function uploadFileNow(path, btn) {
+  const p = ttGetParams();
+  if (!p.tiktok_user) { ttSetStatus('❌ Nhập username TikTok trước', false); return; }
+  btn.disabled = true;
+  btn.textContent = '⏳';
+  ttSetStatus('⏳ Đang upload ' + path.split('/').pop() + '...');
+  try {
+    const res  = await apiFetch(`${API}/api/tiktok-upload`, {
+      method: 'POST', headers: {'Content-Type':'application/json'},
+      body: JSON.stringify({ video_path: path, ...p }),
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.detail || JSON.stringify(data));
+    ttSetStatus('✅ Upload thành công! ' + (data.request_id ? `ID: ${data.request_id}` : ''), true);
+    btn.textContent = '✅';
+  } catch(e) {
+    ttSetStatus('❌ ' + e.message, false);
+    btn.textContent = '🚀 Upload';
+    btn.disabled = false;
+  }
 }
 </script>
 </body>

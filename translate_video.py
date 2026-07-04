@@ -82,26 +82,50 @@ def sec_to_srt_time(sec: float) -> str:
 
 def parse_srt(text: str) -> list[dict]:
     """Parse SRT text → list of {idx, start, end, start_sec, end_sec, text}"""
+    # Normalize: strip BOM, unify line endings
+    text = text.lstrip("﻿").replace("\r\n", "\n").replace("\r", "\n")
     blocks = re.split(r"\n\s*\n", text.strip())
     cues = []
+    seen_idx = set()
     for block in blocks:
-        lines = block.strip().splitlines()
+        lines = [l.strip() for l in block.strip().splitlines() if l.strip()]
         if len(lines) < 3:
             continue
-        ts_match = re.match(
-            r"(\d{2}:\d{2}:\d{2},\d{3})\s*-->\s*(\d{2}:\d{2}:\d{2},\d{3})", lines[1]
-        )
-        if not ts_match:
+        # Tìm dòng timestamp (có thể không phải lines[1] nếu index bị thiếu)
+        ts_line = None
+        ts_pos  = -1
+        for i, l in enumerate(lines):
+            m = re.match(r"(\d{1,2}:\d{2}:\d{2}[,\.]\d{3})\s*-->\s*(\d{1,2}:\d{2}:\d{2}[,\.]\d{3})", l)
+            if m:
+                ts_line = m
+                ts_pos  = i
+                break
+        if ts_line is None:
             continue
-        start, end = ts_match.group(1), ts_match.group(2)
+        # Chuẩn hóa dấu . → , trong timestamp (một số editor dùng dấu chấm)
+        start = ts_line.group(1).replace(".", ",")
+        end   = ts_line.group(2).replace(".", ",")
+        # Index là dòng trước timestamp
+        raw_idx = lines[ts_pos - 1] if ts_pos > 0 else ""
+        try:
+            idx = int(re.sub(r"\D", "", raw_idx)) if raw_idx else len(cues) + 1
+        except ValueError:
+            idx = len(cues) + 1
+        # Tránh idx trùng
+        while idx in seen_idx:
+            idx += 1
+        seen_idx.add(idx)
+        text_body = " ".join(lines[ts_pos + 1:])
         cues.append({
-            "idx":       int(lines[0].strip()),
+            "idx":       idx,
             "start":     start,
             "end":       end,
             "start_sec": srt_time_to_sec(start),
             "end_sec":   srt_time_to_sec(end),
-            "text":      " ".join(l.strip() for l in lines[2:] if l.strip()),
+            "text":      text_body,
         })
+    # Sắp xếp theo thời gian để tránh lệch thứ tự
+    cues.sort(key=lambda c: c["start_sec"])
     return cues
 
 
@@ -720,9 +744,12 @@ async def build_tts_track(cues: list[dict], work_dir: Path, video_duration: floa
                     return
                 except Exception as e:
                     attempt += 1
-                    print(f"  ⚠ CapCut batch lỗi (lần {attempt}): {e} — đổi device_id và thử lại...")
-                    current_device_id = _new_device_id()
-                    time.sleep(2)
+                    # Đổi device_id mỗi 3 lần fail, backoff tăng dần
+                    if attempt % 3 == 1:
+                        current_device_id = _new_device_id()
+                    wait = min(5 * attempt, 60)
+                    print(f"  ⚠ CapCut batch lỗi (lần {attempt}): {e} — chờ {wait}s rồi thử lại...")
+                    time.sleep(wait)
 
         for cue in cues:
             text = cue["text"].strip()
@@ -942,7 +969,7 @@ def render_video(
         "FontName=Arial Unicode MS,FontSize=22,Bold=1,"
         "PrimaryColour=&H0000FFFF,OutlineColour=&H00000000,"
         "BorderStyle=1,Outline=2,Shadow=0,"
-        "Alignment=2,MarginV=32"
+        "Alignment=2,MarginV=5"
     )
 
     # Watermark bounce DVD-style

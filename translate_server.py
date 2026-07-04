@@ -23,7 +23,7 @@ from typing import Optional
 import psycopg2
 import psycopg2.extras
 from dotenv import load_dotenv
-from fastapi import FastAPI, BackgroundTasks, UploadFile, File, Form, Request
+from fastapi import FastAPI, BackgroundTasks, UploadFile, File, Form, Request, Depends, HTTPException
 from starlette import status as http_status
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse, JSONResponse
@@ -43,7 +43,7 @@ PRICE_PER_MIN   = 85    # đồng / phút
 FREE_THRESHOLD  = 3 * 60  # ≤ 3 phút → miễn phí
 
 # Routes that don't require auth
-_PUBLIC_PATHS = {"/", "/auth/login", "/auth/register"}
+_PUBLIC_PATHS = {"/", "/auth/login", "/auth/register", "/api/video-thumb", "/api/tiktok-default-user"}
 
 # ── DB helpers ───────────────────────────────────────────────────
 @contextmanager
@@ -783,7 +783,8 @@ async def load_srt(job_id: str, request: Request, file: UploadFile = File(...)):
 
     job["vi_cues"] = new_cues
     srt_path = Path(job["srt_path"])
-    srt_path.write_text(content, encoding="utf-8")
+    from translate_video import build_srt
+    srt_path.write_text(build_srt(new_cues), encoding="utf-8")
 
     zh_cues = job.get("zh_cues", [])
     zh_map  = {c["idx"]: c["text"] for c in zh_cues}
@@ -811,6 +812,147 @@ async def auth_proxy(path: str, request: Request):
     return JSONResponse(status_code=resp.status_code,
                         content=resp.json() if resp.content else {},
                         headers=dict(resp.headers))
+
+
+# ── TikTok Upload ────────────────────────────────────────────────────────────
+
+UPLOADPOST_API = "https://api.upload-post.com/api/upload"
+
+class TikTokUploadReq(BaseModel):
+    job_id: str = ""
+    video_path: str = ""   # đường dẫn local (dùng cho tab Upload)
+    tiktok_user: str = ""
+    title: str = ""
+    description: str = ""
+    privacy_level: str = "PUBLIC_TO_EVERYONE"
+    post_mode: str = "DIRECT_POST"
+    cover_timestamp_ms: int = 0
+
+
+@app.post("/api/tiktok-upload")
+async def tiktok_upload(req: TikTokUploadReq, request: Request):
+    api_key = os.environ.get("UPLOADPOST_API_KEY", "")
+    if not api_key:
+        raise HTTPException(status_code=500, detail="Chưa cấu hình UPLOADPOST_API_KEY")
+    if not req.tiktok_user:
+        raise HTTPException(status_code=400, detail="Thiếu tiktok_user")
+
+    # Xác định file video
+    if req.job_id:
+        job = jobs.get(req.job_id)
+        video_file = job.get("output") if job else None
+        if not video_file:
+            # Server có thể đã restart — tìm lại file trong workdir
+            import glob as _glob, tempfile as _tempfile
+            tmp = Path(_tempfile.gettempdir())
+            pattern = str(tmp / f"tr_{req.job_id[:8]}_*" / "*_vi.mp4")
+            found = sorted(_glob.glob(pattern), key=lambda x: Path(x).stat().st_mtime, reverse=True)
+            if found:
+                video_file = found[0]
+            else:
+                raise HTTPException(status_code=404, detail="Job không có output (thử upload từ thư mục)")
+    elif req.video_path:
+        video_file = req.video_path
+    else:
+        raise HTTPException(status_code=400, detail="Cần job_id hoặc video_path")
+
+    if not Path(video_file).exists():
+        raise HTTPException(status_code=404, detail="File video không tồn tại")
+
+    # Compress nếu file > 500MB (TikTok / upload-post giới hạn)
+    upload_file = video_file
+    _compressed_tmp = None
+    file_mb = Path(video_file).stat().st_size / 1024 / 1024
+    if file_mb > 500:
+        from translate_video import FFMPEG_BIN
+        import tempfile as _tmp2
+        _compressed_tmp = Path(_tmp2.mktemp(suffix="_compressed.mp4"))
+        print(f"[tiktok-upload] File {file_mb:.0f}MB > 500MB, đang compress...")
+        proc = subprocess.run([
+            FFMPEG_BIN, "-y", "-i", video_file,
+            "-c:v", "libx264", "-preset", "veryfast", "-crf", "28",
+            "-c:a", "aac", "-b:a", "128k",
+            "-movflags", "+faststart",
+            str(_compressed_tmp)
+        ], capture_output=True)
+        if proc.returncode != 0 or not _compressed_tmp.exists():
+            raise HTTPException(status_code=500, detail="Compress video thất bại")
+        upload_file = str(_compressed_tmp)
+        compressed_mb = _compressed_tmp.stat().st_size / 1024 / 1024
+        print(f"[tiktok-upload] Compressed: {compressed_mb:.0f}MB")
+
+    try:
+        import httpx as _httpx
+        async with _httpx.AsyncClient(timeout=300) as client:
+            with open(upload_file, "rb") as f:
+                data = {
+                    "user": req.tiktok_user,
+                    "platform[]": "tiktok",
+                    "privacy_level": req.privacy_level,
+                    "post_mode": req.post_mode,
+                    "cover_timestamp_ms": str(req.cover_timestamp_ms),
+                }
+                if req.title:
+                    data["tiktok_title"] = req.title[:2200]
+                if req.description:
+                    data["description"] = req.description
+                resp = await client.post(
+                    UPLOADPOST_API,
+                    headers={"Authorization": f"Apikey {api_key}"},
+                    data=data,
+                    files={"video": (Path(upload_file).name, f, "video/mp4")},
+                )
+        print(f"[tiktok-upload] status={resp.status_code} body={resp.text[:500]}")
+        result = resp.json()
+        if resp.status_code >= 400 or not result.get("success", True):
+            msg = result.get("message") or result.get("error") or str(result)
+            raise HTTPException(status_code=resp.status_code or 400, detail=msg)
+        return result
+    except _httpx.TimeoutException:
+        raise HTTPException(status_code=504, detail="Upload timeout — thử lại sau")
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+    finally:
+        if _compressed_tmp and _compressed_tmp.exists():
+            _compressed_tmp.unlink(missing_ok=True)
+
+
+@app.get("/api/video-thumb")
+async def video_thumb(path: str, t: float = 0.0, request: Request = None):
+    p = Path(path)
+    if not p.exists():
+        raise HTTPException(status_code=404, detail="File không tồn tại")
+    import tempfile as _tmp
+    out = Path(_tmp.mktemp(suffix=".jpg"))
+    from translate_video import FFMPEG_BIN
+    subprocess.run([
+        FFMPEG_BIN, "-y", "-ss", str(t), "-i", str(p),
+        "-frames:v", "1", "-q:v", "5", "-vf", "scale=320:-1",
+        str(out)
+    ], capture_output=True)
+    if not out.exists():
+        raise HTTPException(status_code=500, detail="Không lấy được frame")
+    return FileResponse(str(out), media_type="image/jpeg")
+
+
+@app.get("/api/tiktok-default-user")
+async def tiktok_default_user(request: Request):
+    return {"user": os.environ.get("TIKTOK_USER", "")}
+
+
+@app.get("/api/upload-folder")
+async def list_upload_folder(folder: str, request: Request):
+    p = Path(folder).expanduser()
+    if not p.exists() or not p.is_dir():
+        raise HTTPException(status_code=404, detail="Thư mục không tồn tại")
+    videos = sorted(
+        [f for f in p.iterdir() if f.suffix.lower() in (".mp4", ".mov", ".webm")],
+        key=lambda f: f.stat().st_mtime, reverse=True
+    )
+    return {"files": [{"name": f.name, "path": str(f),
+                       "size_mb": round(f.stat().st_size / 1024 / 1024, 1)} for f in videos[:50]]}
 
 
 # Serve static — phải đặt cuối
