@@ -39,11 +39,14 @@ class SceneMedia(BaseModel):
     thumb: str = ""
     is_video: bool = True
     duration: float = 6.0
-    source: str = ""   # "pexels" | "pixabay" | "custom"
+    source: str = ""   # "pexels" | "pixabay" | "web" | "local" | "custom"
+    start: float = 0.0 # giây bắt đầu lấy trong clip nguồn (chỉ áp dụng cho video)
 
 class Scene(BaseModel):
     query: str
     prompt: str = ""
+    text: str = ""                      # câu thoại của cảnh — dùng cho Whisper align
+    trigger_idx: Optional[int] = None   # chỉ số từ trigger trong text (tách khoảng trắng)
     duration: float = 6.0
     media: Optional[SceneMedia] = None  # None = tự search
 
@@ -52,6 +55,7 @@ class GenerateRequest(BaseModel):
     scenes: list[Scene]             # scenes với media đã chọn
     voice: str = ""
     rate: float = 1.0
+    subtitle: bool = True           # burn vietsub bám giọng đọc (Whisper word-level)
 
 
 # ---------------------------------------------------------------------------
@@ -160,12 +164,146 @@ def _search_pixabay_images(query: str, pixabay_key: str, n: int = 10) -> list[di
 # Pipeline runner
 # ---------------------------------------------------------------------------
 
+def _search_web_images(query: str, n: int = 12) -> list[dict]:
+    """Tìm ảnh từ toàn bộ web qua DuckDuckGo (không cần API key).
+    Trả về cùng format với các nguồn khác, source='web'."""
+    try:
+        from ddgs import DDGS
+        with DDGS() as d:
+            results = list(d.images(query, max_results=n))
+        return [{
+            'url': r.get('image', ''),
+            'thumb': r.get('thumbnail') or r.get('image', ''),
+            'is_video': False,
+            'duration': 0,
+            'source': 'web',
+            'title': (r.get('title') or '')[:80],
+        } for r in results if r.get('image')]
+    except Exception as e:
+        print(f'  ⚠ Web image search lỗi: {e}')
+        return []
+
+
+def _search_coverr_videos(query: str, api_key: str, n: int = 15) -> list[dict]:
+    """Coverr Free Videos API — cần key riêng, hạn mức 50 req/giờ ở tier Demo.
+    CHỈ gọi khi user chủ động bấm nút riêng, KHÔNG gộp vào search tự động
+    (mỗi query tốn đúng 1 request bất kể page_size)."""
+    import requests
+    try:
+        r = requests.get('https://api.coverr.co/videos', params={
+            'query': query, 'page_size': n, 'urls': 'true', 'api_key': api_key,
+        }, timeout=12)
+        r.raise_for_status()
+        hits = r.json().get('hits', [])
+    except Exception as e:
+        print(f'  ⚠ Coverr search lỗi: {e}')
+        return []
+    out = []
+    for h in hits:
+        mp4 = (h.get('urls') or {}).get('mp4', '')
+        if mp4:
+            out.append({'url': mp4, 'thumb': h.get('thumbnail', ''), 'is_video': True,
+                        'duration': h.get('duration', 0), 'source': 'coverr'})
+    return out
+
+
+def _search_coverr_videos(query: str, api_key: str, n: int = 30) -> list[dict]:
+    """Coverr Free Videos API — cần key riêng, hạn mức 50 req/giờ ở tier Demo.
+    CHỈ gọi khi user chủ động bấm nút riêng, KHÔNG gộp vào search tự động
+    (mỗi query tốn đúng 1 request bất kể page_size)."""
+    import requests
+    try:
+        r = requests.get('https://api.coverr.co/videos', params={
+            'query': query, 'page_size': n, 'urls': 'true', 'api_key': api_key,
+        }, timeout=12)
+        r.raise_for_status()
+        hits = r.json().get('hits', [])
+    except Exception as e:
+        print(f'  ⚠ Coverr search lỗi: {e}')
+        return []
+    out = []
+    for h in hits:
+        mp4 = (h.get('urls') or {}).get('mp4', '')
+        if mp4:
+            out.append({'url': mp4, 'thumb': h.get('thumbnail', ''), 'is_video': True,
+                        'duration': h.get('duration', 0), 'source': 'coverr'})
+    return out
+
+
+def _search_nasa(query: str, n_img: int = 10, n_vid: int = 6) -> tuple[list[dict], list[dict]]:
+    """NASA Image and Video Library — miễn phí, KHÔNG cần API key.
+    Ảnh + video vũ trụ/khoa học chất lượng cao. Trả về (videos, images)."""
+    import requests
+    from concurrent.futures import ThreadPoolExecutor
+    try:
+        r = requests.get('https://images-api.nasa.gov/search',
+                         params={'q': query, 'media_type': 'image,video', 'page_size': 50},
+                         timeout=12)
+        items = r.json().get('collection', {}).get('items', [])
+    except Exception as e:
+        print(f'  ⚠ NASA search lỗi: {e}')
+        return [], []
+
+    images, vid_items = [], []
+    for it in items:
+        data = (it.get('data') or [{}])[0]
+        links = it.get('links') or []
+        thumb = next((l.get('href', '') for l in links if l.get('rel') == 'preview'), '')
+        if data.get('media_type') == 'image' and thumb and len(images) < n_img:
+            images.append({'url': thumb.replace('~thumb', '~large').replace('~small', '~large'),
+                           'thumb': thumb, 'is_video': False, 'duration': 0, 'source': 'nasa'})
+        elif data.get('media_type') == 'video' and it.get('href') and len(vid_items) < n_vid:
+            vid_items.append((it['href'], thumb))
+
+    def _resolve_mp4(args):
+        href, thumb = args
+        try:
+            assets = requests.get(href, timeout=10).json()
+            mp4 = (next((a for a in assets if a.endswith('~mobile.mp4')), None)
+                   or next((a for a in assets if a.endswith('.mp4')), None))
+            if mp4:
+                return {'url': mp4, 'thumb': thumb, 'is_video': True, 'duration': 0, 'source': 'nasa'}
+        except Exception:
+            pass
+        return None
+
+    videos = []
+    if vid_items:
+        with ThreadPoolExecutor(max_workers=6) as ex:
+            videos = [v for v in ex.map(_resolve_mp4, vid_items) if v]
+    return videos, images
+
+
+def _search_wikimedia_images(query: str, n: int = 10) -> list[dict]:
+    """Wikimedia Commons — miễn phí, KHÔNG cần API key. Kho ảnh khoa học/thiên nhiên lớn."""
+    import requests
+    try:
+        r = requests.get('https://commons.wikimedia.org/w/api.php', params={
+            'action': 'query', 'format': 'json', 'generator': 'search',
+            'gsrsearch': f'filetype:bitmap {query}', 'gsrlimit': n, 'gsrnamespace': 6,
+            'prop': 'imageinfo', 'iiprop': 'url', 'iiurlwidth': 1600,
+        }, headers={'User-Agent': 'ContentVideoTool/1.0'}, timeout=12)
+        pages = r.json().get('query', {}).get('pages', {})
+    except Exception as e:
+        print(f'  ⚠ Wikimedia search lỗi: {e}')
+        return []
+    out = []
+    for p in pages.values():
+        ii = (p.get('imageinfo') or [{}])[0]
+        url = ii.get('thumburl') or ii.get('url')
+        if url:
+            out.append({'url': url, 'thumb': url, 'is_video': False,
+                        'duration': 0, 'source': 'wikimedia'})
+    return out
+
+
 def _run_pipeline(job_id: str, req: GenerateRequest):
     import subprocess, time
     from pathlib import Path as P
     from content_video import (
         download_file, process_video_clip, process_image_clip,
         tts_content, capcut_tts_content, build_content_video,
+        whisper_words, whisper_align_scenes, make_ass_subtitles,
         FFMPEG_BIN,
     )
     from translate_video import CAPCUT_VOICES_VI
@@ -210,32 +348,52 @@ def _run_pipeline(job_id: str, req: GenerateRequest):
 
             if not media:
                 print(f'  ⚠ Không có media cho: {scene.query}')
-                scenes_out.append({'query': scene.query, 'duration': duration, 'clip_path': None})
+                scenes_out.append({'query': scene.query, 'text': scene.text,
+                                   'trigger_idx': scene.trigger_idx,
+                                   'duration': duration, 'clip_path': None})
                 continue
 
             # Download hoặc copy local
-            ext = '.mp4' if media.is_video else Path(media.url).suffix or '.jpg'
+            ext = '.mp4' if media.is_video else Path(media.url).suffix.split('?')[0] or '.jpg'
             raw = media_dir / f'raw_{i:04d}{ext}'
-            if media.source == 'local' and Path(media.url).exists():
-                import shutil as _sh
-                _sh.copy2(media.url, raw)
-            else:
-                download_file(media.url, raw)
+            try:
+                if media.source == 'local' and Path(media.url).exists():
+                    import shutil as _sh
+                    _sh.copy2(media.url, raw)
+                else:
+                    download_file(media.url, raw)
+            except Exception as e:
+                print(f'  ⚠ Download lỗi clip {i+1} ({media.source}): {e}')
+                scenes_out.append({'query': scene.query, 'text': scene.text,
+                                   'trigger_idx': scene.trigger_idx,
+                                   'duration': duration, 'clip_path': None})
+                continue
 
             try:
                 if media.is_video:
-                    actual = min(duration, float(media.duration or duration), 8.0)
-                    process_video_clip(raw, clip_path, actual)
+                    start = max(0.0, float(media.start or 0))
+                    total = float(media.duration or 0)
+                    if total > 0:
+                        remain = total - start
+                        if remain <= 0.5:  # start vượt quá cuối clip → bỏ offset
+                            start, remain = 0.0, total
+                    else:
+                        remain = duration  # không rõ thời lượng nguồn (vd NASA) — tin start của user
+                    actual = min(duration, remain, 8.0)
+                    process_video_clip(raw, clip_path, actual, start=start)
                     duration = actual
                 else:
                     process_image_clip(raw, clip_path, duration)
             except subprocess.CalledProcessError as e:
                 print(f'  ⚠ FFmpeg lỗi clip {i+1}: {e}')
-                scenes_out.append({'query': scene.query, 'duration': duration, 'clip_path': None})
+                scenes_out.append({'query': scene.query, 'text': scene.text,
+                                   'trigger_idx': scene.trigger_idx,
+                                   'duration': duration, 'clip_path': None})
                 continue
 
-            scenes_out.append({'query': scene.query, 'duration': duration,
-                                'clip_path': str(clip_path)})
+            scenes_out.append({'query': scene.query, 'text': scene.text,
+                                'trigger_idx': scene.trigger_idx,
+                                'duration': duration, 'clip_path': str(clip_path)})
 
         # TTS
         prog(0.55, 'Tạo TTS...')
@@ -254,15 +412,54 @@ def _run_pipeline(job_id: str, req: GenerateRequest):
         else:
             sentence_durations = asyncio.run(tts_content(req.content, tts_path))
 
-        # Ghép
+        # Whisper word-level alignment — PHẢI chạy trên TOÀN BỘ scenes_out (kể cả
+        # scene không có clip), vì audio TTS đọc đủ hết content; align trên danh sách
+        # đã lọc sẽ làm lệch timestamp mọi scene phía sau. Trigger word (trigger_idx)
+        # cũng được xử lý trong bước này.
+        scene_starts_all = None
+        whisper_word_list = None
+        groq_key = os.environ.get("GROQ_API_KEY", "")
+        if groq_key and any(s.get('text') for s in scenes_out):
+            try:
+                prog(0.70, 'Căn chỉnh thời gian bằng Whisper...')
+                words = whisper_words(tts_path, groq_key)
+                if words:
+                    whisper_word_list = words
+                    scene_starts_all = whisper_align_scenes(scenes_out, words)
+                    print(f'  ✓ Whisper align: {len(words)} từ, {len(scene_starts_all)} mốc thời gian')
+            except Exception as e:
+                print(f'  ⚠ Whisper align lỗi, dùng fallback theo câu TTS: {e}')
+
+        # Vietsub: chữ từ script, thời gian từ Whisper — chỉ làm được khi Whisper OK
+        subtitle_path = None
+        if req.subtitle and whisper_word_list:
+            try:
+                prog(0.75, 'Tạo vietsub...')
+                ass_path = work_dir / 'vietsub.ass'
+                if make_ass_subtitles(scenes_out, whisper_word_list, ass_path):
+                    subtitle_path = ass_path
+            except Exception as e:
+                print(f'  ⚠ Tạo vietsub lỗi, bỏ qua: {e}')
+        elif req.subtitle:
+            print('  ⚠ Không có Whisper words — bỏ qua vietsub (cần chính xác tuyệt đối)')
+
+        # Ghép — lọc valid + scene_starts song song, giữ đúng tương ứng vị trí
         prog(0.80, 'Ghép video...')
-        valid = [s for s in scenes_out if s.get('clip_path')]
+        valid: list[dict] = []
+        scene_starts = [] if scene_starts_all else None
+        for i, s in enumerate(scenes_out):
+            if s.get('clip_path'):
+                valid.append(s)
+                if scene_starts_all is not None:
+                    scene_starts.append(scene_starts_all[i])
         if not valid:
             raise RuntimeError('Không có clip nào hợp lệ')
 
         out = work_dir / 'content_video.mp4'
         build_content_video(valid, tts_path, out, work_dir,
-                            sentence_durations=sentence_durations)
+                            sentence_durations=sentence_durations,
+                            scene_starts=scene_starts,
+                            subtitle_path=subtitle_path)
 
         jobs[job_id].update(status="done", progress=100,
                             message="Hoàn tất!", output=str(out))
@@ -309,22 +506,43 @@ async def search(req: SearchRequest):
 
     videos, images = [], []
 
-    # Pixabay trước (10 mỗi loại)
+    def _add(dst: list, items: list):
+        seen = {x['url'] for x in dst}
+        dst += [x for x in items if x['url'] not in seen]
+
+    # Pixabay trước (15 mỗi loại)
     if pixabay_key:
-        videos += _search_pixabay_videos(q, pixabay_key, 10)
-        images += _search_pixabay_images(q, pixabay_key, 10)
+        videos += _search_pixabay_videos(q, pixabay_key, 15)
+        images += _search_pixabay_images(q, pixabay_key, 15)
 
-    # Pexels bổ sung (10 mỗi loại)
+    # Pexels bổ sung (15 mỗi loại)
     if pexels_key:
-        pv = _search_pexels_videos(q, pexels_key, 10)
-        pi = _search_pexels_images(q, pexels_key, 10)
-        # Dedup theo URL
-        existing_urls = {x['url'] for x in videos}
-        videos += [x for x in pv if x['url'] not in existing_urls]
-        existing_urls = {x['url'] for x in images}
-        images += [x for x in pi if x['url'] not in existing_urls]
+        _add(videos, _search_pexels_videos(q, pexels_key, 15))
+        _add(images, _search_pexels_images(q, pexels_key, 15))
 
-    return {"videos": videos[:20], "images": images[:20]}
+    # NASA — ảnh + video vũ trụ/khoa học, không cần key
+    nasa_videos, nasa_images = _search_nasa(q, n_img=10, n_vid=6)
+    _add(videos, nasa_videos)
+    _add(images, nasa_images)
+
+    # Wikimedia Commons — ảnh khoa học/thiên nhiên, không cần key
+    _add(images, _search_wikimedia_images(q, 10))
+
+    # Toàn bộ web (DuckDuckGo) — chỉ ảnh, xếp cuối
+    _add(images, _search_web_images(q, 20))
+
+    return {"videos": videos[:40], "images": images[:80]}
+
+
+@app.post("/api/search-coverr")
+async def search_coverr(req: SearchRequest):
+    """Coverr Free Videos API — endpoint RIÊNG, chỉ gọi khi user bấm nút thủ công.
+    KHÔNG gộp vào /api/search vì hạn mức chỉ 50 request/giờ (tier Demo)."""
+    api_key = os.environ.get("COVERR_API_KEY", "")
+    if not api_key:
+        return JSONResponse({"error": "Chưa cấu hình COVERR_API_KEY"}, status_code=400)
+    videos = _search_coverr_videos(req.query.strip(), api_key, 30)
+    return {"videos": videos, "images": []}
 
 
 @app.post("/api/generate")

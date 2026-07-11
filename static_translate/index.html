@@ -25,7 +25,11 @@ header span{font-size:12px;color:#4b5563;flex:1}
 .sec h3{font-size:11px;font-weight:700;color:#4b5563;text-transform:uppercase;letter-spacing:.07em;margin-bottom:10px}
 
 label{font-size:12px;color:#9ca3af;display:block;margin-bottom:4px}
-select,input[type=text],input[type=password]{width:100%;background:#0a0c14;border:1px solid #1e2340;border-radius:7px;color:#e2e8f0;font-size:13px;padding:8px 10px;outline:none;transition:border-color .2s}
+select,input[type=text],input[type=password],textarea{width:100%;background:#0a0c14;border:1px solid #1e2340;border-radius:7px;color:#e2e8f0;font-size:13px;padding:8px 10px;outline:none;transition:border-color .2s;font-family:inherit}
+textarea{resize:vertical}
+input[readonly],textarea[readonly]{background:#0d1020;color:#c4b5fd;cursor:text}
+.copy-mini-btn{width:auto;flex-shrink:0;background:#1e2340;color:#a78bfa;border:1px solid #312e81;border-radius:5px;padding:3px 9px;font-size:11px;cursor:pointer;margin:0}
+.copy-mini-btn:hover{opacity:.85}
 select:focus,input:focus{border-color:#7c3aed}
 
 .slider-row{display:flex;align-items:center;gap:8px}
@@ -96,6 +100,26 @@ td.vi-cell textarea:focus{background:#1e1b4b44}
 /* empty state */
 .empty{text-align:center;padding:60px 20px;color:#1e2340}
 .empty .icon{font-size:48px;margin-bottom:12px}
+
+/* Chunk */
+.chunk-toolbar{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:14px}
+.chunk-toolbar .btn{width:auto;margin:0;padding:8px 14px}
+.chunk-toolbar input[type=number]{width:64px;background:#0a0c14;border:1px solid #1e2340;border-radius:7px;color:#e2e8f0;font-size:13px;padding:8px 10px;outline:none}
+.chunk-card{background:#12152a;border:1px solid #1e2340;border-radius:10px;padding:12px 14px;margin-bottom:10px}
+.chunk-card.running{border-color:#7c3aed}
+.chunk-card.done{border-color:#166534}
+.chunk-card.error{border-color:#7f1d1d}
+.chunk-head{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.chunk-title{font-size:14px;font-weight:800;color:#e2e8f0}
+.chunk-time{font-size:12px;color:#6b7280;font-family:monospace}
+.chunk-head .spacer{flex:1}
+.chunk-head .btn{width:auto;margin:0;padding:6px 12px;font-size:12px}
+.chunk-pbar-wrap{background:#0a0c14;border-radius:999px;height:4px;overflow:hidden;margin-top:8px}
+.chunk-pbar{height:100%;background:linear-gradient(90deg,#7c3aed,#a78bfa);border-radius:999px;transition:width .4s;width:0}
+.chunk-err{font-size:11px;color:#f87171;margin-top:6px;display:none}
+.chunk-vid{margin-top:10px}
+.chunk-vid video{width:100%;max-height:380px;border-radius:8px;background:#000}
+#chunk-msg{font-size:12px;color:#a78bfa;margin-bottom:10px;min-height:16px}
 
 /* Nạp tiền */
 .topup-wrap{max-width:480px;margin:0 auto;padding:8px 0}
@@ -208,6 +232,27 @@ td.vi-cell textarea:focus{background:#1e1b4b44}
 <header>
   <h1>🎬 Dịch Video Tiếng Trung → Tiếng Việt</h1>
   <span>AI dịch · CapCut TTS · FFmpeg render</span>
+  <div id="vpn-box" title="Xoay IP qua VPN Gate khi CapCut chặn"
+       style="display:flex;align-items:center;gap:6px;background:#0a0c14;border:1px solid #1e2340;
+              border-radius:999px;padding:4px 10px 4px 12px">
+    <span id="vpn-dot" style="width:8px;height:8px;border-radius:50%;background:#4b5563"></span>
+    <span id="vpn-ip" style="font-size:11px;color:#6b7280;font-family:monospace">IP …</span>
+    <button id="vpn-toggle" onclick="vpnToggle()"
+            style="background:#1e3a5f;color:#60a5fa;border:1px solid #1d4ed8;border-radius:6px;
+                   font-size:11px;font-weight:700;padding:4px 10px;cursor:pointer">🌐 Bật VPN</button>
+  </div>
+  <button id="btn-clean-jobs" onclick="cleanOldJobs()"
+          style="background:#1c1a2e;color:#c4b5fd;border:1px solid #4c1d95;border-radius:7px;
+                 font-size:12px;font-weight:700;padding:6px 14px;cursor:pointer"
+          title="Xóa file tạm của các job cũ (đã tải video/JSON về rồi) để giải phóng đĩa. Không đụng job đang chạy.">
+    🗑 Xóa job cũ
+  </button>
+  <button id="btn-clean" onclick="cleanServer()"
+          style="background:#450a0a;color:#f87171;border:1px solid #7f1d1d;border-radius:7px;
+                 font-size:12px;font-weight:700;padding:6px 14px;cursor:pointer"
+          title="Dừng hết CapCut/FFmpeg/dịch đang chạy và khởi động lại server">
+    🧹 Clean
+  </button>
   <div class="balance-pill" title="Số dư tài khoản">
     <span class="bal-lbl">Số dư</span>
     <span class="bal-val" id="bal-val">0đ</span>
@@ -232,6 +277,21 @@ td.vi-cell textarea:focus{background:#1e1b4b44}
         <p>Kéo thả hoặc nhấn để chọn video</p>
         <div class="fname" id="fname"></div>
       </div>
+
+      <div style="display:flex;align-items:center;gap:8px;margin:8px 0">
+        <div style="flex:1;height:1px;background:#1e2340"></div>
+        <span style="font-size:11px;color:#4b5563">hoặc dán link</span>
+        <div style="flex:1;height:1px;background:#1e2340"></div>
+      </div>
+      <div style="display:flex;gap:6px;position:relative;z-index:1">
+        <input type="text" id="video-url-input" placeholder="Link Douyin / TikTok..."
+               style="flex:1;min-width:0;width:auto;background:#0a0c14;border:1px solid #1e2340;border-radius:7px;color:#e2e8f0;font-size:12px;padding:8px 10px;outline:none;position:relative;z-index:2"/>
+        <button type="button" id="btn-fetch-url" onclick="fetchVideoFromUrl()"
+                style="flex-shrink:0;width:auto;background:#1c2b3a;color:#67e8f9;border:1px solid #164e63;border-radius:7px;margin-top:0;white-space:nowrap;padding:8px 12px;font-size:13px;font-weight:600;cursor:pointer">
+          ⬇ Lấy video
+        </button>
+      </div>
+      <div class="fname" id="url-fname" style="margin-top:4px"></div>
     </div>
 
     <div class="sec">
@@ -252,20 +312,20 @@ td.vi-cell textarea:focus{background:#1e1b4b44}
         <div style="flex:1;height:1px;background:#1e2340"></div>
       </div>
 
-      <!-- Nhánh B: Nạp SRT sẵn -->
+      <!-- Nhánh B: Nạp JSON bản dịch -->
       <div style="position:relative">
-        <button class="btn" id="btn-pick-srt"
+        <button class="btn" id="btn-pick-json"
                 style="background:#1c2b3a;color:#67e8f9;border:1px solid #164e63;margin-top:0">
-          📂 Nạp SRT sẵn có
+          📂 Nạp JSON bản dịch
         </button>
-        <input type="file" id="srt-pre-input" accept=".srt,.txt"
+        <input type="file" id="json-pre-input" accept=".json"
                style="position:absolute;inset:0;opacity:0;cursor:pointer"
-               onchange="pickSrtFile(this)"/>
+               onchange="pickJsonFile(this)"/>
       </div>
-      <div class="fname" id="srt-fname" style="margin-top:4px"></div>
-      <button class="btn" id="btn-use-srt" onclick="useSrt()"
+      <div class="fname" id="json-fname" style="margin-top:4px"></div>
+      <button class="btn" id="btn-use-json" onclick="useJson()"
               style="background:#164e63;color:#67e8f9;border:1px solid #0e7490;display:none;margin-top:6px">
-        ✓ Dùng SRT này
+        ✓ Dùng JSON này
       </button>
     </div>
 
@@ -300,9 +360,9 @@ td.vi-cell textarea:focus{background:#1e1b4b44}
       <button class="btn" style="background:#e67e22;color:#fff;width:100%;margin-bottom:6px"
               id="btn-preview" onclick="startPreview()">👁 Preview</button>
       <button class="btn btn-green" id="btn-render" onclick="startRender()">🎬 Tạo video full</button>
-      <a class="btn btn-blue" id="dl-srt-early"
+      <a class="btn btn-blue" id="dl-json-early"
          style="display:block;text-align:center;text-decoration:none;margin-top:6px">
-        ⬇ Tải bản dịch (.srt)
+        ⬇ Tải bản dịch (.json)
       </a>
     </div>
 
@@ -325,13 +385,26 @@ td.vi-cell textarea:focus{background:#1e1b4b44}
       </select>
 
       <label>Nhạc nền (tùy chọn)</label>
+      <div style="display:flex;gap:6px;margin-bottom:6px">
+        <select id="bg-music-select" style="flex:1"
+                onchange="onBgMusicSelectChange()">
+          <option value="">— Không chọn từ thư viện —</option>
+        </select>
+        <button type="button" id="btn-preview-bg-music" onclick="toggleBgMusicPreview()"
+                title="Nghe thử"
+                style="flex-shrink:0;width:auto;background:#1e2340;color:#a78bfa;border:1px solid #312e81;border-radius:7px;padding:8px 12px;cursor:pointer;font-size:13px">
+          ▶
+        </button>
+      </div>
+      <audio id="bg-music-preview-player" style="display:none"></audio>
+
       <div style="position:relative;margin-bottom:4px">
         <button class="btn" style="background:#1c1a2e;color:#c4b5fd;border:1px solid #4c1d95;margin-top:0">
-          🎵 Chon file nhac
+          🎵 Hoặc upload file nhạc riêng
         </button>
         <input type="file" id="bg-music-input" accept="audio/*"
                style="position:absolute;inset:0;opacity:0;cursor:pointer"
-               onchange="document.getElementById('bg-music-fname').textContent=this.files[0]?this.files[0].name:''"/>
+               onchange="onBgMusicUploadChange(this)"/>
       </div>
       <div class="fname" id="bg-music-fname" style="margin-bottom:10px"></div>
 
@@ -347,14 +420,14 @@ td.vi-cell textarea:focus{background:#1e1b4b44}
       <div class="fname" id="thumbnail-fname" style="margin-bottom:10px"></div>
 
       <label>Watermark (để trống = không có)</label>
-      <input type="text" id="logo-text" placeholder="tên kênh, @handle..."
+      <input type="text" id="logo-text" placeholder="tên kênh, @handle..." value="nem_vietsub"
              style="margin-bottom:10px"/>
 
       <label>Tốc độ đọc TTS</label>
       <div class="slider-row" style="margin-bottom:8px">
-        <input type="range" id="tts-rate" min="0.5" max="2.0" step="0.05" value="1.0"
+        <input type="range" id="tts-rate" min="0.5" max="2.0" step="0.05" value="1.2"
                oninput="document.getElementById('ttsrv').textContent=parseFloat(this.value).toFixed(2)+'x'"/>
-        <span class="sv" id="ttsrv">1.00x</span>
+        <span class="sv" id="ttsrv">1.20x</span>
       </div>
 
       <label>Âm lượng lồng tiếng</label>
@@ -394,6 +467,7 @@ td.vi-cell textarea:focus{background:#1e1b4b44}
     <div class="tabs">
       <div class="tab active" onclick="switchTab('output')">📺 Video kết quả</div>
       <div class="tab" onclick="switchTab('subs')">📝 Chỉnh phụ đề</div>
+      <div class="tab" onclick="switchTab('chunk');onChunkTabOpen()">🧩 Chunk</div>
       <div class="tab" onclick="switchTab('layout');onLayoutTabOpen()">🎨 Bố cục</div>
       <div class="tab" onclick="switchTab('settings')">⚙️ Cài đặt</div>
     </div>
@@ -407,6 +481,33 @@ td.vi-cell textarea:focus{background:#1e1b4b44}
         <a class="dl-btn dl-video" id="dl-video" download>⬇️ Tải video</a>
         <a class="dl-btn dl-srt"   id="dl-srt"   download>📄 Tải SRT</a>
       </div>
+
+      <div class="sec" id="titles-box" style="display:none;margin-top:14px;padding:14px;background:#12152a;border:1px solid #1e2340;border-radius:10px">
+        <h3 style="margin-bottom:10px">📝 Title / Mô tả đăng bài (AI tạo)</h3>
+        <button type="button" id="btn-gen-titles" onclick="generateTitles()"
+                style="width:100%;background:#1c1a2e;color:#c4b5fd;border:1px solid #4c1d95;border-radius:7px;padding:9px;font-size:13px;font-weight:600;cursor:pointer;margin-bottom:12px">
+          ✨ Tạo Title TikTok + YouTube
+        </button>
+        <div id="titles-result" style="display:none">
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px">
+            <label style="margin:0">TikTok Title (+ 5 hashtag)</label>
+            <button type="button" class="copy-mini-btn" onclick="copyField('tk-title')">📋 Copy</button>
+          </div>
+          <textarea id="tk-title" readonly style="min-height:60px;margin-bottom:14px"></textarea>
+
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px">
+            <label style="margin:0">YouTube Title <span id="yt-title-len" style="color:#6b7280;font-weight:400"></span></label>
+            <button type="button" class="copy-mini-btn" onclick="copyField('yt-title')">📋 Copy</button>
+          </div>
+          <input type="text" id="yt-title" readonly style="margin-bottom:14px"/>
+
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px">
+            <label style="margin:0">YouTube Description</label>
+            <button type="button" class="copy-mini-btn" onclick="copyField('yt-desc')">📋 Copy</button>
+          </div>
+          <textarea id="yt-desc" readonly style="min-height:120px"></textarea>
+        </div>
+      </div>
     </div>
 
     <!-- TAB PHỤ ĐỀ -->
@@ -418,9 +519,17 @@ td.vi-cell textarea:focus{background:#1e1b4b44}
       <div id="subs-panel" style="display:none">
         <div style="display:flex;gap:8px;margin-bottom:12px;align-items:center">
           <span style="font-size:13px;color:#6b7280;flex:1" id="subs-info"></span>
+          <button class="btn" style="width:auto;margin:0;padding:8px 16px;background:#450a0a;color:#f87171;border:1px solid #7f1d1d"
+                  onclick="scanChinese()" id="btn-scan-han">🔍 Quét sót tiếng Trung</button>
+          <div style="position:relative">
+            <button class="btn" style="width:auto;margin:0;padding:8px 16px;background:#1c1a2e;color:#c4b5fd;border:1px solid #4c1d95">📂 Nạp JSON khác</button>
+            <input type="file" accept=".json" style="position:absolute;inset:0;opacity:0;cursor:pointer"
+                   onchange="loadJsonFile(this)"/>
+          </div>
           <button class="btn btn-blue" style="width:auto;margin:0;padding:8px 16px"
                   onclick="saveCues()" id="btn-save">💾 Lưu bản dịch</button>
         </div>
+        <div id="han-scan-result" style="display:none;margin-bottom:12px;padding:10px 14px;background:#1c1013;border:1px solid #7f1d1d;border-radius:8px;font-size:13px"></div>
         <div class="table-wrap">
           <table>
             <thead>
@@ -434,6 +543,40 @@ td.vi-cell textarea:focus{background:#1e1b4b44}
             <tbody id="subs-body"></tbody>
           </table>
         </div>
+      </div>
+    </div>
+
+    <!-- TAB CHUNK -->
+    <div class="tab-content" id="tab-chunk" style="display:none">
+      <div class="empty" id="chunk-empty">
+        <div class="icon">🧩</div>
+        <div>Nạp video + JSON bản dịch trước, rồi vào đây chia chunk để render từng đoạn</div>
+      </div>
+      <div id="chunk-panel" style="display:none">
+        <div class="chunk-toolbar">
+          <label style="margin:0;display:flex;align-items:center;gap:6px">
+            Chunk <input type="number" id="chunk-mins" value="20" min="5" max="120"/> phút
+          </label>
+          <button class="btn btn-purple" id="btn-chunk-plan" onclick="chunkPlan()">📐 Chia chunk</button>
+          <button class="btn btn-green" id="btn-chunk-all" onclick="chunkRenderAll()">▶ Render tất cả</button>
+          <input type="text" id="chunk-select-list" placeholder="vd: 3,5,6,7"
+                 style="width:110px;background:#0a0c14;border:1px solid #1e2340;border-radius:7px;color:#e2e8f0;font-size:13px;padding:8px 10px;outline:none"/>
+          <button class="btn btn-green" id="btn-chunk-selected" onclick="chunkRenderSelected()">▶ Render chunk chọn</button>
+          <button class="btn btn-blue" id="btn-chunk-merge" onclick="chunkMerge()"
+                  title="Ghép các chunk đã xong LIÊN TIẾP từ chunk 1, không cần đợi đủ hết">🔗 Ghép video (đã xong đến đâu)</button>
+          <span style="flex:1"></span>
+          <button class="btn" style="background:#1c2b3a;color:#67e8f9;border:1px solid #164e63"
+                  onclick="chunkExport()">⬇ Xuất JSON chunk</button>
+          <div style="position:relative">
+            <button class="btn" style="background:#1c1a2e;color:#c4b5fd;border:1px solid #4c1d95">📂 Nạp JSON chunk</button>
+            <input type="file" accept=".json" style="position:absolute;inset:0;opacity:0;cursor:pointer"
+                   onchange="chunkImportFile(this)"/>
+          </div>
+        </div>
+        <div id="chunk-msg"></div>
+        <div id="chunk-list"></div>
+        <input type="file" id="chunk-upload-input" accept="video/mp4,video/*"
+               style="display:none" onchange="chunkUploadFile(this)"/>
       </div>
     </div>
 
@@ -623,6 +766,7 @@ function onAuthSuccess(data) {
   document.getElementById('bal-val').textContent = (data.user.balance || 0).toLocaleString('vi-VN') + 'đ';
   setTimeout(refreshBalance, 500);
   loadSettings();
+  vpnRefresh();
 }
 
 async function loadSettings() {
@@ -728,10 +872,86 @@ window.addEventListener('load', async () => {
   await restoreSession();
   const saved = localStorage.getItem('groq_key');
   if (saved) document.getElementById('groq-key').value = saved;
+  loadBgMusicList();
 });
 document.getElementById('groq-key').addEventListener('change', e => {
   localStorage.setItem('groq_key', e.target.value.trim());
 });
+
+// ── Nhạc nền: chọn từ thư viện (audio/) + nghe thử ─────────────────
+async function loadBgMusicList() {
+  try {
+    const res  = await apiFetch(`${API}/api/bg-music-list`);
+    const data = await res.json();
+    const sel  = document.getElementById('bg-music-select');
+    (data.files || []).forEach(name => {
+      const opt = document.createElement('option');
+      opt.value = name; opt.textContent = name;
+      sel.appendChild(opt);
+    });
+  } catch (e) { /* im lặng — nếu lỗi vẫn dùng được upload thủ công */ }
+}
+
+function onBgMusicSelectChange() {
+  // Chọn từ thư viện → bỏ file upload thủ công (tránh nhầm nguồn khi render)
+  document.getElementById('bg-music-input').value = '';
+  document.getElementById('bg-music-fname').textContent = '';
+  stopBgMusicPreview();
+}
+
+function onBgMusicUploadChange(input) {
+  document.getElementById('bg-music-fname').textContent = input.files[0] ? input.files[0].name : '';
+  if (input.files[0]) {
+    document.getElementById('bg-music-select').value = '';
+    stopBgMusicPreview();
+  }
+}
+
+function stopBgMusicPreview() {
+  const player = document.getElementById('bg-music-preview-player');
+  player.pause();
+  document.getElementById('btn-preview-bg-music').textContent = '▶';
+}
+
+let _bgPreviewBlobUrl = null;
+
+async function toggleBgMusicPreview() {
+  const player = document.getElementById('bg-music-preview-player');
+  const btn    = document.getElementById('btn-preview-bg-music');
+  const name   = document.getElementById('bg-music-select').value;
+  const uploadFile = document.getElementById('bg-music-input').files[0];
+
+  if (!player.paused) { stopBgMusicPreview(); return; }
+
+  if (name) {
+    // /api/bg-music/{name} yêu cầu auth header — <audio src=...> không tự gửi được,
+    // nên phải tải bằng apiFetch rồi chuyển thành blob URL cho player.
+    btn.disabled = true;
+    btn.textContent = '⏳';
+    try {
+      const res = await apiFetch(`${API}/api/bg-music/${encodeURIComponent(name)}`);
+      if (!res.ok) throw new Error('Không tải được file nhạc');
+      const blob = await res.blob();
+      if (_bgPreviewBlobUrl) URL.revokeObjectURL(_bgPreviewBlobUrl);
+      _bgPreviewBlobUrl = URL.createObjectURL(blob);
+      player.src = _bgPreviewBlobUrl;
+    } catch (e) {
+      alert('❌ ' + e.message);
+      btn.disabled = false;
+      btn.textContent = '▶';
+      return;
+    }
+    btn.disabled = false;
+  } else if (uploadFile) {
+    player.src = URL.createObjectURL(uploadFile);
+  } else {
+    alert('Chọn nhạc từ thư viện hoặc upload file trước!');
+    return;
+  }
+  player.play();
+  btn.textContent = '⏸';
+  player.onended = () => { btn.textContent = '▶'; };
+}
 
 // ── Authenticated fetch wrapper ─────────────────────────────────
 async function apiFetch(url, opts = {}) {
@@ -758,54 +978,54 @@ function setFile(f) {
   dz._file = f;
 }
 
-// ── Pick SRT truoc ──────────────────────────────────────────────
-let preSrtFile = null;
-function pickSrtFile(input) {
-  preSrtFile = input.files[0] || null;
-  document.getElementById('srt-fname').textContent = preSrtFile ? preSrtFile.name : '';
-  document.getElementById('btn-use-srt').style.display = preSrtFile ? 'block' : 'none';
+// ── Pick JSON bản dịch ──────────────────────────────────────────
+let preJsonFile = null;
+function pickJsonFile(input) {
+  preJsonFile = input.files[0] || null;
+  document.getElementById('json-fname').textContent = preJsonFile ? preJsonFile.name : '';
+  document.getElementById('btn-use-json').style.display = preJsonFile ? 'block' : 'none';
 }
 
-async function useSrt() {
+async function useJson() {
   const file = dz._file || document.getElementById('file-input').files[0];
   if (!file) { alert('Chon video truoc!'); return; }
-  if (!preSrtFile) { alert('Chon file SRT truoc!'); return; }
+  if (!preJsonFile) { alert('Chon file JSON truoc!'); return; }
 
   clearPoll();
   setStatus('running', 'Đang upload...', 0);
-  document.getElementById('btn-start').disabled   = true;
-  document.getElementById('btn-use-srt').disabled = true;
+  document.getElementById('btn-start').disabled    = true;
+  document.getElementById('btn-use-json').disabled = true;
   document.getElementById('errmsg').classList.remove('on');
 
   const fd = new FormData();
   fd.append('file',       file);
-  fd.append('srt',        preSrtFile);
+  fd.append('cues_json',  preJsonFile);
   fd.append('voice',      document.getElementById('voice').value);
   fd.append('bg_volume',  document.getElementById('bg-vol').value);
   fd.append('tts_volume', document.getElementById('tts-vol').value);
 
   try {
-    const res  = await apiFetch(`${API}/api/upload-with-srt`, { method: 'POST', body: fd });
+    const res  = await apiFetch(`${API}/api/upload-with-json`, { method: 'POST', body: fd });
     const data = await res.json();
     if (!res.ok) throw new Error(data.error || res.statusText);
     currentJobId = data.job_id;
     subtitleRows = data.rows || [];
     renderTable();
     showSrtPanel(currentJobId);
-    document.getElementById('btn-start').disabled         = false;
-    document.getElementById('btn-use-srt').disabled       = false;
-    setStatus('translated', 'SRT đã nạp — nhấn Tạo video', 100);
+    document.getElementById('btn-start').disabled    = false;
+    document.getElementById('btn-use-json').disabled = false;
+    setStatus('translated', 'JSON đã nạp — chia chunk hoặc Tạo video', 100);
     lcInit();
     switchTab('subs');
   } catch(e) {
     showError(e.message);
-    document.getElementById('btn-use-srt').disabled = false;
+    document.getElementById('btn-use-json').disabled = false;
   }
 }
 
 // ── Switch tabs ─────────────────────────────────────────────────
 function switchTab(name) {
-  const names = ['output','subs','layout','settings','topup'];
+  const names = ['output','subs','chunk','layout','settings','topup'];
   document.querySelectorAll('.tab').forEach((t,i) =>
     t.classList.toggle('active', names[i] === name));
   document.querySelectorAll('.tab-content').forEach(c => {
@@ -835,27 +1055,15 @@ function copyText(elId) {
 }
 
 // ── STEP 1: Upload + Dich ───────────────────────────────────────
-async function startJob() {
-  const file = dz._file || document.getElementById('file-input').files[0];
-  if (!file) { alert('Chua chon video!'); return; }
-  const groqKey = document.getElementById('groq-key').value.trim();
-  if (!groqKey) { alert('Nhap Groq API Key truoc!'); return; }
-
+async function _submitTranslateJob(endpoint, fd) {
   clearPoll();
-  setStatus('running', 'Đang upload...', 0);
+  setStatus('running', endpoint.includes('from-url') ? 'Đang tải video từ link...' : 'Đang upload...', 0);
   document.getElementById('btn-start').disabled  = true;
   document.getElementById('sec-render').style.display = 'none';
   document.getElementById('errmsg').classList.remove('on');
 
-  const fd = new FormData();
-  fd.append('file',       file);
-  fd.append('voice',      document.getElementById('voice').value);
-  fd.append('bg_volume',  document.getElementById('bg-vol').value);
-  fd.append('tts_volume', document.getElementById('tts-vol').value);
-  fd.append('groq_key',   groqKey);
-
   try {
-    const res  = await apiFetch(`${API}/api/upload`, { method: 'POST', body: fd });
+    const res  = await apiFetch(`${API}${endpoint}`, { method: 'POST', body: fd });
     const data = await res.json();
     if (res.status === 402) { showError(data.error); document.getElementById('btn-start').disabled = false; return; }
     if (!res.ok) throw new Error(data.error || res.statusText);
@@ -866,6 +1074,44 @@ async function startJob() {
     showError(e.message);
     document.getElementById('btn-start').disabled = false;
   }
+}
+
+async function startJob() {
+  const file = dz._file || document.getElementById('file-input').files[0];
+  if (!file) { alert('Chua chon video hoac dan link Douyin/TikTok!'); return; }
+  const groqKey = document.getElementById('groq-key').value.trim();
+  if (!groqKey) { alert('Nhap Groq API Key truoc!'); return; }
+
+  const fd = new FormData();
+  fd.append('file',       file);
+  fd.append('voice',      document.getElementById('voice').value);
+  fd.append('bg_volume',  document.getElementById('bg-vol').value);
+  fd.append('tts_volume', document.getElementById('tts-vol').value);
+  fd.append('groq_key',   groqKey);
+
+  await _submitTranslateJob('/api/upload', fd);
+}
+
+// ── Link Douyin/TikTok: tải về server rồi chạy y hệt luồng upload ──
+async function fetchVideoFromUrl() {
+  const url = document.getElementById('video-url-input').value.trim();
+  if (!url) { alert('Dán link Douyin/TikTok trước!'); return; }
+  const groqKey = document.getElementById('groq-key').value.trim();
+  if (!groqKey) { alert('Nhap Groq API Key truoc!'); return; }
+
+  document.getElementById('btn-fetch-url').disabled = true;
+  document.getElementById('url-fname').textContent = '⏳ Đang tải video từ link...';
+
+  const fd = new FormData();
+  fd.append('url',         url);
+  fd.append('voice',       document.getElementById('voice').value);
+  fd.append('bg_volume',   document.getElementById('bg-vol').value);
+  fd.append('tts_volume',  document.getElementById('tts-vol').value);
+  fd.append('groq_key',    groqKey);
+
+  await _submitTranslateJob('/api/upload-from-url', fd);
+  document.getElementById('btn-fetch-url').disabled = false;
+  document.getElementById('url-fname').textContent = currentJobId ? '✓ Đã tải và bắt đầu xử lý' : '';
 }
 
 async function pollTranslate() {
@@ -909,6 +1155,7 @@ async function startRender() {
   fd.append('encode_preset', document.getElementById('st-preset').value);
   const bgFile = document.getElementById('bg-music-input').files[0];
   if (bgFile) fd.append('bg_music', bgFile);
+  else fd.append('bg_music_name', document.getElementById('bg-music-select').value);
   const thumbFile = document.getElementById('thumbnail-input').files[0];
   if (thumbFile) fd.append('thumbnail', thumbFile);
   const keepOrig = document.getElementById('keep-original').checked;
@@ -978,6 +1225,7 @@ async function startPreview() {
   if (thumbFile2) fd.append('thumbnail', thumbFile2);
   const bgFile2 = document.getElementById('bg-music-input').files[0];
   if (bgFile2) fd.append('bg_music', bgFile2);
+  else fd.append('bg_music_name', document.getElementById('bg-music-select').value);
 
   const res  = await apiFetch(`${API}/api/preview/${currentJobId}`, { method: 'POST', body: fd });
   const data = await res.json();
@@ -1026,6 +1274,43 @@ async function showVideo(jobId) {
   dls.href = sUrl;
   dls.setAttribute('download', `captions_vi.srt`);
   dls.classList.add('on');
+
+  document.getElementById('titles-box').style.display = 'block';
+}
+
+// ── Title/Description AI (Beeknoee glm-4.5-flash) ──────────────────
+async function generateTitles() {
+  if (!currentJobId) return;
+  const btn = document.getElementById('btn-gen-titles');
+  btn.disabled = true;
+  btn.textContent = '⏳ Đang tạo...';
+
+  try {
+    const res  = await apiFetch(`${API}/api/generate-titles/${currentJobId}`, { method: 'POST' });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || 'Lỗi tạo title');
+
+    document.getElementById('tk-title').value = data.tiktok_title || '';
+    document.getElementById('yt-title').value = data.youtube_title || '';
+    document.getElementById('yt-desc').value  = data.youtube_description || '';
+    document.getElementById('yt-title-len').textContent = `(${(data.youtube_title||'').length}/95)`;
+    document.getElementById('titles-result').style.display = 'block';
+  } catch (e) {
+    alert('❌ ' + e.message);
+  } finally {
+    btn.disabled = false;
+    btn.textContent = '✨ Tạo Title TikTok + YouTube';
+  }
+}
+
+function copyField(id) {
+  const el = document.getElementById(id);
+  navigator.clipboard.writeText(el.value).then(() => {
+    const btn = event.target;
+    const orig = btn.textContent;
+    btn.textContent = '✓ Đã copy';
+    setTimeout(() => btn.textContent = orig, 1200);
+  });
 }
 
 // ── Subtitles ───────────────────────────────────────────────────
@@ -1038,23 +1323,87 @@ async function loadSubtitles(jobId) {
   } catch(e) {}
 }
 
+let subsPage = 0;
+const SUBS_PER_PAGE = 200;
+
 function renderTable() {
   document.getElementById('subs-empty').style.display = 'none';
   document.getElementById('subs-panel').style.display = 'block';
-  document.getElementById('subs-info').textContent =
-    `${subtitleRows.length} đoạn — có thể sửa bản dịch trước khi tạo video`;
+
+  const total = subtitleRows.length;
+  const pages = Math.max(1, Math.ceil(total / SUBS_PER_PAGE));
+  subsPage = Math.min(Math.max(0, subsPage), pages - 1);
+  const from = subsPage * SUBS_PER_PAGE;
+  const to   = Math.min(from + SUBS_PER_PAGE, total);
+
+  document.getElementById('subs-info').innerHTML =
+    `${total} đoạn — hiển thị ${from+1}–${to} · ` +
+    `<a style="cursor:pointer;color:#a78bfa" onclick="subsGoto(subsPage-1)">◀</a> ` +
+    `Trang <input type="number" value="${subsPage+1}" min="1" max="${pages}" ` +
+    `style="width:56px;background:#0a0c14;border:1px solid #1e2340;border-radius:5px;color:#e2e8f0;padding:2px 6px;text-align:center" ` +
+    `onchange="subsGoto(this.value-1)"/>/${pages} ` +
+    `<a style="cursor:pointer;color:#a78bfa" onclick="subsGoto(subsPage+1)">▶</a>`;
 
   const tbody = document.getElementById('subs-body');
-  tbody.innerHTML = subtitleRows.map((r, i) => `
-    <tr>
+  tbody.innerHTML = subtitleRows.slice(from, to).map((r, k) => {
+    const i = from + k;
+    const isHan = HAN_REGEX.test(r.vi || '');
+    return `
+    <tr id="row-${i}" ${isHan ? 'style="background:#450a0a44"' : ''}>
       <td class="ts">${r.idx}</td>
       <td class="ts">${r.start}<br>${r.end}</td>
       <td class="zh">${esc(r.zh)}</td>
       <td class="vi-cell">
-        <textarea data-idx="${r.idx}" oninput="onViEdit(${i},this.value)">${esc(r.vi)}</textarea>
+        <textarea oninput="onViEdit(${i},this.value)" id="ta-${i}"
+                  style="${isHan ? 'border:1px solid #f87171' : ''}">${esc(r.vi)}</textarea>
       </td>
-    </tr>
-  `).join('');
+    </tr>`;
+  }).join('');
+}
+
+function subsGoto(p, focusRow) {
+  subsPage = +p || 0;
+  renderTable();
+  if (focusRow !== undefined) {
+    setTimeout(() => {
+      const el = document.getElementById(`row-${focusRow}`);
+      if (el) el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    }, 50);
+  }
+}
+
+// ── Quét cue còn sót tiếng Trung (thuần regex, không dùng AI) ──
+const HAN_REGEX = /[一-鿿]/;
+
+function scanChinese() {
+  const found = [];
+  subtitleRows.forEach((r, i) => {
+    if (HAN_REGEX.test(r.vi || '')) found.push(i);
+  });
+
+  const box = document.getElementById('han-scan-result');
+  box.style.display = 'block';
+
+  if (found.length === 0) {
+    box.innerHTML = '✓ Không tìm thấy đoạn nào còn sót tiếng Trung.';
+    box.style.borderColor = '#166534';
+    box.style.color = '#4ade80';
+    return;
+  }
+
+  box.style.borderColor = '#7f1d1d';
+  box.style.color = '#f87171';
+  box.innerHTML = `⚠ Tìm thấy ${found.length} đoạn còn sót tiếng Trung (đã tô đỏ trong bảng):<br>` +
+    found.map(i => {
+      const r = subtitleRows[i];
+      const page = Math.floor(i / SUBS_PER_PAGE) + 1;
+      return `<a style="cursor:pointer;color:#fca5a5;text-decoration:underline" ` +
+             `onclick="subsGoto(${page - 1}, ${i})">#${r.idx} (${r.start})</a>: ${esc((r.vi||'').slice(0,50))}`;
+    }).join('<br>');
+
+  // Nhảy tới trang chứa lỗi đầu tiên
+  const firstPage = Math.floor(found[0] / SUBS_PER_PAGE);
+  subsGoto(firstPage, found[0]);
 }
 
 function esc(s) {
@@ -1065,40 +1414,34 @@ function onViEdit(i, val) { subtitleRows[i].vi = val; }
 async function showSrtPanel(jobId) {
   const sec = document.getElementById('sec-render');
   sec.style.display = 'block';
-  const dl = document.getElementById('dl-srt-early');
+  const dl = document.getElementById('dl-json-early');
   dl.onclick = async (e) => {
     e.preventDefault();
-    const r    = await apiFetch(`${API}/api/download-srt/${jobId}`);
+    const r = await apiFetch(`${API}/api/export-json/${jobId}`);
+    if (!r.ok) { alert('Chưa có bản dịch'); return; }
     const blob = await r.blob();
     const url  = URL.createObjectURL(blob);
     const a    = document.createElement('a');
-    a.href = url; a.download = 'captions_vi.srt';
+    a.href = url; a.download = 'vi_cues.json';
     a.click(); URL.revokeObjectURL(url);
   };
 }
 
-async function loadSrtFile(input) {
-  if (!currentJobId || !input.files[0]) return;
-  const btn = document.getElementById('btn-load-srt');
-  btn.disabled = true;
-  btn.textContent = 'Đang nạp...';
-
+async function loadJsonFile(input) {
+  if (!currentJobId || !input.files[0]) { input.value = ''; return; }
   const fd = new FormData();
   fd.append('file', input.files[0]);
-
   try {
-    const res  = await apiFetch(`${API}/api/load-srt/${currentJobId}`, { method: 'POST', body: fd });
+    const res  = await apiFetch(`${API}/api/load-json/${currentJobId}`, { method: 'POST', body: fd });
     const data = await res.json();
     if (!res.ok) throw new Error(data.error || res.statusText);
     subtitleRows = data.rows || [];
     renderTable();
-    switchTab('subs');
-    btn.textContent = 'Đã nạp xong!';
+    chunkData = []; // bản dịch đổi → chunk cũ bị hủy phía server
+    document.getElementById('chunk-list').innerHTML = '';
   } catch(e) {
     alert('Lỗi: ' + e.message);
-    btn.textContent = 'Nạp SRT từ máy';
   } finally {
-    btn.disabled = false;
     input.value = '';
   }
 }
@@ -1156,6 +1499,369 @@ function fmtSecs(s) {
 document.getElementById('keep-original').addEventListener('change', function() {
   document.getElementById('orig-vol-row').style.display = this.checked ? 'block' : 'none';
 });
+
+// ── CHUNK RENDER ────────────────────────────────────────────────
+let chunkData      = [];
+let chunkPollTimer = null;
+let _chunkVideoUrls = {};   // idx -> objectURL đã tải
+
+function onChunkTabOpen() {
+  const has = !!currentJobId;
+  document.getElementById('chunk-empty').style.display = has ? 'none' : 'block';
+  document.getElementById('chunk-panel').style.display = has ? 'block' : 'none';
+}
+
+function fmtHMS(s) {
+  s = Math.round(s);
+  const h = Math.floor(s/3600), m = Math.floor((s%3600)/60), sec = s%60;
+  return h > 0 ? `${h}:${String(m).padStart(2,'0')}:${String(sec).padStart(2,'0')}`
+               : `${m}:${String(sec).padStart(2,'0')}`;
+}
+
+function chunkAppendSettings(fd) {
+  fd.append('voice',           document.getElementById('voice').value);
+  fd.append('bg_volume',       document.getElementById('bg-vol').value);
+  fd.append('tts_volume',      document.getElementById('tts-vol').value);
+  fd.append('speed_ratio',     document.getElementById('tts-rate').value);
+  fd.append('logo_text',       document.getElementById('logo-text').value);
+  fd.append('keep_original',   document.getElementById('keep-original').checked ? 'true' : 'false');
+  fd.append('original_volume', document.getElementById('orig-vol').value);
+  fd.append('encode_preset',   document.getElementById('st-preset').value);
+  const bgFile = document.getElementById('bg-music-input').files[0];
+  if (bgFile) fd.append('bg_music', bgFile);
+  else fd.append('bg_music_name', document.getElementById('bg-music-select').value);
+}
+
+async function chunkPlan() {
+  if (!currentJobId) { alert('Nạp video + JSON bản dịch trước!'); return; }
+  const btn = document.getElementById('btn-chunk-plan');
+  btn.disabled = true; btn.textContent = 'Đang chia...';
+  try {
+    const mins = +document.getElementById('chunk-mins').value || 20;
+    const res  = await apiFetch(`${API}/api/chunks/plan/${currentJobId}`, {
+      method: 'POST', headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({ chunk_minutes: mins }),
+    });
+    const d = await res.json();
+    if (!res.ok) { alert(d.error || 'Lỗi chia chunk'); return; }
+    chunkData = d.chunks;
+    Object.values(_chunkVideoUrls).forEach(u => URL.revokeObjectURL(u));
+    _chunkVideoUrls = {};
+    chunkRebuild();
+    document.getElementById('chunk-msg').textContent =
+      `Đã chia ${d.chunks.length} chunk (video ${fmtHMS(d.video_duration)})`;
+  } finally {
+    btn.disabled = false; btn.textContent = '📐 Chia chunk';
+  }
+}
+
+function chunkRebuild() {
+  const list = document.getElementById('chunk-list');
+  list.innerHTML = chunkData.map(c => `
+    <div class="chunk-card" id="chunk-row-${c.idx}">
+      <div class="chunk-head">
+        <span class="chunk-title">Chunk ${c.idx+1}</span>
+        <span class="chunk-time">${fmtHMS(c.start_sec)} → ${fmtHMS(c.end_sec)}</span>
+        <span class="chunk-time">${c.n_cues} câu</span>
+        <span class="stag" id="chunk-st-${c.idx}"></span>
+        <span class="spacer"></span>
+        <button class="btn btn-purple" id="chunk-btn-${c.idx}" onclick="chunkRenderOne(${c.idx})">▶ Render</button>
+        <button class="btn btn-blue" id="chunk-viewbtn-${c.idx}" onclick="chunkView(${c.idx})" style="display:none">👁 Xem</button>
+        <button class="btn btn-green" id="chunk-dlbtn-${c.idx}" onclick="chunkDownload(${c.idx})" style="display:none">⬇ Tải</button>
+        <button class="btn" id="chunk-upbtn-${c.idx}" onclick="chunkUploadPick(${c.idx})"
+                style="background:#1c1a2e;color:#c4b5fd;border:1px solid #4c1d95">⬆ Nạp</button>
+      </div>
+      <div class="chunk-pbar-wrap"><div class="chunk-pbar" id="chunk-pb-${c.idx}"></div></div>
+      <div class="chunk-err" id="chunk-err-${c.idx}"></div>
+      <div class="chunk-vid" id="chunk-vid-${c.idx}"></div>
+    </div>
+  `).join('');
+  chunkData.forEach(chunkUpdateRow);
+}
+
+function chunkUpdateRow(c) {
+  const row = document.getElementById(`chunk-row-${c.idx}`);
+  if (!row) return;
+  row.className = 'chunk-card ' + c.status;
+  const st = document.getElementById(`chunk-st-${c.idx}`);
+  const labels = { pending:'Chờ', running:'Đang chạy', done:'✓ Xong', error:'Lỗi' };
+  st.textContent = labels[c.status] || c.status;
+  st.className   = 'stag ' + (c.status==='done' ? 'done' : c.status==='error' ? 'error' : 'running');
+  document.getElementById(`chunk-pb-${c.idx}`).style.width = (c.progress||0) + '%';
+  const err = document.getElementById(`chunk-err-${c.idx}`);
+  err.style.display = c.error ? 'block' : 'none';
+  err.textContent   = c.error ? ('! ' + c.error) : '';
+  const btn = document.getElementById(`chunk-btn-${c.idx}`);
+  btn.textContent = c.status==='done' ? '↺ Làm lại' : c.status==='error' ? '↺ Thử lại' : '▶ Render';
+  btn.disabled    = c.status==='running';
+  document.getElementById(`chunk-viewbtn-${c.idx}`).style.display =
+    c.status==='done' ? '' : 'none';
+  document.getElementById(`chunk-dlbtn-${c.idx}`).style.display =
+    c.status==='done' ? '' : 'none';
+  document.getElementById(`chunk-upbtn-${c.idx}`).disabled = c.status==='running';
+}
+
+// ── Tải chunk về máy / nạp lại từ máy ───────────────────────────
+async function chunkDownload(idx) {
+  const btn = document.getElementById(`chunk-dlbtn-${idx}`);
+  btn.disabled = true; btn.textContent = '⏳...';
+  try {
+    const res = await apiFetch(`${API}/api/chunks/video/${currentJobId}/${idx}`);
+    if (!res.ok) { alert('Không tải được chunk'); return; }
+    const blob = await res.blob();
+    const url  = URL.createObjectURL(blob);
+    const a    = document.createElement('a');
+    a.href = url; a.download = `chunk_${String(idx+1).padStart(2,'0')}.mp4`;
+    a.click(); URL.revokeObjectURL(url);
+  } finally {
+    btn.disabled = false; btn.textContent = '⬇ Tải';
+  }
+}
+
+let _chunkUploadIdx = -1;
+function chunkUploadPick(idx) {
+  _chunkUploadIdx = idx;
+  document.getElementById('chunk-upload-input').click();
+}
+
+async function chunkUploadFile(input) {
+  const f = input.files[0];
+  const idx = _chunkUploadIdx;
+  input.value = '';
+  if (!f || idx < 0 || !currentJobId) return;
+  const btn = document.getElementById(`chunk-upbtn-${idx}`);
+  btn.disabled = true; btn.textContent = '⏳ Đang nạp...';
+  try {
+    const fd = new FormData();
+    fd.append('file', f);
+    const res = await apiFetch(`${API}/api/chunks/upload/${currentJobId}/${idx}`, { method:'POST', body: fd });
+    const d = await res.json();
+    if (!res.ok) { alert(d.error || 'Lỗi nạp chunk'); return; }
+    if (d.warning) alert('⚠ ' + d.warning);
+    chunkData[idx] = d.chunk;
+    chunkUpdateRow(d.chunk);
+    if (_chunkVideoUrls[idx]) { URL.revokeObjectURL(_chunkVideoUrls[idx]); delete _chunkVideoUrls[idx]; }
+    document.getElementById(`chunk-vid-${idx}`).innerHTML = '';
+    document.getElementById('chunk-msg').textContent = `✓ Đã nạp chunk ${idx+1} từ máy`;
+  } finally {
+    btn.disabled = false; btn.textContent = '⬆ Nạp';
+  }
+}
+
+async function chunkRenderOne(idx) {
+  if (!currentJobId) return;
+  const fd = new FormData();
+  fd.append('chunk_idx', idx);
+  chunkAppendSettings(fd);
+  const res = await apiFetch(`${API}/api/chunks/render/${currentJobId}`, { method:'POST', body: fd });
+  const d = await res.json();
+  if (!res.ok) { alert(d.error || 'Lỗi render chunk'); return; }
+  // Xóa video preview cũ của chunk đang làm lại
+  if (idx >= 0) {
+    const holder = document.getElementById(`chunk-vid-${idx}`);
+    if (holder) holder.innerHTML = '';
+    if (_chunkVideoUrls[idx]) { URL.revokeObjectURL(_chunkVideoUrls[idx]); delete _chunkVideoUrls[idx]; }
+  }
+  chunkStartPoll();
+}
+
+function chunkRenderAll() { chunkRenderOne(-1); }
+
+async function chunkRenderSelected() {
+  if (!currentJobId) return;
+  const listStr = document.getElementById('chunk-select-list').value.trim();
+  if (!listStr) { alert('Nhập số chunk muốn render, vd: 3,5,6,7'); return; }
+  const fd = new FormData();
+  fd.append('chunk_list', listStr);
+  chunkAppendSettings(fd);
+  const res = await apiFetch(`${API}/api/chunks/render/${currentJobId}`, { method:'POST', body: fd });
+  const d = await res.json();
+  if (!res.ok) { alert(d.error || 'Lỗi render chunk'); return; }
+  // Xóa video preview cũ của các chunk được chọn
+  (d.indices || []).forEach(i => {
+    const holder = document.getElementById(`chunk-vid-${i}`);
+    if (holder) holder.innerHTML = '';
+    if (_chunkVideoUrls[i]) { URL.revokeObjectURL(_chunkVideoUrls[i]); delete _chunkVideoUrls[i]; }
+  });
+  document.getElementById('chunk-msg').textContent =
+    `▶ Render ${(d.indices||[]).length} chunk: ${(d.indices||[]).map(i=>i+1).join(', ')}`;
+  chunkStartPoll();
+}
+
+// ── VPN Gate: xoay IP ───────────────────────────────────────────
+let _vpnConnected = false;
+async function vpnRefresh() {
+  try {
+    const r = await apiFetch(`${API}/api/vpn/status`);
+    const d = await r.json();
+    if (!d.available) { document.getElementById('vpn-box').style.display = 'none'; return; }
+    _vpnConnected = !!d.connected;
+    const dot = document.getElementById('vpn-dot');
+    const ipEl = document.getElementById('vpn-ip');
+    const btn = document.getElementById('vpn-toggle');
+    dot.style.background = d.connected ? '#22c55e' : '#4b5563';
+    ipEl.textContent = (d.current_ip || '—') + (d.connected && d.server ? ' · '+d.server.split(' ')[0] : '');
+    ipEl.style.color = d.connected ? '#4ade80' : '#6b7280';
+    btn.textContent = d.connected ? '⛔ Tắt VPN' : '🌐 Bật VPN';
+    btn.style.background = d.connected ? '#450a0a' : '#1e3a5f';
+    btn.style.color = d.connected ? '#f87171' : '#60a5fa';
+    btn.style.borderColor = d.connected ? '#7f1d1d' : '#1d4ed8';
+  } catch(e) {}
+}
+
+async function vpnToggle() {
+  const btn = document.getElementById('vpn-toggle');
+  btn.disabled = true;
+  const wasConnected = _vpnConnected;
+  btn.textContent = wasConnected ? '⏳ Đang tắt...' : '⏳ Đang kết nối...';
+  try {
+    if (wasConnected) {
+      await apiFetch(`${API}/api/vpn/disconnect`, { method: 'POST' });
+    } else {
+      const r = await apiFetch(`${API}/api/vpn/connect`, { method: 'POST' });
+      const d = await r.json();
+      if (!r.ok) alert('Lỗi bật VPN: ' + (d.error || '') + '\n(Đã chạy setup_sudoers.sh chưa?)');
+    }
+  } catch(e) { alert('Lỗi VPN: ' + e.message); }
+  finally { btn.disabled = false; await vpnRefresh(); }
+}
+
+// Poll trạng thái VPN mỗi 10s (để thấy IP đổi khi pipeline tự rotate)
+setInterval(() => { if (_authToken) vpnRefresh(); }, 10000);
+
+// ── Xóa job cũ (giữ job đang chạy) ──────────────────────────────
+async function cleanOldJobs() {
+  if (!confirm('Xóa file tạm (video, chunk...) của các job CŨ để giải phóng đĩa?\n\nChỉ xóa job không còn hoạt động — job đang render sẽ được giữ nguyên. Nhớ đã tải về những gì cần trước khi xóa.')) return;
+  const btn = document.getElementById('btn-clean-jobs');
+  btn.disabled = true; btn.textContent = '⏳ Đang xóa...';
+  try {
+    const r = await apiFetch(`${API}/api/clean-old-jobs`, { method: 'POST' });
+    const d = await r.json();
+    if (!r.ok) { alert('Lỗi: ' + (d.error || 'không xóa được')); return; }
+    let msg = `✓ Đã xóa ${d.removed_count} job cũ, giải phóng ${d.freed_mb} MB`;
+    if (d.skipped_running && d.skipped_running.length) {
+      msg += `\n(Giữ lại ${d.skipped_running.length} job đang hoạt động)`;
+    }
+    alert(msg);
+  } catch(e) {
+    alert('Lỗi: ' + e.message);
+  } finally {
+    btn.disabled = false; btn.textContent = '🗑 Xóa job cũ';
+  }
+}
+
+// ── Clean: dừng hết tiến trình + khởi động lại server ──────────
+async function cleanServer() {
+  if (!confirm('Dừng HẾT mọi tiến trình đang chạy (CapCut, FFmpeg, dịch...) và khởi động lại server?\n\nMọi job đang chạy sẽ mất — cần nạp lại video + JSON sau đó.')) return;
+  const btn = document.getElementById('btn-clean');
+  btn.disabled = true; btn.textContent = '⏳ Đang dừng...';
+  try {
+    await apiFetch(`${API}/api/clean`, { method: 'POST' });
+  } catch(e) {}
+  clearPoll();
+  if (chunkPollTimer) { clearInterval(chunkPollTimer); chunkPollTimer = null; }
+  btn.textContent = '⏳ Khởi động lại...';
+  // Chờ server sống lại rồi reload trang
+  const t0 = Date.now();
+  const wait = setInterval(async () => {
+    try {
+      const r = await fetch('/', { cache: 'no-store' });
+      if (r.ok && Date.now() - t0 > 2500) { clearInterval(wait); location.reload(); }
+    } catch(e) {}
+    if (Date.now() - t0 > 30000) { clearInterval(wait); location.reload(); }
+  }, 1000);
+}
+
+function chunkStartPoll() {
+  if (chunkPollTimer) return;
+  chunkPollTimer = setInterval(chunkPoll, 2000);
+  chunkPoll();
+}
+
+async function chunkPoll() {
+  if (!currentJobId) return;
+  try {
+    const res = await apiFetch(`${API}/api/chunks/status/${currentJobId}?log_from=${_logFrom}`);
+    const d   = await res.json();
+    if (d.log && d.log.length) { _appendLog(d.log); _logFrom = d.log_total || _logFrom; }
+    const prev = chunkData;
+    chunkData  = d.chunks || [];
+    document.getElementById('chunk-msg').textContent = d.message || '';
+    if (prev.length !== chunkData.length) chunkRebuild();
+    else chunkData.forEach(chunkUpdateRow);
+    // Chunk vừa xong → tự hiện video để xem ngay
+    chunkData.forEach((c, i) => {
+      if (c.status === 'done' && prev[i] && prev[i].status === 'running') chunkView(c.idx, true);
+    });
+    if (!d.rendering) { clearInterval(chunkPollTimer); chunkPollTimer = null; }
+  } catch(e) {}
+}
+
+async function chunkView(idx, autoOpen) {
+  const holder = document.getElementById(`chunk-vid-${idx}`);
+  if (!holder) return;
+  if (!autoOpen && holder.querySelector('video')) { holder.innerHTML = ''; return; } // toggle đóng
+  holder.innerHTML = '<div style="font-size:12px;color:#6b7280;padding:8px">Đang tải video...</div>';
+  try {
+    const res = await apiFetch(`${API}/api/chunks/video/${currentJobId}/${idx}`);
+    if (!res.ok) { holder.innerHTML = '<div style="font-size:12px;color:#f87171;padding:8px">Không tải được video</div>'; return; }
+    const blob = await res.blob();
+    if (_chunkVideoUrls[idx]) URL.revokeObjectURL(_chunkVideoUrls[idx]);
+    const url = URL.createObjectURL(blob);
+    _chunkVideoUrls[idx] = url;
+    holder.innerHTML = `<video controls src="${url}"></video>`;
+  } catch(e) {
+    holder.innerHTML = '<div style="font-size:12px;color:#f87171;padding:8px">Lỗi tải video</div>';
+  }
+}
+
+async function chunkMerge() {
+  if (!currentJobId) return;
+  const btn = document.getElementById('btn-chunk-merge');
+  btn.disabled = true; btn.textContent = 'Đang ghép...';
+  try {
+    const res = await apiFetch(`${API}/api/chunks/merge/${currentJobId}`, { method: 'POST' });
+    const d = await res.json();
+    if (!res.ok) { alert(d.error || 'Lỗi ghép'); return; }
+    if (d.partial) {
+      document.getElementById('chunk-msg').textContent =
+        `✓ Đã ghép ${d.merged_count}/${d.total_count} chunk đầu (liên tiếp, chưa đủ hết) — xem tab Video kết quả. Ghép lại sau khi render thêm chunk để nối tiếp.`;
+    } else {
+      document.getElementById('chunk-msg').textContent = '✓ Đã ghép đủ tất cả chunk — xem tab Video kết quả';
+    }
+    await showVideo(currentJobId);
+  } finally {
+    btn.disabled = false; btn.textContent = '🔗 Ghép video';
+  }
+}
+
+async function chunkExport() {
+  if (!currentJobId) return;
+  const r = await apiFetch(`${API}/api/chunks/export/${currentJobId}`);
+  if (!r.ok) { const d = await r.json(); alert(d.error || 'Chưa có chunk'); return; }
+  const blob = await r.blob();
+  const url  = URL.createObjectURL(blob);
+  const a    = document.createElement('a');
+  a.href = url; a.download = 'chunk_state.json';
+  a.click(); URL.revokeObjectURL(url);
+}
+
+async function chunkImportFile(input) {
+  const f = input.files[0];
+  if (!f || !currentJobId) { input.value = ''; return; }
+  const fd = new FormData();
+  fd.append('file', f);
+  const res = await apiFetch(`${API}/api/chunks/import/${currentJobId}`, { method:'POST', body: fd });
+  const d = await res.json();
+  input.value = '';
+  if (!res.ok) { alert(d.error || 'Lỗi nạp'); return; }
+  chunkData = d.chunks;
+  Object.values(_chunkVideoUrls).forEach(u => URL.revokeObjectURL(u));
+  _chunkVideoUrls = {};
+  chunkRebuild();
+  document.getElementById('chunk-msg').textContent =
+    `Khôi phục: ${d.restored} chunk còn nguyên, ${d.reset} chunk cần làm lại`;
+}
 
 // ── Layout canvas editor ────────────────────────────────────────
 const LC = {

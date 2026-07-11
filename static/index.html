@@ -76,6 +76,9 @@ input[type=range]{flex:1;accent-color:#7c3aed}
 .scene-body.open{display:block}
 
 .scene-prompt-text{font-size:11px;color:#6b7280;font-style:italic;margin-bottom:10px;line-height:1.5}
+.tw{cursor:pointer;border-radius:3px;padding:0 2px;transition:background .12s}
+.tw:hover{background:#312e81}
+.tw.on{background:#7c3aed;color:#fff;font-weight:700;font-style:normal}
 
 .query-edit-row{display:flex;gap:6px;margin-bottom:10px}
 .query-edit-row input{flex:1;font-size:12px;padding:6px 8px}
@@ -101,6 +104,11 @@ input[type=range]{flex:1;accent-color:#7c3aed}
 .media-item .src-badge{position:absolute;top:4px;right:4px;font-size:9px;font-weight:700;padding:1px 5px;border-radius:3px}
 .src-badge.pexels{background:#05a081;color:#fff}
 .src-badge.pixabay{background:#2ec4b6;color:#fff}
+.src-badge.web{background:#d97706;color:#fff}
+.src-badge.nasa{background:#dc2626;color:#fff}
+.src-badge.wikimedia{background:#475569;color:#fff}
+.src-badge.coverr{background:#92400e;color:#fff}
+.media-group-label{grid-column:1/-1;font-size:11px;font-weight:800;color:#4b5563;text-transform:uppercase;letter-spacing:.06em;padding:6px 2px 0;border-bottom:1px solid #1e2340;margin-bottom:2px}
 .media-item .check{position:absolute;top:4px;left:4px;width:18px;height:18px;background:#7c3aed;border-radius:50%;display:none;align-items:center;justify-content:center;font-size:11px;color:#fff}
 .media-item.selected .check{display:flex}
 .preview-hint{position:absolute;inset:0;background:#0008;display:flex;align-items:center;justify-content:center;font-size:20px;opacity:0;transition:opacity .15s;pointer-events:none}
@@ -179,12 +187,24 @@ input[type=range]{flex:1;accent-color:#7c3aed}
                oninput="document.getElementById('rv').textContent=parseFloat(this.value).toFixed(1)+'x'"/>
         <span class="sv" id="rv">1.0x</span>
       </div>
+      <label style="display:flex;align-items:center;gap:8px;font-size:13px;color:#e2e8f0;margin-top:12px;cursor:pointer">
+        <input type="checkbox" id="subtitle" checked style="accent-color:#7c3aed"/>
+        Vietsub (phụ đề bám đúng giọng đọc)
+      </label>
     </div>
 
     <div class="sidebar-section">
       <div class="btn-row" style="margin-bottom:10px">
         <button class="btn btn-blue" id="btn-preview" onclick="doPreview()">🤖 AI phân tích</button>
         <button class="btn btn-purple" id="btn-gen" onclick="doGenerate()" disabled>🎬 Tạo Video</button>
+      </div>
+      <div class="btn-row" style="margin-bottom:10px">
+        <button class="btn" id="btn-export-scenes" onclick="exportScenes()"
+                style="background:#1c1a2e;color:#c4b5fd;border:1px solid #4c1d95" disabled>⬇ Xuất JSON</button>
+        <label class="btn" style="background:#1c2b3a;color:#67e8f9;border:1px solid #164e63;text-align:center;cursor:pointer;margin:0">
+          ⬆ Nạp JSON
+          <input type="file" accept=".json" style="display:none" onchange="importScenes(this)"/>
+        </label>
       </div>
 
       <div class="progress-box" id="pbox">
@@ -236,6 +256,14 @@ input[type=range]{flex:1;accent-color:#7c3aed}
     <div class="modal-media" id="modal-media"></div>
     <div class="modal-footer">
       <div class="modal-info" id="modal-info"></div>
+      <div id="modal-start-row" style="display:none;align-items:center;gap:6px;font-size:12px;color:#a78bfa">
+        <span>Bắt đầu từ</span>
+        <input type="number" id="modal-start" min="0" step="0.1" value="0"
+               style="width:64px;background:#0a0c14;border:1px solid #1e2340;border-radius:5px;color:#e2e8f0;font-size:12px;padding:4px 6px;outline:none"/>
+        <span>giây</span>
+        <button onclick="grabModalTime()" title="Lấy đúng vị trí video preview đang phát"
+                style="background:#1e1b4b;color:#a78bfa;border:1px solid #312e81;border-radius:5px;font-size:11px;padding:4px 8px;cursor:pointer">⏱ Lấy vị trí đang phát</button>
+      </div>
       <button class="modal-select-btn" id="modal-select-btn" onclick="modalSelect()">✓ Chọn media này</button>
     </div>
   </div>
@@ -277,12 +305,44 @@ async function doPreview() {
     searchCache = {};
     renderScenes();
     document.getElementById('btn-gen').disabled = false;
+    document.getElementById('btn-export-scenes').disabled = false;
   } catch(e) {
     document.getElementById('scenes-wrap').innerHTML =
       `<div class="errmsg on">❌ ${e.message}</div>`;
   } finally {
     document.getElementById('btn-preview').disabled = false;
   }
+}
+
+// ===== TRIGGER WORD =====
+// Text của cảnh render thành từng từ click được. Click 1 từ → cảnh này chỉ vào
+// đúng lúc TTS đọc tới từ đó (Whisper word-level alignment), cảnh trước giữ lâu hơn.
+// Tách từ bằng trim().split(/\s+/) — PHẢI khớp với str.split() phía Python.
+function sceneTriggerHint(s, toks) {
+  return s.trigger_idx != null && toks[s.trigger_idx] !== undefined
+    ? `⚡ Cảnh này sẽ vào đúng lúc TTS đọc tới: <b style="color:#facc15">${toks[s.trigger_idx]}</b> (click lại để bỏ)`
+    : '⚡ Click vào 1 từ để cảnh này vào đúng lúc TTS đọc tới từ đó';
+}
+
+function sceneTextHTML(s, i) {
+  if (!s.text) return '';
+  const toks = s.text.trim().split(/\s+/);
+  const words = toks.map((w, wi) =>
+    `<span class='tw${s.trigger_idx === wi ? " on" : ""}' onclick='setTrigger(${i},${wi})' title='Chuyển cảnh khi TTS đọc tới từ này'>${w}</span>`
+  ).join(' ');
+  return `<div class="scene-prompt-text" style="color:#c4b5fd;border-left:2px solid #7c3aed;padding-left:8px;margin-bottom:8px">"${words}"
+    <div id="trig-lbl-${i}" style="font-size:10px;color:#6b7280;font-style:normal;margin-top:4px">${sceneTriggerHint(s, toks)}</div></div>`;
+}
+
+function setTrigger(i, wi) {
+  const s = scenes[i];
+  s.trigger_idx = (s.trigger_idx === wi) ? null : wi;
+  // Cập nhật tại chỗ, không renderScenes() để giữ kết quả search + trạng thái mở
+  document.querySelectorAll(`#sb-${i} .tw`).forEach((el, idx) => {
+    el.classList.toggle('on', s.trigger_idx === idx);
+  });
+  const lbl = document.getElementById(`trig-lbl-${i}`);
+  if (lbl) lbl.innerHTML = sceneTriggerHint(s, s.text.trim().split(/\s+/));
 }
 
 // ===== RENDER SCENES =====
@@ -303,7 +363,7 @@ function renderScenes() {
         <span class="scene-expand-icon">▼</span>
       </div>
       <div class="scene-body" id="sb-${i}">
-        ${s.text ? `<div class="scene-prompt-text" style="color:#c4b5fd;border-left:2px solid #7c3aed;padding-left:8px;margin-bottom:8px">"${s.text}"</div>` : ''}
+        ${sceneTextHTML(s, i)}
         ${(s.type||s.strategy) ? `<div style="display:flex;gap:6px;margin-bottom:8px;flex-wrap:wrap">
           ${s.type ? `<span style="font-size:10px;background:#1e3a5f;color:#60a5fa;border-radius:4px;padding:2px 7px">${s.type}</span>` : ''}
           ${s.strategy ? `<span style="font-size:10px;background:#14532d;color:#4ade80;border-radius:4px;padding:2px 7px">${s.strategy}</span>` : ''}
@@ -313,6 +373,8 @@ function renderScenes() {
         <div class="query-edit-row">
           <input type="text" id="q-${i}" value="${s.query}" placeholder="Tier 1 — keyword lý tưởng..."/>
           <button onclick="searchScene(${i})">🔍 Tìm</button>
+          <button onclick="searchCoverr(${i})" title="Coverr — hạn mức 50 req/giờ, chỉ dùng khi thiếu"
+                  style="background:#2a1a0a;border:1px solid #92400e;color:#fbbf24">🎬 Coverr</button>
         </div>
         ${s.query2 ? `<div style="display:flex;gap:6px;margin-bottom:6px;font-size:11px;color:#6b7280;align-items:center">
           <span style="flex-shrink:0">Tier 2:</span>
@@ -389,6 +451,43 @@ async function searchScene(i) {
   }
 }
 
+// Coverr: hạn mức 50 req/giờ — chỉ gọi khi user bấm nút riêng, gộp thêm vào
+// cache hiện có (không mất kết quả Pexels/Pixabay/NASA đã tìm trước đó)
+async function searchCoverr(i) {
+  const query = document.getElementById(`q-${i}`).value.trim();
+  if (!query) return;
+  scenes[i].query = query;
+
+  const grid = document.getElementById(`mg-${i}`);
+  grid.innerHTML = '<div class="loading-grid"><div class="spinner"></div>Đang tìm trên Coverr (tốn 1 request/giờ hạn mức)...</div>';
+
+  try {
+    const res  = await fetch(`${API}/api/search-coverr`, {
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({query}),
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || 'Lỗi Coverr');
+
+    const cache = searchCache[query] || {videos: [], images: []};
+    const seen = new Set(cache.videos.map(v => v.url));
+    cache.videos = [...cache.videos, ...data.videos.filter(v => !seen.has(v.url))];
+    searchCache[query] = cache;
+
+    switchMediaTab(i, 'video');
+    renderMediaGrid(i, cache, 'video');
+  } catch(e) {
+    grid.innerHTML = `<div class="no-result">❌ ${e.message}</div>`;
+  }
+}
+
+const SOURCE_LABELS = {
+  pexels: '🟢 Pexels', pixabay: '🔵 Pixabay',
+  nasa: '🚀 NASA', wikimedia: '📚 Wikimedia',
+  coverr: '🎬 Coverr',
+  web: '🌐 Web (toàn bộ nguồn)',
+};
+
 function renderMediaGrid(i, data, type) {
   const items = type === 'video' ? (data.videos||[]) : (data.images||[]);
   const grid  = document.getElementById(`mg-${i}`);
@@ -399,7 +498,7 @@ function renderMediaGrid(i, data, type) {
   }
 
   const selectedUrl = scenes[i].media?.url;
-  grid.innerHTML = items.map((item, j) => `
+  const itemHTML = (item, j) => `
     <div class="media-item ${selectedUrl===item.url?'selected':''}"
          onclick="openModal(${i}, ${j}, '${type}')"
          id="mi-${i}-${type}-${j}">
@@ -409,8 +508,20 @@ function renderMediaGrid(i, data, type) {
       ${item.is_video ? `<div class="vid-badge">▶ ${item.duration||'?'}s</div>` : ''}
       <div class="src-badge ${item.source}">${item.source}</div>
       <div class="preview-hint">${item.is_video ? '▶' : '🔍'}</div>
-    </div>
-  `).join('');
+    </div>`;
+
+  // Chia nhóm theo nguồn, giữ NGUYÊN index j của mảng gốc (openModal cần đúng j)
+  const order = ['pexels', 'pixabay', 'nasa', 'wikimedia', 'coverr', 'web'];
+  const groups = {};
+  items.forEach((item, j) => {
+    const src = order.includes(item.source) ? item.source : order[0];
+    (groups[src] = groups[src] || []).push([item, j]);
+  });
+  grid.innerHTML = order
+    .filter(src => groups[src]?.length)
+    .map(src => `<div class="media-group-label">${SOURCE_LABELS[src]||src} · ${groups[src].length}</div>`
+                + groups[src].map(([item, j]) => itemHTML(item, j)).join(''))
+    .join('');
 }
 
 // ===== MODAL =====
@@ -441,6 +552,12 @@ function openModal(i, j, type) {
   document.getElementById('modal-info').textContent =
     item.is_video ? `Video · ${item.duration||'?'}s · ${item.source}` : `Ảnh · ${item.source}`;
 
+  // Ô "bắt đầu từ giây" — chỉ cho video; prefill nếu media này đã chọn kèm start
+  const startRow = document.getElementById('modal-start-row');
+  startRow.style.display = item.is_video ? 'flex' : 'none';
+  document.getElementById('modal-start').value =
+    (scenes[i].media?.url === item.url && scenes[i].media.start) ? scenes[i].media.start : 0;
+
   // Button state
   const btn = document.getElementById('modal-select-btn');
   const isSelected = scenes[i].media?.url === item.url;
@@ -461,10 +578,16 @@ function closeModal(event) {
   modalCtx = null;
 }
 
+function grabModalTime() {
+  const v = document.querySelector('#modal-media video');
+  if (v) document.getElementById('modal-start').value = v.currentTime.toFixed(1);
+}
+
 function modalSelect() {
   if (!modalCtx) return;
   const {sceneIdx: i, itemIdx: j, type, item} = modalCtx;
-  selectMedia(i, j, type);
+  const start = item.is_video ? Math.max(0, parseFloat(document.getElementById('modal-start').value) || 0) : 0;
+  selectMedia(i, j, type, start);
 
   // Cập nhật button
   const btn = document.getElementById('modal-select-btn');
@@ -478,7 +601,7 @@ function modalSelect() {
 // Phím ESC đóng modal
 document.addEventListener('keydown', e => { if (e.key === 'Escape') closeModal(); });
 
-function selectMedia(i, j, type) {
+function selectMedia(i, j, type, start = 0) {
   const cache = searchCache[scenes[i].query];
   if (!cache) return;
   const items = type === 'video' ? cache.videos : cache.images;
@@ -491,6 +614,7 @@ function selectMedia(i, j, type) {
     is_video: item.is_video,
     duration: item.duration || scenes[i].duration,
     source: item.source,
+    start: start || 0,
   };
 
   // Cập nhật selected state trong grid
@@ -563,6 +687,54 @@ function refreshSceneHead(i) {
   }
 }
 
+// ===== EXPORT / IMPORT SCENES (JSON) =====
+function exportScenes() {
+  if (!scenes.length) { alert('Chưa có cảnh nào để xuất.'); return; }
+  const payload = {
+    content: document.getElementById('content').value,
+    voice: document.getElementById('voice').value,
+    rate: parseFloat(document.getElementById('rate').value),
+    scenes,
+  };
+  const blob = new Blob([JSON.stringify(payload, null, 2)], {type: 'application/json'});
+  const url  = URL.createObjectURL(blob);
+  const a    = document.createElement('a');
+  a.href = url; a.download = 'content_scenes.json';
+  a.click();
+  URL.revokeObjectURL(url);
+}
+
+function importScenes(input) {
+  const file = input.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = () => {
+    try {
+      const data = JSON.parse(reader.result);
+      if (!Array.isArray(data.scenes)) throw new Error('File JSON thiếu mảng "scenes"');
+
+      document.getElementById('content').value = data.content || '';
+      if (data.voice !== undefined) document.getElementById('voice').value = data.voice;
+      if (data.rate !== undefined) {
+        document.getElementById('rate').value = data.rate;
+        document.getElementById('rv').textContent = parseFloat(data.rate).toFixed(1) + 'x';
+      }
+
+      scenes = data.scenes;
+      searchCache = {};
+      renderScenes();
+      document.getElementById('btn-gen').disabled = scenes.length === 0;
+      document.getElementById('btn-export-scenes').disabled = scenes.length === 0;
+      alert(`✓ Đã nạp ${scenes.length} cảnh từ file — không cần chạy lại AI phân tích.`);
+    } catch(e) {
+      alert('❌ File JSON không hợp lệ: ' + e.message);
+    } finally {
+      input.value = '';
+    }
+  };
+  reader.readAsText(file);
+}
+
 // ===== GENERATE =====
 async function doGenerate() {
   const content = document.getElementById('content').value.trim();
@@ -581,11 +753,14 @@ async function doGenerate() {
         scenes: scenes.map(s => ({
           query: s.query,
           prompt: s.prompt||'',
+          text: s.text||'',
+          trigger_idx: (s.trigger_idx === undefined ? null : s.trigger_idx),
           duration: s.duration||6,
           media: s.media || null,
         })),
         voice: document.getElementById('voice').value,
         rate: parseFloat(document.getElementById('rate').value),
+        subtitle: document.getElementById('subtitle').checked,
       }),
     });
     const data = await res.json();

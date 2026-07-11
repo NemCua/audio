@@ -10,6 +10,7 @@ import json
 import os
 import re
 import shutil
+import subprocess
 import tempfile
 import time
 from pathlib import Path
@@ -22,6 +23,7 @@ from translate_video import (
     BEEKNOEE_BASE_URL, BEEKNOEE_MODEL,
     build_srt, build_tts_track,
     extract_audio_for_stt,
+    FFMPEG_BIN,
     get_audio_duration,
     render_video,
     srt_time_to_sec,
@@ -559,8 +561,8 @@ def run_test_tts(text: str, tts_model: str, tts_voice: str, capcut_voice: str):
 def run_render(df: pd.DataFrame, bg_music_file, bg_volume: float, tts_volume: float,
                capcut_delay: float, capcut_voice_sel: str, capcut_rate: float,
                keep_original: bool, original_volume: float,
-               watermark: str,
-               state: dict, progress=gr.Progress()):
+               watermark: str, tts_speed_ratio: float = 1.0,
+               state: dict = None, progress=gr.Progress()):
     if not state.get("vi_cues"):
         raise gr.Error("Chưa có bản dịch.")
     if not state.get("video_path"):
@@ -594,23 +596,96 @@ def run_render(df: pd.DataFrame, bg_music_file, bg_volume: float, tts_volume: fl
             capcut_resource_id=capcut_resource_id,
             capcut_delay=capcut_delay,
             capcut_rate=str(round(capcut_rate, 1)),
+            speed_ratio=tts_speed_ratio,
         ))
 
         progress(0.6, desc="Render video...")
         output_path = work_dir / f"{Path(video_path).stem}_vi.mp4"
         render_video(video_path, tts_track, srt_path, output_path,
                      bg_music=bg_music, bg_volume=bg_volume, tts_volume=tts_volume,
-                     original_audio=None, original_volume=0.0,
+                     original_audio=video_path if keep_original else None,
+                     original_volume=original_volume if keep_original else 0.0,
                      watermark=watermark)
         progress(1.0, desc="Hoàn tất!")
-        # Copy to a named temp file so Gradio can serve it correctly
         import tempfile, shutil
         suffix = Path(output_path).suffix
         tmp = tempfile.NamedTemporaryFile(delete=False, suffix=suffix, dir=None)
         tmp.close()
         shutil.copy2(str(output_path), tmp.name)
-        return tmp.name, "✓ Render xong — bấm tải về bên dưới"
+        return tmp.name, "✓ Render xong"
 
+    except Exception as e:
+        raise gr.Error(str(e))
+
+
+def run_preview(df: pd.DataFrame, bg_music_file, bg_volume: float, tts_volume: float,
+                capcut_delay: float, capcut_voice_sel: str, capcut_rate: float,
+                keep_original: bool, original_volume: float,
+                watermark: str, tts_speed_ratio: float = 1.0,
+                preview_dur: float = 60.0,
+                state: dict = None, progress=gr.Progress()):
+    """Render preview N giây đầu video."""
+    if not state or not state.get("vi_cues"):
+        raise gr.Error("Chưa có bản dịch.")
+    if not state.get("video_path"):
+        raise gr.Error("Chưa có video.")
+
+    import tempfile, shutil
+    video_path = Path(state["video_path"]).resolve()
+    work_dir   = Path(state["work_dir"]).resolve()
+    work_dir.mkdir(parents=True, exist_ok=True)
+
+    # Cắt video gốc lấy N giây đầu
+    preview_src = work_dir / "preview_src.mp4"
+    progress(0.05, desc=f"Cắt {int(preview_dur)}s đầu...")
+    subprocess.run([
+        FFMPEG_BIN, "-y", "-ss", "0", "-i", str(video_path),
+        "-t", str(preview_dur), "-c", "copy", str(preview_src)
+    ], capture_output=True)
+
+    # Lọc cues trong khoảng preview
+    vi_cues = df_to_cues(df, state["vi_cues"])
+    preview_cues = [c for c in vi_cues if c["start_sec"] < preview_dur]
+
+    srt_path = work_dir / "preview_vi.srt"
+    srt_path.write_text(build_srt(preview_cues), encoding="utf-8")
+
+    bg_music    = Path(bg_music_file).resolve() if bg_music_file else None
+    capcut_vt   = (capcut_voice_sel or "").strip()
+    capcut_info = next((v for v in CAPCUT_VOICES_VI if v[1] == capcut_vt), None)
+    capcut_device_id   = os.environ.get("CAPCUT_DEVICE_ID", "7581502458217252368") if capcut_info else state.get("capcut_device_id")
+    capcut_voice_type  = capcut_info[1] if capcut_info else state.get("capcut_voice_type")
+    capcut_resource_id = capcut_info[2] if capcut_info else state.get("capcut_resource_id")
+
+    try:
+        progress(0.1, desc="Tạo TTS preview...")
+        preview_work = work_dir / "preview_work"
+        preview_work.mkdir(exist_ok=True)
+        tts_track = asyncio.run(build_tts_track(
+            preview_cues, preview_work, preview_dur,
+            beeknoee_key=state.get("beeknoee_key"),
+            beeknoee_tts_model=state.get("beeknoee_tts_model"),
+            beeknoee_tts_voice=state.get("beeknoee_tts_voice"),
+            capcut_device_id=capcut_device_id,
+            capcut_voice_type=capcut_voice_type,
+            capcut_resource_id=capcut_resource_id,
+            capcut_delay=capcut_delay,
+            capcut_rate=str(round(capcut_rate, 1)),
+            speed_ratio=tts_speed_ratio,
+        ))
+
+        progress(0.7, desc="Render preview...")
+        output_path = work_dir / "preview_out.mp4"
+        render_video(preview_src, tts_track, srt_path, output_path,
+                     bg_music=bg_music, bg_volume=bg_volume, tts_volume=tts_volume,
+                     original_audio=preview_src if keep_original else None,
+                     original_volume=original_volume if keep_original else 0.0,
+                     watermark=watermark)
+        progress(1.0, desc="Preview xong!")
+        tmp = tempfile.NamedTemporaryFile(delete=False, suffix=".mp4", dir=None)
+        tmp.close()
+        shutil.copy2(str(output_path), tmp.name)
+        return tmp.name, f"✓ Preview {int(preview_dur)}s xong"
     except Exception as e:
         raise gr.Error(str(e))
 
@@ -797,6 +872,259 @@ def run_thumb_export(image_file, frame_file, text, font_size, bold,
 
 
 # ---------------------------------------------------------------------------
+# CHUNK RENDER LOGIC
+# ---------------------------------------------------------------------------
+
+CHUNK_MINUTES = 20  # mỗi chunk 20 phút
+
+
+def _sec_to_srt_ts(sec: float) -> str:
+    h = int(sec // 3600)
+    m = int((sec % 3600) // 60)
+    s = int(sec % 60)
+    ms = int(round((sec - int(sec)) * 1000))
+    return f"{h:02d}:{m:02d}:{s:02d},{ms:03d}"
+
+
+def _split_into_chunks(vi_cues: list[dict], video_dur: float, chunk_secs: float) -> list[dict]:
+    chunks = []
+    n = 0
+    t = 0.0
+    while t < video_dur:
+        end_t = min(t + chunk_secs, video_dur)
+        cues = [c for c in vi_cues if c["start_sec"] < end_t and c["end_sec"] > t]
+        chunks.append({
+            "idx": n,
+            "start_sec": t,
+            "end_sec": end_t,
+            "label": f"Chunk {n+1} [{int(t//60)}m – {int(end_t//60)}m]",
+            "cues": cues,
+            "status": "pending",
+            "output": None,
+        })
+        n += 1
+        t = end_t
+    return chunks
+
+
+def chunk_plan(state: dict) -> tuple[str, list[dict]]:
+    if not state or not state.get("vi_cues"):
+        return "<p>⚠️ Chưa load JSON bản dịch.</p>", []
+    if not state.get("video_path"):
+        return "<p>⚠️ Chưa có video. Load JSON có path hoặc gắn video ở tab Dịch Video.</p>", []
+    vi_cues = state["vi_cues"]
+    video_path = Path(state["video_path"])
+    video_dur = get_audio_duration(video_path)
+    chunks = _split_into_chunks(vi_cues, video_dur, CHUNK_MINUTES * 60)
+    rows = "".join(
+        f"<tr><td>{c['idx']+1}</td><td>{c['label']}</td><td>{len(c['cues'])} cues</td>"
+        f"<td>⏳ Chờ</td><td>—</td></tr>"
+        for c in chunks
+    )
+    html = f"""<table style='width:100%;border-collapse:collapse'>
+<thead><tr><th>#</th><th>Thời gian</th><th>Số cue</th><th>Trạng thái</th><th>File</th></tr></thead>
+<tbody>{rows}</tbody></table>"""
+    return html, chunks
+
+
+def run_chunk_render(
+    chunk_state: list,
+    bg_music_file,
+    bg_volume: float,
+    tts_volume: float,
+    capcut_delay: float,
+    capcut_voice_sel: str,
+    capcut_rate: float,
+    keep_original: bool,
+    original_volume: float,
+    watermark: str,
+    tts_speed_ratio: float,
+    session_state_val: dict,
+    progress=gr.Progress(),
+) -> tuple[str, list, str]:
+    if not chunk_state:
+        raise gr.Error("Chưa có danh sách chunk. Nhấn '🔍 Xem Chunks' trước.")
+    if not session_state_val or not session_state_val.get("video_path"):
+        raise gr.Error("Chưa có video trong session.")
+
+    video_path = Path(session_state_val["video_path"]).resolve()
+    work_dir = Path(session_state_val.get("work_dir", tempfile.mkdtemp(prefix="chunk_"))).resolve()
+    chunk_dir = work_dir / "chunks"
+    chunk_dir.mkdir(parents=True, exist_ok=True)
+
+    capcut_vt = (capcut_voice_sel or "").strip()
+    capcut_info = next((v for v in CAPCUT_VOICES_VI if v[1] == capcut_vt), None)
+    capcut_device_id = (
+        os.environ.get("CAPCUT_DEVICE_ID", "7581502458217252368")
+        if capcut_info else session_state_val.get("capcut_device_id")
+    )
+    capcut_voice_type = capcut_info[1] if capcut_info else session_state_val.get("capcut_voice_type")
+    capcut_resource_id = capcut_info[2] if capcut_info else session_state_val.get("capcut_resource_id")
+    bg_music = Path(bg_music_file).resolve() if bg_music_file else None
+
+    total = len(chunk_state)
+    for i, chunk in enumerate(chunk_state):
+        if chunk.get("status") == "done" and chunk.get("output"):
+            progress((i + 1) / total, desc=f"Chunk {i+1}/{total} — đã xong, bỏ qua")
+            continue
+
+        progress(i / total, desc=f"Chunk {i+1}/{total}: cắt video...")
+        chunk["status"] = "running"
+
+        start_sec = chunk["start_sec"]
+        end_sec = chunk["end_sec"]
+        dur = end_sec - start_sec
+
+        chunk_src = chunk_dir / f"chunk_{i:03d}_src.mp4"
+        ret = subprocess.run([
+            FFMPEG_BIN, "-y", "-ss", str(start_sec), "-i", str(video_path),
+            "-t", str(dur), "-c", "copy", str(chunk_src),
+        ], capture_output=True)
+        if ret.returncode != 0:
+            chunk["status"] = "error"
+            chunk["error"] = ret.stderr.decode()[-200:]
+            continue
+
+        cues = chunk["cues"]
+        shifted_cues = []
+        for c in cues:
+            ns = max(0.0, c["start_sec"] - start_sec)
+            ne = min(dur, c["end_sec"] - start_sec)
+            if ne <= ns:
+                continue
+            shifted = {**c, "start_sec": ns, "end_sec": ne,
+                       "start": _sec_to_srt_ts(ns), "end": _sec_to_srt_ts(ne)}
+            shifted_cues.append(shifted)
+
+        if not shifted_cues:
+            chunk["status"] = "done"
+            chunk["output"] = None
+            continue
+
+        srt_path = chunk_dir / f"chunk_{i:03d}.srt"
+        srt_path.write_text(build_srt(shifted_cues), encoding="utf-8")
+
+        try:
+            progress(i / total + 0.3 / total, desc=f"Chunk {i+1}/{total}: TTS...")
+            tts_work = chunk_dir / f"chunk_{i:03d}_work"
+            tts_work.mkdir(exist_ok=True)
+            tts_track = asyncio.run(build_tts_track(
+                shifted_cues, tts_work, dur,
+                beeknoee_key=session_state_val.get("beeknoee_key"),
+                beeknoee_tts_model=session_state_val.get("beeknoee_tts_model"),
+                beeknoee_tts_voice=session_state_val.get("beeknoee_tts_voice"),
+                capcut_device_id=capcut_device_id,
+                capcut_voice_type=capcut_voice_type,
+                capcut_resource_id=capcut_resource_id,
+                capcut_delay=capcut_delay,
+                capcut_rate=str(round(capcut_rate, 1)),
+                speed_ratio=tts_speed_ratio,
+            ))
+
+            progress(i / total + 0.7 / total, desc=f"Chunk {i+1}/{total}: render...")
+            out_path = chunk_dir / f"chunk_{i:03d}_out.mp4"
+            render_video(
+                chunk_src, tts_track, srt_path, out_path,
+                bg_music=bg_music, bg_volume=bg_volume, tts_volume=tts_volume,
+                original_audio=chunk_src if keep_original else None,
+                original_volume=original_volume if keep_original else 0.0,
+                watermark=watermark,
+            )
+            chunk["status"] = "done"
+            chunk["output"] = str(out_path)
+        except Exception as e:
+            chunk["status"] = "error"
+            chunk["error"] = str(e)
+
+    rows = []
+    for c in chunk_state:
+        icon = {"pending": "⏳", "running": "🔄", "done": "✅", "error": "❌"}.get(c["status"], "?")
+        out_info = Path(c["output"]).name if c.get("output") else (c.get("error", "")[:40] if c.get("error") else "—")
+        rows.append(
+            f"<tr><td>{c['idx']+1}</td><td>{c['label']}</td><td>{len(c['cues'])} cues</td>"
+            f"<td>{icon} {c['status']}</td><td style='font-size:0.8em'>{out_info}</td></tr>"
+        )
+    html = f"""<table style='width:100%;border-collapse:collapse'>
+<thead><tr><th>#</th><th>Thời gian</th><th>Số cue</th><th>Trạng thái</th><th>File</th></tr></thead>
+<tbody>{''.join(rows)}</tbody></table>"""
+
+    done = sum(1 for c in chunk_state if c["status"] == "done")
+    errors = sum(1 for c in chunk_state if c["status"] == "error")
+    summary = f"✅ {done}/{len(chunk_state)} chunks xong" + (f" | ❌ {errors} lỗi" if errors else "")
+    return html, chunk_state, summary
+
+
+def run_chunk_rerender(chunk_idx: int, chunk_state: list, bg_music_file,
+                       bg_volume, tts_volume, capcut_delay, capcut_voice_sel,
+                       capcut_rate, keep_original, original_volume, watermark,
+                       tts_speed_ratio, session_state_val, progress=gr.Progress()):
+    if not chunk_state or chunk_idx < 0 or chunk_idx >= len(chunk_state):
+        raise gr.Error("Chunk index không hợp lệ.")
+    chunk_state[chunk_idx]["status"] = "pending"
+    chunk_state[chunk_idx]["output"] = None
+    return run_chunk_render(
+        chunk_state, bg_music_file, bg_volume, tts_volume,
+        capcut_delay, capcut_voice_sel, capcut_rate,
+        keep_original, original_volume, watermark,
+        tts_speed_ratio, session_state_val, progress,
+    )
+
+
+def run_merge_chunks(chunk_state: list, progress=gr.Progress()) -> tuple[str, str]:
+    if not chunk_state:
+        raise gr.Error("Chưa có danh sách chunk.")
+    done_chunks = [c for c in chunk_state if c["status"] == "done" and c.get("output")]
+    if not done_chunks:
+        raise gr.Error("Không có chunk nào hoàn thành.")
+
+    list_file = Path(tempfile.mkdtemp()) / "concat.txt"
+    list_file.write_text("\n".join(f"file '{c['output']}'" for c in done_chunks), encoding="utf-8")
+    out_path = list_file.parent / "merged_output.mp4"
+
+    progress(0.3, desc=f"Ghép {len(done_chunks)} chunks...")
+    ret = subprocess.run([
+        FFMPEG_BIN, "-y", "-f", "concat", "-safe", "0",
+        "-i", str(list_file), "-c", "copy", str(out_path),
+    ], capture_output=True)
+    if ret.returncode != 0:
+        raise gr.Error(f"Ghép thất bại: {ret.stderr.decode()[-300:]}")
+
+    progress(1.0, desc="Ghép xong!")
+    tmp = tempfile.NamedTemporaryFile(delete=False, suffix=".mp4")
+    tmp.close()
+    shutil.copy2(str(out_path), tmp.name)
+    return tmp.name, f"✅ Ghép xong {len(done_chunks)} chunks"
+
+
+def run_merge_video_files(video_files, progress=gr.Progress()) -> tuple[str, str]:
+    if not video_files:
+        raise gr.Error("Chưa chọn file video.")
+    files = video_files if isinstance(video_files, list) else [video_files]
+    paths = [Path(f) if isinstance(f, str) else Path(f.name) for f in files]
+    paths = [p for p in paths if p.exists()]
+    if not paths:
+        raise gr.Error("Không tìm thấy file nào hợp lệ.")
+
+    list_file = Path(tempfile.mkdtemp()) / "concat.txt"
+    list_file.write_text("\n".join(f"file '{p}'" for p in paths), encoding="utf-8")
+    out_path = list_file.parent / "merged.mp4"
+
+    progress(0.3, desc=f"Ghép {len(paths)} video...")
+    ret = subprocess.run([
+        FFMPEG_BIN, "-y", "-f", "concat", "-safe", "0",
+        "-i", str(list_file), "-c", "copy", str(out_path),
+    ], capture_output=True)
+    if ret.returncode != 0:
+        raise gr.Error(f"Ghép thất bại: {ret.stderr.decode()[-300:]}")
+
+    progress(1.0, desc="Ghép xong!")
+    tmp = tempfile.NamedTemporaryFile(delete=False, suffix=".mp4")
+    tmp.close()
+    shutil.copy2(str(out_path), tmp.name)
+    return tmp.name, f"✅ Ghép xong {len(paths)} video"
+
+
+# ---------------------------------------------------------------------------
 # UI
 # ---------------------------------------------------------------------------
 
@@ -964,21 +1292,27 @@ with gr.Blocks(title="Dịch Video Tiếng Trung → Tiếng Việt") as demo:
             with gr.Row():
                 bg_volume_slider    = gr.Slider(0.0, 2.0, value=0.3, step=0.05, label="Âm lượng nhạc nền")
                 tts_volume_slider   = gr.Slider(0.0, 3.0, value=1.8, step=0.05, label="Âm lượng lồng tiếng")
+            with gr.Row():
+                tts_speed_slider    = gr.Slider(0.5, 2.0, value=1.0, step=0.05, label="⚡ Tốc độ TTS (atempo)")
+            with gr.Row():
+                keep_original_check    = gr.Checkbox(value=False, label="🔊 Giữ âm thanh gốc")
+                original_volume_slider = gr.Slider(0.0, 1.0, value=0.3, step=0.05, label="Âm lượng gốc")
             watermark_input        = gr.Textbox(value="nem_vietsub", label="Tên logo DVD (để trống nếu không muốn)")
             capcut_delay_slider    = gr.Slider(value=1.5, visible=False)
             capcut_rate_slider     = gr.Slider(value=1.0, visible=False)
-            keep_original_check    = gr.Checkbox(value=False, visible=False)
-            original_volume_slider = gr.Slider(value=0.3,  visible=False)
 
             with gr.Row():
                 btn_optimize    = gr.Button("✨ Tối ưu AI",   variant="secondary", visible=False)
                 btn_export_json = gr.Button("💾 Xuất JSON",    variant="secondary", visible=False)
+                btn_preview     = gr.Button("👁 Preview",      variant="secondary", visible=False)
                 btn_render      = gr.Button("🎬 Render Video", variant="primary",   visible=False)
+
+            preview_dur_slider = gr.Slider(30, 120, value=60, step=10, label="⏱ Thời lượng preview (giây)", visible=False)
 
             json_download = gr.File(label="Tải JSON bản dịch", visible=False, interactive=False)
             status_optimize = gr.Textbox(label="Trạng thái tối ưu", interactive=False)
             status_render   = gr.Textbox(label="Trạng thái render",  interactive=False)
-            video_output    = gr.File(label="Video kết quả (bấm tải về)", interactive=False)
+            video_output    = gr.Video(label="Video kết quả", interactive=False)
 
             # ── Events ────────────────────────────────────────────────────
             _stt_outs = [
@@ -986,6 +1320,7 @@ with gr.Blocks(title="Dịch Video Tiếng Trung → Tiếng Việt") as demo:
                 btn_optimize, btn_export_json, btn_render, btn_translate_only,
                 status_stt, video_stem_display, session_state,
             ]
+            _show_preview = lambda *a: (gr.update(visible=True), gr.update(visible=True))
 
             btn_stt.click(
                 fn=run_stt_translate,
@@ -1011,7 +1346,7 @@ with gr.Blocks(title="Dịch Video Tiếng Trung → Tiếng Việt") as demo:
                 fn=run_attach_video,
                 inputs=[attach_video_input, session_state],
                 outputs=[btn_optimize, btn_render, status_attach_video, session_state],
-            )
+            ).then(fn=_show_preview, outputs=[btn_preview, preview_dur_slider])
 
             tts_test_model.change(fn=get_voices, inputs=[tts_test_model], outputs=[tts_test_voice])
 
@@ -1039,11 +1374,21 @@ with gr.Blocks(title="Dịch Video Tiếng Trung → Tiếng Việt") as demo:
                 outputs=[json_download],
             )
 
+            btn_preview.click(
+                fn=run_preview,
+                inputs=[translation_table, bg_music_input, bg_volume_slider, tts_volume_slider,
+                        capcut_delay_slider, capcut_voice_input, capcut_rate_slider,
+                        keep_original_check, original_volume_slider, watermark_input,
+                        tts_speed_slider, preview_dur_slider, session_state],
+                outputs=[video_output, status_render],
+            )
+
             btn_render.click(
                 fn=run_render,
                 inputs=[translation_table, bg_music_input, bg_volume_slider, tts_volume_slider,
                         capcut_delay_slider, capcut_voice_input, capcut_rate_slider,
-                        keep_original_check, original_volume_slider, watermark_input, session_state],
+                        keep_original_check, original_volume_slider, watermark_input,
+                        tts_speed_slider, session_state],
                 outputs=[video_output, status_render],
             )
 
@@ -1180,6 +1525,120 @@ with gr.Blocks(title="Dịch Video Tiếng Trung → Tiếng Việt") as demo:
                 outputs=[cv_video_output, cv_status],
             )
 
+        # ══════════════════════════════════════════════════════════════════
+        # TAB: RENDER CHUNK
+        # ══════════════════════════════════════════════════════════════════
+        with gr.TabItem("🧩 Render Chunk"):
+            gr.Markdown(
+                "## Render video theo từng chunk 20 phút\n"
+                "Load JSON + gắn video ở tab **Dịch Video** trước, sau đó quay lại đây."
+            )
+
+            chunk_state_gr = gr.State([])
+
+            with gr.Row():
+                btn_chunk_plan = gr.Button("🔍 Xem Chunks", variant="secondary")
+                chunk_plan_status = gr.Textbox(label="Trạng thái", interactive=False, scale=3)
+
+            chunk_table_html = gr.HTML("<p>Nhấn '🔍 Xem Chunks' để bắt đầu.</p>")
+
+            gr.Markdown("### Cài đặt render (dùng chung cho tất cả chunks)")
+            with gr.Row():
+                ck_bg_music  = gr.Audio(label="🎵 Nhạc nền", type="filepath", sources=["upload"])
+                ck_bg_vol    = gr.Slider(0.0, 2.0, value=0.3, step=0.05, label="Âm lượng nhạc nền")
+                ck_tts_vol   = gr.Slider(0.0, 3.0, value=1.8, step=0.05, label="Âm lượng TTS")
+            with gr.Row():
+                ck_tts_speed = gr.Slider(0.5, 2.0, value=1.0, step=0.05, label="⚡ Tốc độ TTS")
+                ck_keep_orig = gr.Checkbox(value=False, label="🔊 Giữ âm thanh gốc")
+                ck_orig_vol  = gr.Slider(0.0, 1.0, value=0.3, step=0.05, label="Âm lượng gốc")
+            with gr.Row():
+                ck_voice     = gr.Dropdown(
+                    label="Giọng CapCut TTS",
+                    choices=[("-- Edge TTS --", "")] + [(n, vt) for n, vt, _ in CAPCUT_VOICES_VI],
+                    value="BV421_vivn_streaming",
+                )
+                ck_watermark = gr.Textbox(value="nem_vietsub", label="Watermark")
+            ck_delay = gr.Slider(value=1.5, visible=False)
+            ck_rate  = gr.Slider(value=1.0, visible=False)
+
+            with gr.Row():
+                btn_chunk_render = gr.Button("🚀 Render tất cả chunks", variant="primary")
+                btn_chunk_merge  = gr.Button("🔗 Ghép tất cả chunks xong", variant="secondary")
+
+            chunk_render_status = gr.Textbox(label="Trạng thái render", interactive=False)
+
+            gr.Markdown("### Làm lại 1 chunk")
+            with gr.Row():
+                rerender_idx = gr.Number(label="Số thứ tự chunk (bắt đầu từ 1)", value=1, precision=0)
+                btn_rerender = gr.Button("↺ Làm lại chunk này", variant="secondary")
+
+            merged_video = gr.Video(label="Video sau khi ghép", interactive=False)
+
+            def _chunk_plan_wrap(state):
+                html, chunks = chunk_plan(state)
+                n = len(chunks)
+                status = f"📋 {n} chunks × {CHUNK_MINUTES} phút" if chunks else "⚠️ Thiếu dữ liệu"
+                return html, chunks, status
+
+            btn_chunk_plan.click(
+                fn=_chunk_plan_wrap,
+                inputs=[session_state],
+                outputs=[chunk_table_html, chunk_state_gr, chunk_plan_status],
+            )
+
+            btn_chunk_render.click(
+                fn=run_chunk_render,
+                inputs=[
+                    chunk_state_gr,
+                    ck_bg_music, ck_bg_vol, ck_tts_vol,
+                    ck_delay, ck_voice, ck_rate,
+                    ck_keep_orig, ck_orig_vol, ck_watermark,
+                    ck_tts_speed, session_state,
+                ],
+                outputs=[chunk_table_html, chunk_state_gr, chunk_render_status],
+            )
+
+            btn_rerender.click(
+                fn=lambda idx, *args: run_chunk_rerender(int(idx) - 1, *args),
+                inputs=[
+                    rerender_idx, chunk_state_gr,
+                    ck_bg_music, ck_bg_vol, ck_tts_vol,
+                    ck_delay, ck_voice, ck_rate,
+                    ck_keep_orig, ck_orig_vol, ck_watermark,
+                    ck_tts_speed, session_state,
+                ],
+                outputs=[chunk_table_html, chunk_state_gr, chunk_render_status],
+            )
+
+            btn_chunk_merge.click(
+                fn=run_merge_chunks,
+                inputs=[chunk_state_gr],
+                outputs=[merged_video, chunk_render_status],
+            )
+
+        # ══════════════════════════════════════════════════════════════════
+        # TAB: GHÉP VIDEO
+        # ══════════════════════════════════════════════════════════════════
+        with gr.TabItem("🔗 Ghép Video"):
+            gr.Markdown(
+                "## Ghép nhiều file video thành 1\n"
+                "Upload các file video theo thứ tự muốn ghép."
+            )
+            merge_files = gr.File(
+                label="Chọn video để ghép (theo thứ tự)",
+                file_count="multiple",
+                file_types=["video"],
+            )
+            btn_merge_files = gr.Button("🔗 Ghép video", variant="primary")
+            merge_status    = gr.Textbox(label="Trạng thái", interactive=False)
+            merge_output    = gr.Video(label="Video sau ghép", interactive=False)
+
+            btn_merge_files.click(
+                fn=run_merge_video_files,
+                inputs=[merge_files],
+                outputs=[merge_output, merge_status],
+            )
+
 
 if __name__ == "__main__":
     demo.launch(
@@ -1188,4 +1647,5 @@ if __name__ == "__main__":
         share=False,
         theme=gr.themes.Soft(),
         head=f"<script>{_BEEP_JS}</script>",
+        show_error=True,
     )

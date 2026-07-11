@@ -10,9 +10,18 @@ __pycache__/
 input/
 output/
 workdir/
+srt/
 
 # Media files
 *.mp3
 *.mp4
 *.wav
 *.srt
+
+# Third-party libs / large deps (not part of this repo)
+TikTok-Api/
+electron/
+
+# Logs and local scratch data
+*.log
+content_scenes*.json
