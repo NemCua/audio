@@ -192,8 +192,11 @@ def separate_background(video_path: Path, work_dir: Path) -> Path:
 # STEP 2: STT via Groq Whisper
 # ---------------------------------------------------------------------------
 
-def stt_groq(audio_path: Path, groq_key: str) -> list[dict]:
-    print("  → STT Groq Whisper (zh)...")
+STT_MODEL = os.environ.get("GROQ_STT_MODEL", "whisper-large-v3")
+
+
+def stt_groq(audio_path: Path, groq_key: str, model: str = STT_MODEL) -> list[dict]:
+    print(f"  → STT Groq Whisper (zh, model={model})...")
     from groq import Groq
     client = Groq(api_key=groq_key)
 
@@ -228,7 +231,7 @@ def stt_groq(audio_path: Path, groq_key: str) -> list[dict]:
         with open(chunk_path, "rb") as f:
             resp = client.audio.transcriptions.create(
                 file=("audio.mp3", f, "audio/mpeg"),
-                model="whisper-large-v3",
+                model=model,
                 language="zh",
                 response_format="verbose_json",
             )
@@ -1183,6 +1186,8 @@ def main():
     parser.add_argument("--input", default=None,  help="Đường dẫn video (mặc định: lấy từ input/)")
     parser.add_argument("--slow",  type=float, default=1.0,
                         help="Kéo dãn video chậm lại X lần trước khi xử lý (vd: --slow 1.2)")
+    parser.add_argument("--stt-model", default=STT_MODEL,
+                        help="Model STT Groq (vd: whisper-large-v3 hoặc whisper-large-v3-turbo)")
     args = parser.parse_args()
 
     groq_key = args.key or os.environ.get("GROQ_API_KEY", "")
@@ -1227,7 +1232,7 @@ def main():
 
         # 3. STT
         print("\n[3/6] Speech-to-Text (Groq Whisper)")
-        zh_cues = stt_groq(audio_stt_path, groq_key)
+        zh_cues = stt_groq(audio_stt_path, groq_key, model=args.stt_model)
         srt_zh_path.write_text(build_srt(zh_cues), encoding="utf-8")
         print(f"       {len(zh_cues)} segments")
 
