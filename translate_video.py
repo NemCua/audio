@@ -346,6 +346,7 @@ def translate_chunk(cues: list[dict], context_cues: list[dict],
         translated = parse_srt(raw)
         if len(translated) == len(cues):
             for src, tgt in zip(cues, translated):
+                tgt["idx"]       = src["idx"]
                 tgt["start"]     = src["start"]
                 tgt["end"]       = src["end"]
                 tgt["start_sec"] = src["start_sec"]
