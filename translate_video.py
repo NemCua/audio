@@ -131,12 +131,17 @@ def atempo_chain(ratio: float) -> list[str]:
 # ---------------------------------------------------------------------------
 
 def extract_audio_for_stt(video_path: Path, audio_path: Path):
-    """Tách audio chất lượng thấp tối ưu cho Whisper STT (16kHz mono 32kbps)."""
-    print("  → Tách audio cho STT (16kHz mono 32kbps)...")
+    """Tách audio cho Whisper STT (16kHz mono 64kbps).
+
+    Bitrate quá thấp (từng dùng 32k/16k) làm mất chi tiết âm thanh ở ranh
+    giới giữa các câu, khiến Whisper gộp nhầm nhiều câu liền nhau thành
+    một segment duy nhất thay vì tách đúng theo khoảng lặng.
+    """
+    print("  → Tách audio cho STT (16kHz mono 64kbps)...")
     run([
         FFMPEG_BIN, "-y", "-i", str(video_path),
         "-vn", "-acodec", "libmp3lame",
-        "-ac", "1", "-ar", "16000", "-b:a", "32k",
+        "-ac", "1", "-ar", "16000", "-b:a", "64k",
         str(audio_path),
     ])
     size = audio_path.stat().st_size
@@ -144,7 +149,7 @@ def extract_audio_for_stt(video_path: Path, audio_path: Path):
         tmp = audio_path.with_suffix(".tmp.mp3")
         run([
             FFMPEG_BIN, "-y", "-i", str(audio_path),
-            "-acodec", "libmp3lame", "-ac", "1", "-ar", "16000", "-b:a", "16k",
+            "-acodec", "libmp3lame", "-ac", "1", "-ar", "16000", "-b:a", "32k",
             str(tmp),
         ])
         tmp.replace(audio_path)
