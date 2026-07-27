@@ -1,0 +1,963 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="UTF-8"/>
+<title>Threads Export Render — nội bộ, dùng bởi Playwright (mục 5.17 CONTEXT.md)</title>
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; }
+@font-face {
+  font-family: "SFPro";
+  src: local("SFNS"), local(".AppleSystemUIFont");
+}
+body {
+  font-family: "SFPro", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif;
+  background: #0a0c14;
+  color: #e2e8f0;
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+
+header {
+  background: #12152a;
+  border-bottom: 1px solid #1e2340;
+  padding: 14px 28px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-shrink: 0;
+}
+header h1 { font-size: 18px; font-weight: 700; color: #a78bfa; }
+header span { font-size: 12px; color: #4b5563; }
+
+.layout {
+  display: grid;
+  grid-template-columns: 300px 1fr 460px;
+  flex: 1;
+  overflow: hidden;
+}
+
+/* ============ SIDEBAR (chức năng) ============ */
+.sidebar {
+  background: #12152a;
+  border-right: 1px solid #1e2340;
+  overflow-y: auto;
+  padding: 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.sidebar h2 {
+  font-size: 11px;
+  font-weight: 700;
+  color: #4b5563;
+  text-transform: uppercase;
+  letter-spacing: .08em;
+  margin-bottom: 8px;
+  padding: 0 4px;
+}
+
+.feature-item {
+  border: 1px solid #1e2340;
+  border-radius: 10px;
+  background: #0f1220;
+  overflow: hidden;
+  transition: border-color .15s;
+}
+.feature-item.active { border-color: #7c3aed; }
+
+.feature-head {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 14px;
+  cursor: pointer;
+  user-select: none;
+}
+.feature-head .num {
+  width: 22px; height: 22px;
+  border-radius: 50%;
+  background: #1e1b4b;
+  color: #a78bfa;
+  font-size: 11px;
+  font-weight: 800;
+  display: flex; align-items: center; justify-content: center;
+  flex-shrink: 0;
+}
+.feature-item.done .feature-head .num { background: #14532d; color: #4ade80; }
+.feature-head .label { flex: 1; font-size: 13px; font-weight: 600; color: #e2e8f0; }
+.feature-head .status-dot {
+  width: 8px; height: 8px; border-radius: 50%;
+  background: #374151; flex-shrink: 0;
+}
+.feature-item.done .status-dot { background: #4ade80; }
+.status-dot.err { background: #ef4444; }
+.feature-head .chevron { font-size: 10px; color: #4b5563; transition: transform .15s; }
+.feature-item.open .feature-head .chevron { transform: rotate(90deg); }
+
+.feature-body {
+  display: none;
+  padding: 0 14px 16px;
+  border-top: 1px solid #1e2340;
+}
+.feature-item.open .feature-body { display: block; padding-top: 14px; }
+
+.feature-body label {
+  display: block;
+  font-size: 11px;
+  color: #9ca3af;
+  margin-bottom: 6px;
+  font-weight: 600;
+}
+.feature-body .hint {
+  font-size: 11px;
+  color: #6b7280;
+  line-height: 1.5;
+  margin-bottom: 12px;
+}
+.feature-body input[type="text"],
+.feature-body textarea {
+  width: 100%;
+  background: #0a0c14;
+  border: 1px solid #1e2340;
+  border-radius: 7px;
+  color: #e2e8f0;
+  font-size: 13px;
+  padding: 8px 10px;
+  outline: none;
+  font-family: inherit;
+  margin-bottom: 4px;
+}
+.feature-body textarea { min-height: 70px; resize: vertical; }
+.feature-body input[type="text"]:focus,
+.feature-body textarea:focus { border-color: #7c3aed; }
+
+.drop-zone {
+  border: 2px dashed #1e2340;
+  border-radius: 8px;
+  padding: 22px 12px;
+  text-align: center;
+  cursor: pointer;
+  position: relative;
+  transition: border-color .2s, background .2s;
+  margin-bottom: 10px;
+}
+.drop-zone:hover, .drop-zone.over { border-color: #7c3aed; background: #1e1b4b22; }
+.drop-zone input[type=file] {
+  position: absolute; inset: 0; opacity: 0; cursor: pointer;
+}
+.drop-zone .icon { font-size: 26px; margin-bottom: 6px; }
+.drop-zone p { font-size: 12px; color: #6b7280; }
+.drop-zone .fname { font-size: 11px; color: #a78bfa; margin-top: 6px; word-break: break-all; }
+
+.btn {
+  width: 100%;
+  border: none;
+  border-radius: 8px;
+  font-size: 13px;
+  font-weight: 600;
+  padding: 10px 14px;
+  cursor: pointer;
+  transition: opacity .15s, transform .1s;
+  margin-top: 6px;
+}
+.btn:hover { opacity: .88; }
+.btn:active { transform: scale(.98); }
+.btn:disabled { opacity: .4; cursor: not-allowed; }
+.btn-primary { background: linear-gradient(135deg,#7c3aed,#5b21b6); color: #fff; }
+.btn-ghost { background: #1e2340; color: #a78bfa; }
+
+.slider-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 10px;
+}
+.slider-row input[type=range] {
+  flex: 1;
+  accent-color: #7c3aed;
+}
+.slider-row .slider-val {
+  font-size: 11px;
+  color: #a78bfa;
+  font-weight: 700;
+  min-width: 34px;
+  text-align: right;
+}
+
+.upcoming-feature {
+  border: 1px dashed #262b45;
+  border-radius: 10px;
+  padding: 12px 14px;
+  font-size: 12px;
+  color: #4b5563;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.upcoming-feature .num {
+  width: 22px; height: 22px;
+  border-radius: 50%;
+  background: #171a2e;
+  color: #4b5563;
+  font-size: 11px;
+  font-weight: 800;
+  display: flex; align-items: center; justify-content: center;
+  flex-shrink: 0;
+}
+
+/* ============ MAIN (preview 9:16) ============ */
+.main {
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 32px;
+  gap: 16px;
+}
+.main-toolbar {
+  width: 100%;
+  max-width: 460px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+.main-toolbar h3 { font-size: 13px; color: #9ca3af; font-weight: 600; }
+.main-toolbar .ratio-badge {
+  font-size: 11px;
+  color: #a78bfa;
+  background: #1e1b4b;
+  padding: 4px 10px;
+  border-radius: 999px;
+  font-weight: 700;
+}
+
+.preview-frame {
+  width: 100%;
+  max-width: 460px;
+  aspect-ratio: 9 / 16;
+  background: #000;
+  border-radius: 16px;
+  overflow: hidden;
+  position: relative;
+  box-shadow: 0 20px 60px rgba(0,0,0,0.5);
+  border: 1px solid #1e2340;
+  container-type: inline-size; /* cho phép overlay bên trong dùng đơn vị cqw,
+                                   tự co giãn đúng tỷ lệ theo chiều rộng khung
+                                   preview thật, không phụ thuộc kích thước màn hình */
+}
+.preview-frame video {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+.preview-empty {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  color: #374151;
+  text-align: center;
+  padding: 20px;
+}
+.preview-empty .icon { font-size: 44px; opacity: .5; }
+.preview-empty p { font-size: 13px; color: #4b5563; }
+
+/* ============================================================
+   Stack các thẻ Threads (post/comment) chồng lên video — BÊ NGUYÊN SI
+   từ threads_ui_mock.html (.thr-card/.thr-row/...), chỉ đổi đơn vị px
+   sang cqw theo đúng tỷ lệ thiết kế gốc 1080px (1cqw = 1% chiều rộng
+   .preview-frame): Xpx → (X/1080*100)cqw. Không tự vẽ lại layout.
+
+   .thr-stack: container tuyệt đối, các thẻ .tcard chồng dọc theo đúng
+   cấu trúc .thr-card gốc; khi tràn khung, JS dịch cả stack lên để thẻ
+   mới nhất luôn thấy được.
+   ============================================================ */
+.thr-stack {
+  position: absolute;
+  left: 2.96cqw; right: 2.96cqw;   /* 32px */
+  top: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 1.3cqw;                      /* ~14px, khoảng cách giữa 2 thr-card */
+  padding-top: 22.2cqw;             /* 240px — thẻ đầu tiên bắt đầu như mock */
+  transition: transform .45s cubic-bezier(.4,0,.2,1);
+  z-index: 5;
+  pointer-events: none;
+}
+.tcard {
+  background: #ffffff;
+  color: #000;
+  border-radius: 2.22cqw;           /* 24px */
+  padding: 2.96cqw 2.78cqw;         /* 32px 30px */
+  box-shadow: 0 1.85cqw 5.56cqw rgba(0,0,0,0.35);
+  font-family: "SFPro", -apple-system, sans-serif;
+  animation: tcard-in .35s cubic-bezier(.2,.8,.2,1);
+}
+@keyframes tcard-in {
+  from { opacity: 0; transform: translateY(3cqw) scale(.97); }
+  to   { opacity: 1; transform: translateY(0) scale(1); }
+}
+/* .thr-row: avatar (trái) + nội dung thụt vào theo avatar (giữa) + trái
+   tim/menu (phải, ngang hàng tên/giờ). align-items:flex-start là mấu chốt
+   để .follow-badge không bị kéo giãn lệch vị trí (xem giải thích trong mock). */
+.tcard .thr-row { display: flex; gap: 2.04cqw; align-items: flex-start; }
+.tcard .thr-row.post-head-row { align-items: center; }
+.tcard .avatar-wrap { position: relative; flex-shrink: 0; width: 11.11cqw; height: 11.11cqw; }
+.tcard .avatar-wrap:has(.avatar.sm) { width: 9.63cqw; height: 9.63cqw; }
+.tcard .avatar {
+  width: 11.11cqw; height: 11.11cqw;
+  border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 4.07cqw; font-weight: 800; color: #fff;
+  border: .46cqw solid #f0f0f0;
+  overflow: hidden;
+}
+.tcard .avatar.sm { width: 9.63cqw; height: 9.63cqw; font-size: 3.52cqw; }
+.tcard .follow-badge {
+  position: absolute; bottom: -.46cqw; right: -.46cqw;
+  width: 5.37cqw; height: 5.37cqw;
+  border-radius: 50%; background: #000; border: .46cqw solid #fff;
+}
+.tcard .avatar-wrap:has(.avatar.sm) .follow-badge { width: 4.63cqw; height: 4.63cqw; }
+.tcard .follow-badge::before,
+.tcard .follow-badge::after {
+  content: ""; position: absolute; top: 50%; left: 50%;
+  background: #fff; border-radius: 1px; transform: translate(-50%,-50%);
+}
+.tcard .follow-badge::before { width: 2.04cqw; height: .28cqw; }
+.tcard .follow-badge::after  { width: .28cqw; height: 2.04cqw; }
+.tcard .avatar-wrap:has(.avatar.sm) .follow-badge::before { width: 1.67cqw; height: .28cqw; }
+.tcard .avatar-wrap:has(.avatar.sm) .follow-badge::after  { width: .28cqw; height: 1.67cqw; }
+
+.tcard .thr-main { flex: 1; min-width: 0; padding-top: .56cqw; }
+.tcard .thr-head { display: flex; align-items: flex-start; gap: 1.11cqw; }
+.tcard .thr-head .who { flex: 1; min-width: 0; }
+.tcard .uname-row { display: flex; align-items: center; gap: 1.11cqw; }
+.tcard .uname { font-size: 3.33cqw; font-weight: 700; color: #000; }
+
+/* Làm mờ tên + avatar (mục 5.10 CONTEXT.md) — bật/tắt qua checkbox sidebar,
+   giúp khỏi phải nghĩ tên thật/tìm ảnh thật khi soạn kịch bản. KHÔNG áp
+   dụng cho ảnh đính kèm trong thân bài (thr-img-wrap) — chỉ định danh
+   (tên/avatar) mới bị mờ, nội dung ảnh minh hoạ vẫn rõ. */
+#preview-frame.blur-identity .uname { filter: blur(5px); }
+#preview-frame.blur-identity .avatar { filter: blur(6px); }
+/* TikTok (mục 5.42 CONTEXT.md) — bug đã gặp: rule blur này trước đây chỉ
+   thêm ở index.html, quên đồng bộ sang export_render.html nên video xuất
+   ra không hề mờ tên/avatar TikTok dù preview đã đúng. */
+#preview-frame.blur-identity .tk-uname { filter: blur(5px); }
+#preview-frame.blur-identity .tk-avatar { filter: blur(6px); }
+.tcard .badge-author {
+  font-size: 2.04cqw; background: #ececec; color: #555;
+  padding: .37cqw 1.2cqw; border-radius: .74cqw; font-weight: 600;
+}
+.tcard .time { font-size: 2.59cqw; color: #767676; }
+.tcard .thr-head .side-actions {
+  display: flex; align-items: center; gap: .74cqw;
+  flex-shrink: 0; padding-top: .37cqw;
+}
+.tcard .thr-head .side-actions svg { width: 3.15cqw; height: 3.15cqw; }
+.tcard .menu-dots {
+  font-size: 3.52cqw; color: #767676; font-weight: 900;
+  letter-spacing: .19cqw; line-height: 1; padding: 0 .37cqw;
+}
+.tcard .thr-body {
+  font-size: 3.33cqw; line-height: 1.45; color: #000;
+  margin-top: 2.04cqw; white-space: pre-wrap;
+}
+.tcard .thr-stats {
+  display: flex; align-items: center; gap: 4.07cqw;
+  margin-top: 2.78cqw; color: #000; font-size: 2.87cqw;
+}
+.tcard .thr-stats .stat { display: flex; align-items: center; gap: 1.02cqw; }
+.tcard .thr-stats .stat.liked { color: #ff3b5c; }
+.tcard .thr-stats svg { width: 3.7cqw; height: 3.7cqw; }
+.tcard .icon-thr-fill { fill: currentColor; }
+
+/* Comment + reply: đường nối dọc, đúng kỹ thuật mock — line phủ hết chiều
+   cao còn lại (top: đáy avatar cha, bottom:0), avatar reply solid tự che
+   phần thừa, không cần đo/đoán gì cả. */
+.tcard .thread-group { position: relative; }
+.tcard .thread-group .connector-line {
+  position: absolute;
+  left: 4.81cqw;   /* tâm avatar sm (9.63cqw / 2) */
+  top: 9.63cqw;    /* đáy avatar sm của comment gốc */
+  bottom: 0;
+  width: .19cqw;
+  background: #d9d9d9;
+  z-index: 0;
+}
+.tcard .reply-row { margin-top: 1.67cqw; position: relative; z-index: 1; }
+
+/* Ảnh đính kèm — quy đổi từ mock (thr-img-wrap: 20px/18px/56px/26px) */
+.tcard .thr-img-wrap {
+  position: relative;
+  border-radius: 1.85cqw;
+  overflow: hidden;
+  margin-top: 1.85cqw;
+  line-height: 0;
+}
+.tcard .thr-img-wrap img { width: 100%; display: block; }
+.tcard .thr-img-wrap .img-share-btn {
+  position: absolute;
+  top: 1.67cqw; right: 1.67cqw;
+  width: 5.19cqw; height: 5.19cqw;
+  border-radius: 50%;
+  background: rgba(0,0,0,0.45);
+  backdrop-filter: blur(4px);
+  display: flex; align-items: center; justify-content: center;
+}
+.tcard .thr-img-wrap .img-share-btn svg { width: 2.41cqw; height: 2.41cqw; color: #fff; }
+
+/* ============================================================
+   TikTok comment/reply (mục 5.39 CONTEXT.md) — ĐỒNG BỘ NGUYÊN VĂN với
+   index.html (không tự vẽ lại — mục 7.1). Sửa 1 nơi thì sửa cả 2 file.
+   ============================================================ */
+.tk-comment {
+  display: flex;
+  gap: 1.667cqw;
+  margin-bottom: 2.222cqw;
+  background: #ffffff;
+  border-radius: 1.852cqw;
+  padding: 2.222cqw 2.593cqw;
+  box-shadow: 0 0.37cqw 1.667cqw rgba(0,0,0,0.18);
+}
+.tk-comment-reply {
+  max-width: 87.2%;
+  margin-left: auto;
+}
+.tk-comment-reply .tk-avatar { width: 5.556cqw; height: 5.556cqw; }
+
+.tk-avatar {
+  width: 7.037cqw;
+  height: 7.037cqw;
+  border-radius: 50%;
+  flex-shrink: 0;
+  background: #ddd;
+  overflow: hidden;
+}
+.tk-avatar img { width: 100%; height: 100%; object-fit: cover; display: block; }
+
+.tk-main { flex: 1; min-width: 0; }
+
+.tk-uname-row {
+  display: flex;
+  align-items: baseline;
+  gap: 0.556cqw;
+  margin-bottom: 0.741cqw;
+}
+.tk-uname {
+  font-size: 2.963cqw;
+  font-weight: 600;
+  color: #9a9a9a;
+}
+.tk-creator-badge {
+  font-size: 2.4cqw;
+  font-weight: 600;
+  color: #00bad0;
+}
+
+.tk-text {
+  font-size: 3.333cqw;
+  font-weight: 600;
+  color: #16161a;
+  line-height: 1.35;
+  word-wrap: break-word;
+}
+
+.tk-img-wrap {
+  margin-top: 1.481cqw;
+  border-radius: 1.111cqw;
+  overflow: hidden;
+  max-width: 70%;
+}
+.tk-img-wrap img { width: 100%; display: block; }
+
+.tk-foot {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-top: 1.481cqw;
+}
+.tk-foot-left {
+  display: flex;
+  align-items: center;
+  gap: 2.037cqw;
+  font-size: 2.593cqw;
+  color: #9a9a9a;
+}
+.tk-foot-left .tk-reply-btn { font-weight: 600; }
+
+.tk-foot-right {
+  display: flex;
+  align-items: center;
+  gap: 1.667cqw;
+}
+
+.tk-like {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 0.741cqw;
+}
+.tk-like svg { width: 4.167cqw; height: 4.167cqw; }
+.tk-like.liked svg { color: #fe2c55; }
+.tk-like:not(.liked) svg { color: #b0b0b0; }
+.tk-like-count {
+  font-size: 2.87cqw;
+  color: #9a9a9a;
+}
+
+.tk-view-replies {
+  display: flex;
+  align-items: center;
+  gap: 1.296cqw;
+  margin-top: 0.926cqw;
+  font-size: 2.778cqw;
+  font-weight: 600;
+  color: #9a9a9a;
+}
+.tk-view-replies::before {
+  content: "";
+  width: 6.296cqw;
+  height: 0.185cqw;
+  background: #9a9a9a;
+}
+.tk-view-replies svg { width: 2.037cqw; height: 2.037cqw; }
+
+.thr-reply-standalone { margin-left: 11.11cqw; }
+
+/* Overlay meme (video/gif) — phủ giữa khung, tạm thời trong lúc step meme chạy */
+.meme-overlay {
+  position: absolute;
+  left: 5cqw; right: 5cqw;
+  /* Neo mép trên cố định — đồng bộ index.html, mục 5.31 CONTEXT.md. */
+  top: 20%;
+  z-index: 8;
+  border-radius: 2cqw;
+  overflow: hidden;
+  box-shadow: 0 2cqw 6cqw rgba(0,0,0,0.5);
+  line-height: 0;
+}
+.meme-overlay img, .meme-overlay video { width: 100%; display: block; }
+.meme-overlay .meme-ph {
+  aspect-ratio: 1/1;
+  background: repeating-linear-gradient(45deg,#333,#333 3cqw,#2a2a2a 3cqw,#2a2a2a 6cqw);
+  display: flex; align-items: center; justify-content: center;
+  color: #ccc; font-size: 3cqw; font-weight: 700; text-align: center; padding: 4cqw;
+}
+
+.preview-info {
+  width: 100%;
+  max-width: 460px;
+  font-size: 11px;
+  color: #6b7280;
+  display: flex;
+  justify-content: space-between;
+}
+
+/* ============ Thanh điều khiển Play dưới preview ============ */
+.play-bar {
+  width: 100%;
+  max-width: 460px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+.play-bar button {
+  border: none;
+  border-radius: 8px;
+  background: linear-gradient(135deg,#7c3aed,#5b21b6);
+  color: #fff;
+  font-size: 14px;
+  font-weight: 700;
+  padding: 9px 18px;
+  cursor: pointer;
+  flex-shrink: 0;
+}
+.play-bar button:hover { opacity: .88; }
+.play-bar button:disabled { opacity: .4; cursor: not-allowed; }
+.play-bar .progress {
+  flex: 1;
+  height: 6px;
+  background: #1e2340;
+  border-radius: 999px;
+  overflow: hidden;
+}
+.play-bar .progress .bar { height: 100%; width: 0; background: #7c3aed; }
+.play-bar .tlabel { font-size: 11px; color: #9ca3af; min-width: 74px; text-align: right; font-variant-numeric: tabular-nums; }
+
+/* ============ PANEL PHẢI: KỊCH BẢN (step list) ============ */
+.script-panel {
+  background: #12152a;
+  border-left: 1px solid #1e2340;
+  overflow-y: auto;
+  padding: 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.script-panel h2 {
+  font-size: 11px; font-weight: 700; color: #4b5563;
+  text-transform: uppercase; letter-spacing: .08em; padding: 0 2px;
+}
+.add-step-bar { display: flex; gap: 6px; flex-wrap: wrap; }
+.add-step-bar button {
+  flex: 1 1 auto;
+  min-width: 62px;
+  border: 1px dashed #4c1d95;
+  background: #1c1a2e;
+  color: #c4b5fd;
+  border-radius: 8px;
+  font-size: 11px;
+  font-weight: 600;
+  padding: 8px 6px;
+  cursor: pointer;
+}
+.add-step-bar button:hover { background: #241f3d; }
+
+.io-btn {
+  border: 1px solid #2d2b45; background: #16142a; color: #a78bfa;
+  border-radius: 6px; font-size: 11px; font-weight: 600;
+  padding: 6px 8px; cursor: pointer; white-space: nowrap;
+}
+.io-btn:hover { background: #1e1c38; }
+
+.step-card {
+  border: 1px solid #1e2340;
+  border-radius: 10px;
+  background: #0f1220;
+  overflow: hidden;
+  cursor: grab;
+}
+.step-card.active-now { border-color: #7c3aed; box-shadow: 0 0 0 1px #7c3aed; }
+.step-card.dragging { opacity: .4; }
+.step-card.drag-over { border-color: #4ade80; box-shadow: 0 0 0 1px #4ade80; }
+/* Hàng chứa step chính + audio SONG SONG bám theo nó — 2 cột kề nhau để
+   biểu thị trực quan "cùng lúc" (mục 5.13 CONTEXT.md), thay vì xếp dọc. */
+.step-row { display: flex; gap: 8px; align-items: stretch; }
+.step-row > .step-card { flex: 1; min-width: 0; }
+.step-row > .step-card.t-audio-parallel { flex: 0 0 42%; }
+.step-card .sc-head {
+  display: flex; align-items: center; gap: 8px;
+  padding: 10px 12px;
+}
+.step-card .sc-idx {
+  width: 20px; height: 20px; border-radius: 50%;
+  background: #1e1b4b; color: #a78bfa;
+  font-size: 10px; font-weight: 800;
+  display: flex; align-items: center; justify-content: center; flex-shrink: 0;
+}
+.step-card .sc-type {
+  font-size: 10px; font-weight: 700; padding: 2px 7px; border-radius: 5px;
+  background: #1e3a5f; color: #60a5fa; flex-shrink: 0;
+}
+.step-card .sc-type.t-meme { background: #422006; color: #fbbf24; }
+.step-card .sc-type.t-audio { background: #14532d; color: #4ade80; }
+.step-card .sc-time { margin-left: auto; font-size: 10px; color: #6b7280; font-variant-numeric: tabular-nums; }
+.step-card .sc-summary {
+  padding: 0 12px 8px; font-size: 12px; color: #cbd5e1;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.step-card .sc-voice {
+  padding: 0 12px 8px; font-size: 10px; color: #a78bfa;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.step-card .sc-ctrls {
+  display: flex; align-items: center; gap: 10px;
+  padding: 8px 12px; border-top: 1px solid #1e2340; flex-wrap: wrap;
+}
+.step-card .sc-ctrls label { font-size: 10px; color: #9ca3af; display: flex; align-items: center; gap: 4px; }
+.step-card .sc-ctrls input[type=number] {
+  width: 52px; background: #0a0c14; border: 1px solid #1e2340;
+  border-radius: 5px; color: #e2e8f0; font-size: 11px; padding: 3px 6px;
+}
+.step-card .sc-ctrls .clear-toggle { display: flex; align-items: center; gap: 5px; cursor: pointer; }
+.step-card .sc-ctrls .sc-actions { margin-left: auto; display: flex; gap: 4px; }
+.step-card .sc-ctrls .sc-actions button {
+  background: #1e2340; border: none; color: #94a3b8;
+  border-radius: 5px; font-size: 11px; padding: 3px 7px; cursor: pointer;
+}
+.step-card .sc-ctrls .sc-actions button:hover { background: #2a3050; color: #e2e8f0; }
+.script-empty { color: #4b5563; font-size: 12px; padding: 16px 4px; text-align: center; }
+
+/* Modal soạn nội dung step */
+.step-modal-overlay {
+  display: none; position: fixed; inset: 0;
+  background: rgba(0,0,0,0.6); z-index: 100;
+  align-items: center; justify-content: center;
+}
+.step-modal-overlay.open { display: flex; }
+.step-modal {
+  background: #12152a; border: 1px solid #1e2340; color: #e2e8f0;
+  border-radius: 14px; width: min(420px,92vw); max-height: 86vh; overflow-y: auto;
+  padding: 22px;
+}
+.step-modal h3 { font-size: 16px; margin-bottom: 14px; color: #a78bfa; }
+.step-modal label { display: block; font-size: 11px; color: #9ca3af; margin: 12px 0 5px; font-weight: 600; }
+.step-modal input[type=text], .step-modal textarea, .step-modal input[type=number] {
+  width: 100%; background: #0a0c14; border: 1px solid #1e2340; border-radius: 7px;
+  color: #e2e8f0; font-size: 13px; padding: 8px 10px; outline: none; font-family: inherit;
+}
+.step-modal textarea { min-height: 70px; resize: vertical; }
+.step-modal input:focus, .step-modal textarea:focus { border-color: #7c3aed; }
+.step-modal .row2 { display: flex; gap: 10px; }
+.step-modal .row2 > div { flex: 1; }
+.media-dropzone {
+  border: 2px dashed #2d2b45; border-radius: 8px; padding: 20px 10px;
+  text-align: center; cursor: pointer; background: #0a0c14;
+  font-size: 12px; color: #94a3b8; transition: border-color .15s, background .15s;
+}
+.media-dropzone:hover, .media-dropzone.over { border-color: #7c3aed; background: #16142a; }
+
+/* Lưới thư viện có sẵn (mục 5.15) — nghe/xem thử trước khi chọn */
+.lib-toggle-row { margin-bottom: 8px; }
+.lib-toggle-btn {
+  width: 100%; border: 1px solid #2d2b45; background: #16142a; color: #a78bfa;
+  border-radius: 7px; font-size: 12px; font-weight: 600; padding: 8px 10px; cursor: pointer;
+}
+.lib-toggle-btn:hover { background: #1e1c38; }
+.lib-grid {
+  display: grid; gap: 6px; max-height: 220px; overflow-y: auto;
+  padding: 8px; margin-bottom: 8px; background: #0a0c14; border-radius: 8px; border: 1px solid #1e2340;
+}
+.lib-grid:has(.lib-item-audio) { grid-template-columns: 1fr; }
+.lib-grid:has(.lib-item-meme) { grid-template-columns: repeat(3, 1fr); }
+.lib-empty { font-size: 11px; color: #6b7280; padding: 6px; grid-column: 1/-1; }
+.lib-item { cursor: pointer; border-radius: 6px; border: 1px solid transparent; }
+.lib-item.selected { border-color: #4ade80; background: #0f2417; }
+.lib-item-audio {
+  display: flex; align-items: center; gap: 8px; padding: 6px 8px;
+}
+.lib-item-audio:hover { background: #16142a; }
+.lib-play-btn {
+  flex-shrink: 0; width: 26px; height: 26px; border-radius: 50%; border: none;
+  background: #1e1b4b; color: #a78bfa; cursor: pointer; font-size: 11px;
+}
+.lib-play-btn:hover { background: #2a2560; }
+.lib-item-audio .lib-item-name {
+  font-size: 12px; color: #cbd5e1; overflow: hidden; text-overflow: ellipsis;
+  white-space: nowrap; flex: 1;
+}
+.lib-item-meme {
+  display: flex; flex-direction: column; align-items: center; gap: 4px; padding: 6px; text-align: center;
+}
+.lib-item-meme:hover { background: #16142a; }
+.lib-thumb {
+  width: 100%; aspect-ratio: 1; object-fit: cover; border-radius: 6px; background: #1e2340;
+}
+.lib-thumb-video { display: flex; align-items: center; justify-content: center; font-size: 22px; }
+.lib-item-meme .lib-item-name {
+  font-size: 9px; color: #94a3b8; overflow: hidden; text-overflow: ellipsis;
+  white-space: nowrap; width: 100%;
+}
+
+.step-modal .modal-actions { display: flex; gap: 10px; margin-top: 20px; }
+.step-modal .modal-actions button { flex: 1; padding: 11px; border-radius: 8px; border: none; font-size: 13px; font-weight: 700; cursor: pointer; }
+.step-modal .btn-cancel { background: #1e2340; color: #94a3b8; }
+.step-modal .btn-ok { background: linear-gradient(135deg,#7c3aed,#5b21b6); color: #fff; }
+</style>
+</head>
+<body style="background:transparent">
+
+<!-- CSS/markup phía dưới COPY NGUYÊN VĂN từ index.html — không tự vẽ lại UI
+     Threads (nguyên tắc CONTEXT.md mục 7.1). Đây là trang NỘI BỘ, không
+     dành cho người dùng mở trực tiếp — chỉ Playwright (export_server.py)
+     điều khiển qua CDP để chụp ảnh từng "quãng ổn định" của stack. -->
+<svg width="0" height="0" style="position:absolute">
+  <defs>
+    <symbol id="ic-heart-fill" viewBox="-0.5 0 25 24">
+      <path class="icon-thr-fill" fill="currentColor" d="M16.4045 1.50879C14.785 1.50879 13.2185 2.16259 12 3.30764C10.7815 2.16259 9.215 1.50879 7.5955 1.50879C3.41766 1.50879 0.5 4.62796 0.5 9.09411C0.5 13.7857 4.70617 18.9703 11.2153 22.3022C11.4605 22.428 11.7298 22.4912 11.9995 22.4912C12.2692 22.4912 12.5395 22.428 12.7847 22.3022C19.2938 18.9703 23.5 13.7857 23.5 9.09411C23.5 4.62796 20.5823 1.50879 16.4045 1.50879Z"/>
+    </symbol>
+    <symbol id="ic-comment" viewBox="0 0 24 24">
+      <path class="icon-thr-fill" fill="currentColor" fill-rule="evenodd" clip-rule="evenodd" d="M12 3C7.02944 3 3 7.02944 3 12C3 16.9706 7.02944 21 12 21C13.414 21 14.7492 20.6747 15.9373 20.0956C16.1277 20.0028 16.3428 19.9728 16.5514 20.0101L20.7565 20.7619L19.9927 16.5927C19.954 16.3815 19.9843 16.1633 20.0792 15.9707C20.6685 14.7742 21 13.4273 21 12C21 7.02944 16.9706 3 12 3ZM1 12C1 5.92486 5.92488 1 12 1C18.0752 1 23 5.92488 23 12C23 13.6205 22.649 15.1615 22.018 16.549L22.9836 21.8198C23.0427 22.1423 22.94 22.4733 22.7086 22.7056C22.4773 22.938 22.1468 23.0421 21.824 22.9844L16.512 22.0348C15.1341 22.6553 13.6061 23 12 23C5.92488 23 1 18.0752 1 12Z"/>
+    </symbol>
+    <symbol id="ic-repost" viewBox="0 0 24 24">
+      <path class="icon-thr-fill" fill="currentColor" d="M4.51617 6.9986C6.13179 4.58593 8.88099 2.99979 11.9995 2.99979C15.7267 2.99979 18.9259 5.26459 20.2927 8.49676C20.5079 9.00543 21.0946 9.24341 21.6033 9.0283C22.1119 8.81318 22.3499 8.22644 22.1348 7.71777C20.466 3.7716 16.5582 0.999786 11.9995 0.999786C8.27776 0.999786 4.9897 2.84823 2.99988 5.67416V2.9986C2.99988 2.44631 2.55216 1.9986 1.99988 1.9986C1.44759 1.9986 0.999878 2.44631 0.999878 2.9986V7.9986C0.999878 8.55088 1.44759 8.9986 1.99988 8.9986H6.99988C7.55216 8.9986 7.99988 8.55088 7.99988 7.9986C7.99988 7.44631 7.55216 6.9986 6.99988 6.9986H4.51617Z"/>
+      <path class="icon-thr-fill" fill="currentColor" d="M2.39572 14.9713C2.90439 14.7562 3.49113 14.9942 3.70625 15.5029C5.07309 18.735 8.27228 20.9998 11.9995 20.9998C15.118 20.9998 17.8672 19.4137 19.4828 17.001H16.9991C16.4468 17.001 15.9991 16.5533 15.9991 16.001C15.9991 15.4487 16.4468 15.001 16.9991 15.001H21.9991C22.5514 15.001 22.9991 15.4487 22.9991 16.001V21.001C22.9991 21.5533 22.5514 22.001 21.9991 22.001C21.4468 22.001 20.9991 21.5533 20.9991 21.001V18.3255C19.0093 21.1514 15.7212 22.9998 11.9995 22.9998C7.44077 22.9998 3.53298 20.228 1.86419 16.2818C1.64908 15.7732 1.88705 15.1864 2.39572 14.9713Z"/>
+    </symbol>
+    <symbol id="ic-share" viewBox="0 0 24 24">
+      <path class="icon-thr-fill" fill="currentColor" fill-rule="evenodd" clip-rule="evenodd" d="M7.2474 1.49853C4.18324 -0.187039 0.600262 2.64309 1.53038 6.01431L3.18181 12L1.53038 17.9857C0.600277 21.3569 4.18324 24.1871 7.2474 22.5015L20.8245 15.0329C23.2153 13.7177 23.2153 10.2823 20.8244 8.96712L7.2474 1.49853ZM3.45835 5.48239C2.99873 3.81649 4.76927 2.41796 6.28345 3.25089L19.8605 10.7195C20.0016 10.7971 20.123 10.8923 20.2247 11H4.98064L3.45835 5.48239ZM4.98064 13L3.45835 18.5176C2.99873 20.1835 4.76927 21.5821 6.28345 20.7491L19.8605 13.2805C20.0016 13.2029 20.123 13.1078 20.2247 13H4.98064Z"/>
+    </symbol>
+  </defs>
+</svg>
+
+<div class="preview-frame" id="preview-frame" style="max-width:none;border-radius:0;border:none;box-shadow:none;background:transparent">
+  <div class="thr-stack" id="thr-stack"></div>
+  <div class="meme-overlay" id="meme-overlay" style="display:none"></div>
+</div>
+<!-- Checkbox giả — displayIdentity()/blurIdentityOn() trong render_shared.js
+     đọc #blur-identity-toggle qua getElementById, không tồn tại trang
+     export_render.html gốc (trả false = luôn hiện thật). Query ?blur=1 (do
+     export_server.py truyền từ trạng thái checkbox thật ở index.html lúc
+     bấm Xuất) quyết định checked hay không — xem applyFrameWidth(). -->
+<input type="checkbox" id="blur-identity-toggle" style="display:none"/>
+
+<script src="render_shared.js"></script>
+<script>
+// ============================================================
+// Điều khiển render cho Playwright — export_server.py gọi qua CDP:
+//   1. page.goto('export_render.html?w=1080')  — set độ rộng khung xuất
+//      (query 'w', mặc định 1080px — quyết định luôn cqw bên trong nhờ
+//      container-type:inline-size của .preview-frame, xem mục 5.2).
+//   2. page.evaluate(setSteps, stepsArray) — gán window.steps = stepsArray
+//      (đã có sẵn _start/_end tính từ index.html, gửi qua JSON).
+//   3. page.evaluate(renderStackAt, t) — dựng đúng stack tại thời điểm t
+//      (dùng lại renderStackAt tự viết bên dưới, KHÔNG dùng renderAtTime()
+//      của index.html vì hàm đó đụng vào <audio>/Play state không tồn tại
+//      ở trang này — chỉ cần phần build DOM, không cần phần phát audio).
+//   4. element_handle('#thr-stack').screenshot() — chụp đúng vùng stack,
+//      nền trong suốt (omit_background=True phía Playwright Python).
+// ============================================================
+
+let steps = []; // export_server.py gán qua setSteps(), thay cho toàn bộ step engine của index.html
+
+function applyFrameWidth() {
+  const params = new URLSearchParams(location.search);
+  const w = parseInt(params.get('w'), 10) || 1080;
+  const frame = document.getElementById('preview-frame');
+  frame.style.width = w + 'px';
+  frame.style.aspectRatio = '9 / 16';
+  // Khớp trạng thái checkbox "Làm mờ tên & avatar" ở index.html lúc bấm
+  // Xuất (mục 5.17 CONTEXT.md) — displayIdentity() đọc #blur-identity-toggle,
+  // class .blur-identity trên #preview-frame áp thêm CSS filter:blur() (mục 5.10).
+  const blurOn = params.get('blur') === '1';
+  document.getElementById('blur-identity-toggle').checked = blurOn;
+  frame.classList.toggle('blur-identity', blurOn);
+  return w;
+}
+applyFrameWidth();
+
+function setSteps(newSteps) {
+  steps = newSteps;
+}
+
+// Dựng đúng stack + meme tại thời điểm t — bản RÚT GỌN của renderAtTime()
+// trong index.html (mục 5.16), bỏ hết phần liên quan TTS/audio hiệu ứng/
+// Play state/animation-diff (không cần thiết cho việc chụp ảnh tĩnh — mỗi
+// lần gọi hàm này là 1 lần chụp độc lập, không cần tối ưu re-render như
+// preview tương tác). LUÔN rebuild toàn bộ innerHTML — đơn giản, đúng, đủ
+// nhanh cho số lượng "quãng ổn định" thực tế trong 1 kịch bản.
+// Đợi mọi <img> trong container decode xong (ảnh network — nếu chụp ngay
+// sau khi set innerHTML, ảnh chưa kịp tải sẽ chụp ra rỗng/vỡ) — dùng
+// decode() thay vì chỉ check .complete vì decode() đợi cả bước giải mã ảnh,
+// tránh 1 frame ảnh chưa raster xong. onerror (ảnh lỗi/404) coi như xong,
+// không treo cả lô chờ mãi.
+function waitImagesLoaded(container) {
+  const imgs = Array.from(container.querySelectorAll('img'));
+  return Promise.all(imgs.map(img => {
+    if (img.complete && img.naturalWidth > 0) return Promise.resolve();
+    return (img.decode ? img.decode() : new Promise((res) => {
+      img.onload = res; img.onerror = res;
+    })).catch(() => {});
+  }));
+}
+
+// Đợi animation entrance (.tcard-in, mục 5.5 CONTEXT.md) của MỌI thẻ vừa
+// bơm vào chạy xong — nếu chụp ảnh giữa lúc opacity:0→1 đang chạy, PNG ra
+// bị mờ/trong suốt xấu và overlay lên video nhìn lem nhem. getAnimations()
+// trả animation đang chạy trên chính phần tử (không đệ quy con) — .tcard là
+// phần tử áp animation (mục 5.5 index.html), lặp qua từng .tcard trực tiếp.
+function waitAnimationsDone(container) {
+  const els = Array.from(container.querySelectorAll('.tcard'));
+  const anims = els.flatMap(el => el.getAnimations());
+  return Promise.all(anims.map(a => a.finished.catch(() => {})));
+}
+
+// Bug đã gặp (mục 5.32 CONTEXT.md): waitImagesLoaded() chỉ đợi <img>, không
+// đợi <video> — measureMemeBox() đo getBoundingClientRect() của <video> khi
+// readyState còn 0 (chưa có videoWidth/videoHeight), trình duyệt chưa biết
+// aspect ratio thật nên box đo được sai lệch, FFmpeg scale() ép theo box sai
+// làm meme mp4 xuất ra "dẹp" hẳn so với preview. Đợi metadata (đủ để có
+// videoWidth/videoHeight, KHÔNG cần đợi đủ frame để play — 'loadedmetadata'
+// là đủ, nhanh hơn nhiều so với đợi 'canplay').
+function waitVideosMetadata(container) {
+  const vids = Array.from(container.querySelectorAll('video'));
+  return Promise.all(vids.map(v => {
+    if (v.readyState >= 1) return Promise.resolve(); // HAVE_METADATA trở lên
+    return new Promise((res) => {
+      v.onloadedmetadata = res; v.onerror = res;
+    });
+  }));
+}
+
+// Meme video/gif ĐỘNG (mediaIsVideo=true hoặc đuôi .gif) không được chụp
+// thành PNG tĩnh — export_server.py overlay trực tiếp file gốc bằng FFmpeg
+// tại đúng vị trí/kích thước khung .meme-overlay (đo qua getBoundingClientRect,
+// quy đổi theo tỉ lệ #preview-frame vì Playwright chụp với TARGET_W khác kích
+// thước CSS px thật). Ảnh tĩnh (jpg/png) vẫn chụp chung 1 PNG với card, giống cũ.
+// isDynamicMeme() giờ định nghĩa trong render_shared.js (dùng chung với
+// index.html cho badge cảnh báo UI — mục 5.21 CONTEXT.md).
+
+function measureMemeBox() {
+  const frame = document.getElementById('preview-frame');
+  const memeEl = document.getElementById('meme-overlay');
+  const frameBox = frame.getBoundingClientRect();
+  const memeBox = memeEl.getBoundingClientRect();
+  return {
+    xRatio: (memeBox.left - frameBox.left) / frameBox.width,
+    yRatio: (memeBox.top - frameBox.top) / frameBox.height,
+    wRatio: memeBox.width / frameBox.width,
+    hRatio: memeBox.height / frameBox.height,
+  };
+}
+
+async function renderStackAt(t) {
+  const { stack, memeStep } = computeSceneAt(t);
+  const stackEl = document.getElementById('thr-stack');
+  stackEl.innerHTML = stack.map(buildCardHtml).join('');
+  autoScrollStack();
+
+  const memeEl = document.getElementById('meme-overlay');
+  const dynamicMeme = isDynamicMeme(memeStep);
+  let memeBox = null;
+  if (memeStep && memeStep.mediaUrl) {
+    memeEl.innerHTML = memeStep.mediaIsVideo
+      ? `<video src="${memeStep.mediaUrl}" autoplay muted loop playsinline></video>`
+      : `<img src="${memeStep.mediaUrl}" alt=""/>`;
+    memeEl.style.display = 'block';
+    memeEl.style.transform = memeOverlayTransform(memeStep);
+  } else {
+    memeEl.style.display = 'none';
+    memeEl.innerHTML = '';
+  }
+
+  await Promise.all([
+    waitImagesLoaded(stackEl),
+    waitImagesLoaded(memeEl),
+    waitVideosMetadata(memeEl),
+    waitAnimationsDone(stackEl),
+  ]);
+
+  // Meme động: đo vị trí/kích thước THẬT (đã có layout đúng từ ảnh/video vừa
+  // load xong ở trên) rồi ẨN đi trước khi báo hasMeme — export_server.py sẽ
+  // chụp #preview-frame KHÔNG có meme trong đó, tránh lẫn meme tĩnh vào PNG
+  // card trong khi vẫn overlay meme động riêng bằng FFmpeg.
+  //
+  // TRƯỚC khi đo, ép bỏ rotation (giữ nguyên offset) — quyết định đã chốt
+  // (mục 5.21 CONTEXT.md): meme video/gif chỉ xoay được ở PREVIEW, XUẤT
+  // VIDEO bỏ qua góc xoay (giữ 0°) vì FFmpeg overlay=x:y không xoay được,
+  // nếu không ép về 0 thì bounding box đo được sẽ "phình" theo góc xoay,
+  // sai lệch vị trí/kích thước thật khi overlay.
+  if (memeStep && dynamicMeme) {
+    const ox = memeStep.offsetX || 0, oy = memeStep.offsetY || 0;
+    memeEl.style.transform = `translate(${ox}cqw, ${oy}cqw)`;
+    memeBox = measureMemeBox();
+    memeEl.style.display = 'none';
+  }
+
+  return {
+    stackIds: stack.map(s => s.id),
+    hasMeme: !!memeStep,
+    dynamicMeme,
+    memeBox,
+    memeMediaUrl: memeStep ? memeStep.mediaUrl : null,
+  };
+}
+</script>
+</body>
+</html>

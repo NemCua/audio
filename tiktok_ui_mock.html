@@ -1,0 +1,299 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="UTF-8"/>
+<title>TikTok Comment UI Mock</title>
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; }
+@font-face {
+  font-family: "SFPro";
+  src: local("SFNS"), local(".AppleSystemUIFont");
+}
+body {
+  font-family: "SFPro", -apple-system, BlinkMacSystemFont, "SF Pro Text", "Helvetica Neue", Roboto, Arial, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  background: #1a1a1a;
+  color: #fff;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 24px;
+  padding: 24px;
+  align-items: flex-start;
+}
+
+.frame {
+  width: 1080px;
+  height: 1920px;
+  transform: scale(0.42);
+  transform-origin: top left;
+  margin-bottom: -1113px;
+  margin-right: -626px;
+  position: relative;
+  overflow: hidden;
+  border-radius: 12px;
+  box-shadow: 0 0 0 2px #333;
+  background: #1a1a1a;
+}
+
+.bg-video {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(180deg, #2b5876 0%, #4e4376 100%);
+}
+.bg-video::after {
+  content: "▲ VIDEO NỀN (gameplay loop) ▲";
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 34px;
+  color: rgba(255,255,255,0.25);
+  font-weight: 700;
+  letter-spacing: 2px;
+}
+
+.frame-label {
+  position: absolute;
+  top: 12px;
+  left: 12px;
+  background: #000;
+  color: #4ade80;
+  font-size: 22px;
+  font-family: monospace;
+  padding: 8px 16px;
+  border-radius: 6px;
+  z-index: 10;
+  opacity: .9;
+}
+
+/* ============================================================
+   TikTok comment — nền TRẮNG đục (không phải card bo góc như
+   Threads — TikTok comment overlay thẳng lên video nền, mỗi comment
+   là 1 khối riêng, không có viền/box bao quanh).
+   Quy đổi đơn vị: X(px, thiết kế gốc 1080px) → (X/1080*100)cqw — same
+   công thức threads_ui_mock.html đã dùng, để copy thẳng sang cqw khi
+   build thật trong index.html (mục 5.2 CONTEXT.md).
+   ============================================================ */
+.tk-stack {
+  position: absolute;
+  left: 32px;
+  right: 32px;
+  top: 260px;
+}
+
+.tk-comment {
+  display: flex;
+  gap: 18px;
+  margin-bottom: 24px;
+  background: #ffffff;
+  border-radius: 20px;
+  padding: 24px 28px;
+  box-shadow: 0 4px 18px rgba(0,0,0,0.18);
+}
+.tk-comment.reply {
+  margin-left: 76px; /* thụt lề theo avatar cha, giống avatar width + gap */
+}
+
+.tk-avatar {
+  width: 76px;
+  height: 76px;
+  border-radius: 50%;
+  flex-shrink: 0;
+  background: #ddd;
+  overflow: hidden;
+}
+.tk-avatar img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.tk-comment.reply .tk-avatar { width: 60px; height: 60px; }
+
+.tk-main { flex: 1; min-width: 0; }
+
+.tk-uname {
+  font-size: 32px;
+  font-weight: 600;
+  color: #9a9a9a; /* nền trắng — tên xám vừa, khớp ảnh mẫu commentTT.jpg */
+  margin-bottom: 8px;
+}
+
+.tk-text {
+  font-size: 36px;
+  font-weight: 600;
+  color: #16161a;
+  line-height: 1.35;
+  word-wrap: break-word;
+}
+
+.tk-foot {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-top: 16px;
+}
+.tk-foot-left {
+  display: flex;
+  align-items: center;
+  gap: 22px;
+  font-size: 28px;
+  color: #9a9a9a;
+}
+.tk-foot-left .tk-date { }
+.tk-foot-left .tk-reply-btn { font-weight: 600; }
+
+.tk-foot-right {
+  display: flex;
+  align-items: center;
+  gap: 18px;
+}
+
+
+.tk-like {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 8px;
+}
+.tk-like svg { width: 45px; height: 45px; }
+.tk-like.liked svg { color: #fe2c55; }
+.tk-like:not(.liked) svg { color: #b0b0b0; }
+.tk-like-count {
+  font-size: 31px;
+  color: #9a9a9a;
+}
+
+.tk-dislike svg { width: 32px; height: 32px; color: #b0b0b0; transform: scaleX(-1); }
+
+.tk-view-replies {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  margin-top: 10px;
+  margin-left: 0;
+  margin-bottom: 24px;
+  font-size: 30px;
+  font-weight: 600;
+  color: #9a9a9a;
+  cursor: pointer;
+}
+.tk-view-replies::before {
+  content: "";
+  width: 34px;
+  height: 2px;
+  background: #9a9a9a;
+}
+.tk-view-replies svg { width: 22px; height: 22px; }
+
+</style>
+</head>
+<body>
+
+<!-- ============ MẪU 1: Comment đơn giản, có tim + reply ============ -->
+<div class="frame">
+  <div class="frame-label">MẪU 1 — Comment đơn</div>
+  <div class="bg-video"></div>
+  <div class="tk-stack">
+    <div class="tk-comment">
+      <div class="tk-avatar" style="background:#2d2d2d"></div>
+      <div class="tk-main">
+        <div class="tk-uname">tenkhachhang123</div>
+        <div class="tk-text">Video này hay quá trời luôn á 😍</div>
+        <div class="tk-foot">
+          <div class="tk-foot-left">
+            <span class="tk-date">2 ngày</span>
+            <span class="tk-reply-btn">Trả lời</span>
+          </div>
+          <div class="tk-foot-right">
+            <div class="tk-like">
+              <svg viewBox="0 0 48 48" fill="currentColor"><path d="M24 12.62c3.91-4.08 9.84-4.1 13.6-.42a9.48 9.48 0 0 1 0 13.63L25.06 38.07a1.5 1.5 0 0 1-2.1 0L10.4 25.83a9.48 9.48 0 0 1 0-13.63c3.77-3.68 9.7-3.66 13.61.42Zm-1.9 2.36c-2.8-3.2-6.99-3.2-9.61-.63a6.48 6.48 0 0 0 0 9.33L24 34.91l11.51-11.23a6.48 6.48 0 0 0 0-9.33c-2.62-2.56-6.8-2.56-9.6.63l-.05.05-.81.8a1.5 1.5 0 0 1-2.1 0l-.81-.8-.04-.05Z"/></svg>
+              <span class="tk-like-count">1,2K</span>
+            </div>
+            <svg class="tk-dislike" viewBox="0 0 24 24" fill="currentColor"><path d="M12 21s-6.716-4.35-9.428-8.038C.325 10.49.5 6.5 3.5 4.9 6 3.5 8.5 4.5 12 8c3.5-3.5 6-4.5 8.5-3.1 3 1.6 3.175 5.59 0.928 8.062C18.716 16.65 12 21 12 21z"/></svg>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ============ MẪU 2: Comment + reply + "Xem N câu trả lời" (khớp commentTT.jpg) ============ -->
+<div class="frame">
+  <div class="frame-label">MẪU 2 — Comment + Xem trả lời</div>
+  <div class="bg-video"></div>
+  <div class="tk-stack">
+    <div class="tk-comment">
+      <div class="tk-avatar" style="background:#e8d9c5"></div>
+      <div class="tk-main">
+        <div class="tk-uname">Liễu Như Yên</div>
+        <div class="tk-text">Hình như ko phải giả 🤗</div>
+        <div class="tk-foot">
+          <div class="tk-foot-left">
+            <span class="tk-date">6-28</span>
+            <span class="tk-reply-btn">Trả lời</span>
+          </div>
+          <div class="tk-foot-right">
+            
+            <div class="tk-like">
+              <svg viewBox="0 0 48 48" fill="currentColor"><path d="M24 12.62c3.91-4.08 9.84-4.1 13.6-.42a9.48 9.48 0 0 1 0 13.63L25.06 38.07a1.5 1.5 0 0 1-2.1 0L10.4 25.83a9.48 9.48 0 0 1 0-13.63c3.77-3.68 9.7-3.66 13.61.42Zm-1.9 2.36c-2.8-3.2-6.99-3.2-9.61-.63a6.48 6.48 0 0 0 0 9.33L24 34.91l11.51-11.23a6.48 6.48 0 0 0 0-9.33c-2.62-2.56-6.8-2.56-9.6.63l-.05.05-.81.8a1.5 1.5 0 0 1-2.1 0l-.81-.8-.04-.05Z"/></svg>
+              <span class="tk-like-count">15,1K</span>
+            </div>
+            <svg class="tk-dislike" viewBox="0 0 24 24" fill="currentColor"><path d="M12 21s-6.716-4.35-9.428-8.038C.325 10.49.5 6.5 3.5 4.9 6 3.5 8.5 4.5 12 8c3.5-3.5 6-4.5 8.5-3.1 3 1.6 3.175 5.59 0.928 8.062C18.716 16.65 12 21 12 21z"/></svg>
+          </div>
+        </div>
+        <div class="tk-view-replies">
+          Xem 85 câu trả lời
+          <svg viewBox="0 0 48 48" fill="currentColor"><path d="m24 27.76 13.17-13.17a1 1 0 0 1 1.42 0l2.82 2.82a1 1 0 0 1 0 1.42L25.06 35.18a1.5 1.5 0 0 1-2.12 0L6.59 18.83a1 1 0 0 1 0-1.42L9.4 14.6a1 1 0 0 1 1.42 0L24 27.76Z"/></svg>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ============ MẪU 3: Comment gốc + 1 reply hiện sẵn (thụt lề) ============ -->
+<div class="frame">
+  <div class="frame-label">MẪU 3 — Comment + Reply hiện sẵn</div>
+  <div class="bg-video"></div>
+  <div class="tk-stack">
+    <div class="tk-comment">
+      <div class="tk-avatar" style="background:#c5d9e8"></div>
+      <div class="tk-main">
+        <div class="tk-uname">user_xyz_88</div>
+        <div class="tk-text">Ai biết chỗ mua cái áo này không ạ?</div>
+        <div class="tk-foot">
+          <div class="tk-foot-left">
+            <span class="tk-date">5 giờ</span>
+            <span class="tk-reply-btn">Trả lời</span>
+          </div>
+          <div class="tk-foot-right">
+            <div class="tk-like">
+              <svg viewBox="0 0 48 48" fill="currentColor"><path d="M24 12.62c3.91-4.08 9.84-4.1 13.6-.42a9.48 9.48 0 0 1 0 13.63L25.06 38.07a1.5 1.5 0 0 1-2.1 0L10.4 25.83a9.48 9.48 0 0 1 0-13.63c3.77-3.68 9.7-3.66 13.61.42Zm-1.9 2.36c-2.8-3.2-6.99-3.2-9.61-.63a6.48 6.48 0 0 0 0 9.33L24 34.91l11.51-11.23a6.48 6.48 0 0 0 0-9.33c-2.62-2.56-6.8-2.56-9.6.63l-.05.05-.81.8a1.5 1.5 0 0 1-2.1 0l-.81-.8-.04-.05Z"/></svg>
+              <span class="tk-like-count">328</span>
+            </div>
+            <svg class="tk-dislike" viewBox="0 0 24 24" fill="currentColor"><path d="M12 21s-6.716-4.35-9.428-8.038C.325 10.49.5 6.5 3.5 4.9 6 3.5 8.5 4.5 12 8c3.5-3.5 6-4.5 8.5-3.1 3 1.6 3.175 5.59 0.928 8.062C18.716 16.65 12 21 12 21z"/></svg>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="tk-comment reply">
+      <div class="tk-avatar" style="background:#d9c5e8"></div>
+      <div class="tk-main">
+        <div class="tk-uname">shop_thoitrang</div>
+        <div class="tk-text">Dạ bên em có ạ, inbox page giúp em nha ✨</div>
+        <div class="tk-foot">
+          <div class="tk-foot-left">
+            <span class="tk-date">4 giờ</span>
+            <span class="tk-reply-btn">Trả lời</span>
+          </div>
+          <div class="tk-foot-right">
+            <div class="tk-like">
+              <svg viewBox="0 0 48 48" fill="currentColor"><path d="M24 12.62c3.91-4.08 9.84-4.1 13.6-.42a9.48 9.48 0 0 1 0 13.63L25.06 38.07a1.5 1.5 0 0 1-2.1 0L10.4 25.83a9.48 9.48 0 0 1 0-13.63c3.77-3.68 9.7-3.66 13.61.42Zm-1.9 2.36c-2.8-3.2-6.99-3.2-9.61-.63a6.48 6.48 0 0 0 0 9.33L24 34.91l11.51-11.23a6.48 6.48 0 0 0 0-9.33c-2.62-2.56-6.8-2.56-9.6.63l-.05.05-.81.8a1.5 1.5 0 0 1-2.1 0l-.81-.8-.04-.05Z"/></svg>
+              <span class="tk-like-count">52</span>
+            </div>
+            <svg class="tk-dislike" viewBox="0 0 24 24" fill="currentColor"><path d="M12 21s-6.716-4.35-9.428-8.038C.325 10.49.5 6.5 3.5 4.9 6 3.5 8.5 4.5 12 8c3.5-3.5 6-4.5 8.5-3.1 3 1.6 3.175 5.59 0.928 8.062C18.716 16.65 12 21 12 21z"/></svg>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+</body>
+</html>

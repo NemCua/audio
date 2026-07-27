@@ -1,0 +1,486 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>✂️ Cắt / Crop video — Threads Tools</title>
+<style>
+/* Cùng bộ màu với index.html (nền tối #0a0c14, panel #12152a, viền #1e2340,
+   tím #7c3aed) — trang tự chứa theo nguyên tắc dự án (mục 7 CONTEXT.md),
+   không import CSS chéo giữa các trang. */
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body {
+  background: #0a0c14; color: #e2e8f0; min-height: 100vh;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  display: flex; flex-direction: column; align-items: center; padding: 24px 16px 60px;
+}
+h1 { font-size: 18px; color: #a78bfa; margin-bottom: 4px; }
+.sub { font-size: 12px; color: #6b7280; margin-bottom: 20px; }
+.panel {
+  width: min(760px, 96vw); background: #12152a; border: 1px solid #1e2340;
+  border-radius: 14px; padding: 18px;
+}
+.drop-zone {
+  border: 2px dashed #2a3050; border-radius: 10px; padding: 40px 16px;
+  text-align: center; cursor: pointer; color: #6b7280; transition: border-color .15s;
+}
+.drop-zone:hover, .drop-zone.over { border-color: #7c3aed; color: #a78bfa; }
+.drop-zone input { display: none; }
+.drop-zone .icon { font-size: 30px; margin-bottom: 8px; }
+
+#editor { display: none; }
+#video-wrap {
+  position: relative; width: 100%; background: #000;
+  border-radius: 10px; overflow: hidden; line-height: 0;
+  user-select: none; -webkit-user-select: none;
+}
+#vt-video { width: 100%; display: block; }
+
+/* Khung crop kéo-thả — dim vùng ngoài bằng box-shadow khổng lồ (đơn giản
+   hơn 4 tấm overlay riêng), overflow:hidden của #video-wrap tự cắt gọn. */
+#crop-box {
+  position: absolute; border: 2px solid #f5c518; border-radius: 4px;
+  box-shadow: 0 0 0 9999px rgba(0,0,0,.55); cursor: move; display: none;
+  touch-action: none;
+}
+#crop-box .ch {
+  position: absolute; width: 16px; height: 16px; background: #f5c518;
+  border-radius: 50%; touch-action: none;
+}
+#crop-box .ch.nw { left: -8px; top: -8px; cursor: nwse-resize; }
+#crop-box .ch.ne { right: -8px; top: -8px; cursor: nesw-resize; }
+#crop-box .ch.sw { left: -8px; bottom: -8px; cursor: nesw-resize; }
+#crop-box .ch.se { right: -8px; bottom: -8px; cursor: nwse-resize; }
+
+.toolbar { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; margin: 14px 0 6px; }
+.btn {
+  border: none; border-radius: 8px; background: #1e2340; color: #cbd5e1;
+  font-size: 13px; font-weight: 600; padding: 9px 14px; cursor: pointer;
+}
+.btn:hover { background: #2a3050; }
+.btn.primary { background: linear-gradient(135deg,#7c3aed,#5b21b6); color: #fff; }
+.btn.active { background: #7c3aed; color: #fff; }
+.btn:disabled { opacity: .5; cursor: default; }
+.info { font-size: 11px; color: #6b7280; }
+.info b { color: #a78bfa; font-variant-numeric: tabular-nums; }
+
+/* Filmstrip trim — dải thumbnail khung hình thật + vùng chọn viền vàng
+   với 2 tay cầm kéo được, vùng ngoài phủ tối (theo đúng mẫu iPhone/QuickTime
+   người dùng yêu cầu — KHÔNG chỉ hiện số giây). */
+#strip-wrap {
+  position: relative; width: 100%; height: 64px; margin-top: 16px;
+  border-radius: 8px; overflow: hidden; background: #1e2340;
+  user-select: none; -webkit-user-select: none; touch-action: none;
+}
+#strip-tiles { display: flex; width: 100%; height: 100%; }
+#strip-tiles canvas { flex: 1; height: 100%; min-width: 0; }
+.strip-dim { position: absolute; top: 0; bottom: 0; background: rgba(0,0,0,.65); pointer-events: none; }
+#strip-sel {
+  position: absolute; top: 0; bottom: 0;
+  border: 3px solid #f5c518; border-left-width: 14px; border-right-width: 14px;
+  border-radius: 8px; cursor: grab; touch-action: none;
+}
+#strip-sel::before, #strip-sel::after {
+  content: ''; position: absolute; top: 50%; transform: translateY(-50%);
+  width: 3px; height: 22px; background: #7a5c00; border-radius: 2px;
+  /* pointer-events:none BẮT BUỘC — ::after là "con cuối" trong tree order
+     nên vẽ ĐÈ LÊN .grip.right (positioned, z-auto: đứa sau vẽ trên), vạch
+     3px này nằm đúng giữa tay cầm phải sẽ CƯỚP click → event target rơi vào
+     #strip-sel (body-drag) thay vì tay cầm → kéo tay phải không ăn (bug
+     thật đã gặp; tay trái không sao vì ::before là "con đầu", thua grip). */
+  pointer-events: none;
+}
+#strip-sel::before { left: -9px; }
+#strip-sel::after { right: -9px; }
+#strip-sel .grip { position: absolute; top: 0; bottom: 0; width: 22px; touch-action: none; }
+#strip-sel .grip.left { left: -18px; cursor: ew-resize; }
+#strip-sel .grip.right { right: -18px; cursor: ew-resize; }
+#trim-tip {
+  position: absolute; bottom: calc(100% + 6px); transform: translateX(-50%);
+  background: #f5c518; color: #1a1400; font-size: 11px; font-weight: 700;
+  padding: 2px 7px; border-radius: 5px; white-space: nowrap; display: none;
+  font-variant-numeric: tabular-nums; pointer-events: none;
+}
+#strip-outer { position: relative; margin-top: 24px; }
+
+.progress { height: 8px; background: #1e2340; border-radius: 5px; overflow: hidden; margin-top: 10px; }
+.progress .bar { height: 100%; width: 0%; background: linear-gradient(90deg,#7c3aed,#a78bfa); transition: width .3s; }
+#result { margin-top: 12px; font-size: 13px; }
+#result a { color: #4ade80; font-weight: 700; }
+.hintline { font-size: 11px; color: #6b7280; margin-top: 8px; }
+</style>
+</head>
+<body>
+<h1>✂️ Cắt / Crop video</h1>
+<div class="sub">Kéo khung vàng trên video để crop · kéo 2 tay cầm trên dải khung hình để chọn đoạn giữ lại</div>
+
+<div class="panel">
+  <div class="drop-zone" id="dropzone">
+    <input type="file" id="file-input" accept="video/*"/>
+    <div class="icon">🎬</div>
+    <p>Kéo thả hoặc nhấn để chọn video</p>
+  </div>
+
+  <div id="editor">
+    <div id="video-wrap">
+      <video id="vt-video" playsinline></video>
+      <div id="crop-box">
+        <div class="ch nw"></div><div class="ch ne"></div>
+        <div class="ch sw"></div><div class="ch se"></div>
+      </div>
+    </div>
+
+    <div class="toolbar">
+      <button class="btn" id="crop-toggle" onclick="toggleCrop()">⬚ Crop: tắt</button>
+      <button class="btn" id="crop-916" onclick="cropPreset916()" style="display:none">📱 9:16</button>
+      <span class="info" id="crop-info"></span>
+      <span style="flex:1"></span>
+      <button class="btn" id="play-btn" onclick="togglePlaySelection()">▶ Phát thử đoạn chọn</button>
+    </div>
+
+    <div id="strip-outer">
+      <div id="strip-wrap">
+        <div id="strip-tiles"></div>
+        <div class="strip-dim" id="dim-left"></div>
+        <div class="strip-dim" id="dim-right"></div>
+        <div id="strip-sel">
+          <div class="grip left"></div>
+          <div class="grip right"></div>
+        </div>
+      </div>
+      <div id="trim-tip"></div>
+    </div>
+    <div class="info" style="margin-top:8px">
+      Đoạn giữ lại: <b id="trim-label">—</b>
+    </div>
+
+    <div class="toolbar" style="margin-top:16px">
+      <button class="btn primary" id="export-btn" onclick="exportVideo()">💾 Xuất video đã cắt</button>
+      <button class="btn" onclick="location.reload()">Chọn video khác</button>
+    </div>
+    <div class="progress" id="progress-wrap" style="display:none"><div class="bar" id="progress-bar"></div></div>
+    <div class="info" id="progress-text" style="margin-top:6px"></div>
+    <div id="result"></div>
+    <div class="hintline">File xuất ra được lưu thẳng vào thư viện media của app — dùng ngay được làm video nền hoặc meme, đồng thời tải về được.</div>
+  </div>
+</div>
+
+<script>
+const MEDIA_SERVER_URL = location.origin; // trang được serve từ chính media_server.py (port 8010)
+
+const video = document.getElementById('vt-video');
+const wrap = document.getElementById('video-wrap');
+const cropBox = document.getElementById('crop-box');
+
+let pickedFile = null;
+let objectUrl = null;
+let duration = 0;
+let trimStart = 0, trimEnd = 0;
+let cropOn = false;
+// khung crop theo px HIỂN THỊ (đổi ra px nguồn lúc xuất qua scale videoWidth/rect.width)
+let crop = { x: 0, y: 0, w: 0, h: 0 };
+
+// ---------- Chọn file ----------
+const dropzone = document.getElementById('dropzone');
+const fileInput = document.getElementById('file-input');
+dropzone.addEventListener('click', () => fileInput.click());
+dropzone.addEventListener('dragover', e => { e.preventDefault(); dropzone.classList.add('over'); });
+dropzone.addEventListener('dragleave', () => dropzone.classList.remove('over'));
+dropzone.addEventListener('drop', e => {
+  e.preventDefault(); dropzone.classList.remove('over');
+  if (e.dataTransfer.files[0]) loadFile(e.dataTransfer.files[0]);
+});
+fileInput.addEventListener('change', () => { if (fileInput.files[0]) loadFile(fileInput.files[0]); });
+
+function loadFile(f) {
+  pickedFile = f;
+  objectUrl = URL.createObjectURL(f);
+  video.src = objectUrl;
+  video.addEventListener('loadedmetadata', () => {
+    duration = video.duration;
+    trimStart = 0; trimEnd = duration;
+    dropzone.style.display = 'none';
+    document.getElementById('editor').style.display = 'block';
+    updateTrimUI();
+    buildFilmstrip();
+  }, { once: true });
+}
+
+// ---------- Filmstrip: dải thumbnail khung hình thật ----------
+// Dùng 1 <video> ẨN cùng source, seek tuần tự ~12 mốc chia đều rồi drawImage
+// vào từng canvas tile — thuần client, không cần server sinh thumbnail
+// (video đã có sẵn local qua object URL, seek + vẽ canvas là đủ nhanh).
+async function buildFilmstrip() {
+  const N = 12;
+  const tilesEl = document.getElementById('strip-tiles');
+  tilesEl.innerHTML = '';
+  const hv = document.createElement('video');
+  hv.src = objectUrl; hv.muted = true; hv.playsInline = true;
+  await new Promise(r => hv.addEventListener('loadedmetadata', r, { once: true }));
+  const tileH = 64;
+  const canvases = [];
+  for (let i = 0; i < N; i++) {
+    const c = document.createElement('canvas');
+    c.width = 90; c.height = tileH;
+    tilesEl.appendChild(c);
+    canvases.push(c);
+  }
+  for (let i = 0; i < N; i++) {
+    hv.currentTime = duration * (i + 0.5) / N;
+    await new Promise(r => hv.addEventListener('seeked', r, { once: true }));
+    const c = canvases[i], ctx = c.getContext('2d');
+    // vẽ kiểu object-fit:cover — phủ kín tile, cắt phần thừa ở giữa
+    const scale = Math.max(c.width / hv.videoWidth, c.height / hv.videoHeight);
+    const sw = c.width / scale, sh = c.height / scale;
+    ctx.drawImage(hv, (hv.videoWidth - sw) / 2, (hv.videoHeight - sh) / 2, sw, sh, 0, 0, c.width, c.height);
+  }
+}
+
+// ---------- Trim: kéo tay cầm / kéo thân vùng chọn ----------
+const stripWrap = document.getElementById('strip-wrap');
+const stripSel = document.getElementById('strip-sel');
+const trimTip = document.getElementById('trim-tip');
+
+function fmtT(t) {
+  const m = Math.floor(t / 60), s = t - m * 60;
+  return `${m}:${s.toFixed(1).padStart(4, '0')}`;
+}
+
+function updateTrimUI(showTipAt) {
+  const rect = stripWrap.getBoundingClientRect();
+  const l = (trimStart / duration) * 100;
+  const r = (trimEnd / duration) * 100;
+  stripSel.style.left = `calc(${l}% - 0px)`;
+  stripSel.style.width = `${r - l}%`;
+  document.getElementById('dim-left').style.left = '0';
+  document.getElementById('dim-left').style.width = `${l}%`;
+  document.getElementById('dim-right').style.right = '0';
+  document.getElementById('dim-right').style.width = `${100 - r}%`;
+  document.getElementById('trim-label').textContent =
+    `${fmtT(trimStart)} → ${fmtT(trimEnd)}  (${(trimEnd - trimStart).toFixed(1)}s / ${duration.toFixed(1)}s)`;
+  if (showTipAt != null) {
+    trimTip.style.display = 'block';
+    trimTip.style.left = `${(showTipAt / duration) * rect.width}px`;
+    trimTip.textContent = fmtT(showTipAt);
+  } else {
+    trimTip.style.display = 'none';
+  }
+}
+
+// 1 hệ pointer chung cho 3 kiểu kéo: tay trái, tay phải, thân (dịch cả đoạn)
+let dragMode = null; // 'left' | 'right' | 'body'
+let dragOffsetT = 0; // body-drag: khoảng cách từ điểm bấm tới trimStart
+
+function stripT(clientX) {
+  const rect = stripWrap.getBoundingClientRect();
+  return Math.min(duration, Math.max(0, (clientX - rect.left) / rect.width * duration));
+}
+
+stripSel.querySelector('.grip.left').addEventListener('pointerdown', e => {
+  e.stopPropagation(); dragMode = 'left'; e.target.setPointerCapture(e.pointerId);
+});
+stripSel.querySelector('.grip.right').addEventListener('pointerdown', e => {
+  e.stopPropagation(); dragMode = 'right'; e.target.setPointerCapture(e.pointerId);
+});
+stripSel.addEventListener('pointerdown', e => {
+  dragMode = 'body'; dragOffsetT = stripT(e.clientX) - trimStart;
+  stripSel.setPointerCapture(e.pointerId);
+});
+
+document.addEventListener('pointermove', e => {
+  if (!dragMode) return;
+  const t = stripT(e.clientX);
+  const MIN = 0.2; // đoạn chọn tối thiểu 0.2s
+  if (dragMode === 'left') {
+    trimStart = Math.min(t, trimEnd - MIN);
+    video.currentTime = trimStart;      // video chính nhảy theo frame đang cắt
+    updateTrimUI(trimStart);
+  } else if (dragMode === 'right') {
+    trimEnd = Math.max(t, trimStart + MIN);
+    video.currentTime = trimEnd;
+    updateTrimUI(trimEnd);
+  } else {
+    const len = trimEnd - trimStart;
+    let ns = t - dragOffsetT;
+    ns = Math.max(0, Math.min(ns, duration - len));
+    trimStart = ns; trimEnd = ns + len;
+    video.currentTime = trimStart;
+    updateTrimUI(trimStart);
+  }
+});
+document.addEventListener('pointerup', () => { if (dragMode) { dragMode = null; updateTrimUI(); } });
+
+// ---------- Phát thử trong đoạn chọn ----------
+let playingSel = false;
+function togglePlaySelection() {
+  const btn = document.getElementById('play-btn');
+  if (playingSel) { video.pause(); playingSel = false; btn.textContent = '▶ Phát thử đoạn chọn'; return; }
+  video.currentTime = trimStart;
+  video.play();
+  playingSel = true;
+  btn.textContent = '⏸ Dừng';
+}
+video.addEventListener('timeupdate', () => {
+  if (playingSel && video.currentTime >= trimEnd) {
+    video.pause(); playingSel = false;
+    document.getElementById('play-btn').textContent = '▶ Phát thử đoạn chọn';
+  }
+});
+
+// ---------- Crop: khung kéo-thả trên video ----------
+function toggleCrop() {
+  cropOn = !cropOn;
+  const btn = document.getElementById('crop-toggle');
+  btn.textContent = cropOn ? '⬚ Crop: BẬT' : '⬚ Crop: tắt';
+  btn.classList.toggle('active', cropOn);
+  document.getElementById('crop-916').style.display = cropOn ? '' : 'none';
+  cropBox.style.display = cropOn ? 'block' : 'none';
+  if (cropOn && !crop.w) {
+    // lần đầu bật: khung mặc định 60% giữa video
+    const r = wrap.getBoundingClientRect();
+    crop = { x: r.width * 0.2, y: r.height * 0.2, w: r.width * 0.6, h: r.height * 0.6 };
+  }
+  applyCropBox();
+  updateCropInfo();
+}
+
+function applyCropBox() {
+  cropBox.style.left = crop.x + 'px';
+  cropBox.style.top = crop.y + 'px';
+  cropBox.style.width = crop.w + 'px';
+  cropBox.style.height = crop.h + 'px';
+}
+
+function srcScale() { return video.videoWidth / wrap.getBoundingClientRect().width; }
+
+function updateCropInfo() {
+  const el = document.getElementById('crop-info');
+  if (!cropOn) { el.textContent = ''; return; }
+  const s = srcScale();
+  el.innerHTML = `vùng giữ: <b>${Math.round(crop.w * s)}×${Math.round(crop.h * s)}</b> px nguồn`;
+}
+
+function cropPreset916() {
+  // khung 9:16 cao nhất có thể, căn giữa
+  const r = wrap.getBoundingClientRect();
+  let h = r.height, w = h * 9 / 16;
+  if (w > r.width) { w = r.width; h = w * 16 / 9; }
+  crop = { x: (r.width - w) / 2, y: (r.height - h) / 2, w, h };
+  applyCropBox(); updateCropInfo();
+}
+
+// kéo thân (move) + 4 góc (resize) — pointer events, clamp trong khung video
+let cropDrag = null; // {mode:'move'|'nw'|..., startX, startY, orig:{...}}
+cropBox.addEventListener('pointerdown', e => {
+  const mode = e.target.classList.contains('ch')
+    ? [...e.target.classList].find(c => ['nw','ne','sw','se'].includes(c))
+    : 'move';
+  cropDrag = { mode, startX: e.clientX, startY: e.clientY, orig: { ...crop } };
+  cropBox.setPointerCapture(e.pointerId);
+  e.preventDefault();
+});
+document.addEventListener('pointermove', e => {
+  if (!cropDrag) return;
+  const r = wrap.getBoundingClientRect();
+  const dx = e.clientX - cropDrag.startX, dy = e.clientY - cropDrag.startY;
+  const o = cropDrag.orig;
+  const MINPX = 30;
+  let { x, y, w, h } = o;
+  if (cropDrag.mode === 'move') {
+    x = Math.max(0, Math.min(o.x + dx, r.width - o.w));
+    y = Math.max(0, Math.min(o.y + dy, r.height - o.h));
+  } else {
+    if (cropDrag.mode.includes('w')) { x = Math.max(0, Math.min(o.x + dx, o.x + o.w - MINPX)); w = o.w + (o.x - x); }
+    if (cropDrag.mode.includes('e')) { w = Math.max(MINPX, Math.min(o.w + dx, r.width - o.x)); }
+    if (cropDrag.mode.includes('n')) { y = Math.max(0, Math.min(o.y + dy, o.y + o.h - MINPX)); h = o.h + (o.y - y); }
+    if (cropDrag.mode.includes('s')) { h = Math.max(MINPX, Math.min(o.h + dy, r.height - o.y)); }
+  }
+  crop = { x, y, w, h };
+  applyCropBox(); updateCropInfo();
+});
+document.addEventListener('pointerup', () => { cropDrag = null; });
+
+// ---------- Xuất ----------
+function setProgress(pct, text) {
+  document.getElementById('progress-wrap').style.display = 'block';
+  document.getElementById('progress-bar').style.width = pct + '%';
+  document.getElementById('progress-text').textContent = text;
+}
+
+async function exportVideo() {
+  const btn = document.getElementById('export-btn');
+  const resultEl = document.getElementById('result');
+  resultEl.innerHTML = '';
+  btn.disabled = true;
+  try {
+    setProgress(2, 'Đang tải video gốc lên server...');
+    const form = new FormData();
+    form.append('file', pickedFile);
+    const up = await fetch(MEDIA_SERVER_URL + '/upload', { method: 'POST', body: form });
+    if (!up.ok) throw new Error('Upload lỗi HTTP ' + up.status);
+    const upData = await up.json();
+
+    let cropSrc = null;
+    if (cropOn && crop.w > 0) {
+      const s = srcScale();
+      cropSrc = {
+        x: Math.round(crop.x * s), y: Math.round(crop.y * s),
+        w: Math.round(crop.w * s / 2) * 2, h: Math.round(crop.h * s / 2) * 2, // ép chẵn cho libx264
+      };
+    }
+    setProgress(6, 'Đang gửi yêu cầu xử lý...');
+    const res = await fetch(MEDIA_SERVER_URL + '/video-process', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        filename: upData.filename,
+        trimStart, trimEnd,
+        crop: cropSrc,
+      }),
+    });
+    if (!res.ok) throw new Error('HTTP ' + res.status);
+    const { job_id } = await res.json();
+    pollJob(job_id);
+  } catch (e) {
+    btn.disabled = false;
+    setProgress(0, '');
+    resultEl.innerHTML = `<span style="color:#ef4444">✗ Lỗi: ${e.message}</span>`;
+  }
+}
+
+function pollJob(jobId) {
+  const btn = document.getElementById('export-btn');
+  const resultEl = document.getElementById('result');
+  const timer = setInterval(async () => {
+    try {
+      const res = await fetch(`${MEDIA_SERVER_URL}/video-process-status/${jobId}`);
+      if (!res.ok) throw new Error('HTTP ' + res.status);
+      const job = await res.json();
+      setProgress(Math.max(8, job.progress || 0), job.message || '');
+      if (job.status === 'done') {
+        clearInterval(timer);
+        btn.disabled = false;
+        const url = MEDIA_SERVER_URL + job.outputUrl;
+        resultEl.innerHTML =
+          `✓ Xong (${(job.duration || 0).toFixed(1)}s) — <a href="${url}" download>⭳ Tải video đã cắt</a>` +
+          `<div class="hintline">File cũng đã có sẵn trong thư viện media của app: <code style="color:#a78bfa">${job.outputFilename}</code></div>`;
+      } else if (job.status === 'error') {
+        clearInterval(timer);
+        btn.disabled = false;
+        resultEl.innerHTML = `<span style="color:#ef4444">✗ Xử lý lỗi: ${job.message}</span>`;
+      }
+    } catch (e) {
+      clearInterval(timer);
+      btn.disabled = false;
+      resultEl.innerHTML = `<span style="color:#ef4444">✗ Mất kết nối server: ${e.message}</span>`;
+    }
+  }, 1500);
+}
+
+// resize cửa sổ → cập nhật lại vị trí UI trim (khung crop giữ theo px hiển thị
+// cũ có thể lệch nhẹ sau resize — chấp nhận được, người dùng chỉnh lại tay;
+// tránh phức tạp hoá bằng recompute tỉ lệ tự động)
+window.addEventListener('resize', () => { if (duration) updateTrimUI(); });
+</script>
+</body>
+</html>

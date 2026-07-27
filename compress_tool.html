@@ -1,0 +1,238 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="UTF-8">
+<title>Nén video — Threads Tool</title>
+<style>
+  * { box-sizing: border-box; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    background: #0f1115; color: #e5e7eb; margin: 0; padding: 40px 20px;
+    display: flex; flex-direction: column; align-items: center;
+  }
+  h1 { font-size: 20px; margin-bottom: 4px; }
+  .sub { color: #9ca3af; font-size: 13px; margin-bottom: 28px; }
+  .card {
+    background: #171a21; border: 1px solid #262a34; border-radius: 12px;
+    padding: 24px; width: 100%; max-width: 520px;
+  }
+  #drop {
+    border: 2px dashed #3a3f4b; border-radius: 10px; padding: 40px 20px;
+    text-align: center; cursor: pointer; transition: border-color .15s, background .15s;
+  }
+  #drop.drag { border-color: #7c3aed; background: #1f1533; }
+  #drop .icon { font-size: 32px; margin-bottom: 8px; }
+  #drop .hint { color: #9ca3af; font-size: 12px; margin-top: 4px; }
+  input[type=file] { display: none; }
+  .settings { display: flex; gap: 12px; margin-top: 18px; }
+  .field { flex: 1; }
+  .field label { display: block; font-size: 12px; color: #9ca3af; margin-bottom: 6px; }
+  .field select, .field input {
+    width: 100%; background: #0f1115; border: 1px solid #2a2e38; color: #e5e7eb;
+    border-radius: 6px; padding: 8px 10px; font-size: 13px;
+  }
+  .file-row {
+    display: flex; align-items: center; justify-content: space-between;
+    background: #0f1115; border: 1px solid #2a2e38; border-radius: 8px;
+    padding: 10px 12px; margin-top: 10px; font-size: 13px;
+  }
+  .file-row .name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 300px; }
+  .file-row .size { color: #9ca3af; font-size: 12px; }
+  .file-row .rm { color: #ef4444; cursor: pointer; font-size: 12px; margin-left: 10px; }
+  button.go {
+    width: 100%; margin-top: 18px; padding: 12px; border: none; border-radius: 8px;
+    background: #7c3aed; color: #fff; font-size: 14px; font-weight: 600; cursor: pointer;
+  }
+  button.go:disabled { background: #3a3f4b; cursor: not-allowed; }
+  .job {
+    margin-top: 14px; background: #0f1115; border: 1px solid #2a2e38; border-radius: 8px;
+    padding: 12px; font-size: 13px;
+  }
+  .job .fname { font-weight: 600; margin-bottom: 6px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .bar { height: 6px; background: #2a2e38; border-radius: 3px; overflow: hidden; margin: 8px 0; }
+  .bar .fill { height: 100%; background: #7c3aed; width: 0%; transition: width .2s; }
+  .job .msg { color: #9ca3af; font-size: 12px; }
+  .job .result { color: #34d399; font-size: 12px; margin-top: 4px; }
+  .job .err { color: #ef4444; font-size: 12px; margin-top: 4px; }
+  .job a.dl {
+    display: inline-block; margin-top: 8px; background: #34d399; color: #06281a;
+    padding: 6px 12px; border-radius: 6px; text-decoration: none; font-size: 12px; font-weight: 600;
+  }
+  .server-note { font-size: 11px; color: #6b7280; margin-top: 20px; text-align: center; max-width: 480px; }
+</style>
+</head>
+<body>
+
+<h1>Nén video</h1>
+<div class="sub">Kéo-thả video vào, chọn mức nén, tải file đã nén về.</div>
+
+<div class="card">
+  <div id="drop">
+    <div class="icon">🎬</div>
+    <div>Kéo-thả video vào đây, hoặc bấm để chọn file</div>
+    <div class="hint">Chấp nhận .mp4 / .mov / .webm — nhiều file 1 lúc</div>
+    <input type="file" id="file-input" accept="video/*" multiple>
+  </div>
+
+  <div class="settings">
+    <div class="field">
+      <label>Mức nén (CRF)</label>
+      <select id="crf">
+        <option value="23">23 — nhẹ, chất lượng cao</option>
+        <option value="26">26 — vừa</option>
+        <option value="28" selected>28 — khuyến nghị</option>
+        <option value="30">30 — nén mạnh</option>
+        <option value="32">32 — nén rất mạnh</option>
+      </select>
+    </div>
+    <div class="field">
+      <label>Tốc độ nén</label>
+      <select id="preset">
+        <option value="fast">fast — nhanh</option>
+        <option value="medium" selected>medium — cân bằng</option>
+        <option value="slow">slow — nén tốt hơn, chậm hơn</option>
+      </select>
+    </div>
+  </div>
+
+  <div id="file-list"></div>
+
+  <button class="go" id="go-btn" disabled>Nén video</button>
+
+  <div id="jobs"></div>
+</div>
+
+<div class="server-note">
+  Cần chạy <code>python3 threads/compress_server.py</code> (cổng 8012) trước khi dùng trang này.
+</div>
+
+<script>
+const SERVER = 'http://localhost:8012';
+let pending = []; // {file}
+
+const dropEl = document.getElementById('drop');
+const inputEl = document.getElementById('file-input');
+const listEl = document.getElementById('file-list');
+const goBtn = document.getElementById('go-btn');
+const jobsEl = document.getElementById('jobs');
+
+dropEl.addEventListener('click', () => inputEl.click());
+inputEl.addEventListener('change', e => addFiles(e.target.files));
+
+['dragenter', 'dragover'].forEach(ev => dropEl.addEventListener(ev, e => {
+  e.preventDefault(); dropEl.classList.add('drag');
+}));
+['dragleave', 'drop'].forEach(ev => dropEl.addEventListener(ev, e => {
+  e.preventDefault(); dropEl.classList.remove('drag');
+}));
+dropEl.addEventListener('drop', e => addFiles(e.dataTransfer.files));
+
+function addFiles(fileList) {
+  for (const f of fileList) {
+    if (!f.type.startsWith('video/')) continue;
+    pending.push(f);
+  }
+  renderList();
+}
+
+function fmtSize(bytes) {
+  return (bytes / 1e6).toFixed(1) + ' MB';
+}
+
+function renderList() {
+  listEl.innerHTML = '';
+  pending.forEach((f, i) => {
+    const row = document.createElement('div');
+    row.className = 'file-row';
+    row.innerHTML = `<span class="name">${f.name}</span><span class="size">${fmtSize(f.size)}</span><span class="rm" data-i="${i}">Xoá</span>`;
+    row.querySelector('.rm').onclick = () => { pending.splice(i, 1); renderList(); };
+    listEl.appendChild(row);
+  });
+  goBtn.disabled = pending.length === 0;
+}
+
+goBtn.addEventListener('click', async () => {
+  goBtn.disabled = true;
+  const crf = parseInt(document.getElementById('crf').value, 10);
+  const preset = document.getElementById('preset').value;
+  const files = pending.slice();
+  pending = [];
+  renderList();
+
+  for (const f of files) {
+    await processFile(f, crf, preset);
+  }
+  goBtn.disabled = pending.length === 0;
+});
+
+async function processFile(file, crf, preset) {
+  const jobBox = document.createElement('div');
+  jobBox.className = 'job';
+  jobBox.innerHTML = `
+    <div class="fname">${file.name}</div>
+    <div class="bar"><div class="fill"></div></div>
+    <div class="msg">Đang tải lên...</div>
+  `;
+  jobsEl.prepend(jobBox);
+  const fill = jobBox.querySelector('.fill');
+  const msg = jobBox.querySelector('.msg');
+
+  try {
+    const form = new FormData();
+    form.append('file', file);
+    const upRes = await fetch(`${SERVER}/upload`, { method: 'POST', body: form });
+    if (!upRes.ok) throw new Error('Upload lỗi: ' + upRes.status);
+    const up = await upRes.json();
+
+    fill.style.width = '15%';
+    msg.textContent = 'Đang nén...';
+
+    const cRes = await fetch(`${SERVER}/compress`, {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ filename: up.filename, crf, preset }),
+    });
+    if (!cRes.ok) throw new Error('Không khởi tạo được job nén');
+    const { job_id } = await cRes.json();
+
+    while (true) {
+      await new Promise(r => setTimeout(r, 1200));
+      const sRes = await fetch(`${SERVER}/compress-status/${job_id}`);
+      const s = await sRes.json();
+      if (s.status === 'encoding' || s.status === 'queued') {
+        fill.style.width = '60%';
+        msg.textContent = s.message || 'Đang nén...';
+      } else if (s.status === 'done') {
+        fill.style.width = '100%';
+        const before = fmtSize(s.sizeBefore);
+        const after = fmtSize(s.sizeAfter);
+        const pct = Math.round((1 - s.sizeAfter / s.sizeBefore) * 100);
+        msg.textContent = 'Hoàn tất';
+        const result = document.createElement('div');
+        result.className = 'result';
+        result.textContent = `${before} → ${after} (giảm ${pct}%)`;
+        jobBox.appendChild(result);
+        const a = document.createElement('a');
+        a.className = 'dl';
+        a.href = `${SERVER}${s.downloadUrl}`;
+        a.textContent = '⬇ Tải video đã nén';
+        a.download = s.outputFilename;
+        jobBox.appendChild(a);
+        break;
+      } else if (s.status === 'error') {
+        const err = document.createElement('div');
+        err.className = 'err';
+        err.textContent = 'Lỗi: ' + s.message;
+        jobBox.appendChild(err);
+        break;
+      }
+    }
+  } catch (e) {
+    const err = document.createElement('div');
+    err.className = 'err';
+    err.textContent = 'Lỗi: ' + e.message;
+    jobBox.appendChild(err);
+  }
+}
+</script>
+</body>
+</html>
