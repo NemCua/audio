@@ -521,6 +521,8 @@ td.vi-cell textarea:focus{background:#1e1b4b44}
           <span style="font-size:13px;color:#6b7280;flex:1" id="subs-info"></span>
           <button class="btn" style="width:auto;margin:0;padding:8px 16px;background:#450a0a;color:#f87171;border:1px solid #7f1d1d"
                   onclick="scanChinese()" id="btn-scan-han">🔍 Quét sót tiếng Trung</button>
+          <button class="btn" style="width:auto;margin:0;padding:8px 16px;background:#0c2f4a;color:#67e8f9;border:1px solid #164e63"
+                  onclick="splitLongCues()" id="btn-split-long">✂ Tách dòng dài</button>
           <div style="position:relative">
             <button class="btn" style="width:auto;margin:0;padding:8px 16px;background:#1c1a2e;color:#c4b5fd;border:1px solid #4c1d95">📂 Nạp JSON khác</button>
             <input type="file" accept=".json" style="position:absolute;inset:0;opacity:0;cursor:pointer"
@@ -1410,6 +1412,93 @@ function esc(s) {
   return (s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
 }
 function onViEdit(i, val) { subtitleRows[i].vi = val; }
+
+// ── Tách dòng dài thành nhiều câu, chia lại thời gian theo tỉ lệ độ dài
+// ký tự, đẩy lại index — thuần quy tắc/regex, KHÔNG dùng AI ──
+function srtTimeToSec(ts) {
+  const m = ts.match(/(\d{2}):(\d{2}):(\d{2}),(\d{3})/);
+  if (!m) return 0;
+  return (+m[1])*3600 + (+m[2])*60 + (+m[3]) + (+m[4])/1000;
+}
+function secToSrtTime(sec) {
+  sec = Math.max(0, sec);
+  const h = Math.floor(sec/3600);
+  const m = Math.floor((sec%3600)/60);
+  const s = Math.floor(sec%60);
+  const ms = Math.round((sec%1)*1000);
+  const p2 = n => String(n).padStart(2,'0');
+  return `${p2(h)}:${p2(m)}:${p2(s)},${String(ms).padStart(3,'0')}`;
+}
+
+// Ngưỡng coi là "dòng dài": vượt quá số giây hoặc số ký tự này thì mới xét tách
+const SPLIT_MAX_SEC = 6;
+const SPLIT_MAX_CHARS = 40;
+
+// Tách câu theo dấu kết câu (Việt + sót Trung) trước. Nếu câu con vẫn còn dài
+// hơn ngưỡng, tách tiếp theo dấu phẩy/chấm phẩy để chia nhỏ hơn nữa — dòng dài
+// thường là do nhiều mệnh đề nối bằng dấu phẩy chứ không phải dấu chấm.
+function splitIntoSentences(text) {
+  const parts = (text || '').split(/(?<=[.!?;。！？；])\s+/).map(s => s.trim()).filter(Boolean);
+  const base = parts.length ? parts : [text || ''];
+
+  const out = [];
+  for (const p of base) {
+    if (p.length <= SPLIT_MAX_CHARS) { out.push(p); continue; }
+    const subParts = p.split(/(?<=[,，、])\s+/).map(s => s.trim()).filter(Boolean);
+    if (subParts.length <= 1) { out.push(p); continue; }
+    out.push(...subParts);
+  }
+  return out;
+}
+
+function splitLongCues() {
+  let splitCount = 0, newRows = [];
+
+  for (const r of subtitleRows) {
+    const startSec = srtTimeToSec(r.start);
+    const endSec   = srtTimeToSec(r.end);
+    const dur      = endSec - startSec;
+    const isLong   = dur > SPLIT_MAX_SEC || (r.vi || '').length > SPLIT_MAX_CHARS;
+
+    if (!isLong) { newRows.push(r); continue; }
+
+    const sentences = splitIntoSentences(r.vi);
+    if (sentences.length <= 1) { newRows.push(r); continue; } // không có chỗ để tách
+
+    splitCount++;
+    // Chia thời gian theo tỉ lệ độ dài ký tự từng câu con trong khoảng gốc
+    const totalChars = sentences.reduce((a,s) => a + s.length, 0) || 1;
+    let cursor = startSec;
+    sentences.forEach((sent, k) => {
+      const share = sent.length / totalChars;
+      const segDur = k === sentences.length - 1
+        ? (endSec - cursor)               // câu cuối lấy hết phần còn lại, tránh lệch làm tròn
+        : dur * share;
+      const segStart = cursor;
+      const segEnd   = k === sentences.length - 1 ? endSec : cursor + segDur;
+      newRows.push({
+        idx: 0, // đánh lại toàn bộ ở dưới
+        start: secToSrtTime(segStart),
+        end:   secToSrtTime(segEnd),
+        zh: k === 0 ? r.zh : '',   // giữ tiếng Trung gốc ở câu đầu, tránh trùng lặp hiển thị
+        vi: sent,
+      });
+      cursor = segEnd;
+    });
+  }
+
+  newRows.forEach((r, i) => { r.idx = i + 1; });
+  subtitleRows = newRows;
+  renderTable();
+
+  const box = document.getElementById('han-scan-result');
+  box.style.display = 'block';
+  box.style.borderColor = '#164e63';
+  box.style.color = '#67e8f9';
+  box.innerHTML = splitCount > 0
+    ? `✂ Đã tách ${splitCount} dòng dài thành nhiều câu. Tổng còn lại ${subtitleRows.length} đoạn. Nhớ bấm "💾 Lưu bản dịch" để giữ thay đổi.`
+    : `Không tìm thấy dòng nào đủ dài (>${SPLIT_MAX_SEC}s hoặc >${SPLIT_MAX_CHARS} ký tự) và có nhiều câu để tách.`;
+}
 
 async function showSrtPanel(jobId) {
   const sec = document.getElementById('sec-render');

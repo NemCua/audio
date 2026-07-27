@@ -18,6 +18,7 @@ import argparse
 import asyncio
 import os
 import re
+import shutil
 import subprocess
 import time
 from pathlib import Path
@@ -729,7 +730,18 @@ async def build_tts_track(cues: list[dict], work_dir: Path, video_duration: floa
         label = f"Edge TTS ({TTS_VOICE})"
     print(f"  → TTS {len(cues)} đoạn ({label})...")
     seg_dir = work_dir / "tts_segs"
+    # Xoá sạch cache TTS của lần render trước: file được đặt tên theo VỊ TRÍ
+    # (pos) trong danh sách cues, không theo nội dung. Nếu user sửa/tách cues
+    # (số lượng và text tại mỗi pos đổi) mà thư mục cũ còn tồn tại, code bên
+    # dưới thấy raw_XXXXX.mp3 đã có sẽ BỎ QUA TTS và dùng lại audio CŨ — sai
+    # hoàn toàn so với text mới. Phải dọn sạch trước mỗi lần build.
+    if seg_dir.exists():
+        shutil.rmtree(seg_dir)
     seg_dir.mkdir(exist_ok=True)
+    for stale in work_dir.glob("tts_track.wav"):
+        stale.unlink(missing_ok=True)
+    for stale in work_dir.glob("batch_*.wav"):
+        stale.unlink(missing_ok=True)
 
     # --- Pre-fetch CapCut batch -------------------------------------------
     # Gom tất cả cue có text, gửi theo batch 20 đoạn/request thay vì từng cái

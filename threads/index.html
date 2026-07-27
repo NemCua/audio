@@ -1,0 +1,3777 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>Threads Short Video Maker</title>
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; }
+@font-face {
+  font-family: "SFPro";
+  src: local("SFNS"), local(".AppleSystemUIFont");
+}
+body {
+  font-family: "SFPro", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif;
+  background: #0a0c14;
+  color: #e2e8f0;
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+
+header {
+  background: #12152a;
+  border-bottom: 1px solid #1e2340;
+  padding: 14px 28px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-shrink: 0;
+}
+header h1 { font-size: 18px; font-weight: 700; color: #a78bfa; }
+header span { font-size: 12px; color: #4b5563; }
+
+.layout {
+  display: grid;
+  grid-template-columns: 300px 1fr 460px;
+  flex: 1;
+  overflow: hidden;
+}
+
+/* ============ SIDEBAR (chức năng) ============ */
+.sidebar {
+  background: #12152a;
+  border-right: 1px solid #1e2340;
+  overflow-y: auto;
+  padding: 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.sidebar h2 {
+  font-size: 11px;
+  font-weight: 700;
+  color: #4b5563;
+  text-transform: uppercase;
+  letter-spacing: .08em;
+  margin-bottom: 8px;
+  padding: 0 4px;
+}
+
+.feature-item {
+  border: 1px solid #1e2340;
+  border-radius: 10px;
+  background: #0f1220;
+  overflow: hidden;
+  transition: border-color .15s;
+}
+.feature-item.active { border-color: #7c3aed; }
+
+.feature-head {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 14px;
+  cursor: pointer;
+  user-select: none;
+}
+.feature-head .num {
+  width: 22px; height: 22px;
+  border-radius: 50%;
+  background: #1e1b4b;
+  color: #a78bfa;
+  font-size: 11px;
+  font-weight: 800;
+  display: flex; align-items: center; justify-content: center;
+  flex-shrink: 0;
+}
+.feature-item.done .feature-head .num { background: #14532d; color: #4ade80; }
+.feature-head .label { flex: 1; font-size: 13px; font-weight: 600; color: #e2e8f0; }
+.feature-head .status-dot {
+  width: 8px; height: 8px; border-radius: 50%;
+  background: #374151; flex-shrink: 0;
+}
+.feature-item.done .status-dot { background: #4ade80; }
+.status-dot.err { background: #ef4444; }
+.feature-head .chevron { font-size: 10px; color: #4b5563; transition: transform .15s; }
+.feature-item.open .feature-head .chevron { transform: rotate(90deg); }
+
+.feature-body {
+  display: none;
+  padding: 0 14px 16px;
+  border-top: 1px solid #1e2340;
+}
+.feature-item.open .feature-body { display: block; padding-top: 14px; }
+
+.feature-body label {
+  display: block;
+  font-size: 11px;
+  color: #9ca3af;
+  margin-bottom: 6px;
+  font-weight: 600;
+}
+.feature-body .hint {
+  font-size: 11px;
+  color: #6b7280;
+  line-height: 1.5;
+  margin-bottom: 12px;
+}
+.feature-body input[type="text"],
+.feature-body textarea {
+  width: 100%;
+  background: #0a0c14;
+  border: 1px solid #1e2340;
+  border-radius: 7px;
+  color: #e2e8f0;
+  font-size: 13px;
+  padding: 8px 10px;
+  outline: none;
+  font-family: inherit;
+  margin-bottom: 4px;
+}
+.feature-body textarea { min-height: 70px; resize: vertical; }
+.feature-body input[type="text"]:focus,
+.feature-body textarea:focus { border-color: #7c3aed; }
+
+.drop-zone {
+  border: 2px dashed #1e2340;
+  border-radius: 8px;
+  padding: 22px 12px;
+  text-align: center;
+  cursor: pointer;
+  position: relative;
+  transition: border-color .2s, background .2s;
+  margin-bottom: 10px;
+}
+.drop-zone:hover, .drop-zone.over { border-color: #7c3aed; background: #1e1b4b22; }
+.drop-zone input[type=file] {
+  position: absolute; inset: 0; opacity: 0; cursor: pointer;
+}
+.drop-zone .icon { font-size: 26px; margin-bottom: 6px; }
+.drop-zone p { font-size: 12px; color: #6b7280; }
+.drop-zone .fname { font-size: 11px; color: #a78bfa; margin-top: 6px; word-break: break-all; }
+
+.btn {
+  width: 100%;
+  border: none;
+  border-radius: 8px;
+  font-size: 13px;
+  font-weight: 600;
+  padding: 10px 14px;
+  cursor: pointer;
+  transition: opacity .15s, transform .1s;
+  margin-top: 6px;
+}
+.btn:hover { opacity: .88; }
+.btn:active { transform: scale(.98); }
+.btn:disabled { opacity: .4; cursor: not-allowed; }
+.btn-primary { background: linear-gradient(135deg,#7c3aed,#5b21b6); color: #fff; }
+.btn-ghost { background: #1e2340; color: #a78bfa; }
+
+/* Chọn nền tảng Threads/TikTok cho step comment/reply — mục 5.39 CONTEXT.md */
+.platform-picker { display: flex; gap: 8px; margin-top: 4px; margin-bottom: 4px; }
+.platform-btn {
+  flex: 1; border: 1px solid #2d2b45; background: #16142a; color: #94a3b8;
+  border-radius: 8px; font-size: 13px; font-weight: 600; padding: 10px 12px; cursor: pointer;
+}
+.platform-btn.active { border-color: #7c3aed; background: #2a1f52; color: #fff; }
+
+.slider-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 10px;
+}
+.slider-row input[type=range] {
+  flex: 1;
+  accent-color: #7c3aed;
+}
+.slider-row .slider-val {
+  font-size: 11px;
+  color: #a78bfa;
+  font-weight: 700;
+  min-width: 34px;
+  text-align: right;
+}
+
+.upcoming-feature {
+  border: 1px dashed #262b45;
+  border-radius: 10px;
+  padding: 12px 14px;
+  font-size: 12px;
+  color: #4b5563;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.upcoming-feature .num {
+  width: 22px; height: 22px;
+  border-radius: 50%;
+  background: #171a2e;
+  color: #4b5563;
+  font-size: 11px;
+  font-weight: 800;
+  display: flex; align-items: center; justify-content: center;
+  flex-shrink: 0;
+}
+
+/* ============ MAIN (preview 9:16) ============ */
+.main {
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 32px;
+  gap: 16px;
+}
+.main-toolbar {
+  width: 100%;
+  max-width: 460px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+.main-toolbar h3 { font-size: 13px; color: #9ca3af; font-weight: 600; }
+.main-toolbar .ratio-badge {
+  font-size: 11px;
+  color: #a78bfa;
+  background: #1e1b4b;
+  padding: 4px 10px;
+  border-radius: 999px;
+  font-weight: 700;
+}
+
+.preview-frame {
+  width: 100%;
+  max-width: 460px;
+  aspect-ratio: 9 / 16;
+  background: #000;
+  border-radius: 16px;
+  overflow: hidden;
+  position: relative;
+  box-shadow: 0 20px 60px rgba(0,0,0,0.5);
+  border: 1px solid #1e2340;
+  container-type: inline-size; /* cho phép overlay bên trong dùng đơn vị cqw,
+                                   tự co giãn đúng tỷ lệ theo chiều rộng khung
+                                   preview thật, không phụ thuộc kích thước màn hình */
+}
+.preview-frame video {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+.preview-empty {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  color: #374151;
+  text-align: center;
+  padding: 20px;
+}
+.preview-empty .icon { font-size: 44px; opacity: .5; }
+.preview-empty p { font-size: 13px; color: #4b5563; }
+
+/* ============================================================
+   Stack các thẻ Threads (post/comment) chồng lên video — BÊ NGUYÊN SI
+   từ threads_ui_mock.html (.thr-card/.thr-row/...), chỉ đổi đơn vị px
+   sang cqw theo đúng tỷ lệ thiết kế gốc 1080px (1cqw = 1% chiều rộng
+   .preview-frame): Xpx → (X/1080*100)cqw. Không tự vẽ lại layout.
+
+   .thr-stack: container tuyệt đối, các thẻ .tcard chồng dọc theo đúng
+   cấu trúc .thr-card gốc; khi tràn khung, JS dịch cả stack lên để thẻ
+   mới nhất luôn thấy được.
+   ============================================================ */
+.thr-stack {
+  position: absolute;
+  left: 2.96cqw; right: 2.96cqw;   /* 32px */
+  top: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 1.3cqw;                      /* ~14px, khoảng cách giữa 2 thr-card */
+  padding-top: 22.2cqw;             /* 240px — thẻ đầu tiên bắt đầu như mock */
+  transition: transform .45s cubic-bezier(.4,0,.2,1);
+  z-index: 5;
+  pointer-events: none;
+}
+.tcard {
+  background: #ffffff;
+  color: #000;
+  border-radius: 2.22cqw;           /* 24px */
+  padding: 2.96cqw 2.78cqw;         /* 32px 30px */
+  box-shadow: 0 1.85cqw 5.56cqw rgba(0,0,0,0.35);
+  font-family: "SFPro", -apple-system, sans-serif;
+  animation: tcard-in .35s cubic-bezier(.2,.8,.2,1);
+}
+@keyframes tcard-in {
+  from { opacity: 0; transform: translateY(3cqw) scale(.97); }
+  to   { opacity: 1; transform: translateY(0) scale(1); }
+}
+/* .thr-row: avatar (trái) + nội dung thụt vào theo avatar (giữa) + trái
+   tim/menu (phải, ngang hàng tên/giờ). align-items:flex-start là mấu chốt
+   để .follow-badge không bị kéo giãn lệch vị trí (xem giải thích trong mock). */
+.tcard .thr-row { display: flex; gap: 2.04cqw; align-items: flex-start; }
+.tcard .thr-row.post-head-row { align-items: center; }
+.tcard .avatar-wrap { position: relative; flex-shrink: 0; width: 11.11cqw; height: 11.11cqw; }
+.tcard .avatar-wrap:has(.avatar.sm) { width: 9.63cqw; height: 9.63cqw; }
+.tcard .avatar {
+  width: 11.11cqw; height: 11.11cqw;
+  border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 4.07cqw; font-weight: 800; color: #fff;
+  border: .46cqw solid #f0f0f0;
+  overflow: hidden;
+}
+.tcard .avatar.sm { width: 9.63cqw; height: 9.63cqw; font-size: 3.52cqw; }
+.tcard .follow-badge {
+  position: absolute; bottom: -.46cqw; right: -.46cqw;
+  width: 5.37cqw; height: 5.37cqw;
+  border-radius: 50%; background: #000; border: .46cqw solid #fff;
+}
+.tcard .avatar-wrap:has(.avatar.sm) .follow-badge { width: 4.63cqw; height: 4.63cqw; }
+.tcard .follow-badge::before,
+.tcard .follow-badge::after {
+  content: ""; position: absolute; top: 50%; left: 50%;
+  background: #fff; border-radius: 1px; transform: translate(-50%,-50%);
+}
+.tcard .follow-badge::before { width: 2.04cqw; height: .28cqw; }
+.tcard .follow-badge::after  { width: .28cqw; height: 2.04cqw; }
+.tcard .avatar-wrap:has(.avatar.sm) .follow-badge::before { width: 1.67cqw; height: .28cqw; }
+.tcard .avatar-wrap:has(.avatar.sm) .follow-badge::after  { width: .28cqw; height: 1.67cqw; }
+
+.tcard .thr-main { flex: 1; min-width: 0; padding-top: .56cqw; }
+.tcard .thr-head { display: flex; align-items: flex-start; gap: 1.11cqw; }
+.tcard .thr-head .who { flex: 1; min-width: 0; }
+.tcard .uname-row { display: flex; align-items: center; gap: 1.11cqw; }
+.tcard .uname { font-size: 3.33cqw; font-weight: 700; color: #000; }
+
+/* Làm mờ tên + avatar (mục 5.10 CONTEXT.md) — bật/tắt qua checkbox sidebar,
+   giúp khỏi phải nghĩ tên thật/tìm ảnh thật khi soạn kịch bản. KHÔNG áp
+   dụng cho ảnh đính kèm trong thân bài (thr-img-wrap) — chỉ định danh
+   (tên/avatar) mới bị mờ, nội dung ảnh minh hoạ vẫn rõ. */
+#preview-frame.blur-identity .uname { filter: blur(5px); }
+#preview-frame.blur-identity .avatar { filter: blur(6px); }
+/* TikTok (mục 5.42 CONTEXT.md) — cùng nguyên tắc: chỉ mờ tên/avatar, KHÔNG
+   mờ .tk-img-wrap (ảnh đính kèm nội dung comment). */
+#preview-frame.blur-identity .tk-uname { filter: blur(5px); }
+#preview-frame.blur-identity .tk-avatar { filter: blur(6px); }
+.tcard .badge-author {
+  font-size: 2.04cqw; background: #ececec; color: #555;
+  padding: .37cqw 1.2cqw; border-radius: .74cqw; font-weight: 600;
+}
+.tcard .time { font-size: 2.59cqw; color: #767676; }
+.tcard .thr-head .side-actions {
+  display: flex; align-items: center; gap: .74cqw;
+  flex-shrink: 0; padding-top: .37cqw;
+}
+.tcard .thr-head .side-actions svg { width: 3.15cqw; height: 3.15cqw; }
+.tcard .menu-dots {
+  font-size: 3.52cqw; color: #767676; font-weight: 900;
+  letter-spacing: .19cqw; line-height: 1; padding: 0 .37cqw;
+}
+.tcard .thr-body {
+  font-size: 3.33cqw; line-height: 1.45; color: #000;
+  margin-top: 2.04cqw; white-space: pre-wrap;
+}
+.tcard .thr-stats {
+  display: flex; align-items: center; gap: 4.07cqw;
+  margin-top: 2.78cqw; color: #000; font-size: 2.87cqw;
+}
+.tcard .thr-stats .stat { display: flex; align-items: center; gap: 1.02cqw; }
+.tcard .thr-stats .stat.liked { color: #ff3b5c; }
+.tcard .thr-stats svg { width: 3.7cqw; height: 3.7cqw; }
+.tcard .icon-thr-fill { fill: currentColor; }
+
+/* Comment + reply: đường nối dọc, đúng kỹ thuật mock — line phủ hết chiều
+   cao còn lại (top: đáy avatar cha, bottom:0), avatar reply solid tự che
+   phần thừa, không cần đo/đoán gì cả. */
+.tcard .thread-group { position: relative; }
+.tcard .thread-group .connector-line {
+  position: absolute;
+  left: 4.81cqw;   /* tâm avatar sm (9.63cqw / 2) */
+  top: 9.63cqw;    /* đáy avatar sm của comment gốc */
+  bottom: 0;
+  width: .19cqw;
+  background: #d9d9d9;
+  z-index: 0;
+}
+.tcard .reply-row { margin-top: 1.67cqw; position: relative; z-index: 1; }
+
+/* Ảnh đính kèm — quy đổi từ mock (thr-img-wrap: 20px/18px/56px/26px) */
+.tcard .thr-img-wrap {
+  position: relative;
+  border-radius: 1.85cqw;
+  overflow: hidden;
+  margin-top: 1.85cqw;
+  line-height: 0;
+}
+.tcard .thr-img-wrap img { width: 100%; display: block; }
+.tcard .thr-img-wrap .img-share-btn {
+  position: absolute;
+  top: 1.67cqw; right: 1.67cqw;
+  width: 5.19cqw; height: 5.19cqw;
+  border-radius: 50%;
+  background: rgba(0,0,0,0.45);
+  backdrop-filter: blur(4px);
+  display: flex; align-items: center; justify-content: center;
+}
+.tcard .thr-img-wrap .img-share-btn svg { width: 2.41cqw; height: 2.41cqw; color: #fff; }
+
+/* ============================================================
+   TikTok comment/reply (mục 5.39 CONTEXT.md) — copy nguyên cấu trúc/số đo
+   từ threads/tiktok_ui_mock.html đã chốt với người dùng, quy đổi px→cqw
+   theo công thức mục 5.2 (X/1080*100). Khác Threads: mỗi card nền trắng
+   riêng biệt (không cộng dồn liền mạch vào 1 nền chung).
+   ============================================================ */
+.tk-comment {
+  display: flex;
+  gap: 1.667cqw;
+  margin-bottom: 2.222cqw;
+  background: #ffffff;
+  border-radius: 1.852cqw;
+  padding: 2.222cqw 2.593cqw;
+  box-shadow: 0 0.37cqw 1.667cqw rgba(0,0,0,0.18);
+}
+/* Reply TikTok độc lập — hẹp hơn + lệch phải (yêu cầu người dùng, khác hẳn
+   .tk-comment.reply cũ trong mock vốn là reply ĐÍNH KÈM comment gốc).
+   max-width 87.2% (giảm 60% độ thụt so với bản gốc 68% — khoảng trống bên
+   trái từ 32% xuống 12.8%, theo phản hồi "thụt vô quá nhiều" của người dùng). */
+.tk-comment-reply {
+  max-width: 87.2%;
+  margin-left: auto;
+}
+.tk-comment-reply .tk-avatar { width: 5.556cqw; height: 5.556cqw; }
+
+.tk-avatar {
+  width: 7.037cqw;
+  height: 7.037cqw;
+  border-radius: 50%;
+  flex-shrink: 0;
+  background: #ddd;
+  overflow: hidden;
+}
+.tk-avatar img { width: 100%; height: 100%; object-fit: cover; display: block; }
+
+.tk-main { flex: 1; min-width: 0; }
+
+/* Bọc tên + badge "Nhà sáng tạo" (mục 5.43 CONTEXT.md) — TÁCH RIÊNG khỏi
+   nhau để filter:blur() của "Làm mờ tên/avatar" (mục 5.10/5.42) chỉ áp lên
+   .tk-uname, KHÔNG lan sang badge (badge là trạng thái tác giả, không phải
+   thông tin định danh cần che — trước đó badge nằm trong .tk-uname nên bị
+   mờ theo, người dùng phản hồi không nhìn thấy được). */
+.tk-uname-row {
+  display: flex;
+  align-items: baseline;
+  gap: 0.556cqw;
+  margin-bottom: 0.741cqw;
+}
+.tk-uname {
+  font-size: 2.963cqw;
+  font-weight: 600;
+  color: #9a9a9a;
+}
+.tk-creator-badge {
+  font-size: 2.4cqw;
+  font-weight: 600;
+  color: #00bad0;
+}
+
+.tk-text {
+  font-size: 3.333cqw;
+  font-weight: 600;
+  color: #16161a;
+  line-height: 1.35;
+  word-wrap: break-word;
+}
+
+/* Ảnh đính kèm comment TikTok (đối chiếu threads/commentIMG.jpg) — bo góc
+   nhẹ, KHÔNG có nút share (khác .thr-img-wrap Threads). */
+.tk-img-wrap {
+  margin-top: 1.481cqw;
+  border-radius: 1.111cqw;
+  overflow: hidden;
+  max-width: 70%;
+}
+.tk-img-wrap img { width: 100%; display: block; }
+
+.tk-foot {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-top: 1.481cqw;
+}
+.tk-foot-left {
+  display: flex;
+  align-items: center;
+  gap: 2.037cqw;
+  font-size: 2.593cqw;
+  color: #9a9a9a;
+}
+.tk-foot-left .tk-reply-btn { font-weight: 600; }
+
+.tk-foot-right {
+  display: flex;
+  align-items: center;
+  gap: 1.667cqw;
+}
+
+.tk-like {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 0.741cqw;
+}
+.tk-like svg { width: 4.167cqw; height: 4.167cqw; }
+.tk-like.liked svg { color: #fe2c55; }
+.tk-like:not(.liked) svg { color: #b0b0b0; }
+.tk-like-count {
+  font-size: 2.87cqw;
+  color: #9a9a9a;
+}
+
+.tk-view-replies {
+  display: flex;
+  align-items: center;
+  gap: 1.296cqw;
+  margin-top: 0.926cqw;
+  font-size: 2.778cqw;
+  font-weight: 600;
+  color: #9a9a9a;
+}
+.tk-view-replies::before {
+  content: "";
+  width: 6.296cqw;
+  height: 0.185cqw;
+  background: #9a9a9a;
+}
+.tk-view-replies svg { width: 2.037cqw; height: 2.037cqw; }
+
+/* Threads reply độc lập (mục 5.39) — thay hẳn .thread-group/.connector-line
+   cũ. Không có "cha" trong cùng step để đường nối nối vào nên chỉ thụt lề
+   nhẹ, KHÔNG vẽ đường nối (vẽ sẽ lửng lơ/sai logic). 11.11cqw khớp mức thụt
+   theo avatar comment đã dùng ở .thr-view-replies (6cqw cũ quá nhỏ, không
+   nhận ra được bằng mắt trên khung preview — phản hồi thực tế người dùng). */
+.thr-reply-standalone { margin-left: 11.11cqw; }
+
+/* Overlay ảnh/video (step 'image') — phủ giữa khung, tạm thời trong lúc step
+   chạy. Tên class/id giữ "meme" vì lịch sử (từng dùng cho step 'meme' đã bỏ,
+   xem CONTEXT.md) — không rename tràn lan qua nhiều file chỉ vì đổi ý nghĩa. */
+.meme-overlay {
+  position: absolute;
+  left: 5cqw; right: 5cqw;
+  /* Neo MÉP TRÊN (không phải tâm) tại 1 vị trí cố định — mục 5.31
+     CONTEXT.md: ảnh crop nhiều-vùng tăng dần chiều cao qua từng step phải
+     đứng yên ở đỉnh, phần cao thêm giãn XUỐNG DƯỚI (giống tin nhắn mới nối
+     thêm), không phải giãn đều 2 phía như canh giữa cũ. offsetY (D-pad)
+     vẫn dịch được từ đây như trước — set qua JS trong memeOverlayTransform(). */
+  top: 20%;
+  z-index: 8;
+  border-radius: 2cqw;
+  overflow: hidden;
+  box-shadow: 0 2cqw 6cqw rgba(0,0,0,0.5);
+  line-height: 0;
+}
+.meme-overlay img, .meme-overlay video { width: 100%; display: block; }
+.meme-overlay .meme-ph {
+  aspect-ratio: 1/1;
+  background: repeating-linear-gradient(45deg,#333,#333 3cqw,#2a2a2a 3cqw,#2a2a2a 6cqw);
+  display: flex; align-items: center; justify-content: center;
+  color: #ccc; font-size: 3cqw; font-weight: 700; text-align: center; padding: 4cqw;
+}
+
+.preview-info {
+  width: 100%;
+  max-width: 460px;
+  font-size: 11px;
+  color: #6b7280;
+  display: flex;
+  justify-content: space-between;
+}
+
+/* ============ Thanh điều khiển Play dưới preview ============ */
+.play-bar {
+  width: 100%;
+  max-width: 460px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+.play-bar button {
+  border: none;
+  border-radius: 8px;
+  background: linear-gradient(135deg,#7c3aed,#5b21b6);
+  color: #fff;
+  font-size: 14px;
+  font-weight: 700;
+  padding: 9px 18px;
+  cursor: pointer;
+  flex-shrink: 0;
+}
+.play-bar button:hover { opacity: .88; }
+.play-bar button:disabled { opacity: .4; cursor: not-allowed; }
+.play-bar .progress {
+  flex: 1;
+  height: 6px;
+  background: #1e2340;
+  border-radius: 999px;
+  overflow: hidden;
+}
+.play-bar .progress .bar { height: 100%; width: 0; background: #7c3aed; }
+.play-bar .tlabel { font-size: 11px; color: #9ca3af; min-width: 74px; text-align: right; font-variant-numeric: tabular-nums; }
+
+#export-progress-wrap .progress {
+  height: 6px; background: #1e2340; border-radius: 999px; overflow: hidden;
+}
+#export-progress-wrap .bar { height: 100%; background: #7c3aed; transition: width .3s; }
+
+/* ============ PANEL PHẢI: KỊCH BẢN (step list) ============ */
+.script-panel {
+  background: #12152a;
+  border-left: 1px solid #1e2340;
+  overflow-y: auto;
+  padding: 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.script-panel h2 {
+  font-size: 11px; font-weight: 700; color: #4b5563;
+  text-transform: uppercase; letter-spacing: .08em; padding: 0 2px;
+}
+.add-step-bar { display: flex; gap: 6px; flex-wrap: wrap; }
+.add-step-bar button {
+  flex: 1 1 auto;
+  min-width: 62px;
+  border: 1px dashed #4c1d95;
+  background: #1c1a2e;
+  color: #c4b5fd;
+  border-radius: 8px;
+  font-size: 11px;
+  font-weight: 600;
+  padding: 8px 6px;
+  cursor: pointer;
+}
+.add-step-bar button:hover { background: #241f3d; }
+
+.io-btn {
+  border: 1px solid #2d2b45; background: #16142a; color: #a78bfa;
+  border-radius: 6px; font-size: 11px; font-weight: 600;
+  padding: 6px 8px; cursor: pointer; white-space: nowrap;
+}
+.io-btn:hover { background: #1e1c38; }
+
+.step-card {
+  border: 1px solid #1e2340;
+  border-radius: 10px;
+  background: #0f1220;
+  overflow: hidden;
+  cursor: grab;
+}
+.step-card.active-now { border-color: #7c3aed; box-shadow: 0 0 0 1px #7c3aed; }
+.step-card.dragging { opacity: .4; }
+.step-card.drag-over { border-color: #4ade80; box-shadow: 0 0 0 1px #4ade80; }
+/* Hàng chứa step chính + audio SONG SONG bám theo nó — 2 cột kề nhau để
+   biểu thị trực quan "cùng lúc" (mục 5.13 CONTEXT.md), thay vì xếp dọc.
+   .step-row-wrap bọc khung viền NGOÀI cả cặp + 1 tay cầm kéo riêng
+   (.row-handle) — kéo tại đó di chuyển CẢ CẶP cùng lúc, giữ nguyên cặp
+   (khác kéo từng .step-card con riêng lẻ vẫn hoạt động độc lập). */
+.step-row-wrap {
+  display: flex; align-items: stretch; gap: 6px;
+  border: 1px dashed #2a3050; border-radius: 10px; padding: 6px;
+}
+.row-handle {
+  flex-shrink: 0; width: 16px; border-radius: 6px;
+  background: #171b30; color: #4b5178;
+  display: flex; align-items: center; justify-content: center;
+  writing-mode: vertical-rl; font-size: 11px; letter-spacing: 2px;
+  cursor: grab; user-select: none;
+}
+.row-handle:hover { background: #1e2340; color: #a78bfa; }
+.row-handle.dragging { opacity: .4; }
+.step-row { display: flex; gap: 8px; align-items: stretch; flex: 1; min-width: 0; }
+.step-row > .step-card { flex: 1; min-width: 0; }
+.step-row > .step-card.t-audio-parallel { flex: 0 0 42%; }
+.step-card .sc-head {
+  display: flex; align-items: center; gap: 8px;
+  padding: 10px 12px; cursor: pointer;
+}
+.step-card .sc-idx {
+  width: 20px; height: 20px; border-radius: 50%;
+  background: #1e1b4b; color: #a78bfa;
+  font-size: 10px; font-weight: 800;
+  display: flex; align-items: center; justify-content: center; flex-shrink: 0;
+}
+.step-card .sc-type {
+  font-size: 10px; font-weight: 700; padding: 2px 7px; border-radius: 5px;
+  background: #1e3a5f; color: #60a5fa; flex-shrink: 0;
+}
+.step-card .sc-type.t-meme { background: #422006; color: #fbbf24; }
+.step-card .sc-type.t-audio { background: #14532d; color: #4ade80; }
+.step-card .sc-time { margin-left: auto; font-size: 10px; color: #6b7280; font-variant-numeric: tabular-nums; }
+.step-card .sc-summary {
+  padding: 0 12px 8px; font-size: 12px; color: #cbd5e1;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  cursor: pointer;
+}
+.step-card .sc-voice {
+  padding: 0 12px 8px; font-size: 10px; color: #a78bfa;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+/* Điều chỉnh vị trí/xoay (mục 5.21 CONTEXT.md) — chỉ hiện cho step có hình
+   (post/comment/reply/meme), KHÔNG cho audio. */
+.step-card .sc-position {
+  display: flex; align-items: center; gap: 10px; flex-wrap: wrap;
+  padding: 8px 12px; border-top: 1px solid #1e2340;
+}
+.step-card .sc-dpad {
+  display: grid; grid-template-columns: repeat(3, 22px); grid-template-rows: repeat(3, 22px);
+  gap: 2px;
+}
+.step-card .sc-dpad button {
+  background: #1e2340; border: none; color: #94a3b8; border-radius: 4px;
+  font-size: 11px; cursor: pointer; padding: 0;
+}
+.step-card .sc-dpad button:hover { background: #2a3050; color: #e2e8f0; }
+.step-card .sc-dpad .dp-up    { grid-column: 2; grid-row: 1; }
+.step-card .sc-dpad .dp-left  { grid-column: 1; grid-row: 2; }
+.step-card .sc-dpad .dp-reset { grid-column: 2; grid-row: 2; background: #16142a; color: #a78bfa; font-size: 13px; }
+.step-card .sc-dpad .dp-right { grid-column: 3; grid-row: 2; }
+.step-card .sc-dpad .dp-down  { grid-column: 2; grid-row: 3; }
+.step-card .sc-rotate { display: flex; gap: 4px; }
+.step-card .sc-rotate button {
+  background: #1e2340; border: none; color: #94a3b8; border-radius: 4px;
+  font-size: 12px; cursor: pointer; padding: 4px 8px;
+}
+.step-card .sc-rotate button:hover { background: #2a3050; color: #e2e8f0; }
+.step-card .sc-pos-val { font-size: 10px; color: #6b7280; font-variant-numeric: tabular-nums; }
+.step-card .sc-pos-warn {
+  font-size: 10px; color: #fbbf24; background: #422006;
+  padding: 2px 6px; border-radius: 4px;
+}
+.step-card .sc-ctrls {
+  display: flex; align-items: center; gap: 10px;
+  padding: 8px 12px; border-top: 1px solid #1e2340; flex-wrap: wrap;
+}
+.step-card .sc-ctrls label { font-size: 10px; color: #9ca3af; display: flex; align-items: center; gap: 4px; }
+.step-card .sc-ctrls input[type=number] {
+  width: 52px; background: #0a0c14; border: 1px solid #1e2340;
+  border-radius: 5px; color: #e2e8f0; font-size: 11px; padding: 3px 6px;
+}
+.step-card .sc-ctrls .clear-toggle { display: flex; align-items: center; gap: 5px; cursor: pointer; }
+.step-card .sc-ctrls .sc-actions { margin-left: auto; display: flex; gap: 4px; }
+.step-card .sc-ctrls .sc-actions button {
+  background: #1e2340; border: none; color: #94a3b8;
+  border-radius: 5px; font-size: 11px; padding: 3px 7px; cursor: pointer;
+}
+.step-card .sc-ctrls .sc-actions button:hover { background: #2a3050; color: #e2e8f0; }
+.script-empty { color: #4b5563; font-size: 12px; padding: 16px 4px; text-align: center; }
+
+/* Modal soạn nội dung step */
+.step-modal-overlay {
+  display: none; position: fixed; inset: 0;
+  background: rgba(0,0,0,0.6); z-index: 100;
+  align-items: center; justify-content: center;
+}
+.step-modal-overlay.open { display: flex; }
+.step-modal {
+  background: #12152a; border: 1px solid #1e2340; color: #e2e8f0;
+  border-radius: 14px; width: min(620px,94vw); max-height: 90vh; overflow-y: auto;
+  padding: 28px;
+}
+.step-modal h3 { font-size: 20px; margin-bottom: 18px; color: #a78bfa; }
+.step-modal label { display: block; font-size: 13px; color: #9ca3af; margin: 16px 0 7px; font-weight: 600; }
+.step-modal input[type=text], .step-modal textarea, .step-modal input[type=number], .step-modal select {
+  width: 100%; background: #0a0c14; border: 1px solid #1e2340; border-radius: 8px;
+  color: #e2e8f0; font-size: 15px; padding: 12px 14px; outline: none; font-family: inherit;
+}
+.step-modal select { cursor: pointer; }
+.step-modal input[type=checkbox] { width: 17px; height: 17px; cursor: pointer; accent-color: #7c3aed; }
+.step-modal textarea { min-height: 90px; resize: vertical; }
+.step-modal input:focus, .step-modal textarea:focus { border-color: #7c3aed; }
+.step-modal .row2 { display: flex; gap: 12px; }
+.step-modal .row2 > div { flex: 1; }
+.media-dropzone {
+  border: 2px dashed #2d2b45; border-radius: 10px; padding: 30px 14px;
+  text-align: center; cursor: pointer; background: #0a0c14;
+  font-size: 14px; color: #94a3b8; transition: border-color .15s, background .15s;
+}
+.media-dropzone:hover, .media-dropzone.over { border-color: #7c3aed; background: #16142a; }
+
+/* Lưới thư viện có sẵn (mục 5.15) — nghe/xem thử trước khi chọn. Phóng to
+   theo yêu cầu người dùng (mục 5.29 CONTEXT.md) — modal/chữ/thumbnail quá
+   nhỏ khó thao tác. */
+.lib-toggle-row { margin-bottom: 10px; }
+.lib-toggle-btn {
+  width: 100%; border: 1px solid #2d2b45; background: #16142a; color: #a78bfa;
+  border-radius: 8px; font-size: 15px; font-weight: 600; padding: 12px 14px; cursor: pointer;
+}
+.lib-toggle-btn:hover { background: #1e1c38; }
+.lib-grid {
+  display: grid; gap: 10px; max-height: 340px; overflow-y: auto;
+  padding: 12px; margin-bottom: 10px; background: #0a0c14; border-radius: 10px; border: 1px solid #1e2340;
+}
+.lib-grid:has(.lib-item-audio) { grid-template-columns: 1fr; }
+.lib-grid:has(.lib-item-meme) { grid-template-columns: repeat(3, 1fr); }
+.lib-empty { font-size: 13px; color: #6b7280; padding: 10px; grid-column: 1/-1; }
+
+/* Thư viện Video nền/Âm thanh nền (sidebar mục 1/2) — video 2 cột (thumbnail
+   lớn hơn để thấy rõ frame đầu), audio 1 cột giống .lib-item-audio. */
+.lib-grid-bg:has(.lib-item-bgvideo) { grid-template-columns: repeat(2, 1fr); }
+.lib-item-bgvideo {
+  display: flex; flex-direction: column; gap: 6px; padding: 8px; text-align: center;
+}
+.lib-item-bgvideo:hover { background: #16142a; }
+.lib-item-bgvideo video {
+  width: 100%; aspect-ratio: 9/16; object-fit: cover; border-radius: 6px; background: #1e2340; pointer-events: none;
+}
+.lib-item-bgvideo .lib-item-name {
+  font-size: 11px; color: #9ca3af; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.lib-item { cursor: pointer; border-radius: 8px; border: 1px solid transparent; }
+.lib-item.selected { border-color: #4ade80; background: #0f2417; }
+.lib-item-audio {
+  display: flex; align-items: center; gap: 12px; padding: 10px 12px;
+}
+.lib-item-audio:hover { background: #16142a; }
+.lib-play-btn {
+  flex-shrink: 0; width: 38px; height: 38px; border-radius: 50%; border: none;
+  background: #1e1b4b; color: #a78bfa; cursor: pointer; font-size: 15px;
+}
+.lib-play-btn:hover { background: #2a2560; }
+.lib-item-audio .lib-item-name {
+  font-size: 15px; color: #cbd5e1; overflow: hidden; text-overflow: ellipsis;
+  white-space: nowrap; flex: 1;
+}
+.lib-item-meme {
+  display: flex; flex-direction: column; align-items: center; gap: 6px; padding: 10px; text-align: center;
+  position: relative;
+  /* min-width:0 BẮT BUỘC cho grid item chứa text nowrap dài (tên file gốc
+     không có khoảng trắng để wrap, mục 5.29 CONTEXT.md) — mặc định grid
+     item có min-width:auto = kích thước nội dung tự nhiên, khiến cột đó bị
+     kéo giãn rộng hơn hẳn các cột 1fr khác dù khai báo bằng nhau (bug thật
+     đã gặp: cột đầu tiên 380px trong khi 2 cột kia chỉ 172px, do tên item
+     đó dài hơn nhiều). */
+  min-width: 0;
+}
+.lib-item-meme:hover { background: #16142a; }
+.lib-thumb {
+  width: 100%; aspect-ratio: 1; object-fit: cover; border-radius: 8px; background: #1e2340;
+}
+.lib-thumb-video { display: flex; align-items: center; justify-content: center; font-size: 34px; }
+.lib-item-meme .lib-item-name {
+  font-size: 12px; color: #94a3b8; overflow: hidden; text-overflow: ellipsis;
+  white-space: nowrap; width: 100%;
+}
+.lib-item-meme .lib-item-edit-actions {
+  position: absolute; top: 5px; right: 5px; display: flex; gap: 4px; z-index: 1;
+}
+.lib-item-edit-actions button {
+  background: rgba(10,12,20,0.9); border: none; color: #e2e8f0;
+  border-radius: 6px; font-size: 14px; padding: 5px 8px; cursor: pointer;
+  flex-shrink: 0;
+}
+.lib-item-edit-actions button:hover { background: #7c3aed; }
+.lib-item-audio .lib-item-edit-actions { display: flex; gap: 4px; }
+
+.step-modal .modal-actions { display: flex; gap: 12px; margin-top: 24px; }
+.step-modal .modal-actions button { flex: 1; padding: 14px; border-radius: 9px; border: none; font-size: 15px; font-weight: 700; cursor: pointer; }
+.step-modal .btn-cancel { background: #1e2340; color: #94a3b8; }
+.step-modal .btn-ok { background: linear-gradient(135deg,#7c3aed,#5b21b6); color: #fff; }
+</style>
+</head>
+<body>
+
+<!-- Icon Threads chuẩn (path chính thức) — dùng cho overlay post trong preview -->
+<svg width="0" height="0" style="position:absolute">
+  <defs>
+    <symbol id="ic-heart-fill" viewBox="-0.5 0 25 24">
+      <path class="icon-thr-fill" fill="currentColor" d="M16.4045 1.50879C14.785 1.50879 13.2185 2.16259 12 3.30764C10.7815 2.16259 9.215 1.50879 7.5955 1.50879C3.41766 1.50879 0.5 4.62796 0.5 9.09411C0.5 13.7857 4.70617 18.9703 11.2153 22.3022C11.4605 22.428 11.7298 22.4912 11.9995 22.4912C12.2692 22.4912 12.5395 22.428 12.7847 22.3022C19.2938 18.9703 23.5 13.7857 23.5 9.09411C23.5 4.62796 20.5823 1.50879 16.4045 1.50879Z"/>
+    </symbol>
+    <symbol id="ic-comment" viewBox="0 0 24 24">
+      <path class="icon-thr-fill" fill="currentColor" fill-rule="evenodd" clip-rule="evenodd" d="M12 3C7.02944 3 3 7.02944 3 12C3 16.9706 7.02944 21 12 21C13.414 21 14.7492 20.6747 15.9373 20.0956C16.1277 20.0028 16.3428 19.9728 16.5514 20.0101L20.7565 20.7619L19.9927 16.5927C19.954 16.3815 19.9843 16.1633 20.0792 15.9707C20.6685 14.7742 21 13.4273 21 12C21 7.02944 16.9706 3 12 3ZM1 12C1 5.92486 5.92488 1 12 1C18.0752 1 23 5.92488 23 12C23 13.6205 22.649 15.1615 22.018 16.549L22.9836 21.8198C23.0427 22.1423 22.94 22.4733 22.7086 22.7056C22.4773 22.938 22.1468 23.0421 21.824 22.9844L16.512 22.0348C15.1341 22.6553 13.6061 23 12 23C5.92488 23 1 18.0752 1 12Z"/>
+    </symbol>
+    <symbol id="ic-repost" viewBox="0 0 24 24">
+      <path class="icon-thr-fill" fill="currentColor" d="M4.51617 6.9986C6.13179 4.58593 8.88099 2.99979 11.9995 2.99979C15.7267 2.99979 18.9259 5.26459 20.2927 8.49676C20.5079 9.00543 21.0946 9.24341 21.6033 9.0283C22.1119 8.81318 22.3499 8.22644 22.1348 7.71777C20.466 3.7716 16.5582 0.999786 11.9995 0.999786C8.27776 0.999786 4.9897 2.84823 2.99988 5.67416V2.9986C2.99988 2.44631 2.55216 1.9986 1.99988 1.9986C1.44759 1.9986 0.999878 2.44631 0.999878 2.9986V7.9986C0.999878 8.55088 1.44759 8.9986 1.99988 8.9986H6.99988C7.55216 8.9986 7.99988 8.55088 7.99988 7.9986C7.99988 7.44631 7.55216 6.9986 6.99988 6.9986H4.51617Z"/>
+      <path class="icon-thr-fill" fill="currentColor" d="M2.39572 14.9713C2.90439 14.7562 3.49113 14.9942 3.70625 15.5029C5.07309 18.735 8.27228 20.9998 11.9995 20.9998C15.118 20.9998 17.8672 19.4137 19.4828 17.001H16.9991C16.4468 17.001 15.9991 16.5533 15.9991 16.001C15.9991 15.4487 16.4468 15.001 16.9991 15.001H21.9991C22.5514 15.001 22.9991 15.4487 22.9991 16.001V21.001C22.9991 21.5533 22.5514 22.001 21.9991 22.001C21.4468 22.001 20.9991 21.5533 20.9991 21.001V18.3255C19.0093 21.1514 15.7212 22.9998 11.9995 22.9998C7.44077 22.9998 3.53298 20.228 1.86419 16.2818C1.64908 15.7732 1.88705 15.1864 2.39572 14.9713Z"/>
+    </symbol>
+    <symbol id="ic-share" viewBox="0 0 24 24">
+      <path class="icon-thr-fill" fill="currentColor" fill-rule="evenodd" clip-rule="evenodd" d="M7.2474 1.49853C4.18324 -0.187039 0.600262 2.64309 1.53038 6.01431L3.18181 12L1.53038 17.9857C0.600277 21.3569 4.18324 24.1871 7.2474 22.5015L20.8245 15.0329C23.2153 13.7177 23.2153 10.2823 20.8244 8.96712L7.2474 1.49853ZM3.45835 5.48239C2.99873 3.81649 4.76927 2.41796 6.28345 3.25089L19.8605 10.7195C20.0016 10.7971 20.123 10.8923 20.2247 11H4.98064L3.45835 5.48239ZM4.98064 13L3.45835 18.5176C2.99873 20.1835 4.76927 21.5821 6.28345 20.7491L19.8605 13.2805C20.0016 13.2029 20.123 13.1078 20.2247 13H4.98064Z"/>
+    </symbol>
+  </defs>
+</svg>
+
+<header>
+  <h1>🧵 Threads Short Video Maker</h1>
+  <span>Dựng short video kiểu Threads (post/comment UI + video nền)</span>
+</header>
+
+<div class="layout">
+  <!-- ============ SIDEBAR: CHỨC NĂNG ============ -->
+  <div class="sidebar">
+    <h2>Chức năng</h2>
+
+    <div class="feature-item open done" id="feat-bgvideo">
+      <div class="feature-head" onclick="toggleFeature('feat-bgvideo')">
+        <span class="num">1</span>
+        <span class="label">Video nền (gameplay)</span>
+        <span class="status-dot"></span>
+        <span class="chevron">▶</span>
+      </div>
+      <div class="feature-body">
+        <div class="hint">Chọn 1 video gameplay chạy nền (vd: Subway Surfers, Minecraft parkour...). Video sẽ được crop phủ kín khung 9:16.</div>
+        <div class="platform-picker">
+          <button type="button" class="platform-btn active" onclick="setBgVideoSourceTab('file',this)">💻 Từ máy</button>
+          <button type="button" class="platform-btn" onclick="setBgVideoSourceTab('library',this)">📂 Thư viện</button>
+        </div>
+        <div id="bgvideo-file-tab">
+          <div class="drop-zone" id="bgvideo-dropzone">
+            <input type="file" id="bgvideo-input" accept="video/*"/>
+            <div class="icon">🎮</div>
+            <p>Kéo thả hoặc nhấn để chọn video</p>
+            <div class="fname" id="bgvideo-fname"></div>
+          </div>
+        </div>
+        <div id="bgvideo-library-tab" style="display:none">
+          <div class="lib-grid lib-grid-bg" id="bgvideo-library-grid"><div class="lib-empty">Đang tải...</div></div>
+        </div>
+        <button class="btn btn-primary" id="bgvideo-apply" onclick="applyBgVideo()" disabled>▶ Xem thử trong khung 9:16</button>
+        <button class="btn btn-ghost" onclick="clearBgVideo()">Xoá video</button>
+        <button class="btn btn-ghost" onclick="window.open(MEDIA_SERVER_URL + '/static/video_tool.html', '_blank')">✂️ Cắt / Crop video (mở tab mới)</button>
+        <div class="hint" style="margin-top:6px">Công cụ cắt đoạn (kéo tay cầm trên dải khung hình) + crop khung — file xuất ra tự lưu vào thư viện media, dùng ngay được.</div>
+      </div>
+    </div>
+
+    <div class="feature-item" id="feat-bgaudio">
+      <div class="feature-head" onclick="toggleFeature('feat-bgaudio')">
+        <span class="num">2</span>
+        <span class="label">Âm thanh nền</span>
+        <span class="status-dot"></span>
+        <span class="chevron">▶</span>
+      </div>
+      <div class="feature-body">
+        <div class="hint">Chọn nhạc nền phát cùng lúc với video khi xem thử. Video gameplay sẽ tự tắt tiếng gốc.</div>
+        <div class="platform-picker">
+          <button type="button" class="platform-btn active" onclick="setBgAudioSourceTab('file',this)">💻 Từ máy</button>
+          <button type="button" class="platform-btn" onclick="setBgAudioSourceTab('library',this)">📂 Thư viện</button>
+        </div>
+        <div id="bgaudio-file-tab">
+          <div class="drop-zone" id="bgaudio-dropzone">
+            <input type="file" id="bgaudio-input" accept="audio/*"/>
+            <div class="icon">🎵</div>
+            <p>Kéo thả hoặc nhấn để chọn nhạc</p>
+            <div class="fname" id="bgaudio-fname"></div>
+          </div>
+        </div>
+        <div id="bgaudio-library-tab" style="display:none">
+          <div class="lib-grid lib-grid-bg" id="bgaudio-library-grid"><div class="lib-empty">Đang tải...</div></div>
+        </div>
+
+        <label>Âm lượng nhạc nền</label>
+        <div class="slider-row">
+          <input type="range" id="bgaudio-volume" min="0" max="1" step="0.05" value="0.5"/>
+          <span class="slider-val" id="bgaudio-volume-val">50%</span>
+        </div>
+
+        <button class="btn btn-primary" id="bgaudio-apply" onclick="applyBgAudio()" disabled>▶ Áp dụng vào bản xem thử</button>
+        <button class="btn btn-ghost" onclick="clearBgAudio()">Xoá nhạc</button>
+      </div>
+    </div>
+
+    <div class="hint" style="margin-top:14px;padding:0 4px;font-size:11px;color:#6b7280;line-height:1.5">
+      👉 Soạn nội dung (post, comment, meme, âm thanh) ở panel <b style="color:#a78bfa">Kịch bản</b> bên phải — mỗi bước là 1 "step" chạy nối tiếp nhau.
+    </div>
+
+    <div class="feature-item" id="feat-tts">
+      <div class="feature-head" onclick="toggleFeature('feat-tts')">
+        <span class="num">3</span>
+        <span class="label">Giọng đọc TTS</span>
+        <span class="status-dot" id="tts-status-dot"></span>
+        <span class="chevron">▶</span>
+      </div>
+      <div class="feature-body">
+        <div class="hint">Mỗi khi thêm/sửa post, comment hoặc reply, hệ thống tự tạo giọng đọc thật (CapCut TTS) và tính lại thời lượng theo đúng độ dài audio — không cần gõ tay số giây nữa.</div>
+        <label style="display:flex;align-items:center;gap:6px;cursor:pointer;margin-bottom:10px">
+          <input type="checkbox" id="tts-disabled-toggle" style="width:auto"/>
+          <span>Tắt TTS (dùng thời lượng giả, không gọi server) — để debug/test</span>
+        </label>
+        <label>Giọng đọc</label>
+        <select id="tts-voice"></select>
+        <label>Địa chỉ TTS server</label>
+        <input type="text" id="tts-server-url" value="http://localhost:8007" onchange="loadTtsVoices()"/>
+        <div class="fname" id="tts-server-status" style="margin-top:6px">Đang kiểm tra kết nối...</div>
+        <button class="btn" id="gen-all-tts-btn" style="margin-top:10px" onclick="generateAllTts()">🔊 Tải tất cả TTS còn thiếu</button>
+        <div class="hint" id="gen-all-tts-status" style="margin-top:6px"></div>
+        <div class="hint" style="margin-top:10px">Meme/âm thanh hiệu ứng dùng kéo-thả để upload — cần chạy thêm <code>python3 threads/media_server.py</code> (cổng 8010).</div>
+      </div>
+    </div>
+
+    <div class="hint" style="margin-top:10px;padding:8px;background:#1c1a2e;border-radius:8px;border:1px dashed #4c1d95">
+      <label style="display:flex;align-items:center;gap:6px;cursor:pointer">
+        <input type="checkbox" id="blur-identity-toggle" checked style="width:auto" onchange="toggleBlurIdentity()"/>
+        <span>🌫 Làm mờ tên & avatar trong preview</span>
+      </label>
+      <div style="font-size:11px;color:#6b7280;margin-top:4px">Bật để khỏi phải nghĩ tên thật/tìm ảnh khi soạn — tắt khi cần xem/xuất bản thật.</div>
+    </div>
+
+    <div class="feature-item" id="feat-export">
+      <div class="feature-head" onclick="toggleFeature('feat-export')">
+        <span class="num">4</span>
+        <span class="label">Ghép & xuất video</span>
+        <span class="status-dot" id="export-status-dot"></span>
+        <span class="chevron">▶</span>
+      </div>
+      <div class="feature-body">
+        <div class="hint">Ghép toàn bộ kịch bản (video nền + thẻ Threads + giọng đọc + nhạc nền + meme + âm thanh hiệu ứng) thành 1 file .mp4 hoàn chỉnh 9:16. Cần chạy thêm <code>python3 threads/export_server.py</code> (cổng 8011) và <code>python3 threads/media_server.py</code> (cổng 8010, để upload video/nhạc nền).</div>
+        <button class="btn btn-primary" id="export-btn" onclick="exportVideo()">🎬 Xuất video</button>
+        <div id="export-progress-wrap" style="display:none;margin-top:10px">
+          <div class="progress"><div class="bar" id="export-progress-bar" style="width:0%"></div></div>
+          <div id="export-progress-text" style="font-size:11px;color:#a78bfa;margin-top:6px"></div>
+        </div>
+        <div id="export-result" style="margin-top:10px"></div>
+      </div>
+    </div>
+
+    <div class="feature-item" id="feat-cache">
+      <div class="feature-head" onclick="toggleFeature('feat-cache')">
+        <span class="num">5</span>
+        <span class="label">Dọn cache</span>
+        <span class="status-dot"></span>
+        <span class="chevron">▶</span>
+      </div>
+      <div class="feature-body">
+        <div class="hint">Xoá file tạm dùng 1 lần cho dự án (video/ảnh đã upload, video đã xuất, mp3 giọng đọc TTS) — không đụng thư viện tái dùng (avatar giả, meme sẵn, âm thanh/gif thư viện gốc). Cần <code>python3 threads/media_server.py</code> đang chạy (cổng 8010).</div>
+        <div class="fname" id="cache-size-label" style="margin-bottom:8px">Dung lượng cache: đang kiểm tra…</div>
+        <button class="btn btn-ghost" onclick="clearServerCache()">🗑️ Xoá cache (media / exports / tts_audio)</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ============ MAIN: OUTPUT PREVIEW 9:16 ============ -->
+  <div class="main">
+    <div class="main-toolbar">
+      <h3>Xem trước</h3>
+      <span class="ratio-badge">9 : 16</span>
+    </div>
+
+    <div class="preview-frame" id="preview-frame">
+      <div class="preview-empty" id="preview-empty">
+        <div class="icon">📱</div>
+        <p>Chưa có video nền<br/>Chọn video ở mục "Video nền" bên trái</p>
+      </div>
+      <video id="preview-video" style="display:none" muted loop autoplay playsinline></video>
+      <audio id="preview-audio" loop></audio>
+      <audio id="tts-audio"></audio>
+      <!-- Stack các thẻ post/comment (JS đổ vào), tự cuộn lên khi tràn -->
+      <div class="thr-stack" id="thr-stack"></div>
+      <!-- Overlay meme (JS đổ vào khi step meme chạy) -->
+      <div class="meme-overlay" id="meme-overlay" style="display:none"></div>
+    </div>
+
+    <div class="play-bar">
+      <button id="play-btn" onclick="togglePlay()">▶ Play</button>
+      <div class="progress"><div class="bar" id="play-progress"></div></div>
+      <span class="tlabel" id="play-tlabel">0.0s / 0.0s</span>
+    </div>
+
+    <div class="preview-info" id="preview-info" style="visibility:hidden">
+      <span id="preview-info-name">—</span>
+      <span id="preview-info-res">—</span>
+    </div>
+  </div>
+
+  <!-- ============ PANEL PHẢI: KỊCH BẢN (danh sách step) ============ -->
+  <div class="script-panel">
+    <div style="display:flex;align-items:center;justify-content:space-between;gap:8px">
+      <h2 style="margin:0">Kịch bản (các step)</h2>
+      <div style="display:flex;gap:6px">
+        <button class="io-btn" onclick="exportProjectJson()" title="Xuất toàn bộ kịch bản ra file JSON">⭳ Xuất JSON</button>
+        <button class="io-btn" onclick="document.getElementById('import-json-input').click()" title="Nạp lại kịch bản từ file JSON đã xuất trước đó">⭱ Nạp JSON</button>
+        <input type="file" id="import-json-input" accept="application/json,.json" style="display:none" onchange="importProjectJson(this)"/>
+      </div>
+    </div>
+    <div class="add-step-bar">
+      <button onclick="openStepModal('post')">＋ Post</button>
+      <button onclick="openStepModal('comment')">＋ Comment</button>
+      <button onclick="openStepModal('reply')">＋ Reply</button>
+      <button onclick="openStepModal('image')">＋ Ảnh</button>
+      <button onclick="openStepModal('audio')">＋ Âm thanh</button>
+      <button onclick="openMemereadyModal()">🎁 Meme sẵn</button>
+    </div>
+    <div id="step-list">
+      <div class="script-empty">Chưa có step nào.<br/>Bấm một nút ＋ ở trên để thêm.</div>
+    </div>
+  </div>
+</div>
+
+<!-- Modal soạn nội dung 1 step -->
+<div class="step-modal-overlay" id="step-modal-overlay" onclick="if(event.target===this) closeStepModal()">
+  <div class="step-modal">
+    <h3 id="step-modal-title">Thêm step</h3>
+    <div id="step-modal-fields"></div>
+    <div id="step-modal-tts-status" style="font-size:11px;color:#a78bfa;margin-top:6px;min-height:14px"></div>
+    <div class="modal-actions">
+      <button type="button" class="btn-cancel" onclick="closeStepModal()">Huỷ</button>
+      <button type="button" class="btn-ok" id="step-modal-submit-btn" onclick="submitStepModal()">Thêm vào kịch bản</button>
+    </div>
+  </div>
+</div>
+
+<!-- Modal riêng chọn "meme sẵn" (mục 5.19/5.22 CONTEXT.md) — TÁCH HẲN khỏi
+     modal soạn Meme thường: 2 nhu cầu khác nhau (meme thường = soạn/upload
+     ảnh mới mỗi lần, hay biến đổi; meme sẵn = lấy đúng 1 bộ gif+audio đã
+     đóng gói từ trước, dùng lại nhanh) — trộn chung từng gây nhầm lẫn
+     luồng thao tác (phải chọn file trước mới "lưu thành meme sẵn" được,
+     trong khi mục đích mở modal là LẤY RA, không phải TẠO MỚI). Chọn 1 item
+     là thêm thẳng vào kịch bản luôn, không cần nút submit riêng. -->
+<div class="step-modal-overlay" id="memeready-modal-overlay" onclick="if(event.target===this) closeMemereadyModal()">
+  <div class="step-modal">
+    <h3>🎁 Chọn từ meme sẵn</h3>
+    <div style="font-size:12px;color:#6b7280;margin-bottom:10px">Chọn 1 bộ đã đóng gói sẵn — tự động thêm lại đúng (các) step gốc vào cuối kịch bản. Bấm 💾 trên bất kỳ step nào trong panel kịch bản để đóng gói bộ mới.</div>
+    <div id="memeready-modal-grid" class="lib-grid"></div>
+    <div class="modal-actions">
+      <button type="button" class="btn-cancel" onclick="closeMemereadyModal()">Đóng</button>
+    </div>
+  </div>
+</div>
+
+<!-- Modal sửa 1 bộ Meme sẵn — tên gọi + duration/text từng step bên trong.
+     Đổ field động tuỳ theo item.steps đang sửa (editMemereadyEditFieldsHtml()). -->
+<div class="step-modal-overlay" id="memeready-edit-modal-overlay" onclick="if(event.target===this) closeMemereadyEditModal()">
+  <div class="step-modal">
+    <h3>✎ Sửa Meme sẵn</h3>
+    <label>Tên gọi</label>
+    <input type="text" id="mr-edit-label"/>
+    <div id="memeready-edit-steps-fields"></div>
+    <div class="modal-actions">
+      <button type="button" class="btn-cancel" onclick="closeMemereadyEditModal()">Huỷ</button>
+      <button type="button" class="btn-ok" onclick="submitMemereadyEdit()">Lưu thay đổi</button>
+    </div>
+  </div>
+</div>
+
+<script src="render_shared.js"></script>
+<script>
+// ===== Sidebar accordion =====
+function toggleFeature(id) {
+  const el = document.getElementById(id);
+  el.classList.toggle('open');
+}
+
+// Làm mờ tên/avatar trong preview (mục 5.10) — mặc định BẬT để khỏi phải
+// nghĩ tên thật/tìm ảnh thật khi soạn kịch bản; tắt khi cần xem/xuất bản
+// thật. Chỉ toggle 1 class CSS trên #preview-frame, không đụng vào data.
+let _stepEngineReady = false; // bật true sau khi steps/renderIdleScene... đã khai báo xong (cuối script)
+function toggleBlurIdentity() {
+  const on = document.getElementById('blur-identity-toggle').checked;
+  document.getElementById('preview-frame').classList.toggle('blur-identity', on);
+  // Bật/tắt đổi hẳn tên/avatar hiển thị (không chỉ CSS filter — xem
+  // displayIdentity()), nhưng renderAtTime()/renderIdleScene() chỉ rebuild
+  // innerHTML khi "key" (danh sách step id đang hiện) đổi — cùng bộ step id
+  // thì không tự vẽ lại. Phải ép invalidate key rồi render lại ngay để nội
+  // dung mới (thật hoặc giả) hiện đúng lập tức, không đợi step tiếp theo.
+  // Gọi lần đầu (ngay khi <script> chạy, trước khi `steps`/`playing` được
+  // khai báo ở phần dưới file — `let` có temporal dead zone, `typeof` cũng
+  // không an toàn để né TDZ) nên chỉ set class CSS, bỏ qua phần render.
+  if (!_stepEngineReady) return;
+  _lastStackKey = null; _lastStackIds = [];
+  if (playing) return; // Play đang chạy tự render lại theo RAF, không cần ép
+  renderIdleScene();
+}
+toggleBlurIdentity(); // áp dụng trạng thái mặc định (checked) ngay khi tải trang
+
+// ===== Feature 1: Video nền =====
+let bgVideoFile = null;
+let bgVideoObjectUrl = null;
+// Nguồn "Thư viện" (mục 5.40 CONTEXT.md, threads/background/) — URL HTTP
+// thật (không phải blob), dùng song song với bgVideoFile. Đúng 1 trong 2
+// biến có giá trị tại một thời điểm — chọn nguồn nào thì clear nguồn kia
+// (xem setBgVideoFile()/selectBgVideoLibraryItem()).
+let bgVideoLibraryItem = null; // { url, filename }
+
+const dz = document.getElementById('bgvideo-dropzone');
+dz.addEventListener('dragover', e => { e.preventDefault(); dz.classList.add('over'); });
+dz.addEventListener('dragleave', () => dz.classList.remove('over'));
+dz.addEventListener('drop', e => {
+  e.preventDefault(); dz.classList.remove('over');
+  const f = e.dataTransfer.files[0];
+  if (f) setBgVideoFile(f);
+});
+document.getElementById('bgvideo-input').addEventListener('change', e => {
+  if (e.target.files[0]) setBgVideoFile(e.target.files[0]);
+});
+
+function setBgVideoFile(file) {
+  if (!file.type.startsWith('video/')) {
+    alert('Vui lòng chọn file video.');
+    return;
+  }
+  bgVideoFile = file;
+  bgVideoLibraryItem = null;
+  document.getElementById('bgvideo-fname').textContent = file.name;
+  document.getElementById('bgvideo-apply').disabled = false;
+}
+
+// Tab "Từ máy"/"Thư viện" (mục 5.40 CONTEXT.md) — copy đúng pattern
+// platform-picker (Threads/TikTok) đã dùng cho modal comment/reply.
+function setBgVideoSourceTab(tab, btnEl) {
+  document.querySelectorAll('#feat-bgvideo .platform-btn').forEach(b => b.classList.remove('active'));
+  btnEl.classList.add('active');
+  document.getElementById('bgvideo-file-tab').style.display = tab === 'file' ? 'block' : 'none';
+  document.getElementById('bgvideo-library-tab').style.display = tab === 'library' ? 'block' : 'none';
+  if (tab === 'library') loadBgVideoLibrary();
+}
+
+async function loadBgVideoLibrary() {
+  const grid = document.getElementById('bgvideo-library-grid');
+  grid.innerHTML = `<div class="lib-empty">Đang tải...</div>`;
+  try {
+    const res = await fetch(MEDIA_SERVER_URL + '/library/background');
+    if (!res.ok) throw new Error('HTTP ' + res.status);
+    const items = await res.json();
+    if (!items.length) { grid.innerHTML = `<div class="lib-empty">threads/background/ đang trống — copy video vào đó rồi tải lại tab này.</div>`; return; }
+    grid.innerHTML = items.map(it => {
+      const url = MEDIA_SERVER_URL + it.url;
+      const itemJson = esc(JSON.stringify(it));
+      // preload="metadata" + KHÔNG autoplay — trình duyệt tự hiện frame đầu
+      // làm poster mặc định của <video> khi đã load xong metadata+frame 0,
+      // không cần server tạo thumbnail riêng (đã hỏi & chốt với người dùng).
+      return `<div class="lib-item lib-item-bgvideo" data-item='${itemJson}' onclick="selectBgVideoLibraryItem(this)" title="${esc(it.filename)}">
+        <video src="${url}" preload="metadata" muted playsinline></video>
+        <span class="lib-item-name">${esc(it.filename)}</span>
+      </div>`;
+    }).join('');
+  } catch (e) {
+    grid.innerHTML = `<div class="lib-empty" style="color:#ef4444">⚠ Không tải được thư viện — kiểm tra media_server.py đang chạy</div>`;
+  }
+}
+
+function selectBgVideoLibraryItem(el) {
+  const item = JSON.parse(el.dataset.item);
+  bgVideoLibraryItem = { url: MEDIA_SERVER_URL + item.url, filename: item.filename };
+  bgVideoFile = null;
+  document.getElementById('bgvideo-apply').disabled = false;
+  document.querySelectorAll('#bgvideo-library-grid .lib-item.selected').forEach(x => x.classList.remove('selected'));
+  el.classList.add('selected');
+}
+
+function applyBgVideo() {
+  if (!bgVideoFile && !bgVideoLibraryItem) return;
+  let srcUrl, displayName;
+  if (bgVideoLibraryItem) {
+    srcUrl = bgVideoLibraryItem.url;
+    displayName = bgVideoLibraryItem.filename;
+  } else {
+    if (bgVideoObjectUrl) URL.revokeObjectURL(bgVideoObjectUrl);
+    bgVideoObjectUrl = URL.createObjectURL(bgVideoFile);
+    srcUrl = bgVideoObjectUrl;
+    displayName = bgVideoFile.name;
+  }
+
+  const video = document.getElementById('preview-video');
+  // Gán listener TRƯỚC khi set src — nếu set src trước, loadedmetadata có thể
+  // fire ngay lập tức (video nhỏ/đã cache) trước khi listener kịp gán, làm
+  // preview-info không bao giờ cập nhật.
+  video.onloadedmetadata = () => {
+    document.getElementById('preview-info').style.visibility = 'visible';
+    document.getElementById('preview-info-name').textContent = displayName;
+    document.getElementById('preview-info-res').textContent =
+      `${video.videoWidth}×${video.videoHeight} · ${video.duration.toFixed(1)}s`;
+  };
+  video.src = srcUrl;
+  video.style.display = 'block';
+  document.getElementById('preview-empty').style.display = 'none';
+
+  const featEl = document.getElementById('feat-bgvideo');
+  featEl.classList.add('done');
+}
+
+function clearBgVideo() {
+  bgVideoFile = null;
+  bgVideoLibraryItem = null;
+  if (bgVideoObjectUrl) { URL.revokeObjectURL(bgVideoObjectUrl); bgVideoObjectUrl = null; }
+
+  document.getElementById('bgvideo-input').value = '';
+  document.getElementById('bgvideo-fname').textContent = '';
+  document.getElementById('bgvideo-apply').disabled = true;
+  document.querySelectorAll('#bgvideo-library-grid .lib-item.selected').forEach(x => x.classList.remove('selected'));
+
+  const video = document.getElementById('preview-video');
+  video.pause();
+  video.removeAttribute('src');
+  video.load();
+  video.style.display = 'none';
+
+  document.getElementById('preview-empty').style.display = 'flex';
+  document.getElementById('preview-info').style.visibility = 'hidden';
+
+  document.getElementById('feat-bgvideo').classList.remove('done');
+}
+
+// ===== Feature 2: Âm thanh nền =====
+let bgAudioFile = null;
+let bgAudioObjectUrl = null;
+// Nguồn "Thư viện" (mục 5.40 CONTEXT.md, threads/audiobackground/) — song
+// song với bgAudioFile, giống hệt bgVideoLibraryItem ở Feature 1.
+let bgAudioLibraryItem = null; // { url, filename }
+
+const dzAudio = document.getElementById('bgaudio-dropzone');
+dzAudio.addEventListener('dragover', e => { e.preventDefault(); dzAudio.classList.add('over'); });
+dzAudio.addEventListener('dragleave', () => dzAudio.classList.remove('over'));
+dzAudio.addEventListener('drop', e => {
+  e.preventDefault(); dzAudio.classList.remove('over');
+  const f = e.dataTransfer.files[0];
+  if (f) setBgAudioFile(f);
+});
+document.getElementById('bgaudio-input').addEventListener('change', e => {
+  if (e.target.files[0]) setBgAudioFile(e.target.files[0]);
+});
+
+document.getElementById('bgaudio-volume').addEventListener('input', e => {
+  const val = parseFloat(e.target.value);
+  document.getElementById('bgaudio-volume-val').textContent = Math.round(val * 100) + '%';
+  document.getElementById('preview-audio').volume = val;
+});
+
+function setBgAudioFile(file) {
+  if (!file.type.startsWith('audio/')) {
+    alert('Vui lòng chọn file âm thanh.');
+    return;
+  }
+  bgAudioFile = file;
+  bgAudioLibraryItem = null;
+  document.getElementById('bgaudio-fname').textContent = file.name;
+  document.getElementById('bgaudio-apply').disabled = false;
+}
+
+function setBgAudioSourceTab(tab, btnEl) {
+  document.querySelectorAll('#feat-bgaudio .platform-btn').forEach(b => b.classList.remove('active'));
+  btnEl.classList.add('active');
+  document.getElementById('bgaudio-file-tab').style.display = tab === 'file' ? 'block' : 'none';
+  document.getElementById('bgaudio-library-tab').style.display = tab === 'library' ? 'block' : 'none';
+  if (tab === 'library') loadBgAudioLibrary();
+}
+
+async function loadBgAudioLibrary() {
+  const grid = document.getElementById('bgaudio-library-grid');
+  grid.innerHTML = `<div class="lib-empty">Đang tải...</div>`;
+  try {
+    const res = await fetch(MEDIA_SERVER_URL + '/library/bgaudio');
+    if (!res.ok) throw new Error('HTTP ' + res.status);
+    const items = await res.json();
+    if (!items.length) { grid.innerHTML = `<div class="lib-empty">threads/audiobackground/ đang trống — copy nhạc vào đó rồi tải lại tab này.</div>`; return; }
+    grid.innerHTML = items.map(it => {
+      const url = MEDIA_SERVER_URL + it.url;
+      const itemJson = esc(JSON.stringify(it));
+      // Nghe thử (yêu cầu người dùng, mục 5.40) — tái dùng đúng
+      // toggleLibraryPreviewAudio() đã có cho thư viện audio hiệu ứng.
+      return `<div class="lib-item lib-item-audio" data-item='${itemJson}' onclick="selectBgAudioLibraryItem(this)" title="${esc(it.filename)}">
+        <button type="button" class="lib-play-btn" onclick="event.stopPropagation();toggleLibraryPreviewAudio('${url}',this)">▶</button>
+        <span class="lib-item-name">${esc(it.filename)}</span>
+      </div>`;
+    }).join('');
+  } catch (e) {
+    grid.innerHTML = `<div class="lib-empty" style="color:#ef4444">⚠ Không tải được thư viện — kiểm tra media_server.py đang chạy</div>`;
+  }
+}
+
+function selectBgAudioLibraryItem(el) {
+  const item = JSON.parse(el.dataset.item);
+  bgAudioLibraryItem = { url: MEDIA_SERVER_URL + item.url, filename: item.filename };
+  bgAudioFile = null;
+  document.getElementById('bgaudio-apply').disabled = false;
+  document.querySelectorAll('#bgaudio-library-grid .lib-item.selected').forEach(x => x.classList.remove('selected'));
+  el.classList.add('selected');
+}
+
+function applyBgAudio() {
+  if (!bgAudioFile && !bgAudioLibraryItem) return;
+  let srcUrl;
+  if (bgAudioLibraryItem) {
+    srcUrl = bgAudioLibraryItem.url;
+  } else {
+    if (bgAudioObjectUrl) URL.revokeObjectURL(bgAudioObjectUrl);
+    bgAudioObjectUrl = URL.createObjectURL(bgAudioFile);
+    srcUrl = bgAudioObjectUrl;
+  }
+
+  const audio = document.getElementById('preview-audio');
+  const video = document.getElementById('preview-video');
+  audio.src = srcUrl;
+  audio.volume = parseFloat(document.getElementById('bgaudio-volume').value);
+
+  // Đồng bộ với video: video gameplay không cần tiếng gốc khi đã có nhạc nền
+  video.muted = true;
+  if (!video.paused) audio.play().catch(() => {});
+
+  document.getElementById('feat-bgaudio').classList.add('done');
+}
+
+function clearBgAudio() {
+  bgAudioFile = null;
+  bgAudioLibraryItem = null;
+  if (bgAudioObjectUrl) { URL.revokeObjectURL(bgAudioObjectUrl); bgAudioObjectUrl = null; }
+
+  document.getElementById('bgaudio-input').value = '';
+  document.getElementById('bgaudio-fname').textContent = '';
+  document.getElementById('bgaudio-apply').disabled = true;
+  document.querySelectorAll('#bgaudio-library-grid .lib-item.selected').forEach(x => x.classList.remove('selected'));
+
+  const audio = document.getElementById('preview-audio');
+  audio.pause();
+  audio.removeAttribute('src');
+  audio.load();
+
+  document.getElementById('feat-bgaudio').classList.remove('done');
+}
+
+// Giữ video + audio nền đồng bộ phát/dừng khi người dùng tương tác với video
+// (vd bấm play/pause bằng controls trình duyệt, hoặc video tự dừng khi hết —
+// tuy video loop nên hiếm khi dừng, nhưng vẫn xử lý cho chắc).
+const previewVideoEl = document.getElementById('preview-video');
+const previewAudioEl = document.getElementById('preview-audio');
+previewVideoEl.addEventListener('play', () => {
+  if (previewAudioEl.src) previewAudioEl.play().catch(() => {});
+});
+previewVideoEl.addEventListener('pause', () => {
+  if (previewAudioEl.src) previewAudioEl.pause();
+});
+previewVideoEl.addEventListener('seeked', () => {
+  if (previewAudioEl.src) previewAudioEl.currentTime = previewVideoEl.currentTime;
+});
+
+/* ============================================================
+   TTS (Phase 2) — gọi threads/tts_server.py (CapCut TTS) để tạo giọng đọc
+   thật cho mỗi post/comment/reply, thay cho duration giả gõ tay.
+   ============================================================ */
+let ttsVoices = [];
+
+// Cảnh báo chất lượng giọng (mục 5.38 CONTEXT.md) — người dùng xác nhận 5
+// giọng CapCut này chất lượng không tốt (không phải lỗi kỹ thuật, chỉ là
+// đánh giá chủ quan qua nghe thử) nhưng KHÔNG muốn xoá khỏi danh sách (có
+// thể vẫn cần dùng lúc nào đó) — chỉ đánh dấu trực quan để tự nhắc tránh
+// chọn nhầm. So khớp theo LABEL (không phải index, vì thứ tự trong
+// CAPCUT_VOICES_VI — translate_video.py — có thể đổi/thêm giọng sau này mà
+// không cần sửa danh sách cảnh báo này theo).
+const WARN_VOICE_LABELS = new Set([
+  'Giọng Gái Mới Lớn', 'Ban Mai', 'Bản Tin Nữ', 'Giọng Nam Trầm', 'Alex Đại Đế',
+]);
+function voiceOptionHtml(v, i, selected) {
+  const warn = WARN_VOICE_LABELS.has(v.label);
+  const label = (warn ? '⚠️ ' : '') + v.label + (warn ? ' (chất lượng chưa tốt)' : '');
+  const style = warn ? ' style="color:#eab308;background:#1c1917"' : '';
+  return `<option value="${i}" ${selected ? 'selected' : ''}${style}>${esc(label)}</option>`;
+}
+
+function ttsServerUrl() {
+  return (document.getElementById('tts-server-url').value || '').replace(/\/$/, '');
+}
+
+async function loadTtsVoices() {
+  const statusEl = document.getElementById('tts-server-status');
+  const dot = document.getElementById('tts-status-dot');
+  statusEl.textContent = 'Đang kiểm tra kết nối...';
+  dot.classList.remove('err');
+  try {
+    const res = await fetch(ttsServerUrl() + '/voices');
+    if (!res.ok) throw new Error('HTTP ' + res.status);
+    ttsVoices = await res.json();
+    const sel = document.getElementById('tts-voice');
+    sel.innerHTML = ttsVoices.map((v, i) => voiceOptionHtml(v, i, i === 0)).join('');
+    statusEl.textContent = `✓ Kết nối OK — ${ttsVoices.length} giọng`;
+    document.getElementById('feat-tts').classList.add('done');
+  } catch (e) {
+    statusEl.textContent = '✗ Không kết nối được TTS server (' + e.message + '). Chạy: python3 threads/tts_server.py';
+    dot.classList.add('err');
+    document.getElementById('feat-tts').classList.remove('done');
+  }
+}
+loadTtsVoices();
+
+// Giọng mặc định chung cho cả video (mục 3 sidebar). idx bỏ trống = lấy giọng
+// đang chọn ở sidebar; truyền idx cụ thể = dùng giọng riêng của step/khối đó.
+function selectedVoice(idx) {
+  const i = idx != null ? idx : parseInt(document.getElementById('tts-voice').value, 10);
+  return ttsVoices[i] || null;
+}
+
+// Ô chọn giọng cho từng step/khối trong modal soạn — mặc định theo giọng
+// chung ở sidebar, nhưng cho phép đổi riêng (vd 1 giọng nữ cho bài gốc, 1
+// giọng nam cho người reply). `currentIdx` = index đã lưu trước đó (sửa step).
+function voiceFieldHtml(prefix, currentIdx) {
+  if (!ttsVoices.length) {
+    return `<label>🔊 Giọng đọc</label>
+            <div style="font-size:11px;color:#ef4444">Chưa tải được danh sách giọng — kiểm tra TTS server ở mục 3 sidebar.</div>`;
+  }
+  const sidebarIdx = document.getElementById('tts-voice').value;
+  const useIdx = currentIdx != null ? currentIdx : sidebarIdx;
+  const opts = ttsVoices.map((v, i) => voiceOptionHtml(v, i, String(i) === String(useIdx))).join('');
+  return `<label>🔊 Giọng đọc</label>
+          <select id="${prefix}-voice">${opts}</select>`;
+}
+
+function readVoiceIdx(prefix) {
+  const sel = document.getElementById(prefix + '-voice');
+  const v = sel ? parseInt(sel.value, 10) : NaN;
+  return Number.isNaN(v) ? null : v;
+}
+
+// Gọi TTS server cho 1 đoạn text, trả { audioUrl, duration } (URL tuyệt đối, đã fetch sẵn).
+// Ném lỗi nếu server không phản hồi — người gọi (submitStepModal) tự quyết định fallback.
+// `echo`: hiệu ứng "vang" (mục "nhiều đoạn TTS") — tts_server.py áp FFmpeg
+// aecho lên NGUYÊN đoạn text đó trước khi trả về, dùng để nhấn nhá 1 câu
+// thoại cho hài/gây cười (đã chốt công thức sau khi người dùng nghe thử).
+async function fetchTts(text, voiceIdx, echo = false) {
+  const voice = selectedVoice(voiceIdx);
+  const res = await fetch(ttsServerUrl() + '/tts', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      text,
+      voice_type: voice ? voice.voice_type : undefined,
+      resource_id: voice ? voice.resource_id : undefined,
+      echo,
+    }),
+  });
+  if (!res.ok) {
+    const body = await res.json().catch(() => ({}));
+    throw new Error(body.detail || ('HTTP ' + res.status));
+  }
+  const data = await res.json();
+  return { audioUrl: ttsServerUrl() + data.audio_url, duration: data.duration };
+}
+
+// Quét toàn bộ steps, tạo lại giọng đọc cho những khối post/comment/reply
+// còn THIẾU audioUrl — dùng khi nạp JSON (không lưu audioUrl vì file mp3 chỉ
+// tồn tại tạm trên tts_server.py) hoặc khi step được tạo lúc tick "Tắt TTS".
+// Dùng lại đúng ttsText/voiceIdx đã lưu trong step (fallback về text hiển
+// thị nếu ttsText trống, giống hành vi readTtsText lúc soạn).
+async function generateAllTts() {
+  const statusEl = document.getElementById('gen-all-tts-status');
+  const btn = document.getElementById('gen-all-tts-btn');
+  // Bug đã gặp: từ khi cho phép nội dung rỗng (mục 5.44 CONTEXT.md), step
+  // cố ý để trống text/ttsText hợp lệ có audioUrl=null vĩnh viễn (không gọi
+  // TTS lúc tạo — xem submitStepModal() skipTts) — nếu không loại trừ ở
+  // đây, nút "Tải tất cả TTS còn thiếu" đưa cả step rỗng vào targets, gọi
+  // fetchTts('') → tts_server.py trả lỗi 400 "text rỗng", dừng cả vòng lặp
+  // dù các step khác vẫn có nội dung đầy đủ.
+  // "Còn thiếu" giờ tính cả trường hợp đoạn #1 đã có audioUrl nhưng 1 đoạn
+  // trong extraTtsSegments (mục "nhiều đoạn TTS") thì chưa — đoạn để trống
+  // text cố ý (duration=0) không tính là thiếu.
+  const hasMissingExtraSegment = s => (s.extraTtsSegments || []).some(seg => !seg.audioUrl && seg.text && seg.text.trim());
+  const targets = steps.filter(s =>
+    (s.type === 'post' || s.type === 'comment' || s.type === 'reply' || s.type === 'image')
+    && (!s.audioUrl || hasMissingExtraSegment(s))
+    && ((s.ttsText && s.ttsText.trim()) || (s.text && s.text.trim()) || hasMissingExtraSegment(s))
+  );
+  if (!targets.length) {
+    statusEl.textContent = '✓ Tất cả step đã có giọng đọc.';
+    return;
+  }
+  btn.disabled = true;
+  let ok = 0;
+  for (let i = 0; i < targets.length; i++) {
+    const s = targets[i];
+    statusEl.textContent = `🔊 Đang tạo giọng đọc ${i + 1}/${targets.length}...`;
+    try {
+      // Đoạn #1: chỉ gọi lại TTS nếu THẬT SỰ đang thiếu audioUrl — step lọt
+      // vào targets có thể chỉ vì 1 đoạn extraTtsSegments thiếu, đoạn #1 đã
+      // có sẵn audioUrl từ trước thì giữ nguyên, không gọi lại tốn công.
+      let totalDuration;
+      if (!s.audioUrl) {
+        const ttsText = (s.ttsText && s.ttsText.trim()) || s.text || '';
+        const r1 = await fetchTts(ttsText, s.voiceIdx != null ? s.voiceIdx : null, s.echo || false);
+        s.audioUrl = r1.audioUrl;
+        s.ttsDuration = r1.duration;
+        totalDuration = r1.duration;
+      } else {
+        totalDuration = s.ttsDuration || 0;
+      }
+      // Nhiều đoạn giọng đọc nối tiếp (mục "nhiều đoạn TTS") — tạo lại
+      // TUẦN TỰ mọi đoạn trong extraTtsSegments còn thiếu audioUrl (đoạn
+      // để trống text từ trước thì bỏ qua, giữ nguyên duration=0 của nó).
+      for (const seg of (s.extraTtsSegments || [])) {
+        if (seg.audioUrl || !seg.text || !seg.text.trim()) { totalDuration += seg.duration || 0; continue; }
+        const rSeg = await fetchTts(seg.text.trim(), seg.voiceIdx != null ? seg.voiceIdx : null, seg.echo || false);
+        seg.audioUrl = rSeg.audioUrl;
+        seg.duration = rSeg.duration;
+        totalDuration += rSeg.duration;
+      }
+      s.duration = totalDuration;
+      bumpStepRevision(s.id);
+      ok++;
+    } catch (e) {
+      statusEl.textContent = `✗ Lỗi ở step "${(s.text || '').slice(0, 20)}...": ${e.message}`;
+      btn.disabled = false;
+      renderStepList();
+      renderIdleScene();
+      return;
+    }
+  }
+  btn.disabled = false;
+  statusEl.textContent = `✓ Đã tạo ${ok}/${targets.length} giọng đọc.`;
+  renderStepList();
+  renderIdleScene();
+}
+
+/* ============================================================
+   STEP ENGINE (Phase 1) — mọi thứ là 1 step trong danh sách có thứ tự.
+   Timing TƯƠNG ĐỐI: mỗi step bắt đầu ngay sau (step trước kết thúc + gap).
+   Phase 1 dùng "duration giả" (chỉnh tay) thay cho độ dài TTS thật.
+   ============================================================ */
+let steps = [];
+let stepIdCounter = 1;
+let editingStepId = null;   // null = đang thêm mới; khác null = đang sửa
+let modalType = 'post';
+// Platform (Threads/TikTok) của step comment/reply đang soạn trong modal — mục
+// 5.39 CONTEXT.md. Chọn 1 lần lúc mở modal (mặc định 'threads', hoặc theo
+// editing.platform nếu đang sửa step cũ), KHÔNG đổi được sau khi bấm nút
+// platform khác chỉ re-render field bên dưới, không tạo step mới. Step post/
+// meme/image/audio không dùng field này (giữ nguyên undefined).
+let modalPlatform = 'threads';
+
+// Các đoạn giọng đọc THÊM (ngoài đoạn #1 mặc định luôn có) đang soạn trong
+// modal — mỗi phần tử {text, ttsText, voiceIdx, audioUrl, duration}. Reset
+// mỗi lần mở modal (openStepModal()), điền lại từ editing.extraTtsSegments
+// nếu đang sửa step cũ đã có sẵn nhiều đoạn.
+let modalExtraTts = [];
+
+const TYPE_LABEL = { post:'POST', comment:'COMMENT', reply:'REPLY', audio:'ÂM THANH', image:'ẢNH' };
+const DEFAULT_DUR = { post:3, comment:2.5, reply:2.5, audio:1, image:3 };
+
+// esc()/fmt() giờ định nghĩa trong render_shared.js (include ở <head>/cuối
+// body — xem mục 5.17 CONTEXT.md), dùng chung với export_render.html.
+
+// ---------- Modal soạn nội dung 1 step ----------
+
+// Khối "Lượt thích / Bình luận / Đăng lại / Chia sẻ / Thời gian đăng" — dùng
+// chung cho post/comment/reply, prefix để tách 2 bộ field khi là reply (gốc/2).
+//
+// Auto random số liệu (mục 5.33/5.35 CONTEXT.md) — người dùng lười tự nghĩ số
+// hợp lý, chỉ muốn chọn 1 mức độ (Rất ít/Ít/TB/Cao) rồi bấm 🎲. Thang TIM dùng
+// CHUNG cho post/comment/reply, nhưng tỉ lệ suy ra cmt/repost/share từ tim
+// KHÁC NHAU giữa post và comment/reply (mục 5.35 — post tương tác nhiều hơn
+// hẳn comment, dùng chung 1 tỉ lệ làm comment ra số phi thực tế).
+const RANDOM_STATS_LEVELS = {
+  veryLow: { label: 'Rất ít', min: 1000, max: 3000 },
+  low: { label: 'Ít', min: 3000, max: 10000 },
+  mid: { label: 'Trung bình', min: 10000, max: 30000 },
+  high: { label: 'Cao', min: 30000, max: 50000 },
+};
+
+function randInt(min, max) { return Math.floor(min + Math.random() * (max - min)); }
+function randFloat(min, max) { return min + Math.random() * (max - min); }
+
+// kind: 'post' (cmt ≈ 1% ±0.2% tim) hoặc 'comment' (dùng cho cả comment đơn
+// và reply — cmt2 ≈ 0.2% ±0.03% tim, thấp hơn hẳn post). Cả 2 dùng chung:
+// repost = tim × (5%-5.5%); share = cmt × (1.10-1.20).
+function rollRandomStats(levelKey, kind) {
+  const lv = RANDOM_STATS_LEVELS[levelKey] || RANDOM_STATS_LEVELS.mid;
+  const likes = randInt(lv.min, lv.max);
+  const commentRatio = kind === 'comment' ? randFloat(0.0017, 0.0023) : randFloat(0.008, 0.012);
+  const comments = Math.round(likes * commentRatio);
+  const reposts = Math.round(likes * randFloat(0.05, 0.055));
+  const shares = Math.round(comments * randFloat(1.10, 1.20));
+  return { likes, comments, reposts, shares };
+}
+
+function fmtStatNumber(n) {
+  if (n >= 1000) {
+    const v = n / 1000;
+    return (Number.isInteger(v) ? v : v.toFixed(1)).toString().replace('.', ',') + 'K';
+  }
+  return String(n);
+}
+
+function rollAndFillStats(prefix, kind) {
+  const sel = document.getElementById(prefix + '-random-level');
+  const stats = rollRandomStats(sel.value, kind);
+  document.getElementById(prefix + '-likes').value = fmtStatNumber(stats.likes);
+  document.getElementById(prefix + '-comments').value = fmtStatNumber(stats.comments);
+  document.getElementById(prefix + '-reposts').value = fmtStatNumber(stats.reposts);
+  document.getElementById(prefix + '-shares').value = fmtStatNumber(stats.shares);
+}
+
+// kind: 'post' hoặc 'comment' — quyết định tỉ lệ dùng khi bấm 🎲 (mục 5.35).
+// Step 'post' gọi statsFieldsHtml('m', ..., 'post'); comment/reply (đều là
+// step 1-khối độc lập từ mục 5.39) gọi với 'comment'.
+function statsFieldsHtml(prefix, v, kind) {
+  v = v || {};
+  const levelOptions = Object.entries(RANDOM_STATS_LEVELS)
+    .map(([k, lv]) => `<option value="${k}">${lv.label} (${fmtStatNumber(lv.min)}-${fmtStatNumber(lv.max)} tim)</option>`)
+    .join('');
+  return `
+    <div class="row2" style="align-items:end">
+      <div>
+        <label>🎲 Random số liệu</label>
+        <select id="${prefix}-random-level">${levelOptions}</select>
+      </div>
+      <div><button type="button" class="btn btn-ghost" onclick="rollAndFillStats('${prefix}','${kind}')" style="width:100%">🎲 Random</button></div>
+    </div>
+    <div class="row2">
+      <div><label>❤️ Lượt thích</label><input type="text" id="${prefix}-likes" value="${esc(v.likes ?? '1,2K')}"/></div>
+      <div><label>💬 Bình luận</label><input type="text" id="${prefix}-comments" value="${esc(v.comments ?? '34')}"/></div>
+    </div>
+    <div class="row2">
+      <div><label>🔁 Đăng lại</label><input type="text" id="${prefix}-reposts" value="${esc(v.reposts ?? '8')}"/></div>
+      <div><label>📤 Chia sẻ</label><input type="text" id="${prefix}-shares" value="${esc(v.shares ?? '150')}"/></div>
+    </div>`;
+}
+
+// Ảnh đính kèm dùng URL (thay vì upload file) — vì đa số ảnh Threads test lấy
+// từ URL có sẵn, và URL là text nên serialize thẳng vào JSON export/import
+// được (mục 8), không vướng vấn đề File/blob: chỉ sống trong session.
+function imgFieldHtml(prefix, currentUrl) {
+  return `<label>🖼 Ảnh đính kèm (URL, tuỳ chọn)</label>
+    <input type="text" id="${prefix}-img" placeholder="https://..." value="${esc(currentUrl||'')}" oninput="onModalImgUrlChange('${prefix}')"/>
+    <div id="${prefix}-img-preview" style="margin-bottom:8px">${currentUrl?`<img src="${currentUrl}" referrerpolicy="no-referrer" style="max-width:100%;max-height:80px;border-radius:6px;display:block"/>`:''}</div>`;
+}
+
+// Đường dẫn file local (meme video/gif/ảnh, âm thanh hiệu ứng) — trình duyệt
+// không đọc được đường dẫn tuyệt đối trực tiếp vì lý do bảo mật, phải quy đổi
+// qua file:// URL. Chỉ hoạt động khi index.html được MỞ TRỰC TIẾP bằng
+// file:// (không qua http server) — xem mục 5.9 CONTEXT.md.
+function toFileUrl(path) {
+  if (!path) return null;
+  if (/^https?:\/\//i.test(path)) return path;        // lỡ dán URL thường vẫn nhận
+  if (/^file:\/\//i.test(path)) return path;           // đã gõ sẵn file:// thì giữ nguyên
+  const cleaned = path.trim().replace(/\\/g, '/');
+  const withSlash = cleaned.startsWith('/') ? cleaned : '/' + cleaned;
+  return 'file://' + withSlash.split('/').map(seg => seg === '' ? '' : encodeURIComponent(seg)).join('/');
+}
+
+// Vùng kéo-thả upload media (mục 5.12 CONTEXT.md) — kéo file từ Finder vào
+// hoặc bấm để chọn qua dialog, tự upload lên threads/media_server.py (cổng
+// 8010), nhận về URL http:// dùng ngay. Đây là cách CHÍNH giờ đây (thay cho
+// đường dẫn file:// cũ — vẫn giữ ô đó bên dưới làm lựa chọn phụ, vì file://
+// chỉ hoạt động khi mở index.html trực tiếp, không qua Live Server/http
+// server nào — xem mục 5.9).
+function filePathFieldHtml(label, currentPath, currentMediaUrl, currentMediaName, libraryCategory) {
+  const hasUploaded = currentMediaUrl && !currentMediaUrl.startsWith('file://');
+  return `<label>${esc(label)}</label>
+    ${libraryCategory ? libraryPickerHtml(libraryCategory) : ''}
+    <div id="m-dropzone" class="media-dropzone" ondragover="event.preventDefault();this.classList.add('over')" ondragleave="this.classList.remove('over')" ondrop="onMediaDrop(event)" onclick="document.getElementById('m-file-input').click()">
+      <div id="m-dropzone-text">${hasUploaded ? '✓ ' + esc(currentMediaName || '') : '📁 Kéo-thả file vào đây, hoặc bấm để chọn'}</div>
+    </div>
+    <input type="file" id="m-file-input" style="display:none" onchange="onMediaFileChosen(this.files[0])"/>
+    <div id="m-upload-status" style="font-size:11px;color:#a78bfa;margin-top:4px;min-height:14px"></div>
+    <details style="margin-top:8px">
+      <summary style="font-size:11px;color:#6b7280;cursor:pointer">Hoặc dùng đường dẫn file:// (chỉ hoạt động khi mở index.html trực tiếp, không qua server)</summary>
+      <input type="text" id="m-file-path" placeholder="/Users/ten-ban/videos/meme1.mp4" value="${esc(currentPath||'')}" style="margin-top:6px" oninput="onFilePathTyped()"/>
+    </details>`;
+}
+
+// Thư viện file có sẵn (mục 5.14 CONTEXT.md) — người dùng tự copy file vào
+// threads/audio/ (hoặc thư mục khác mapping trong media_server.py), chọn
+// nhanh từ dropdown thay vì upload lại mỗi lần. Load danh sách qua
+// GET /library/{category} khi mở modal, không cache — luôn phản ánh đúng
+// file hiện có trong thư mục tại thời điểm mở modal.
+// Thư viện có sẵn hiện dạng LƯỚI trực quan (mục 5.15 CONTEXT.md) — audio có
+// nút ▶ nghe thử ngay tại chỗ, meme/gif hiện thumbnail ảnh thật (gif tự
+// chạy hoạt hình luôn trong ô nhỏ) — thay cho dropdown chỉ có tên file
+// (phải chọn mù, không biết trước nghe/nhìn thế nào).
+function libraryPickerHtml(category) {
+  return `<div class="lib-toggle-row">
+      <button type="button" class="lib-toggle-btn" onclick="toggleLibraryGrid()">📂 Chọn từ thư viện có sẵn</button>
+    </div>
+    <div id="m-library-grid" class="lib-grid" style="display:none"></div>`;
+}
+
+function toggleLibraryGrid() {
+  const grid = document.getElementById('m-library-grid');
+  grid.style.display = grid.style.display === 'none' ? 'grid' : 'none';
+}
+
+async function loadLibraryOptions(category) {
+  const grid = document.getElementById('m-library-grid');
+  if (!grid) return;
+  grid.innerHTML = `<div class="lib-empty">Đang tải...</div>`;
+  try {
+    const res = await fetch(MEDIA_SERVER_URL + '/library/' + category);
+    if (!res.ok) throw new Error('HTTP ' + res.status);
+    const items = await res.json();
+    if (!items.length) { grid.innerHTML = `<div class="lib-empty">Thư mục thư viện đang trống.</div>`; return; }
+    document.querySelector('.lib-toggle-btn').textContent = `📂 Chọn từ thư viện có sẵn (${items.length})`;
+    grid.innerHTML = items.map((it, i) => libraryItemHtml(category, it, i)).join('');
+  } catch (e) {
+    grid.innerHTML = `<div class="lib-empty" style="color:#ef4444">⚠ Không tải được thư viện — kiểm tra media_server.py đang chạy</div>`;
+  }
+}
+
+// label/description (mục 5.25 CONTEXT.md) — file trong threads/audio/ và
+// threads/gif/ giờ có thể gắn mô tả riêng qua _meta.json (media_server.py),
+// hiển thị TÊN GỌI thay cho tên file thô, tooltip hiện mô tả đầy đủ (để dán
+// cho AI ngoài app), và có nút sửa/xoá ngay trong lưới — giống hệt cách
+// modal "Meme sẵn" đã làm (mục 5.24), áp dụng luôn cho thư viện gốc.
+function libraryItemHtml(category, item, i) {
+  const url = MEDIA_SERVER_URL + item.url;
+  const itemJson = esc(JSON.stringify({ ...item, category }));
+  const displayLabel = item.label || item.filename;
+  const tooltip = item.description || displayLabel;
+  const editActions = `<div class="lib-item-edit-actions">
+      <button type="button" onclick="event.stopPropagation();editLibraryItem(this)" title="Sửa tên/mô tả">✎</button>
+      <button type="button" onclick="event.stopPropagation();deleteLibraryItem(this)" title="Xoá khỏi thư viện">🗑</button>
+    </div>`;
+  if (category === 'audio') {
+    return `<div class="lib-item lib-item-audio" data-item='${itemJson}' onclick="selectLibraryItem(this)" title="${esc(tooltip)}">
+      <button type="button" class="lib-play-btn" onclick="event.stopPropagation();toggleLibraryPreviewAudio('${url}',this)">▶</button>
+      <span class="lib-item-name">${esc(displayLabel)}</span>
+      ${editActions}
+    </div>`;
+  }
+  // meme/gif: thumbnail ảnh thật (video thì hiện icon thay vì cố preview autoplay trong ô nhỏ)
+  const thumb = item.isVideo
+    ? `<div class="lib-thumb lib-thumb-video">🎬</div>`
+    : `<img class="lib-thumb" src="${url}" loading="lazy" alt=""/>`;
+  return `<div class="lib-item lib-item-meme" data-item='${itemJson}' onclick="selectLibraryItem(this)" title="${esc(tooltip)}">
+    ${editActions}
+    ${thumb}
+    <span class="lib-item-name">${esc(displayLabel)}</span>
+  </div>`;
+}
+
+async function editLibraryItem(btn) {
+  const el = btn.closest('.lib-item');
+  const item = JSON.parse(el.dataset.item);
+  const newLabel = prompt('Tên gọi:', item.label || item.filename);
+  const newDesc = prompt('Mô tả (để dán cho AI hiểu ngữ cảnh dùng file này):', item.description || '');
+  const body = {};
+  if (newLabel !== null) body.label = newLabel;
+  if (newDesc !== null) body.description = newDesc;
+  if (!Object.keys(body).length) return;
+  try {
+    const res = await fetch(`${MEDIA_SERVER_URL}/library/${item.category}/${encodeURIComponent(item.filename)}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body),
+    });
+    if (!res.ok) throw new Error('HTTP ' + res.status);
+    loadLibraryOptions(item.category);
+  } catch (e) {
+    alert('Sửa lỗi: ' + e.message);
+  }
+}
+
+// Xoá HẲN file khỏi thư viện gốc (khác memeready — không phải bản copy,
+// đây là file thật trong threads/audio/ hoặc threads/gif/) — hành động
+// không thể hoàn tác, confirm() cảnh báo rõ trước khi gọi.
+async function deleteLibraryItem(btn) {
+  const el = btn.closest('.lib-item');
+  const item = JSON.parse(el.dataset.item);
+  const label = item.label || item.filename;
+  if (!confirm(`Xoá HẲN "${label}" khỏi thư viện? File thật sẽ bị xoá khỏi ổ đĩa, không thể hoàn tác.`)) return;
+  try {
+    const res = await fetch(`${MEDIA_SERVER_URL}/library/${item.category}/${encodeURIComponent(item.filename)}`, { method: 'DELETE' });
+    if (!res.ok) throw new Error('HTTP ' + res.status);
+    loadLibraryOptions(item.category);
+  } catch (e) {
+    alert('Xoá lỗi: ' + e.message);
+  }
+}
+
+let _libPreviewAudioEl = null;
+let _libPreviewPlayingBtn = null;
+function toggleLibraryPreviewAudio(url, btn) {
+  if (!_libPreviewAudioEl) _libPreviewAudioEl = new Audio();
+  if (_libPreviewPlayingBtn === btn && !_libPreviewAudioEl.paused) {
+    _libPreviewAudioEl.pause();
+    btn.textContent = '▶';
+    _libPreviewPlayingBtn = null;
+    return;
+  }
+  if (_libPreviewPlayingBtn) _libPreviewPlayingBtn.textContent = '▶';
+  _libPreviewAudioEl.src = url;
+  _libPreviewAudioEl.play().catch(() => {});
+  btn.textContent = '⏸';
+  _libPreviewPlayingBtn = btn;
+  _libPreviewAudioEl.onended = () => { btn.textContent = '▶'; _libPreviewPlayingBtn = null; };
+}
+
+function selectLibraryItem(el) {
+  const item = JSON.parse(el.dataset.item);
+  modalUploadedMedia = { url: MEDIA_SERVER_URL + item.url, filename: item.filename, isVideo: item.isVideo, duration: item.duration };
+  document.getElementById('m-dropzone-text').textContent = '✓ ' + item.filename;
+  document.getElementById('m-file-path').value = '';
+  document.getElementById('m-upload-status').textContent = '✓ Đã chọn từ thư viện';
+  document.getElementById('m-upload-status').style.color = '#4ade80';
+  document.querySelectorAll('.lib-item.selected').forEach(x => x.classList.remove('selected'));
+  el.classList.add('selected');
+  if (_libPreviewAudioEl) { _libPreviewAudioEl.pause(); if (_libPreviewPlayingBtn) _libPreviewPlayingBtn.textContent = '▶'; _libPreviewPlayingBtn = null; }
+}
+
+// ---------- Meme sẵn (v2 — snapshot toàn bộ step, không giới hạn ở media) ----------
+// Trước đây (mục 5.19 CONTEXT.md) "meme sẵn" chỉ là 1 file gif/video + 1 audio
+// kèm theo, đóng gói qua modal soạn step 'meme' riêng. Người dùng phản hồi: bỏ
+// hẳn step 'meme' (dùng 'image' thay thế), và đổi hẳn cách đóng gói — GIỜ BẤT
+// KỲ step nào trong kịch bản (post/comment/reply/image/audio, kể cả 1 cặp
+// image+audio song song đứng cạnh nhau) đều có thể "💾 Lưu thành Meme sẵn"
+// ngay từ step-card của chính nó, snapshot TOÀN BỘ nội dung (không chỉ media)
+// để dùng lại y hệt sau này — không còn form tạo/sửa riêng trong modal, không
+// còn prompt() nhập tay từng field.
+
+// Bấm nút 💾 trên 1 step-card — snapshot ĐÚNG step đó, và nếu nó đang đứng
+// trong 1 cặp song song (track-chính + audio parallel bám theo, mục 5.13),
+// snapshot CẢ CẶP thành 1 bộ. Nhận diện cặp: tìm trong mảng steps[] xem step
+// NGAY SAU nó có phải audio parallel bám vào nó không, hoặc nếu chính nó là
+// audio parallel thì cặp với step NGAY TRƯỚC nó.
+function findMemereadyPair(id) {
+  const idx = steps.findIndex(s => s.id === id);
+  if (idx < 0) return [steps[idx]];
+  const s = steps[idx];
+  if (isParallelAudio(s)) {
+    const prev = steps[idx - 1];
+    return prev ? [prev, s] : [s];
+  }
+  const next = steps[idx + 1];
+  if (next && isParallelAudio(next)) return [s, next];
+  return [s];
+}
+
+async function saveStepAsMemeready(id) {
+  const pair = findMemereadyPair(id);
+  const defaultLabel = (stepSummary(pair[0]) || 'Meme sẵn').slice(0, 60);
+  const label = prompt('Tên gọi cho bộ meme sẵn này:', defaultLabel);
+  if (label === null) return; // huỷ
+  try {
+    const res = await fetch(MEDIA_SERVER_URL + '/memeready', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ label, steps: pair }),
+    });
+    if (!res.ok) throw new Error('HTTP ' + res.status);
+    alert('✓ Đã lưu thành meme sẵn: ' + (label || defaultLabel));
+  } catch (e) {
+    alert('✗ Lưu lỗi: ' + e.message + '\n\nKiểm tra media_server.py đang chạy (cổng 8010).');
+  }
+}
+
+// Modal "Meme sẵn" — CHỈ để LẤY RA (chọn 1 bộ đã đóng gói, tự thêm lại đúng
+// số step gốc vào cuối kịch bản). Đóng gói mới giờ làm từ nút 💾 trên từng
+// step-card (saveStepAsMemeready ở trên), không còn luồng tạo trong modal này.
+function openMemereadyModal() {
+  document.getElementById('memeready-modal-overlay').classList.add('open');
+  loadMemereadyOptions();
+}
+function closeMemereadyModal() {
+  document.getElementById('memeready-modal-overlay').classList.remove('open');
+}
+
+async function loadMemereadyOptions() {
+  const grid = document.getElementById('memeready-modal-grid');
+  grid.innerHTML = `<div class="lib-empty">Đang tải...</div>`;
+  try {
+    const res = await fetch(MEDIA_SERVER_URL + '/memeready');
+    if (!res.ok) throw new Error('HTTP ' + res.status);
+    const items = await res.json();
+    if (!items.length) { grid.innerHTML = `<div class="lib-empty">Chưa có meme sẵn nào — bấm nút 💾 trên 1 step bất kỳ trong kịch bản để đóng gói lại dùng nhanh lần sau.</div>`; return; }
+    grid.innerHTML = items.map(memereadyItemHtml).join('');
+  } catch (e) {
+    grid.innerHTML = `<div class="lib-empty" style="color:#ef4444">⚠ Không tải được — kiểm tra media_server.py đang chạy</div>`;
+  }
+}
+
+// Thumbnail đại diện cho 1 bộ — lấy từ step ĐẦU TIÊN có media (ảnh/video);
+// nếu không có step nào có media (vd chỉ 1 post/comment thuần text), hiện
+// icon chữ 💬 thay vì để trống. JSON của toàn bộ item được nhét vào
+// data-item qua encodeURIComponent (không dùng esc()+nháy đơn như các lib-
+// item khác trong file — snapshot đầy đủ step dễ chứa dấu nháy đơn trong lời
+// thoại tiếng Việt tự nhiên, esc() hiện có không escape nháy đơn nên sẽ vỡ
+// attribute HTML; encodeURIComponent an toàn tuyệt đối với mọi ký tự).
+function memereadyItemHtml(item) {
+  const mediaStep = item.steps.find(s => s.mediaUrl);
+  let thumb;
+  if (mediaStep) {
+    thumb = mediaStep.mediaIsVideo
+      ? `<div class="lib-thumb lib-thumb-video">🎬</div>`
+      : `<img class="lib-thumb" src="${MEDIA_SERVER_URL + mediaStep.mediaUrl}" loading="lazy" alt=""/>`;
+  } else {
+    thumb = `<div class="lib-thumb lib-thumb-video">💬</div>`;
+  }
+  const hasAudio = item.steps.some(s => s.type === 'audio' || s.audioUrl);
+  const itemJson = encodeURIComponent(JSON.stringify(item));
+  const stepTypes = item.steps.map(s => TYPE_LABEL[s.type] || s.type).join(' + ');
+  return `<div class="lib-item lib-item-meme lib-item-memeready" data-item="${itemJson}" onclick="selectMemereadyItem(this)" title="${esc(stepTypes)}">
+    <div class="lib-item-edit-actions">
+      <button type="button" onclick="event.stopPropagation();editMemereadyItem(this)" title="Sửa tên">✎</button>
+      <button type="button" onclick="event.stopPropagation();deleteMemereadyItem(this)" title="Xoá">🗑</button>
+    </div>
+    ${thumb}
+    <span class="lib-item-name">${esc(item.label)}${hasAudio ? ' 🔊' : ''}</span>
+  </div>`;
+}
+
+function readMemereadyItemFromEl(el) {
+  return JSON.parse(decodeURIComponent(el.dataset.item));
+}
+
+// Sửa 1 bộ Meme sẵn — tên gọi + duration/text của TỪNG step bên trong snapshot
+// (KHÔNG đổi được file media/audio đã đóng gói — đổi file coi như tạo bộ
+// mới, xoá bộ cũ, giữ đơn giản). Dùng modal riêng thay vì prompt() liên tiếp
+// — người dùng phản hồi prompt() "khó dùng vô cùng", không thấy được nội
+// dung cụ thể của từng thành phần bên trong để sửa.
+let memereadyEditingItem = null;
+
+function editMemereadyItem(btn) {
+  const el = btn.closest('.lib-item');
+  memereadyEditingItem = readMemereadyItemFromEl(el);
+  document.getElementById('mr-edit-label').value = memereadyEditingItem.label;
+  document.getElementById('memeready-edit-steps-fields').innerHTML =
+    memereadyEditingItem.steps.map(memereadyEditFieldsHtml).join('');
+  document.getElementById('memeready-edit-modal-overlay').classList.add('open');
+}
+
+function closeMemereadyEditModal() {
+  document.getElementById('memeready-edit-modal-overlay').classList.remove('open');
+  memereadyEditingItem = null;
+}
+
+// 1 khối field cho 1 step trong snapshot — loại step, ô Thời lượng (số giây,
+// luôn sửa được kể cả step post/comment/reply có TTS — người dùng có thể
+// muốn kéo dài/ngắn thời gian hiện dù giọng đọc đã cố định), ô Nội dung nếu
+// step có field `text` (post/comment/reply/image), và dòng tham khảo hiện
+// duration THẬT đo bằng ffprobe của media/audio đã đóng gói (chỉ để xem,
+// không sửa được — sửa file phải đóng gói bộ mới).
+function memereadyEditFieldsHtml(s, idx) {
+  const refParts = [];
+  if (s._mediaDuration != null) refParts.push(`media ${s._mediaDuration.toFixed(2)}s`);
+  if (s._ttsAudioDuration != null) refParts.push(`giọng đọc ${s._ttsAudioDuration.toFixed(2)}s`);
+  if (s._tts2AudioDuration != null) refParts.push(`giọng đọc 2 ${s._tts2AudioDuration.toFixed(2)}s`);
+  const refLine = refParts.length ? `<div style="font-size:10px;color:#6b7280;margin-top:2px">Độ dài thật của file đã đóng gói: ${refParts.join(', ')} — chỉ để tham khảo, không tự động ghép vào Thời lượng.</div>` : '';
+  const textField = (s.text != null) ? `
+    <label style="margin-top:8px">Nội dung</label>
+    <textarea data-mr-field="text" data-mr-idx="${idx}">${esc(s.text)}</textarea>` : '';
+  return `<div style="border-top:1px solid #1e2340;margin-top:14px;padding-top:10px">
+    <div style="font-size:11px;font-weight:700;color:#a78bfa">${TYPE_LABEL[s.type] || s.type}${isParallelAudio(s) ? ' ⏱ song song' : ''}${s.mediaName ? ' — ' + esc(s.mediaName) : ''}</div>
+    <label style="margin-top:8px">Thời lượng (giây)</label>
+    <input type="number" min="0" step="0.1" data-mr-field="duration" data-mr-idx="${idx}" value="${s.duration.toFixed(2)}"/>
+    ${refLine}
+    ${textField}
+  </div>`;
+}
+
+function submitMemereadyEdit() {
+  const item = memereadyEditingItem;
+  if (!item) return;
+  const label = document.getElementById('mr-edit-label').value.trim() || item.label;
+  const steps = item.steps.map((s, idx) => {
+    const durEl = document.querySelector(`[data-mr-field="duration"][data-mr-idx="${idx}"]`);
+    const textEl = document.querySelector(`[data-mr-field="text"][data-mr-idx="${idx}"]`);
+    const updated = { ...s };
+    if (durEl) updated.duration = parseFloat(durEl.value) || s.duration;
+    if (textEl) updated.text = textEl.value;
+    // Trả URL về dạng tương đối gốc (server lưu tên file, không phải URL đầy
+    // đủ) — readMemereadyItemFromEl()/GET đã ghép "/memeready-file/id/..."
+    // vào lúc hiển thị, cần bóc lại đúng phần tên file trước khi gửi PATCH.
+    const stripPrefix = (u) => u && u.startsWith(`/memeready-file/${item.id}/`) ? u.slice(`/memeready-file/${item.id}/`.length) : u;
+    if (updated.mediaUrl) updated.mediaUrl = stripPrefix(updated.mediaUrl);
+    if (updated.audioUrl) updated.audioUrl = stripPrefix(updated.audioUrl);
+    if (updated.audio2Url) updated.audio2Url = stripPrefix(updated.audio2Url);
+    return updated;
+  });
+  fetch(`${MEDIA_SERVER_URL}/memeready/${item.id}`, {
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ label, steps }),
+  }).then(res => {
+    if (!res.ok) throw new Error('HTTP ' + res.status);
+    closeMemereadyEditModal();
+    loadMemereadyOptions();
+  }).catch(e => alert('Sửa lỗi: ' + e.message));
+}
+
+async function deleteMemereadyItem(btn) {
+  const el = btn.closest('.lib-item');
+  const item = readMemereadyItemFromEl(el);
+  if (!confirm(`Xoá hẳn meme sẵn "${item.label}"? (không thể hoàn tác)`)) return;
+  try {
+    const res = await fetch(`${MEDIA_SERVER_URL}/memeready/${item.id}`, { method: 'DELETE' });
+    if (!res.ok) throw new Error('HTTP ' + res.status);
+    loadMemereadyOptions();
+  } catch (e) {
+    alert('Xoá lỗi: ' + e.message);
+  }
+}
+
+// LẤY RA 1 bộ — tạo lại ĐÚNG SỐ step gốc (1 hoặc 2), gắn cuối kịch bản, dùng
+// ĐÚNG duration thật đã lưu lúc đóng gói. id/mediaUrl đã là URL server trả về
+// (MEDIA_SERVER_URL + item.steps[i].mediaUrl), không cần convert gì thêm.
+// Đóng modal ngay sau khi chọn — modal này chỉ để LẤY RA, chọn xong là xong.
+function selectMemereadyItem(el) {
+  const item = readMemereadyItemFromEl(el);
+  for (const snap of item.steps) {
+    const s = { ...snap, id: stepIdCounter++ };
+    if (s.mediaUrl) s.mediaUrl = MEDIA_SERVER_URL + s.mediaUrl;
+    if (s.audioUrl) s.audioUrl = MEDIA_SERVER_URL + s.audioUrl;
+    if (s.audio2Url) s.audio2Url = MEDIA_SERVER_URL + s.audio2Url;
+    // BUG ĐÃ GẶP (và đã sửa): trước đây ưu tiên _mediaDuration (đo lại bằng
+    // ffprobe LÚC ĐÓNG GÓI) đè lên s.duration — sai hoàn toàn, vì s.duration
+    // trong snapshot CHÍNH LÀ con số người dùng đã tự chỉnh tay trước khi
+    // bấm 💾 lưu (vd đặt ảnh 2s, audio 1s). Ghi đè bằng _mediaDuration vừa
+    // phá mất giá trị đã chỉnh tay, vừa lộ thêm bug khác (mục 5.30
+    // CONTEXT.md): ffprobe trả duration ~0.04s vô nghĩa cho ẢNH TĨNH
+    // (jpg/png, "container duration" gần-0 của định dạng ảnh, không phải độ
+    // dài thật) — người dùng chỉnh 2s, lấy ra lại thành 0.04s.
+    // ĐÚNG: s.duration đã lưu trong snapshot là NGUỒN CHÂN LÝ DUY NHẤT,
+    // dùng thẳng, không đo lại/ghi đè gì — kể cả audio parallel (bám theo
+    // step trước) cũng giữ đúng số đã lưu, vì lúc snapshot cặp step-card đã
+    // ở đúng trạng thái parallel ăn theo nhau rồi (mục 5.13/5.23).
+    // _mediaDuration/_ttsAudioDuration/_tts2AudioDuration chỉ là dữ liệu
+    // tham khảo hiển thị trong modal sửa memeready, không dùng để ghép vào
+    // step khi lấy ra.
+    delete s._mediaDuration; delete s._ttsAudioDuration; delete s._tts2AudioDuration;
+    steps.push(s);
+  }
+  renderStepList();
+  renderIdleScene();
+  closeMemereadyModal();
+}
+
+const MEDIA_SERVER_URL = 'http://localhost:8010';
+let modalUploadedMedia = null; // { url, filename, isVideo } — kết quả upload gần nhất trong modal đang mở
+
+// ---------- Crop nhiều vùng từ 1 ảnh gốc (step 'image', mục 5.31 CONTEXT.md) ----------
+// TÁCH HẲN khỏi modalUploadedMedia — biến đó vẫn giữ nguyên vai trò cũ ("chọn
+// ảnh làm step luôn, không crop", dùng chung cho meme/audio/image). imageCropSrc
+// giữ ẢNH GỐC dùng để cắt ra NHIỀU step liên tiếp — 2 khái niệm khác nhau,
+// không dùng chung 1 biến kẻo đá nhau khi người dùng dùng cả 2 cách trong
+// cùng 1 lần mở modal.
+let imageCropSrc = null;   // { objectUrl, naturalWidth, naturalHeight } — ảnh gốc, LOCAL (không upload)
+let imageCropBox = { x: 0, y: 0, w: 0, h: 0 }; // khung crop hiện tại, theo PX HIỂN THỊ trong #m-crop-wrap
+let imageCropDrag = null;  // {mode:'move'|'nw'|'ne'|'sw'|'se', startX, startY, orig:{...}} khi đang kéo
+
+async function uploadMediaFile(file) {
+  const statusEl = document.getElementById('m-upload-status');
+  statusEl.textContent = '⏳ Đang tải lên...';
+  statusEl.style.color = '#a78bfa';
+  try {
+    const form = new FormData();
+    form.append('file', file);
+    const res = await fetch(MEDIA_SERVER_URL + '/upload', { method: 'POST', body: form });
+    if (!res.ok) throw new Error('HTTP ' + res.status);
+    const data = await res.json();
+    modalUploadedMedia = { url: MEDIA_SERVER_URL + data.url, filename: data.originalName, isVideo: data.isVideo, duration: data.duration };
+    document.getElementById('m-dropzone-text').textContent = '✓ ' + data.originalName;
+    document.getElementById('m-file-path').value = ''; // upload thành công thì bỏ qua đường dẫn file:// nếu có
+    statusEl.textContent = `✓ Đã tải lên (${(data.size/1024).toFixed(0)} KB)`;
+    statusEl.style.color = '#4ade80';
+  } catch (e) {
+    statusEl.textContent = '✗ Tải lên lỗi: ' + e.message + ' — kiểm tra threads/media_server.py đang chạy (python3 threads/media_server.py)';
+    statusEl.style.color = '#ef4444';
+  }
+}
+
+function onMediaDrop(ev) {
+  ev.preventDefault();
+  document.getElementById('m-dropzone').classList.remove('over');
+  const file = ev.dataTransfer.files[0];
+  if (file) uploadMediaFile(file);
+}
+function onMediaFileChosen(file) {
+  if (file) uploadMediaFile(file);
+}
+function onFilePathTyped() {
+  // gõ tay đường dẫn file:// thì huỷ kết quả upload trước đó (2 nguồn không dùng đồng thời)
+  if (document.getElementById('m-file-path').value.trim()) {
+    modalUploadedMedia = null;
+    document.getElementById('m-dropzone-text').textContent = '📁 Kéo-thả file vào đây, hoặc bấm để chọn';
+    document.getElementById('m-upload-status').textContent = '';
+  }
+}
+
+// Ô "Nội dung đọc (TTS)" đi kèm mỗi ô "Nội dung" hiển thị — tách riêng vì
+// text hiển thị trên thẻ Threads có thể khác text muốn đọc thành tiếng (bỏ
+// hashtag/emoji, viết lại cho tự nhiên khi đọc...). Mặc định tự đồng bộ theo
+// ô hiển thị real-time; ngay khi user gõ tay vào ô đọc, cờ `dirty` bật lên và
+// ngưng tự đồng bộ (để không ghi đè nội dung họ vừa tự sửa).
+const ttsFieldDirty = {}; // prefix -> bool, reset mỗi lần mở modal
+
+function ttsFieldHtml(prefix, currentTtsText, currentEcho) {
+  return `<label style="display:flex;justify-content:space-between;align-items:center">
+             <span>🔊 Nội dung đọc (TTS)</span>
+             <span style="font-size:10px;color:#6b7280;font-weight:400">mặc định = nội dung hiển thị, có thể sửa riêng</span>
+           </label>
+           <textarea id="${prefix}-tts-text" oninput="ttsFieldDirty['${prefix}']=true" placeholder="Để trống = đọc y hệt nội dung hiển thị">${esc(currentTtsText||'')}</textarea>
+           ${echoCheckboxHtml(prefix + '-echo', currentEcho)}`;
+}
+
+// Checkbox "Hiệu ứng vang" (mục "nhiều đoạn TTS") — áp FFmpeg aecho lên
+// NGUYÊN đoạn đó khi tạo TTS, dùng để nhấn nhá 1 câu thoại cho hài/gây cười.
+// Dùng chung cho đoạn #1 (id="${prefix}-echo") và mỗi đoạn thêm trong
+// renderExtraTtsSegmentsUI() (đọc/ghi trực tiếp modalExtraTts[i].echo).
+function echoCheckboxHtml(id, checked) {
+  return `<label style="display:flex;align-items:center;gap:6px;margin-top:6px;font-weight:400">
+            <input type="checkbox" id="${id}" style="width:auto" ${checked?'checked':''}/>
+            <span>✨ Hiệu ứng vang (nhấn nhá câu này cho hài/gây cười)</span>
+          </label>`;
+}
+
+function bindTtsAutoSync(prefix, textFieldId) {
+  const textEl = document.getElementById(textFieldId);
+  const ttsEl = document.getElementById(prefix + '-tts-text');
+  if (!textEl || !ttsEl) return;
+  textEl.addEventListener('input', () => {
+    if (!ttsFieldDirty[prefix]) ttsEl.value = textEl.value;
+  });
+}
+
+// Text thực sự gửi cho TTS: ô đọc nếu user đã tự gõ (hoặc có sẵn giá trị khác rỗng), else dùng ô hiển thị.
+// `textFieldId` nhận tường minh (không tự suy ra prefix+"-text") — từ mục 5.39,
+// comment/reply đều chỉ còn đúng 1 khối "m-text", nhưng giữ tham số tường minh
+// để nhất quán với image/meme (dùng prefix khác 'm' cho field khác).
+function readTtsText(prefix, textFieldId) {
+  const ttsEl = document.getElementById(prefix + '-tts-text');
+  const v = ttsEl ? ttsEl.value.trim() : '';
+  if (v) return v;
+  return document.getElementById(textFieldId).value.trim();
+}
+
+// Nhiều đoạn giọng đọc nối tiếp trong CÙNG 1 step (post/comment/reply/image)
+// — người dùng muốn 1 câu có thể đọc bằng nhiều giọng khác nhau nối tiếp
+// nhau (không giới hạn 2). Đoạn #1 giữ NGUYÊN cấu trúc field cũ (ttsText/
+// voiceIdx/audioUrl/ttsDuration) để không phải sửa lại mọi nơi khác đang
+// đọc trực tiếp field này (voiceLabelHtml, input Thời lượng disable-check,
+// v.v.) — các đoạn THÊM (2, 3, ...) nằm trong mảng mới `extraTtsSegments:
+// [{text, voiceIdx, audioUrl, duration}]`. `stepTtsClips(s)` là điểm trung
+// tâm DUY NHẤT ghép đoạn #1 + extraTtsSegments thành 1 danh sách thống nhất
+// theo đúng thứ tự phát — mọi chỗ khác (ttsClipAt, generateAllTts, export
+// JSON, export_server.py) nên dựa vào cấu trúc này thay vì tự đọc rời rạc.
+function stepTtsClips(s) {
+  const clips = [{ text: s.ttsText ?? s.text, voiceIdx: s.voiceIdx, audioUrl: s.audioUrl, duration: s.ttsDuration }];
+  for (const seg of (s.extraTtsSegments || [])) clips.push(seg);
+  return clips;
+}
+
+// Khối UI cho các đoạn TTS THÊM (sau đoạn #1) trong modal soạn step — mỗi
+// khối có textarea nội dung đọc riêng + chọn giọng riêng + nút 🗑 xoá đoạn
+// đó, cộng 1 nút "➕ Thêm giọng đọc" ở cuối để nhân bản thêm khối mới. State
+// tạm giữ trong `modalExtraTts` (mảng {text, voiceIdx}) — chỉ commit vào
+// step thật lúc submitStepModal(). Rebuild toàn bộ khối mỗi lần thêm/xoá 1
+// đoạn (đơn giản hơn diff DOM, số đoạn thường nhỏ nên không đáng lo hiệu năng).
+function renderExtraTtsSegmentsUI() {
+  const box = document.getElementById('m-extra-tts-box');
+  if (!box) return;
+  box.innerHTML = modalExtraTts.map((seg, i) => {
+    const opts = ttsVoices.length
+      ? ttsVoices.map((v, vi) => voiceOptionHtml(v, vi, String(vi) === String(seg.voiceIdx ?? ''))).join('')
+      : '';
+    return `<div style="border-top:1px dashed #2a3050;margin-top:10px;padding-top:10px">
+      <label style="display:flex;justify-content:space-between;align-items:center">
+        <span>🔊 Giọng đọc #${i + 2}</span>
+        <button type="button" class="btn-cancel" style="padding:2px 8px;font-size:11px" onclick="removeExtraTtsSegment(${i})">🗑 Xoá đoạn này</button>
+      </label>
+      <textarea oninput="modalExtraTts[${i}].text=this.value" placeholder="Đoạn tiếp theo sẽ đọc bằng giọng khác...">${esc(seg.text || '')}</textarea>
+      <label style="margin-top:6px">Giọng</label>
+      ${ttsVoices.length
+        ? `<select onchange="modalExtraTts[${i}].voiceIdx=parseInt(this.value,10)">${opts}</select>`
+        : `<div style="font-size:11px;color:#ef4444">Chưa tải được danh sách giọng — kiểm tra TTS server ở mục 3 sidebar.</div>`}
+      <label style="display:flex;align-items:center;gap:6px;margin-top:6px;font-weight:400">
+        <input type="checkbox" style="width:auto" ${seg.echo?'checked':''} onchange="modalExtraTts[${i}].echo=this.checked"/>
+        <span>✨ Hiệu ứng vang (nhấn nhá câu này cho hài/gây cười)</span>
+      </label>
+    </div>`;
+  }).join('') + `<button type="button" class="btn-cancel" style="width:100%;margin-top:10px;padding:8px;border-radius:8px;cursor:pointer" onclick="addExtraTtsSegment()">➕ Thêm giọng đọc (đoạn tiếp theo, đọc bằng giọng khác)</button>`;
+}
+
+function addExtraTtsSegment() {
+  const sidebarIdx = parseInt(document.getElementById('tts-voice').value, 10);
+  modalExtraTts.push({ text: '', voiceIdx: Number.isNaN(sidebarIdx) ? null : sidebarIdx });
+  renderExtraTtsSegmentsUI();
+}
+
+function removeExtraTtsSegment(i) {
+  modalExtraTts.splice(i, 1);
+  renderExtraTtsSegmentsUI();
+}
+
+function onModalImgUrlChange(prefix) {
+  const url = document.getElementById(prefix + '-img').value.trim();
+  const preview = document.getElementById(prefix + '-img-preview');
+  preview.innerHTML = url ? `<img src="${esc(url)}" referrerpolicy="no-referrer" style="max-width:100%;max-height:80px;border-radius:6px;display:block" onerror="this.replaceWith(Object.assign(document.createElement('div'),{textContent:'⚠ Không tải được ảnh từ URL này',style:'font-size:11px;color:#ef4444'}))"/>` : '';
+}
+function readImgUrl(prefix) {
+  const el = document.getElementById(prefix + '-img');
+  return el ? el.value.trim() : '';
+}
+
+// Ô "Ảnh từ URL" của step 'image' (mục 5.41 CONTEXT.md) — cùng cơ chế
+// preview/onerror như onModalImgUrlChange(), tách hàm riêng vì id field
+// khác hẳn quy tắc "${prefix}-img" (chỉ 1 field duy nhất, không theo prefix).
+function onImageUrlTyped() {
+  const url = document.getElementById('m-image-url').value.trim();
+  const preview = document.getElementById('m-image-url-preview');
+  preview.innerHTML = url ? `<img src="${esc(url)}" referrerpolicy="no-referrer" style="max-width:100%;max-height:100px;border-radius:6px;display:block" onerror="this.replaceWith(Object.assign(document.createElement('div'),{textContent:'⚠ Không tải được ảnh từ URL này',style:'font-size:11px;color:#ef4444'}))"/>` : '';
+}
+
+// ---------- Comment/Reply — chọn platform + field chung (mục 5.39 CONTEXT.md) ----------
+// Thay cho step 'reply' cũ (gộp comment gốc + reply trong 1 step, 2 khối m/m2,
+// đường nối Threads). Giờ 'comment' và 'reply' đều là step ĐỘC LẬP 1 khối,
+// khác nhau ở chỗ: 'comment' có thể tick "Thêm reply" để hiện thêm dòng "Xem N
+// câu trả lời" (chỉ hiển thị số, không tự tạo step con); 'reply' là 1 bình
+// luận trả lời đứng riêng (Threads: thụt lề nhẹ không đường nối; TikTok: hẹp
+// hơn, lệch phải — style build ở buildTiktokCommentHtml()/buildCommentRow()
+// trong render_shared.js, KHÔNG xử lý ở đây, đây chỉ là modal soạn nội dung).
+function platformPickerHtml() {
+  const mk = (key, label) => `<button type="button" class="platform-btn${modalPlatform === key ? ' active' : ''}" onclick="setModalPlatform('${key}')">${label}</button>`;
+  return `<label>Nền tảng</label>
+          <div class="platform-picker">${mk('threads', '🧵 Threads')}${mk('tiktok', '🎵 TikTok')}</div>`;
+}
+
+function setModalPlatform(platform) {
+  modalPlatform = platform;
+  // renderCommentReplyFields() rebuild toàn bộ #step-modal-fields (kể cả
+  // platform-picker) từ đầu — platformPickerHtml() tự gắn đúng class
+  // 'active' theo modalPlatform mới, không cần (và không thể — node cũ đã
+  // bị innerHTML thay thế) thao tác thêm trên DOM cũ ở đây.
+  renderCommentReplyFields();
+}
+
+// Render phần field bên dưới platform-picker — TÁCH RIÊNG khỏi openStepModal()
+// để setModalPlatform() gọi lại được khi đổi platform, không đóng/mở lại modal.
+function renderCommentReplyFields() {
+  const type = modalType;
+  const editing = editingStepId != null ? steps.find(s => s.id === editingStepId) : null;
+  let html = '';
+  // Checkbox "Là tác giả" (mục 5.43 CONTEXT.md) — trước đây chỉ có ở
+  // 'comment', giờ thêm cho cả 'reply' (bình luận trả lời cũng có thể là
+  // chính tác giả bài gốc). Nhãn hiện theo đúng thuật ngữ platform sẽ hiện
+  // (Threads: badge "Tác giả"; TikTok: "· Nhà sáng tạo" — xem
+  // buildTiktokCommentHtml() trong render_shared.js).
+  const authorLabel = modalPlatform === 'tiktok' ? 'Là tác giả bài gốc (hiện "· Nhà sáng tạo")' : 'Là tác giả bài gốc (badge "Tác giả")';
+  html += `<label style="display:flex;align-items:center;gap:6px;margin-top:12px">
+             <input type="checkbox" id="m-author" style="width:auto" ${editing&&editing.isAuthor?'checked':''}/> ${authorLabel}</label>`;
+  html += `<label>Nội dung</label>
+           <textarea id="m-text" placeholder="Nội dung...">${esc(editing?editing.text:'')}</textarea>`;
+  html += ttsFieldHtml('m', editing ? (editing.ttsText ?? editing.text) : '', editing ? editing.echo : false);
+  html += voiceFieldHtml('m', editing ? editing.voiceIdx : null);
+  html += `<div id="m-extra-tts-box"></div>`;
+  html += imgFieldHtml('m', editing ? editing.imgUrl : null);
+  html += statsFieldsHtml('m', editing ? editing.stats : null, 'comment');
+  // "Thêm reply" (dòng "Xem N câu trả lời") CHỈ áp dụng TikTok — người dùng
+  // xác nhận Threads không cần tính năng này (mục 5.39 CONTEXT.md, cập nhật
+  // sau phản hồi thực tế).
+  if (type === 'comment' && modalPlatform === 'tiktok') {
+    const hasReply = !!(editing && editing.hasReplyCount);
+    html += `<label style="display:flex;align-items:center;gap:6px;margin-top:14px">
+               <input type="checkbox" id="m-has-reply" style="width:auto" ${hasReply?'checked':''} onchange="document.getElementById('m-reply-count-wrap').style.display=this.checked?'block':'none'"/> ➕ Thêm reply (chỉ hiện dòng "Xem N câu trả lời", không tạo step riêng)</label>
+             <div id="m-reply-count-wrap" style="display:${hasReply?'block':'none'};margin-top:8px">
+               <label>Số câu trả lời hiển thị</label>
+               <input type="number" min="1" step="1" id="m-reply-count" value="${hasReply ? editing.replyCount : 85}"/>
+             </div>`;
+  }
+  document.getElementById('step-modal-fields').innerHTML = platformPickerHtml() + html;
+  bindTtsAutoSync('m', 'm-text');
+  renderExtraTtsSegmentsUI();
+}
+
+function openStepModal(type, stepId = null) {
+  modalType = type;
+  editingStepId = stepId;
+  ttsFieldDirty.m = false;
+  const editing = stepId != null ? steps.find(s => s.id === stepId) : null;
+  // Nếu step đã có ttsText lưu khác với text hiển thị (user từng tự sửa), giữ nguyên cờ dirty khi sửa lại.
+  if (editing && editing.ttsText != null && editing.ttsText !== editing.text) ttsFieldDirty.m = true;
+  // Đoạn giọng đọc THÊM (mục "nhiều đoạn TTS") — điền lại từ step đang sửa
+  // (deep-copy để sửa/huỷ trong modal không ảnh hưởng step gốc cho tới lúc
+  // bấm Submit), hoặc rỗng nếu tạo mới/step cũ chưa có field này.
+  modalExtraTts = editing && editing.extraTtsSegments ? editing.extraTtsSegments.map(s => ({ ...s })) : [];
+
+  document.getElementById('step-modal-title').textContent =
+    (editing ? 'Sửa' : 'Thêm') + ' step — ' + TYPE_LABEL[type];
+
+  let html = '';
+  if (type === 'post') {
+    html += `<label>Nội dung</label>
+             <textarea id="m-text" placeholder="Nội dung...">${esc(editing?editing.text:'')}</textarea>`;
+    html += ttsFieldHtml('m', editing ? (editing.ttsText ?? editing.text) : '', editing ? editing.echo : false);
+    html += voiceFieldHtml('m', editing ? editing.voiceIdx : null);
+    html += `<div id="m-extra-tts-box"></div>`;
+    html += imgFieldHtml('m', editing ? editing.imgUrl : null);
+    html += statsFieldsHtml('m', editing ? editing.stats : null, 'post');
+  } else if (type === 'comment' || type === 'reply') {
+    // Chọn platform + field 1-khối chung — mục 5.39 CONTEXT.md (thay hẳn step
+    // 'reply' cũ kiểu gộp 2 khối comment gốc + reply). modalPlatform lấy theo
+    // step đang sửa nếu có (mặc định 'threads' cho step mới hoặc step cũ
+    // trước khi có field platform).
+    modalPlatform = (editing && editing.platform) || 'threads';
+    document.getElementById('step-modal-fields').innerHTML = '';
+    renderCommentReplyFields();
+  } else if (type === 'image') {
+    // Ảnh phủ giữa khung + TTS (mục 5.30 CONTEXT.md) — kết hợp filePathFieldHtml
+    // (chọn ảnh, y hệt meme, dùng chung thư viện category 'meme' vì đó vốn
+    // là thư viện ảnh/gif/video chung threads/gif/) với ttsFieldHtml/
+    // voiceFieldHtml (y hệt post) — chữ nhập vào phát ra ĐÚNG lúc ảnh hiện.
+    modalUploadedMedia = editing && editing.mediaUrl && !editing.mediaPath ? { url: editing.mediaUrl, filename: editing.mediaName, isVideo: editing.mediaIsVideo } : null;
+    // Reset trạng thái crop-nhiều-vùng mỗi lần mở modal — mục 5.31 CONTEXT.md
+    // (double safety cùng closeStepModal(), phòng trường hợp thoát modal lần
+    // trước không qua closeStepModal()).
+    imageCropSrc = null; imageCropBox = { x: 0, y: 0, w: 0, h: 0 }; imageCropDrag = null;
+    // Ô nhập URL ảnh từ mạng ngoài (mục 5.41 CONTEXT.md) — cho phép dán link
+    // ảnh có sẵn thay vì phải upload/chọn file local. Chỉ hiện field này khi
+    // step KHÔNG dùng mediaPath (local file://) — nếu editing.mediaUrl không
+    // phải file:// và không phải URL do chính app upload (MEDIA_SERVER_URL/
+    // memeready-file), coi đó là URL ngoài, điền lại vào ô để sửa tiếp.
+    const isExternalUrl = editing && editing.mediaUrl && !editing.mediaPath
+      && !editing.mediaUrl.startsWith('file://') && !editing.mediaUrl.startsWith(MEDIA_SERVER_URL);
+    html += `<div style="font-size:12px;color:#6b7280;margin-bottom:10px">Ảnh phủ giữa khung trong lúc step chạy, kèm giọng đọc TTS phát đúng lúc ảnh hiện.</div>
+      <label>🔗 Ảnh từ URL (dán link ảnh có sẵn, tuỳ chọn)</label>
+      <input type="text" id="m-image-url" placeholder="https://..." value="${isExternalUrl ? esc(editing.mediaUrl) : ''}" oninput="onImageUrlTyped()"/>
+      <div id="m-image-url-preview" style="margin:6px 0">${isExternalUrl ? `<img src="${esc(editing.mediaUrl)}" referrerpolicy="no-referrer" style="max-width:100%;max-height:100px;border-radius:6px;display:block" onerror="this.replaceWith(Object.assign(document.createElement('div'),{textContent:'⚠ Không tải được ảnh từ URL này',style:'font-size:11px;color:#ef4444'}))"/>` : ''}</div>
+      <div style="font-size:11px;color:#6b7280;margin-bottom:10px">— hoặc chọn ảnh từ máy/thư viện bên dưới —</div>`
+             + filePathFieldHtml('Ảnh', editing ? editing.mediaPath : '', editing ? editing.mediaUrl : null, editing ? editing.mediaName : null, 'meme');
+    // Cắt nhiều vùng từ 1 ảnh gốc (mục 5.31/5.36 CONTEXT.md) — hiện ở CẢ 2 chế
+    // độ tạo mới lẫn sửa step cũ. Khi sửa (stepId != null), addImageCropStep()
+    // CẬP NHẬT ảnh của chính step đang sửa thay vì luôn tạo step mới (xem hàm
+    // đó) — nút đổi nhãn cho khớp hành vi thật sự sẽ xảy ra khi bấm.
+    {
+      const addBtnLabel = stepId == null ? '💾 Tạo step từ vùng này' : '💾 Cập nhật ảnh cho step này';
+      html += `<details style="margin-top:14px;border-top:1px solid #1e2340;padding-top:12px">
+        <summary style="font-size:12px;color:#a78bfa;cursor:pointer;font-weight:600">✂️ Cắt nhiều vùng từ 1 ảnh gốc (vd: chụp màn hình chat, hiện dần từng dòng)</summary>
+        <div style="font-size:11px;color:#6b7280;margin:8px 0">Tải ảnh gốc 1 lần, kéo khung vàng chọn vùng muốn hiện → gõ đúng câu chữ MỚI trong vùng đó → bấm "Tạo step". Khung crop giữ nguyên vị trí sau mỗi lần tạo — kéo rộng thêm rồi tạo tiếp cho vùng kế.</div>
+        <input type="file" id="m-crop-src-input" accept="image/*" style="display:none" onchange="onImageCropSrcChosen(this.files[0])"/>
+        <button type="button" class="btn-cancel" style="width:100%;padding:10px;border-radius:8px;border:none;cursor:pointer" onclick="document.getElementById('m-crop-src-input').click()">📁 Chọn ảnh gốc...</button>
+        <div id="m-crop-wrap" style="position:relative;width:fit-content;max-width:100%;max-height:60vh;background:#000;border-radius:8px;overflow:hidden;line-height:0;user-select:none;margin-top:10px;display:none">
+          <img id="m-crop-img" style="display:block;max-width:100%;max-height:60vh"/>
+          <div id="m-crop-box" style="position:absolute;border:2px solid #f5c518;border-radius:4px;box-shadow:0 0 0 9999px rgba(0,0,0,.55);cursor:move;touch-action:none">
+            <div class="m-ch nw" style="position:absolute;width:16px;height:16px;background:#f5c518;border-radius:50%;left:-8px;top:-8px;cursor:nwse-resize;touch-action:none"></div>
+            <div class="m-ch ne" style="position:absolute;width:16px;height:16px;background:#f5c518;border-radius:50%;right:-8px;top:-8px;cursor:nesw-resize;touch-action:none"></div>
+            <div class="m-ch sw" style="position:absolute;width:16px;height:16px;background:#f5c518;border-radius:50%;left:-8px;bottom:-8px;cursor:nesw-resize;touch-action:none"></div>
+            <div class="m-ch se" style="position:absolute;width:16px;height:16px;background:#f5c518;border-radius:50%;right:-8px;bottom:-8px;cursor:nwse-resize;touch-action:none"></div>
+            <div class="m-ch n" style="position:absolute;height:14px;left:12px;right:12px;top:-7px;cursor:ns-resize;touch-action:none"></div>
+            <div class="m-ch s" style="position:absolute;height:14px;left:12px;right:12px;bottom:-7px;cursor:ns-resize;touch-action:none"></div>
+            <div class="m-ch w" style="position:absolute;width:14px;top:12px;bottom:12px;left:-7px;cursor:ew-resize;touch-action:none"></div>
+            <div class="m-ch e" style="position:absolute;width:14px;top:12px;bottom:12px;right:-7px;cursor:ew-resize;touch-action:none"></div>
+          </div>
+        </div>
+        <div id="m-crop-info" style="font-size:11px;color:#6b7280;margin-top:6px"></div>
+        <button type="button" class="btn-ok" id="m-crop-add-btn" style="width:100%;margin-top:10px;display:none;padding:11px;border-radius:8px;border:none;font-weight:700;cursor:pointer" onclick="addImageCropStep()">${addBtnLabel}</button>
+      </details>`;
+    }
+    html += `<label style="margin-top:14px">Nội dung đọc (TTS)</label>
+             <textarea id="m-text" placeholder="Chữ sẽ được đọc thành giọng nói ngay khi ảnh hiện lên...">${esc(editing?editing.text:'')}</textarea>
+             ${echoCheckboxHtml('m-echo', editing ? editing.echo : false)}`;
+    html += voiceFieldHtml('m', editing ? editing.voiceIdx : null);
+    html += `<div id="m-extra-tts-box"></div>`;
+  } else if (type === 'audio') {
+    modalUploadedMedia = editing && editing.mediaUrl && !editing.mediaPath ? { url: editing.mediaUrl, filename: editing.mediaName, isVideo: editing.mediaIsVideo } : null;
+    html += `<div style="font-size:12px;color:#6b7280;margin-bottom:10px">Âm thanh hiệu ứng (meme sound). Không có hình, chỉ phát tiếng. (Có thể bỏ trống để test thời gian.)</div>
+             <label style="display:flex;align-items:center;gap:6px;cursor:pointer;margin-bottom:12px">
+               <input type="checkbox" id="m-parallel" style="width:auto" ${editing&&editing.parallel?'checked':''}/>
+               <span>⏱ Chạy <b style="color:#a78bfa">song song</b> — đè lên step ngay phía trên nó, không chiếm thêm thời gian của video (mặc định: chạy tuần tự, chiếm chỗ riêng như post/comment)</span>
+             </label>`
+             + filePathFieldHtml('File âm thanh', editing ? editing.mediaPath : '', editing ? editing.mediaUrl : null, editing ? editing.mediaName : null, 'audio');
+  }
+  // 'comment'/'reply' đã tự render field (kèm bindTtsAutoSync) bên trong
+  // renderCommentReplyFields() ở nhánh phía trên — KHÔNG ghi đè lại ở đây.
+  if (type !== 'comment' && type !== 'reply') {
+    document.getElementById('step-modal-fields').innerHTML = html;
+    if (type === 'post') bindTtsAutoSync('m', 'm-text');
+    if (type === 'post' || type === 'image') renderExtraTtsSegmentsUI();
+  }
+  if (type === 'image') loadLibraryOptions('meme');
+  if (type === 'audio') loadLibraryOptions('audio');
+  document.getElementById('step-modal-tts-status').textContent = '';
+  document.getElementById('step-modal-submit-btn').disabled = false;
+  document.getElementById('step-modal-overlay').classList.add('open');
+}
+
+function closeStepModal() {
+  document.getElementById('step-modal-overlay').classList.remove('open');
+  editingStepId = null;
+  // Dọn trạng thái crop-nhiều-vùng (mục 5.31 CONTEXT.md) — nơi DUY NHẤT
+  // đảm bảo dọn dẹp bất kể đường nào thoát khỏi modal (click nền, Esc...).
+  if (imageCropSrc && imageCropSrc.objectUrl) URL.revokeObjectURL(imageCropSrc.objectUrl);
+  imageCropSrc = null;
+  imageCropBox = { x: 0, y: 0, w: 0, h: 0 };
+  imageCropDrag = null;
+}
+
+// ---------- Crop nhiều vùng từ 1 ảnh gốc (step 'image', mục 5.31 CONTEXT.md) ----------
+// Chọn ảnh gốc dùng URL.createObjectURL() — KHÔNG upload lên server (khác
+// modalUploadedMedia/uploadMediaFile() dùng cho cách "chọn ảnh làm step
+// luôn") — chỉ ẢNH ĐÃ CROP (kết quả thật dùng cho step) mới upload, ở
+// addImageCropStep(). Chọn ảnh xong hiện NGAY, không cần đợi network.
+function onImageCropSrcChosen(file) {
+  if (!file) return;
+  // Đảm bảo <details> cha đang MỞ — nếu đóng, mọi phần tử con (kể cả sau khi
+  // set display:block bằng JS) vẫn không "hittable"/đo đúng kích thước qua
+  // getBoundingClientRect() (browser coi nội dung <details> đóng là ẩn hoàn
+  // toàn). Trên thực tế người dùng phải tự mở summary trước khi bấm được nút
+  // "Chọn ảnh gốc..." nằm bên trong, nhưng chủ động đảm bảo ở đây để không
+  // phụ thuộc giả định thứ tự thao tác.
+  const details = document.getElementById('m-crop-src-input').closest('details');
+  if (details) details.open = true;
+  const img = document.getElementById('m-crop-img');
+  const objectUrl = URL.createObjectURL(file);
+  img.onload = () => {
+    imageCropSrc = { objectUrl, naturalWidth: img.naturalWidth, naturalHeight: img.naturalHeight };
+    // display:block PHẢI set TRƯỚC khi đo getBoundingClientRect() — phần tử
+    // display:none luôn trả {width:0,height:0} dù ảnh đã load xong (bug
+    // thật đã gặp: imageCropBox ra {0,0,0,0}, "Tạo step" crop ra ảnh rỗng).
+    document.getElementById('m-crop-wrap').style.display = 'block';
+    // Khung crop mặc định = TOÀN BỘ ảnh — không bắt buộc phải tự kéo mới
+    // bấm được "Tạo step" (mục 4 kế hoạch): step đầu tiên có thể là "hiện
+    // nguyên khung chat" hợp lệ.
+    const r = document.getElementById('m-crop-wrap').getBoundingClientRect();
+    imageCropBox = { x: 0, y: 0, w: r.width, h: r.height };
+    applyImageCropBox();
+    document.getElementById('m-crop-add-btn').style.display = 'block';
+    updateImageCropInfo();
+  };
+  img.src = objectUrl;
+}
+
+function applyImageCropBox() {
+  const box = document.getElementById('m-crop-box');
+  if (!box) return;
+  box.style.left = imageCropBox.x + 'px';
+  box.style.top = imageCropBox.y + 'px';
+  box.style.width = imageCropBox.w + 'px';
+  box.style.height = imageCropBox.h + 'px';
+}
+
+function imageCropSrcScale() {
+  const wrapRect = document.getElementById('m-crop-wrap').getBoundingClientRect();
+  return imageCropSrc.naturalWidth / wrapRect.width;
+}
+
+function updateImageCropInfo() {
+  const el = document.getElementById('m-crop-info');
+  if (!el) return;
+  if (!imageCropSrc) { el.textContent = ''; return; }
+  const s = imageCropSrcScale();
+  el.textContent = `Vùng chọn: ${Math.round(imageCropBox.w * s)}×${Math.round(imageCropBox.h * s)} px nguồn`;
+}
+
+// Kéo thân (move) + 4 góc (resize) — pointer events, pattern y hệt #crop-box
+// trong video_tool.html (mục 5.26 CONTEXT.md), nhưng bind DELEGATION trên
+// document thay vì trực tiếp vào #m-crop-box: node đó bị TẠO LẠI mỗi lần
+// openStepModal() ghi đè step-modal-fields.innerHTML, bind trực tiếp sẽ
+// phải tự lo re-bind mỗi lần mở modal + tránh rò rỉ listener trùng khi mở
+// nhiều lần. Delegation bind đúng 1 lần lúc script load, tra
+// getElementById mỗi lần sự kiện nổ — né được cả 2 vấn đề.
+document.addEventListener('pointerdown', e => {
+  const box = document.getElementById('m-crop-box');
+  if (!box || (e.target !== box && !box.contains(e.target))) return;
+  const mode = e.target.classList.contains('m-ch')
+    ? [...e.target.classList].find(c => ['nw','ne','sw','se','n','s','e','w'].includes(c))
+    : 'move';
+  imageCropDrag = { mode, startX: e.clientX, startY: e.clientY, orig: { ...imageCropBox } };
+  box.setPointerCapture(e.pointerId);
+  e.preventDefault();
+});
+document.addEventListener('pointermove', e => {
+  if (!imageCropDrag) return;
+  const wrap = document.getElementById('m-crop-wrap');
+  if (!wrap) { imageCropDrag = null; return; }
+  const r = wrap.getBoundingClientRect();
+  const dx = e.clientX - imageCropDrag.startX, dy = e.clientY - imageCropDrag.startY;
+  const o = imageCropDrag.orig;
+  const MINPX = 20;
+  let { x, y, w, h } = o;
+  if (imageCropDrag.mode === 'move') {
+    x = Math.max(0, Math.min(o.x + dx, r.width - o.w));
+    y = Math.max(0, Math.min(o.y + dy, r.height - o.h));
+  } else {
+    if (imageCropDrag.mode.includes('w')) { x = Math.max(0, Math.min(o.x + dx, o.x + o.w - MINPX)); w = o.w + (o.x - x); }
+    if (imageCropDrag.mode.includes('e')) { w = Math.max(MINPX, Math.min(o.w + dx, r.width - o.x)); }
+    if (imageCropDrag.mode.includes('n')) { y = Math.max(0, Math.min(o.y + dy, o.y + o.h - MINPX)); h = o.h + (o.y - y); }
+    if (imageCropDrag.mode.includes('s')) { h = Math.max(MINPX, Math.min(o.h + dy, r.height - o.y)); }
+  }
+  imageCropBox = { x, y, w, h };
+  applyImageCropBox(); updateImageCropInfo();
+});
+document.addEventListener('pointerup', () => { imageCropDrag = null; });
+
+// Tạo 1 step 'image' từ vùng crop hiện tại của imageCropSrc + text TTS đang
+// gõ trong #m-text. KHÔNG gọi closeStepModal() ở CẢ 2 nhánh — giữ modal mở
+// để crop tiếp (mục 5.31 CONTEXT.md, "khung crop giữ nguyên vị trí sau mỗi
+// lần tạo — kéo rộng thêm rồi tạo tiếp cho vùng kế" — hành vi này vẫn hữu
+// ích khi sửa step, vd cắt lại rồi muốn chỉnh tiếp vùng khác cho step khác).
+//
+// 2 nhánh (mục 5.36 CONTEXT.md — trước đây khối crop này CHỈ hiện khi tạo
+// mới, giờ hiện cả lúc sửa):
+//   - editingStepId == null (tạo mới): PUSH step mới vào steps[], như cũ.
+//   - editingStepId != null (đang sửa): CẬP NHẬT ảnh + text của ĐÚNG step
+//     đang sửa (tìm qua steps.find(id)) — không tạo thêm step nào, vì người
+//     dùng đang muốn "crop lại ảnh khác cho step này" (vd ảnh cũ bị mất do
+//     Dọn cache — mục 5.31), không phải thêm step mới.
+async function addImageCropStep() {
+  if (!imageCropSrc) { alert('Chưa chọn ảnh gốc.'); return; }
+  const text = document.getElementById('m-text').value.trim();
+  const btn = document.getElementById('m-crop-add-btn');
+  const statusEl = document.getElementById('step-modal-tts-status');
+  btn.disabled = true;
+  try {
+    // 1. Đo vùng crop theo PX NGUỒN (quy đổi từ px hiển thị qua scale).
+    const img = document.getElementById('m-crop-img');
+    const s = imageCropSrcScale();
+    const sx = Math.round(imageCropBox.x * s), sy = Math.round(imageCropBox.y * s);
+    const sw = Math.round(imageCropBox.w * s), sh = Math.round(imageCropBox.h * s);
+
+    // 2. Crop bằng canvas client-side — ảnh tĩnh không cần FFmpeg/endpoint mới.
+    const canvas = document.createElement('canvas');
+    canvas.width = sw; canvas.height = sh;
+    canvas.getContext('2d').drawImage(img, sx, sy, sw, sh, 0, 0, sw, sh);
+    const blob = await new Promise(resolve => canvas.toBlob(resolve, 'image/png'));
+    if (!blob) throw new Error('Không tạo được ảnh crop (canvas.toBlob thất bại)');
+
+    // 3. Upload blob crop lên /upload — gọi fetch TRỰC TIẾP, KHÔNG gọi
+    //    uploadMediaFile() có sẵn (hàm đó ghi vào modalUploadedMedia
+    //    module-scope, sẽ đá với luồng "chọn ảnh làm step luôn" nếu người
+    //    dùng dùng cả 2 cách trong cùng 1 lần mở modal).
+    statusEl.textContent = '⏳ Đang tải ảnh đã cắt lên...';
+    const form = new FormData();
+    form.append('file', new File([blob], 'crop.png', { type: 'image/png' }));
+    const res = await fetch(MEDIA_SERVER_URL + '/upload', { method: 'POST', body: form });
+    if (!res.ok) throw new Error('HTTP ' + res.status);
+    const uploaded = await res.json();
+
+    // 4. Build step data — giống hệt field của nhánh 'image' trong submitStepModal().
+    const data = {
+      type: 'image',
+      mediaPath: null,
+      mediaUrl: MEDIA_SERVER_URL + uploaded.url,
+      mediaName: uploaded.originalName,
+      mediaIsVideo: false,
+      text,
+    };
+    const ttsDisabled = document.getElementById('tts-disabled-toggle').checked;
+    let ttsDuration = null;
+    if (!ttsDisabled && text) {
+      statusEl.textContent = '🔊 Đang tạo giọng đọc...';
+      data.ttsText = readTtsText('m', 'm-text');
+      data.voiceIdx = readVoiceIdx('m');
+      data.echo = document.getElementById('m-echo')?.checked || false;
+      const r = await fetchTts(data.ttsText, data.voiceIdx, data.echo);
+      data.audioUrl = r.audioUrl; data.ttsDuration = r.duration;
+      ttsDuration = r.duration;
+    }
+
+    // 5. editingStepId != null: CẬP NHẬT step đang sửa (mục 5.36 CONTEXT.md)
+    //    — chỉ ghi đè field ảnh/tts vừa tạo, giữ nguyên offsetX/offsetY/
+    //    rotation/gap/clearBefore đã có của step đó. Ngược lại (tạo mới):
+    //    push step mới vào CUỐI steps[] như hành vi gốc.
+    let doneMsg;
+    if (editingStepId != null) {
+      const s = steps.find(x => x.id === editingStepId);
+      if (!s) throw new Error('Không tìm thấy step đang sửa (đã bị xoá?)');
+      Object.assign(s, data);
+      if (ttsDuration != null) s.duration = ttsDuration;
+      doneMsg = '✓ Đã cập nhật ảnh cho step này';
+    } else {
+      steps.push({
+        id: stepIdCounter++,
+        duration: ttsDuration != null ? ttsDuration : DEFAULT_DUR.image,
+        gap: 0,
+        clearBefore: true, // mặc định tick sẵn cho step image — mục 5.37 CONTEXT.md
+        hue: Math.floor(Math.random() * 360),
+        offsetX: 0, offsetY: 0, rotation: 0,
+        ...data,
+      });
+      doneMsg = `✓ Đã thêm step (${steps.length} step trong kịch bản)`;
+    }
+    renderStepList();
+    renderIdleScene();
+
+    // 6. Reset CHỈ ô text TTS — GIỮ NGUYÊN ảnh gốc + khung crop để kéo tiếp.
+    document.getElementById('m-text').value = '';
+    ttsFieldDirty.m = false;
+    statusEl.textContent = doneMsg;
+  } catch (e) {
+    statusEl.textContent = '';
+    alert('Không tạo được step: ' + e.message);
+  } finally {
+    btn.disabled = false;
+  }
+}
+
+function readStatsFields(prefix) {
+  return {
+    likes: document.getElementById(prefix + '-likes').value.trim() || '0',
+    comments: document.getElementById(prefix + '-comments').value.trim() || '0',
+    reposts: document.getElementById(prefix + '-reposts').value.trim() || '0',
+    shares: document.getElementById(prefix + '-shares').value.trim() || '0',
+  };
+}
+
+// Tên/avatar/thời gian đăng không còn ô nhập tay (đã bỏ theo yêu cầu người
+// dùng — đỡ phải nghĩ tên/tìm ảnh/nghĩ giờ mỗi lần soạn step). Random CỐ
+// ĐỊNH ngay lúc tạo mới, lưu THẬT vào step data (không phải lớp hiển thị tạm
+// như displayIdentity() — khác mục 5.10, đây là data gốc luôn). Seed dùng id
+// step SẮP tạo (stepIdCounter, chưa tăng) để ổn định, không đổi lại khi sửa
+// nội dung khác của cùng step sau này.
+function randomFakeIdentity(seed) {
+  const h = seedHash(seed);
+  return {
+    uname: RANDOM_IDENTITY_NAMES[h % RANDOM_IDENTITY_NAMES.length],
+    avatarUrl: RANDOM_IDENTITY_AVATARS[Math.floor(h / RANDOM_IDENTITY_NAMES.length) % RANDOM_IDENTITY_AVATARS.length],
+    timeLabel: RANDOM_IDENTITY_TIMES[Math.floor(h / (RANDOM_IDENTITY_NAMES.length * RANDOM_IDENTITY_AVATARS.length)) % RANDOM_IDENTITY_TIMES.length],
+  };
+}
+
+async function submitStepModal() {
+  const t = modalType;
+  let data = { type: t };
+  const editingNow = editingStepId != null ? steps.find(x => x.id === editingStepId) : null;
+
+  if (t === 'post' || t === 'comment' || t === 'reply') {
+    data.text = document.getElementById('m-text').value.trim();
+    if (t === 'comment' || t === 'reply') data.isAuthor = document.getElementById('m-author').checked;
+    // Cho phép BỎ TRỐNG nội dung — vẫn tạo được step (theo yêu cầu người
+    // dùng). Nội dung rỗng thì bỏ qua gọi TTS (giống image/meme cho phép
+    // bỏ trống file để test thời gian trước — xem skipImageTts bên dưới),
+    // dùng DEFAULT_DUR[t] làm thời lượng mặc định.
+    data.stats = readStatsFields('m');
+    data.imgUrl = readImgUrl('m') || null;
+    // Platform (Threads/TikTok, mục 5.39 CONTEXT.md) — chỉ áp dụng
+    // comment/reply, chọn 1 lần lúc tạo, không đổi khi sửa lại step.
+    if (t === 'comment' || t === 'reply') {
+      data.platform = editingNow ? editingNow.platform : modalPlatform;
+    }
+    // "Thêm reply" — chỉ hiện dòng "Xem N câu trả lời", KHÔNG tạo step con
+    // nào (mục 5.39 CONTEXT.md, thay hẳn step 'reply' cũ kiểu gộp 2 khối).
+    // CHỈ áp dụng TikTok (checkbox #m-has-reply không tồn tại trong DOM khi
+    // platform Threads — renderCommentReplyFields() không render nó).
+    if (t === 'comment' && data.platform === 'tiktok') {
+      data.hasReplyCount = document.getElementById('m-has-reply').checked;
+      data.replyCount = data.hasReplyCount ? (parseInt(document.getElementById('m-reply-count').value, 10) || 0) : null;
+    } else if (t === 'comment') {
+      data.hasReplyCount = false;
+      data.replyCount = null;
+    }
+    if (editingNow) {
+      // Sửa step cũ: giữ nguyên tên/avatar/giờ đã có (dù là random từ trước
+      // hay do user tự gõ ở step tạo trước khi bỏ ô nhập) — chỉ đổi nội dung.
+      data.uname = editingNow.uname;
+      data.avatarUrl = editingNow.avatarUrl;
+      data.stats.timeLabel = editingNow.stats ? editingNow.stats.timeLabel : 'vừa xong';
+    } else {
+      const fake = randomFakeIdentity(stepIdCounter + ':m');
+      data.uname = fake.uname;
+      data.avatarUrl = fake.avatarUrl;
+      data.stats.timeLabel = fake.timeLabel;
+    }
+  } else if (t === 'audio' || t === 'image') {
+    // Ưu tiên: (1) URL ảnh ngoài nhập tay (chỉ step 'image', mục 5.41
+    // CONTEXT.md) > (2) file đã upload qua drag-drop (mục 5.12, dùng được
+    // bất kể cách mở app) > (3) đường dẫn file:// local > (4) rỗng.
+    const imageUrlEl = t === 'image' ? document.getElementById('m-image-url') : null;
+    const imageUrl = imageUrlEl ? imageUrlEl.value.trim() : '';
+    const path = document.getElementById('m-file-path').value.trim();
+    if (imageUrl) {
+      data.mediaPath = null;
+      data.mediaUrl = imageUrl;
+      data.mediaName = imageUrl.split('/').pop().split('?')[0] || 'anh-tu-url';
+      data.mediaIsVideo = false; // ô URL chỉ dành cho ảnh tĩnh, không phải video
+    } else if (modalUploadedMedia) {
+      data.mediaPath = null; // không phải path local — không cần hiện lại trong ô path khi sửa
+      data.mediaUrl = modalUploadedMedia.url;
+      data.mediaName = modalUploadedMedia.filename;
+      data.mediaIsVideo = modalUploadedMedia.isVideo;
+    } else if (path) {
+      data.mediaPath = path;
+      data.mediaUrl = toFileUrl(path);
+      data.mediaName = path.split('/').pop();
+      data.mediaIsVideo = /\.(mp4|mov|webm|m4v)$/i.test(path);
+    } else {
+      data.mediaPath = null; data.mediaUrl = null; data.mediaName = null; data.mediaIsVideo = false;
+    }
+    if (t === 'audio') data.parallel = document.getElementById('m-parallel').checked;
+    // Duration mặc định = độ dài THẬT của file (đo bằng ffprobe phía
+    // media_server.py — trình duyệt không đọc được duration gif tĩnh, xem
+    // mục 5.23 CONTEXT.md) thay vì hằng số DEFAULT_DUR cố định 2s/1s. Chỉ
+    // set khi TẠO MỚI (editingStepId == null) — sửa step cũ giữ nguyên
+    // duration đã có (có thể người dùng đã tự chỉnh tay), không ghi đè.
+    //
+    // BUG đã gặp (mục 5.30 CONTEXT.md): ffprobe trả duration ~0.04s cho
+    // ẢNH TĨNH (jpg/png — không phải "không có thời lượng" như giả định
+    // ban đầu của mục 5.23, mà là container duration gần-0 vô nghĩa) —
+    // nếu áp dụng vô điều kiện, step meme/image dùng ảnh tĩnh sẽ bị ép
+    // duration về gần 0 thay vì DEFAULT_DUR hoặc TTS duration. `audio`
+    // luôn có duration hợp lệ (file âm thanh thật, không phải ảnh) nên
+    // luôn áp dụng; `meme`/`image` CHỈ áp dụng khi file thật sự có "thời
+    // lượng nội dung" (video hoặc gif động), không áp cho ảnh tĩnh khác.
+    const isTimedMedia = t === 'audio' || (modalUploadedMedia && (modalUploadedMedia.isVideo || /\.gif(\?|$)/i.test(modalUploadedMedia.url || '')));
+    if (editingStepId == null && isTimedMedia && modalUploadedMedia && modalUploadedMedia.duration != null) {
+      data.duration = modalUploadedMedia.duration;
+    }
+    // Âm thanh SONG SONG (parallel) mặc định lấy ĐÚNG duration của step
+    // ngay trước nó (step nó "bám theo", giống hệt logic selectMemereadyItem())
+    // — ưu tiên CAO HƠN duration của chính file audio, vì mục đích song song
+    // là phát đủ suốt lúc step trước (thường là meme) đang chạy, không phải
+    // phát đúng hết độ dài file rồi ngắt ngang. Chỉ áp khi tạo mới, có step
+    // trước đó, và không phải chính nó đang được sửa lại parallel.
+    if (t === 'audio' && data.parallel && editingStepId == null && steps.length) {
+      data.duration = steps[steps.length - 1].duration;
+    }
+  }
+
+  // TTS thật cho post/comment/reply/image — tự động gọi threads/tts_server.py,
+  // tính duration = độ dài audio thật. Checkbox "Tắt TTS" (mục debug) bỏ qua
+  // hoàn toàn khối này — dùng để cô lập xem lỗi có phải do TTS gây ra không,
+  // không gọi server, dùng DEFAULT_DUR.
+  const statusEl = document.getElementById('step-modal-tts-status');
+  const submitBtn = document.getElementById('step-modal-submit-btn');
+  const ttsDisabled = document.getElementById('tts-disabled-toggle').checked;
+  let ttsDuration = null;
+  if (t === 'image') data.text = document.getElementById('m-text').value.trim();
+  // Nội dung rỗng (post/comment/reply/image đều cho phép bỏ trống — theo
+  // yêu cầu người dùng) → bỏ qua gọi TTS hoàn toàn, dùng DEFAULT_DUR[t] làm
+  // thời lượng mặc định, tránh gọi /tts với text rỗng (tts_server.py trả
+  // lỗi 400 "text rỗng" — xem generate_tts()).
+  const skipTts = !data.text;
+  if (!ttsDisabled && !skipTts && (t === 'post' || t === 'comment' || t === 'reply' || t === 'image')) {
+    data.ttsText = readTtsText('m', 'm-text');
+    data.voiceIdx = readVoiceIdx('m');
+    data.echo = document.getElementById('m-echo')?.checked || false;
+    submitBtn.disabled = true;
+    try {
+      statusEl.textContent = '🔊 Đang tạo giọng đọc...';
+      const r = await fetchTts(data.ttsText, data.voiceIdx, data.echo);
+      data.audioUrl = r.audioUrl; data.ttsDuration = r.duration;
+      ttsDuration = r.duration;
+      // Nhiều đoạn giọng đọc nối tiếp (mục "nhiều đoạn TTS") — gọi TUẦN TỰ
+      // từng đoạn trong modalExtraTts (không phải Promise.all song song, vì
+      // cần biết TỔNG thời lượng để hiện tiến trình đúng thứ tự, và tránh
+      // dội cùng lúc nhiều request lên tts_server.py — server đó vốn xử lý
+      // 1 request CapCut TTS tại 1 thời điểm, chưa test song song nhiều
+      // request). Bỏ qua đoạn nào có text rỗng (không gọi TTS, không tính
+      // vào ttsDuration) — cho phép người dùng để trống 1 đoạn giữa chừng
+      // mà không lỗi.
+      data.extraTtsSegments = [];
+      for (let i = 0; i < modalExtraTts.length; i++) {
+        const seg = modalExtraTts[i];
+        const segText = (seg.text || '').trim();
+        if (!segText) { data.extraTtsSegments.push({ ...seg, text: segText, audioUrl: null, duration: 0 }); continue; }
+        statusEl.textContent = `🔊 Đang tạo giọng đọc — đoạn ${i + 2}/${modalExtraTts.length + 1}...`;
+        const rSeg = await fetchTts(segText, seg.voiceIdx, seg.echo || false);
+        data.extraTtsSegments.push({ text: segText, voiceIdx: seg.voiceIdx, echo: seg.echo || false, audioUrl: rSeg.audioUrl, duration: rSeg.duration });
+        ttsDuration += rSeg.duration;
+      }
+      statusEl.textContent = `✓ Đã tạo giọng đọc (${ttsDuration.toFixed(1)}s${modalExtraTts.length ? ', ' + (modalExtraTts.length + 1) + ' đoạn' : ''})`;
+    } catch (e) {
+      statusEl.textContent = '';
+      submitBtn.disabled = false;
+      alert('Không tạo được giọng đọc: ' + e.message + '\n\nKiểm tra TTS server đang chạy (mục 3 "Giọng đọc TTS" ở sidebar trái) rồi thử lại.');
+      return;
+    }
+    submitBtn.disabled = false;
+  }
+
+  if (editingStepId != null) {
+    const s = steps.find(x => x.id === editingStepId);
+    Object.assign(s, data); // giữ nguyên id, gap, clearBefore, hue
+    if (ttsDuration != null) s.duration = ttsDuration;
+    bumpStepRevision(s.id); // nội dung đã đổi — buộc renderAtTime() vẽ lại card này dù id giữ nguyên
+  } else {
+    steps.push({
+      id: stepIdCounter++,
+      duration: ttsDuration != null ? ttsDuration : DEFAULT_DUR[t],
+      gap: 0,
+      // Mặc định TICK SẴN "xoá nội dung cũ" cho meme/image (mục 5.37
+      // CONTEXT.md — người dùng xác nhận muốn mặc định này vì đa số trường
+      // hợp meme/ảnh phủ giữa khung nên xoá nội dung Threads phía trước, chỉ
+      // BỎ tick lúc nào muốn cố tình cho card cũ + meme/ảnh cùng hiện). Các
+      // loại step khác (post/comment/reply/audio) vẫn mặc định false như cũ.
+      clearBefore: (t === 'image'),
+      hue: Math.floor(Math.random() * 360),
+      offsetX: 0, offsetY: 0, rotation: 0, // vị trí/xoay tuỳ chỉnh (mục 5.21) — chỉ post/comment/reply/meme có UI chỉnh, audio bỏ qua không dùng tới
+      ...data,
+    });
+  }
+
+  closeStepModal();
+  renderStepList();
+  renderIdleScene();
+}
+
+// ---------- Danh sách step (panel phải) ----------
+function voiceLabel(idx) {
+  const v = ttsVoices[idx];
+  return v ? v.label : null;
+}
+function voiceLabelHtml(s) {
+  if (!s.audioUrl) return '';
+  return `<div class="sc-voice">🔊 ${esc(voiceLabel(s.voiceIdx) || '?')}</div>`;
+}
+
+// Nhãn nền tảng (mục 5.39 CONTEXT.md) — chỉ comment/reply có, hiện cạnh
+// TYPE_LABEL trong step-card để phân biệt Threads/TikTok khi nhìn danh sách.
+function platformBadge(s) {
+  if (s.type !== 'comment' && s.type !== 'reply') return '';
+  return s.platform === 'tiktok' ? ' 🎵' : ' 🧵';
+}
+
+function stepSummary(s) {
+  if (s.type === 'post' || s.type === 'comment' || s.type === 'reply') {
+    const replyNote = s.hasReplyCount ? ` (Xem ${s.replyCount} câu trả lời)` : '';
+    return `@${s.uname}: ${s.text}${replyNote}`;
+  }
+  if (s.type === 'image') return (s.mediaName ? '🖼️ ' + s.mediaName : '🖼️ (chưa chọn ảnh)') + (s.text ? ' — ' + s.text : '');
+  if (s.type === 'audio') return s.mediaName ? '🔊 ' + s.mediaName : '🔊 (chưa chọn file — test thời gian)';
+  return '';
+}
+
+// Điều chỉnh vị trí/xoay (mục 5.21 CONTEXT.md) — chỉ post/comment/reply/
+// meme/image có hình để dịch/xoay, audio bỏ qua (không hiển thị gì trên khung).
+const POSITIONABLE_TYPES = ['post', 'comment', 'reply', 'image'];
+function stepPositionCtrlsHtml(s) {
+  const ox = s.offsetX || 0, oy = s.offsetY || 0, rot = s.rotation || 0;
+  const showWarn = s.type === 'image' && isDynamicMeme(s) && rot !== 0;
+  return `<div class="sc-position">
+      <div class="sc-dpad">
+        <button class="dp-up" onclick="nudgeStepOffset(${s.id},0,-1)" title="Lên">▲</button>
+        <button class="dp-left" onclick="nudgeStepOffset(${s.id},-1,0)" title="Trái">◀</button>
+        <button class="dp-reset" onclick="resetStepPosition(${s.id})" title="Đặt lại vị trí/góc xoay">⟲</button>
+        <button class="dp-right" onclick="nudgeStepOffset(${s.id},1,0)" title="Phải">▶</button>
+        <button class="dp-down" onclick="nudgeStepOffset(${s.id},0,1)" title="Xuống">▼</button>
+      </div>
+      <div class="sc-rotate">
+        <button onclick="nudgeStepRotation(${s.id},-5)" title="Xoay trái 5°">↶</button>
+        <button onclick="nudgeStepRotation(${s.id},5)" title="Xoay phải 5°">↷</button>
+      </div>
+      <span class="sc-pos-val">x:${ox} y:${oy} ${rot}°</span>
+      ${showWarn ? '<span class="sc-pos-warn" title="Meme video/gif động: góc xoay chỉ áp dụng ở preview, khi XUẤT VIDEO sẽ bị bỏ qua (giữ 0°)">⚠ Xoay bỏ qua khi xuất video</span>' : ''}
+    </div>`;
+}
+
+function stepCardHtml(s, idx) {
+  const typeCls = s.type === 'image' ? 't-meme' : s.type === 'audio' ? 't-audio' : '';
+  const cardCls = isParallelAudio(s) ? ' t-audio-parallel' : '';
+  return `
+    <div class="step-card${cardCls}" data-id="${s.id}" draggable="true" ondragstart="onStepDragStart(event,${s.id})" ondragend="onStepDragEnd(event)" ondragover="onStepDragOver(event)" ondragleave="onStepDragLeave(event)" ondrop="onStepDrop(event,${s.id})">
+      <div class="sc-head" onclick="jumpToStep(${s.id})" title="Xem lúc step này hiển thị trên preview">
+        <span class="sc-idx">${idx + 1}</span>
+        <span class="sc-type ${typeCls}">${TYPE_LABEL[s.type]}${platformBadge(s)}${isParallelAudio(s)?' ⏱':''}</span>
+        <span class="sc-time">${fmt(s._start)} → ${fmt(s._end)}</span>
+      </div>
+      <div class="sc-summary" onclick="jumpToStep(${s.id})" title="Xem lúc step này hiển thị trên preview">${esc(stepSummary(s))}</div>
+      ${voiceLabelHtml(s)}
+      ${POSITIONABLE_TYPES.includes(s.type) ? stepPositionCtrlsHtml(s) : ''}
+      <div class="sc-ctrls">
+        <label>Thời lượng${s.audioUrl?' 🔊':''}
+          <input type="number" min="0" step="0.1" value="${s.duration.toFixed(2)}" ${s.audioUrl?'disabled title="Tự tính từ độ dài giọng đọc TTS — sửa nội dung để tạo lại"':''} onchange="updateStepField(${s.id},'duration',this.value)"/>
+        </label>
+        <label>Gap sau
+          <input type="number" min="0" step="0.1" value="${s.gap}" onchange="updateStepField(${s.id},'gap',this.value)"/>
+        </label>
+        <label class="clear-toggle">
+          <input type="checkbox" ${s.clearBefore?'checked':''} onchange="updateStepField(${s.id},'clearBefore',this.checked)"/> Xoá nội dung cũ
+        </label>
+        <div class="sc-actions">
+          <button onclick="openStepModal('${s.type}',${s.id})" title="Sửa">✎</button>
+          <button onclick="saveStepAsMemeready(${s.id})" title="Lưu thành Meme sẵn — đóng gói step này (hoặc cả cặp song song nếu có) để dùng lại nhanh lần sau">💾</button>
+          <button onclick="deleteStep(${s.id})" title="Xoá">🗑</button>
+        </div>
+      </div>
+    </div>`;
+}
+// Kéo-thả để sắp xếp lại thứ tự step (thay nút ↑↓ cũ — mục 5.13). Step
+// track-chính + audio SONG SONG bám theo nó được nhóm chung 1 "hàng"
+// (.step-row, 2 cột kề nhau) để biểu thị trực quan "chạy cùng lúc" — audio
+// TUẦN TỰ vẫn là 1 hàng riêng như post/comment/meme bình thường.
+function renderStepList() {
+  const list = document.getElementById('step-list');
+  if (!steps.length) {
+    list.innerHTML = '<div class="script-empty">Chưa có step nào.<br/>Bấm một nút ＋ ở trên để thêm.</div>';
+    updateTLabel();
+    return;
+  }
+  computeTimeline();
+
+  const rows = []; // mỗi phần tử: [step chính, ...audio song song bám theo nó]
+  for (const s of steps) {
+    if (isParallelAudio(s) && rows.length) {
+      rows[rows.length - 1].push(s);
+    } else {
+      rows.push([s]);
+    }
+  }
+
+  list.innerHTML = rows.map(row => {
+    if (row.length === 1) {
+      const idx = steps.indexOf(row[0]);
+      return stepCardHtml(row[0], idx);
+    }
+    // Khung bao ngoài cho cặp song song (mục "khung bao 2 step") — viền +
+    // tay cầm kéo riêng (.row-handle) ở mép trái: kéo tại đó di chuyển CẢ
+    // CẶP cùng lúc, giữ nguyên đúng cặp (khác kéo từng .step-card con riêng
+    // lẻ — vẫn hoạt động, chỉ di chuyển đúng 1 card, có thể làm rời cặp).
+    const ids = row.map(s => s.id);
+    return `<div class="step-row-wrap">
+      <div class="row-handle" draggable="true" title="Kéo để di chuyển CẢ CẶP"
+           ondragstart="onRowDragStart(event,[${ids.join(',')}])" ondragend="onStepDragEnd(event)">⠿⠿</div>
+      <div class="step-row">${row.map(s => stepCardHtml(s, steps.indexOf(s))).join('')}</div>
+    </div>`;
+  }).join('');
+  updateTLabel();
+}
+
+let _dragStepIds = null; // luôn là mảng — [id] khi kéo 1 card, [id1,id2] khi kéo cả cặp qua row-handle
+function onStepDragStart(ev, id) {
+  _dragStepIds = [id];
+  ev.currentTarget.classList.add('dragging');
+  ev.dataTransfer.effectAllowed = 'move';
+}
+function onRowDragStart(ev, ids) {
+  _dragStepIds = ids;
+  ev.currentTarget.classList.add('dragging');
+  document.querySelectorAll(`.step-card[data-id]`).forEach(el => {
+    if (ids.includes(parseInt(el.dataset.id, 10))) el.classList.add('dragging');
+  });
+  ev.dataTransfer.effectAllowed = 'move';
+}
+function onStepDragEnd(ev) {
+  ev.currentTarget.classList.remove('dragging');
+  document.querySelectorAll('.step-card.dragging, .row-handle.dragging').forEach(el => el.classList.remove('dragging'));
+  document.querySelectorAll('.step-card.drag-over').forEach(el => el.classList.remove('drag-over'));
+  _dragStepIds = null;
+}
+function onStepDragOver(ev) {
+  ev.preventDefault();
+  ev.dataTransfer.dropEffect = 'move';
+  ev.currentTarget.classList.add('drag-over');
+}
+function onStepDragLeave(ev) {
+  ev.currentTarget.classList.remove('drag-over');
+}
+// FLIP animation (First-Last-Invert-Play) — người dùng báo thao tác "chèn-và-
+// đẩy" ĐÚNG về mặt dữ liệu (đã xác nhận: kéo step 5 vào vị trí 2 ra đúng
+// [1,5,2,3,4], không phải hoán đổi 5↔2) nhưng KHÓ NHẬN BIẾT bằng mắt vì
+// renderStepList() rebuild thẳng innerHTML — các thẻ bị đẩy vị trí "dịch
+// chuyển" tức thời, không có chuyển động nào để mắt bám theo. Kỹ thuật FLIP:
+// đo vị trí (getBoundingClientRect) của mọi thẻ TRƯỚC khi rebuild DOM, rebuild
+// xong đo lại vị trí MỚI, rồi với thẻ nào đổi vị trí — set transform dịch nó
+// về đúng chỗ CŨ (invert, không lộ ra mắt vì diễn ra cùng 1 frame), sau đó
+// remove transform kèm CSS transition để trình duyệt tự animate về vị trí mới.
+function flipCapturePositions() {
+  const positions = new Map();
+  document.querySelectorAll('.step-card[data-id]').forEach(el => {
+    positions.set(el.dataset.id, el.getBoundingClientRect());
+  });
+  return positions;
+}
+function flipPlay(oldPositions) {
+  document.querySelectorAll('.step-card[data-id]').forEach(el => {
+    const old = oldPositions.get(el.dataset.id);
+    if (!old) return; // thẻ mới thêm — không có vị trí cũ để animate từ đó
+    const now = el.getBoundingClientRect();
+    const dx = old.left - now.left;
+    const dy = old.top - now.top;
+    if (!dx && !dy) return;
+    el.style.transition = 'none';
+    el.style.transform = `translate(${dx}px, ${dy}px)`;
+    requestAnimationFrame(() => {
+      el.style.transition = 'transform 220ms ease';
+      el.style.transform = '';
+    });
+  });
+}
+function onStepDrop(ev, targetId) {
+  ev.preventDefault();
+  ev.currentTarget.classList.remove('drag-over');
+  if (_dragStepIds == null || _dragStepIds.includes(targetId)) return;
+  const toIdx = steps.findIndex(s => s.id === targetId);
+  if (toIdx < 0) return;
+  const oldPositions = flipCapturePositions();
+  // Xoá hết cụm đang kéo (giữ nguyên thứ tự tương đối giữa chúng — quan
+  // trọng khi kéo cả cặp track-chính+audio song song, mục "khung bao 2 step
+  // song song": không được đảo ngược cặp khi thả lại), rồi chèn liền kề
+  // ngay TRƯỚC vị trí (đã cập nhật) của targetId.
+  const moved = [];
+  for (const id of _dragStepIds) {
+    const idx = steps.findIndex(s => s.id === id);
+    if (idx >= 0) moved.push(...steps.splice(idx, 1));
+  }
+  const newToIdx = steps.findIndex(s => s.id === targetId);
+  steps.splice(newToIdx < 0 ? steps.length : newToIdx, 0, ...moved);
+  renderStepList();
+  renderIdleScene();
+  flipPlay(oldPositions);
+}
+
+function updateStepField(id, field, val) {
+  const s = steps.find(x => x.id === id);
+  if (!s) return;
+  if (field === 'clearBefore') s.clearBefore = val;
+  else s[field] = parseFloat(val) || 0;
+  computeTimeline();
+  // cập nhật lại nhãn thời gian mà không rebuild toàn bộ (giữ focus input)
+  renderStepList();
+  renderIdleScene();
+}
+
+// Điều chỉnh vị trí/xoay từng step qua nút bấm (mục 5.21 CONTEXT.md) —
+// KHÔNG gọi computeTimeline() vì offset/rotation không ảnh hưởng thời
+// lượng/timeline, chỉ ảnh hưởng hiển thị. bumpStepRevision() BẮT BUỘC —
+// id step không đổi nên renderAtTime() (thuật toán "common prefix", mục
+// 5.16) sẽ coi là "không cần rebuild" nếu thiếu bước này, bấm nút sẽ không
+// thấy đổi ngay trên preview.
+const OFFSET_STEP = 2;   // cqw mỗi lần bấm
+const ROTATE_STEP = 5;   // độ mỗi lần bấm
+const OFFSET_X_RANGE = 40, OFFSET_Y_RANGE = 60, ROTATE_RANGE = 45;
+
+function clampPos(v, lo, hi) { return Math.max(lo, Math.min(hi, v)); }
+
+// Nhảy preview tới đúng lúc step `s` đang hiển thị (giữa _start/_end của
+// nó) — KHÔNG dùng renderIdleScene() (luôn nhảy tới step CUỐI kịch bản):
+// người dùng bấm nút d-pad/xoay ở 1 step giữa kịch bản thì phải thấy ngay
+// hiệu ứng của ĐÚNG step đó, không phải luôn xem cảnh cuối cùng rồi tưởng
+// nút không hoạt động. Nếu playing (đang Play), không can thiệp — để
+// khung hình theo đúng tiến trình Play, không giật lùi/tới bất ngờ.
+function previewStepPosition(s) {
+  if (playing) return;
+  computeTimeline();
+  const t = (s._start + s._end) / 2;
+  renderAtTime(t);
+  updateProgress(t, totalDuration());
+}
+
+// Click vào phần đầu step-card (.sc-head/.sc-summary) để "xem" đúng lúc
+// step đó hiển thị trên preview 9:16 — không chỉnh gì, chỉ để dễ quan sát
+// trước khi bấm nút d-pad/xoay. Tách riêng khỏi previewStepPosition() vì
+// gọi qua id (từ onclick HTML), không có sẵn object step.
+function jumpToStep(id) {
+  const s = steps.find(x => x.id === id);
+  if (!s) return;
+  previewStepPosition(s);
+}
+
+function nudgeStepOffset(id, dx, dy) {
+  const s = steps.find(x => x.id === id);
+  if (!s) return;
+  s.offsetX = clampPos((s.offsetX || 0) + dx * OFFSET_STEP, -OFFSET_X_RANGE, OFFSET_X_RANGE);
+  s.offsetY = clampPos((s.offsetY || 0) + dy * OFFSET_STEP, -OFFSET_Y_RANGE, OFFSET_Y_RANGE);
+  bumpStepRevision(s.id);
+  renderStepList();
+  previewStepPosition(s);
+}
+
+function nudgeStepRotation(id, deltaDeg) {
+  const s = steps.find(x => x.id === id);
+  if (!s) return;
+  s.rotation = clampPos((s.rotation || 0) + deltaDeg, -ROTATE_RANGE, ROTATE_RANGE);
+  bumpStepRevision(s.id);
+  renderStepList();
+  previewStepPosition(s);
+}
+
+function resetStepPosition(id) {
+  const s = steps.find(x => x.id === id);
+  if (!s) return;
+  s.offsetX = 0; s.offsetY = 0; s.rotation = 0;
+  bumpStepRevision(s.id);
+  renderStepList();
+  previewStepPosition(s);
+}
+
+function deleteStep(id) {
+  steps = steps.filter(x => x.id !== id);
+  const sfxEl = sfxAudioEls.get(id);
+  if (sfxEl) { sfxEl.pause(); sfxAudioEls.delete(id); }
+  renderStepList();
+  renderIdleScene();
+}
+
+// ---------- Xuất / Nạp toàn bộ kịch bản ra file JSON ----------
+// Chỉ xuất phần dữ liệu serialize được (text/số/boolean): steps[] (giờ toàn
+// bộ ảnh/media đã là URL/đường dẫn text nhờ mục 5.9, không còn File/blob:
+// nữa) + giọng đọc mặc định + âm lượng nhạc nền. KHÔNG xuất được video nền/
+// nhạc nền (vẫn là File object chọn qua <input type=file>, quá nặng để nhét
+// vào JSON và không có cách nào phục hồi lại File từ JSON) — sau khi nạp lại,
+// người dùng phải tự chọn lại 2 file đó, UI có nhắc rõ.
+function exportProjectJson() {
+  computeTimeline();
+  const project = {
+    _format: 'threads-short-video-project',
+    _version: 1,
+    exportedAt: new Date().toISOString(),
+    steps: steps.map(s => {
+      // Bỏ mốc tính toán (_start/_end, tính lại khi nạp) và audioUrl — URL này
+      // trỏ tới file mp3 TẠM trên tts_server.py, không bền qua lần chạy khác
+      // (server restart/dọn file là mất) — nếu giữ lại, lúc nạp JSON sẽ tưởng
+      // nhầm step "đã có TTS" trong khi audio thật đã chết. Bắt buộc dùng nút
+      // "Tải tất cả TTS còn thiếu" để tạo lại sau khi nạp. Áp dụng ĐÚNG quy tắc
+      // này cho từng phần tử extraTtsSegments (mục "nhiều đoạn TTS") — giữ
+      // text/voiceIdx (soạn lại được), bỏ audioUrl/duration (file tạm).
+      const { _start, _end, audioUrl, ttsDuration, ...clean } = s;
+      if (clean.extraTtsSegments) {
+        clean.extraTtsSegments = clean.extraTtsSegments.map(({ audioUrl, duration, ...cleanSeg }) => cleanSeg);
+      }
+      return clean;
+    }),
+    stepIdCounter,
+    ttsServerUrl: document.getElementById('tts-server-url').value,
+    ttsVoiceIdx: document.getElementById('tts-voice').value,
+    bgAudioVolume: document.getElementById('bgaudio-volume').value,
+    // Video/nhạc nền chọn TỪ THƯ VIỆN (mục 5.40 CONTEXT.md) dùng URL HTTP
+    // bền (media_server.py serve từ threads/background|audiobackground/),
+    // khác hẳn nguồn "Từ máy" (blob URL chỉ sống trong session, mục 8 —
+    // KHÔNG lưu được). Chỉ set field khi đang dùng nguồn thư viện — null
+    // nghĩa là lúc nạp lại vẫn phải tự chọn tay như trước (không đổi hành
+    // vi cũ cho nguồn "Từ máy").
+    bgVideoLibrary: bgVideoLibraryItem,
+    bgAudioLibrary: bgAudioLibraryItem,
+  };
+  const blob = new Blob([JSON.stringify(project, null, 2)], { type: 'application/json' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  const ts = new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19);
+  a.href = url;
+  a.download = `threads-project-${ts}.json`;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  URL.revokeObjectURL(url);
+}
+
+// Tự động khớp mediaName -> mediaUrl khi nạp JSON có mediaUrl rỗng (mục 5.45
+// CONTEXT.md) — cho phép AI ngoài tự soạn kịch bản chỉ cần biết TÊN file
+// (không cần biết URL/port máy chạy media_server.py), app tự dò và điền lại
+// URL đúng lúc nạp. Thứ tự ưu tiên dò:
+//   1. thư viện "meme" (threads/gif/) — nếu mediaName khớp đúng 1 filename.
+//   2. thư viện "audio" (threads/audio/) — nếu mediaName khớp đúng 1 filename.
+// Không tìm thấy ở đâu cả -> giữ nguyên mediaUrl rỗng, KHÔNG báo lỗi chặn
+// nạp (để người dùng vẫn nạp được các step khác, tự sửa lại step lỗi sau).
+// Meme sẵn (memeready) giờ là snapshot toàn bộ step (mục "Meme sẵn v2") nên
+// không còn tham gia vào việc dò mediaName ở đây nữa — LẤY RA từ memeready
+// tự tạo thẳng step mới với mediaUrl đã có sẵn, không đi qua luồng này.
+async function resolveMediaNamesInSteps(stepsArr) {
+  const [gifList, audioList] = await Promise.all([
+    fetch(MEDIA_SERVER_URL + '/library/meme').then(r => r.ok ? r.json() : []).catch(() => []),
+    fetch(MEDIA_SERVER_URL + '/library/audio').then(r => r.ok ? r.json() : []).catch(() => []),
+  ]);
+  const gifByName = new Map(gifList.map(it => [it.filename, it]));
+  const audioByName = new Map(audioList.map(it => [it.filename, it]));
+
+  const unresolved = [];
+  for (const s of stepsArr) {
+    if ((s.type !== 'image' && s.type !== 'audio') || s.mediaUrl || !s.mediaName) continue;
+    const gifItem = gifByName.get(s.mediaName);
+    if (gifItem) {
+      s.mediaUrl = MEDIA_SERVER_URL + gifItem.url;
+      s.mediaIsVideo = gifItem.isVideo;
+      continue;
+    }
+    const audioItem = audioByName.get(s.mediaName);
+    if (audioItem) {
+      s.mediaUrl = MEDIA_SERVER_URL + audioItem.url;
+      s.mediaIsVideo = false;
+      continue;
+    }
+    unresolved.push(`${s.type} "${s.mediaName}"`);
+  }
+  return unresolved;
+}
+
+async function importProjectJson(input) {
+  const f = input.files[0];
+  if (!f) return;
+  const reader = new FileReader();
+  reader.onload = async () => {
+    let project;
+    try {
+      project = JSON.parse(reader.result);
+    } catch (e) {
+      alert('File JSON không hợp lệ: ' + e.message);
+      input.value = '';
+      return;
+    }
+    if (!project || project._format !== 'threads-short-video-project' || !Array.isArray(project.steps)) {
+      alert('File này không phải JSON kịch bản hợp lệ (thiếu _format hoặc steps).');
+      input.value = '';
+      return;
+    }
+    if (steps.length && !confirm(`Kịch bản hiện tại có ${steps.length} step sẽ bị THAY THẾ hoàn toàn bởi ${project.steps.length} step trong file. Tiếp tục?`)) {
+      input.value = '';
+      return;
+    }
+    // audioUrl (nếu JSON cũ còn lưu) trỏ tới file mp3 TẠM trên tts_server.py
+    // — không đáng tin sau khi nạp lại (server có thể đã restart/dọn file).
+    // Luôn coi như thiếu TTS để nút "Tải tất cả TTS còn thiếu" tạo lại toàn
+    // bộ, tránh phát nhầm audio chết hoặc audio của lần chạy trước không
+    // khớp giọng đọc hiện tại.
+    steps = project.steps.map(s => {
+      const { audioUrl, ttsDuration, ...clean } = s;
+      if (clean.extraTtsSegments) {
+        clean.extraTtsSegments = clean.extraTtsSegments.map(({ audioUrl, duration, ...cleanSeg }) => ({ ...cleanSeg, duration: 0 }));
+      }
+      return clean;
+    });
+    const unresolvedMedia = await resolveMediaNamesInSteps(steps);
+    stepIdCounter = project.stepIdCounter || (Math.max(0, ...steps.map(s => s.id || 0)) + 1);
+    if (project.ttsServerUrl) document.getElementById('tts-server-url').value = project.ttsServerUrl;
+    if (project.bgAudioVolume != null) {
+      document.getElementById('bgaudio-volume').value = project.bgAudioVolume;
+      document.getElementById('bgaudio-volume-val').textContent = Math.round(project.bgAudioVolume * 100) + '%';
+    }
+    // giọng TTS cần load xong danh sách voices trước mới set được index hợp lệ
+    loadTtsVoices().then(() => {
+      if (project.ttsVoiceIdx != null) document.getElementById('tts-voice').value = project.ttsVoiceIdx;
+    });
+    // Video/nhạc nền từ THƯ VIỆN (mục 5.40 CONTEXT.md) — tự áp dụng lại ngay
+    // vì URL bền, khác nguồn "Từ máy" (vẫn phải chọn lại tay, cảnh báo bên
+    // dưới). Chuyển sang tab Thư viện + gọi applyBg*() luôn cho khỏi phải
+    // bấm tay lại nút Áp dụng.
+    let restoredBgVideo = false, restoredBgAudio = false;
+    if (project.bgVideoLibrary && project.bgVideoLibrary.url) {
+      bgVideoLibraryItem = project.bgVideoLibrary;
+      document.querySelectorAll('#feat-bgvideo .platform-btn')[1].click();
+      applyBgVideo();
+      restoredBgVideo = true;
+    }
+    if (project.bgAudioLibrary && project.bgAudioLibrary.url) {
+      bgAudioLibraryItem = project.bgAudioLibrary;
+      document.querySelectorAll('#feat-bgaudio .platform-btn')[1].click();
+      applyBgAudio();
+      restoredBgAudio = true;
+    }
+    renderStepList();
+    renderIdleScene();
+    input.value = '';
+    const hasMedia = steps.some(s => s.mediaPath);
+    const bgNote = (restoredBgVideo && restoredBgAudio) ? '\n\nVideo nền + nhạc nền (thư viện) đã tự áp dụng lại.'
+      : (restoredBgVideo || restoredBgAudio) ? '\n\nMột phần video/nhạc nền (thư viện) đã tự áp dụng lại — phần còn lại (nguồn "Từ máy") cần chọn lại thủ công ở sidebar trái.'
+      : '\n\nVideo nền và nhạc nền (nếu chọn từ máy) cần chọn lại thủ công ở sidebar trái — không lưu được trong JSON.';
+    const mediaResolveNote = unresolvedMedia.length
+      ? `\n\n⚠ Không tự khớp được ${unresolvedMedia.length} media (mediaName không khớp file nào trong memeready/thư viện): ${unresolvedMedia.join(', ')}. Cần vào sửa step đó, chọn lại file thủ công.`
+      : '';
+    alert(`✓ Đã nạp ${steps.length} step.` + (hasMedia ? '\n\nLưu ý: đường dẫn file meme/audio local trong kịch bản trỏ tới máy đã xuất JSON — nếu mở trên máy khác hoặc file đã di chuyển, cần sửa lại đường dẫn trong từng step.' : '') + bgNote + mediaResolveNote + '\n\nGiọng đọc TTS cần tạo lại: bấm nút "🔊 Tải tất cả TTS còn thiếu" ở mục 3 sidebar.');
+  };
+  reader.readAsText(f);
+}
+
+// computeTimeline/computeSceneAt/buildCardHtml/autoScrollStack và các hàm
+// build-HTML thẻ Threads liên quan giờ định nghĩa trong render_shared.js —
+// dùng chung với export_render.html để xuất video (mục 5.17 CONTEXT.md),
+// tránh vẽ lại UI 2 lần lệch nhau. NGƯỢC LẠI, các hàm dưới đây (ttsClipAt,
+// syncTtsAudio, syncSfxAudio, renderAtTime...) VẪN Ở LẠI index.html — chúng
+// thao túng DOM audio thật (<audio id="tts-audio">, new Audio() cho hiệu
+// ứng) và biến trạng thái Play — đặc thù cho trang soạn/preview, không cần
+// thiết cho export_render.html (trang đó chỉ cần chụp ảnh tĩnh, không phát
+// âm thanh gì).
+function ttsClipAt(t) {
+  const s = steps.find(x => t >= x._start - 1e-6 && t < x._end - 1e-6);
+  if (!s) return null;
+  // 'image' (mục 5.30 CONTEXT.md) dùng chung cơ chế audio như post/comment.
+  // Nhiều đoạn giọng đọc nối tiếp trong 1 step (extraTtsSegments) — duyệt
+  // qua stepTtsClips(s) THEO ĐÚNG THỨ TỰ, cộng dồn duration từng đoạn để
+  // biết "tại thời điểm t (tính từ lúc step bắt đầu), đang ở đoạn nào, lùi
+  // bao xa vào trong đoạn đó" — giống hệt nguyên lý ttsDuration/ttsDuration2
+  // đã dùng cho reply 2-khối trước đây (giờ tổng quát hoá cho N đoạn).
+  if ((s.type === 'post' || s.type === 'comment' || s.type === 'reply' || s.type === 'image') && s.audioUrl) {
+    let acc = 0;
+    const clips = stepTtsClips(s);
+    for (let i = 0; i < clips.length; i++) {
+      const clip = clips[i];
+      if (!clip.audioUrl) continue;
+      const dur = clip.duration || 0;
+      const localT = t - s._start - acc;
+      if (localT < dur - 1e-6 || i === clips.length - 1) {
+        return { url: clip.audioUrl, offset: localT, stepId: s.id, part: i + 1 };
+      }
+      acc += dur;
+    }
+  }
+  return null;
+}
+
+let _lastTtsClipKey = null;
+function syncTtsAudio(t) {
+  const ttsEl = document.getElementById('tts-audio');
+  const clip = ttsClipAt(t);
+  const clipKey = clip ? (clip.stepId + ':' + clip.part) : '';
+  if (!clip) {
+    if (_lastTtsClipKey) { ttsEl.pause(); _lastTtsClipKey = null; }
+    return;
+  }
+  if (clipKey !== _lastTtsClipKey) {
+    if (ttsEl.src !== clip.url) ttsEl.src = clip.url;
+    ttsEl.currentTime = Math.max(0, clip.offset);
+    ttsEl.play().catch(() => {});
+    _lastTtsClipKey = clipKey;
+  } else if (Math.abs(ttsEl.currentTime - clip.offset) > 0.35) {
+    // lệch quá nhiều (vd tua timeline) — chỉnh lại cho khớp
+    ttsEl.currentTime = Math.max(0, clip.offset);
+  }
+}
+
+// ---------- Phát âm thanh hiệu ứng cho step `audio` ----------
+// Khác với TTS (luôn chỉ 1 clip đang đọc tại 1 thời điểm), nhiều step `audio`
+// có thể "sống" cùng lúc nếu được đánh dấu chạy SONG SONG (isParallelAudio)
+// và đứng liền nhau trong danh sách (đều bám _start theo cùng 1 step
+// track-chính — xem computeTimeline()). Audio TUẦN TỰ (mặc định) thì không
+// bao giờ chồng — mỗi lúc chỉ 1 step audio "sống" như post/comment.
+// Mỗi step audio có 1 thẻ <audio> riêng, tạo động và giữ trong Map theo id,
+// dọn dẹp khi step không còn sống hoặc bị xoá khỏi kịch bản.
+const sfxAudioEls = new Map(); // stepId -> HTMLAudioElement
+
+function syncSfxAudio(t) {
+  const livingIds = new Set();
+  for (const s of steps) {
+    if (s.type !== 'audio' || !s.mediaUrl) continue;
+    if (t < s._start - 1e-6 || t >= s._end - 1e-6) continue;
+    livingIds.add(s.id);
+    let el = sfxAudioEls.get(s.id);
+    if (!el) {
+      el = new Audio(s.mediaUrl);
+      sfxAudioEls.set(s.id, el);
+    }
+    if (el.paused) {
+      el.currentTime = Math.max(0, t - s._start);
+      el.play().catch(() => {});
+    } else if (Math.abs(el.currentTime - (t - s._start)) > 0.35) {
+      el.currentTime = Math.max(0, t - s._start); // lệch quá nhiều (tua timeline) — chỉnh lại
+    }
+  }
+  // dừng + dọn các audio không còn sống tại t
+  for (const [id, el] of sfxAudioEls) {
+    if (!livingIds.has(id)) { el.pause(); sfxAudioEls.delete(id); }
+  }
+}
+
+function stopAllSfxAudio() {
+  for (const el of sfxAudioEls.values()) el.pause();
+  sfxAudioEls.clear();
+}
+
+function renderAtTime(t) {
+  const { stack, memeStep } = computeSceneAt(t);
+  if (playing) { syncTtsAudio(t); syncSfxAudio(t); }
+
+  const ids = stack.map(s => s.id);
+  const key = ids.join(',');
+  const revisions = ids.map(id => stepRevision.get(id) || 0);
+  // So CẢ key (bộ id) LẪN revision từng id — chỉ so key là chưa đủ: nudge
+  // vị trí/xoay liên tiếp trên CÙNG 1 bộ stack (id không đổi, chỉ revision
+  // tăng qua bumpStepRevision) sẽ giữ key y hệt lần trước, khiến khối rebuild
+  // bên dưới bị bỏ qua hoàn toàn dù dữ liệu đã đổi — bug thật đã gặp: bấm
+  // nút d-pad không thấy dịch chuyển ngay, phải nhấn sang step khác rồi quay
+  // lại (đổi key) mới ép rebuild và thấy đúng.
+  const revKey = key + '|' + revisions.join(',');
+  const stackEl = document.getElementById('thr-stack');
+  if (revKey !== _lastStackKey) {
+    // Không rebuild toàn bộ mỗi khi stack đổi — chỉ vẽ lại phần THỰC SỰ
+    // khác so với lần trước, giữ nguyên node DOM của các card không đổi vị
+    // trí/id. Lý do: card giữ nguyên node thì KHÔNG bị animation "tcard-in"
+    // chạy lại (CSS animation tự kích hoạt mỗi khi phần tử được chèn MỚI
+    // vào DOM) — người dùng phản hồi card cũ (vd step 1,2 đã hiện) không
+    // nên "nhấp nháy" lại chỉ vì có step 3 mới cộng dồn lên trên, hay vì
+    // step nào đó khác trong stack được sửa nội dung.
+    //
+    // Thuật toán: so `ids` (mới) với `_lastStackIds` (cũ) tìm "tiền tố
+    // chung" (longest common prefix theo VỊ TRÍ, không phải theo tập hợp)
+    // — các id giống nhau ở cùng vị trí thì giữ nguyên node cũ; ngay khi
+    // gặp vị trí lệch (id khác, hoặc mới dài hơn/ngắn hơn), rebuild lại từ
+    // đó trở đi. Bao trùm cả 2 trường hợp: (1) "chỉ thêm step mới vào
+    // cuối" — common prefix = toàn bộ mảng cũ, chỉ card mới bị rebuild;
+    // (2) "sửa nội dung 1 step giữa stack, id giữ nguyên" — common prefix
+    // dừng đúng tại step đó (dù id trùng, phải rebuild vì không có cách
+    // rẻ để biết nội dung bên trong id đó có đổi hay không, nên coi mọi vị
+    // trí bằng nhau về id là "an toàn để giữ nguyên" CHỈ KHI đứng trước vị
+    // trí đầu tiên từng bị sửa — nôm na: các step trước _editedFromIdx đều
+    // giữ nguyên, từ đó trở đi rebuild hết).
+    //
+    // Vì không thể biết rẻ "step nào vừa sửa nội dung" chỉ từ mảng id, ta
+    // dùng thêm biến _lastRenderedRevision (map id -> số lần step đó được
+    // Object.assign trong submitStepModal) để phát hiện thay đổi nội dung
+    // dù id không đổi — xem updateStepRevision().
+    let commonLen = 0;
+    while (
+      commonLen < ids.length && commonLen < _lastStackIds.length &&
+      ids[commonLen] === _lastStackIds[commonLen] &&
+      (stepRevision.get(ids[commonLen]) || 0) === (_lastStackRevisions[commonLen] || 0)
+    ) commonLen++;
+
+    const domOk = stackEl.children.length === _lastStackIds.length;
+    if (domOk && commonLen > 0) {
+      // xoá các card từ vị trí commonLen trở đi, giữ nguyên [0, commonLen)
+      while (stackEl.children.length > commonLen) stackEl.removeChild(stackEl.lastElementChild);
+      const rebuiltOnes = stack.slice(commonLen);
+      stackEl.insertAdjacentHTML('beforeend', rebuiltOnes.map(buildCardHtml).join(''));
+    } else {
+      stackEl.innerHTML = stack.map(buildCardHtml).join('');
+    }
+    _lastStackKey = revKey;
+    _lastStackIds = ids;
+    _lastStackRevisions = revisions;
+    autoScrollStack();
+  }
+
+  const memeKey = memeStep ? String(memeStep.id) : '';
+  const memeEl = document.getElementById('meme-overlay');
+  if (memeKey !== _lastMemeKey) {
+    if (memeStep) {
+      // Meme dạng video KHÔNG mute (mục 5.28 CONTEXT.md) — trước đây cố ý
+      // muted vì thẻ video meme chỉ để xem hình, âm thanh xử lý riêng qua
+      // step Âm thanh. Nhưng người dùng giờ hay dùng thẳng 1 mp4 có sẵn
+      // tiếng làm meme (thay vì ghép gif+audio rời, mục 5.19) — muted khiến
+      // preview câm hoàn toàn dù file gốc có tiếng, và không khớp hành vi
+      // export (đã phát đúng tiếng, mục 5.27) khiến preview/export lệch
+      // nhau. loop vẫn giữ — nếu video ngắn hơn duration step, lặp lại
+      // đúng ý preview cũ.
+      memeEl.innerHTML = memeStep.mediaUrl
+        ? (memeStep.mediaIsVideo
+            ? `<video src="${memeStep.mediaUrl}" autoplay loop playsinline></video>`
+            : `<img src="${memeStep.mediaUrl}" alt=""/>`)
+        : `<div class="meme-ph">🖼 MEME<br/>(chưa chọn file)</div>`;
+      memeEl.style.display = 'block';
+    } else {
+      memeEl.style.display = 'none';
+      memeEl.innerHTML = '';
+    }
+    _lastMemeKey = memeKey;
+  }
+  // Set transform LUÔN LUÔN (ngoài nhánh if trên) — mục 5.21 CONTEXT.md: nếu
+  // chỉ offset/rotation đổi (bấm nút d-pad) mà id memeStep giữ nguyên, nhánh
+  // memeKey!==_lastMemeKey bị bỏ qua, style transform sẽ không được cập nhật
+  // nếu chỉ đặt trong đó — bug tiềm ẩn đã xác nhận trước khi code.
+  if (memeStep) memeEl.style.transform = memeOverlayTransform(memeStep);
+
+  // highlight step đang chạy trong panel — có thể nhiều step cùng lúc
+  // (1 step track chính + 0..n step audio song song chồng lên nó)
+  const activeIds = new Set(steps.filter(s => t >= s._start - 1e-6 && t < s._end - 1e-6).map(s => s.id));
+  document.querySelectorAll('.step-card').forEach(el => {
+    el.classList.toggle('active-now', activeIds.has(+el.dataset.id));
+  });
+}
+
+
+// Render cảnh "cuối cùng" khi không phát (để user thấy tổng thể sau khi sửa step)
+function renderIdleScene() {
+  if (playing) return;
+  // CHỈ reset _lastStackKey (ép renderAtTime tính toán lại), KHÔNG reset
+  // _lastStackIds — để logic "append-only" trong renderAtTime vẫn nhận ra
+  // được stack mới là mở rộng của stack cũ (vd thêm step 3 cộng dồn lên
+  // step 1+2 đã có), từ đó chỉ chèn thêm card mới thay vì vẽ lại toàn bộ
+  // (tránh card cũ bị animation "tcard-in" chạy lại — xem renderAtTime).
+  _lastStackKey = null; _lastMemeKey = null;
+  if (!steps.length) {
+    document.getElementById('thr-stack').innerHTML = '';
+    document.getElementById('meme-overlay').style.display = 'none';
+    _lastStackIds = [];
+    return;
+  }
+  computeTimeline();
+  // Nội dung giờ chỉ "sống" trong [start,end) — tại đúng totalDuration() (mốc
+  // cuối cùng, đã cộng cả gap) màn hình có thể đang trống (nếu step cuối có
+  // gap). Để bản xem tĩnh (không phát) vẫn thấy nội dung, lùi nhẹ vào giữa
+  // cửa sổ sống của step track-chính cuối cùng (bỏ qua audio SONG SONG — nó
+  // không đại diện cho "toàn cảnh cuối" của track chính; audio tuần tự vẫn
+  // tính vào track chính bình thường).
+  const mainSteps = steps.filter(s => !isParallelAudio(s));
+  const last = mainSteps.length ? mainSteps[mainSteps.length - 1] : steps[steps.length - 1];
+  const previewT = (last._start + last._end) / 2;
+  renderAtTime(previewT);
+}
+
+// ---------- Play / timeline ----------
+let playing = false;
+let playRAF = null;
+
+function togglePlay() {
+  if (playing) { stopPlay(); return; }
+  if (!steps.length) { alert('Chưa có step nào để phát.'); return; }
+  const total = totalDuration();
+  if (total <= 0) return;
+
+  playing = true;
+  // Bắt đầu Play luôn nhảy về t=0 (frame() bên dưới) — khác hẳn cảnh tĩnh
+  // đang hiện trước đó, nên rebuild toàn bộ thay vì cố "append" (reset cả
+  // _lastStackIds, không chỉ _lastStackKey như renderIdleScene() ở trên).
+  _lastStackKey = null; _lastStackIds = []; _lastMemeKey = null;
+  document.getElementById('play-btn').textContent = '⏸ Dừng';
+
+  // phát nhạc nền nếu có
+  if (previewAudioEl.src) { previewAudioEl.currentTime = 0; previewAudioEl.play().catch(()=>{}); }
+
+  const startWall = performance.now();
+  function frame() {
+    if (!playing) return;
+    const t = (performance.now() - startWall) / 1000;
+    if (t >= total) {
+      renderAtTime(total);
+      updateProgress(total, total);
+      stopPlay();
+      return;
+    }
+    renderAtTime(t);
+    updateProgress(t, total);
+    playRAF = requestAnimationFrame(frame);
+  }
+  playRAF = requestAnimationFrame(frame);
+}
+
+function stopPlay() {
+  playing = false;
+  if (playRAF) cancelAnimationFrame(playRAF);
+  document.getElementById('play-btn').textContent = '▶ Play';
+  if (previewAudioEl.src) previewAudioEl.pause();
+  document.getElementById('tts-audio').pause();
+  _lastTtsClipKey = null;
+  stopAllSfxAudio();
+}
+
+function updateProgress(t, total) {
+  document.getElementById('play-progress').style.width = (total ? (t/total*100) : 0) + '%';
+  document.getElementById('play-tlabel').textContent = `${t.toFixed(1)}s / ${total.toFixed(1)}s`;
+}
+function updateTLabel() {
+  const total = totalDuration();
+  document.getElementById('play-tlabel').textContent = `0.0s / ${total.toFixed(1)}s`;
+  document.getElementById('play-progress').style.width = '0%';
+}
+
+// ---------- Ghép & xuất video (mục 5.17 CONTEXT.md) ----------
+const EXPORT_SERVER_URL = 'http://localhost:8011';
+let exportPollTimer = null;
+
+// Upload 1 file (video/nhạc nền) lên media_server.py, KHÔNG đụng DOM modal
+// soạn step (khác uploadMediaFile() ở trên — hàm đó gắn chặt với dropzone
+// trong modal, không tái dùng được cho mục đích này). Trả về URL đầy đủ
+// (MEDIA_SERVER_URL + đường dẫn tương đối server trả về) để gửi cho
+// export_server.py — server đó tự suy ra đường dẫn file thật trên đĩa từ
+// URL này (_resolve_local_media(), không cần re-fetch qua HTTP).
+async function uploadForExport(file, label) {
+  const form = new FormData();
+  form.append('file', file);
+  const res = await fetch(MEDIA_SERVER_URL + '/upload', { method: 'POST', body: form });
+  if (!res.ok) throw new Error(`Upload ${label} lỗi: HTTP ${res.status}`);
+  const data = await res.json();
+  return MEDIA_SERVER_URL + data.url;
+}
+
+function setExportProgress(pct, text) {
+  document.getElementById('export-progress-wrap').style.display = 'block';
+  document.getElementById('export-progress-bar').style.width = pct + '%';
+  document.getElementById('export-progress-text').textContent = text;
+}
+
+async function exportVideo() {
+  if (!steps.length) { alert('Chưa có step nào trong kịch bản.'); return; }
+  // Video nền có thể từ 2 nguồn (mục 5.40 CONTEXT.md): "Từ máy" (bgVideoFile,
+  // cần upload) hoặc "Thư viện" (bgVideoLibraryItem, đã có URL HTTP bền sẵn
+  // — KHÔNG cần upload lại). Bug đã gặp: điều kiện chặn cũ chỉ kiểm tra
+  // bgVideoFile, nên chọn từ thư viện vẫn báo "Cần chọn video nền" dù đã
+  // apply xong — phải mở lại tab "Từ máy" chọn tay mới pass được.
+  if (!bgVideoFile && !bgVideoLibraryItem) { alert('Cần chọn video nền trước (mục 1 sidebar).'); return; }
+
+  const btn = document.getElementById('export-btn');
+  const resultEl = document.getElementById('export-result');
+  resultEl.innerHTML = '';
+  btn.disabled = true;
+  setExportProgress(0, 'Đang chuẩn bị video nền...');
+
+  try {
+    computeTimeline();
+    const bgVideoUrl = bgVideoLibraryItem
+      ? bgVideoLibraryItem.url
+      : await uploadForExport(bgVideoFile, 'video nền');
+    let bgAudioUrl = null;
+    if (bgAudioLibraryItem) {
+      bgAudioUrl = bgAudioLibraryItem.url;
+    } else if (bgAudioFile) {
+      setExportProgress(2, 'Đang tải nhạc nền lên server...');
+      bgAudioUrl = await uploadForExport(bgAudioFile, 'nhạc nền');
+    }
+
+    setExportProgress(4, 'Đang gửi kịch bản lên server xuất video...');
+    const res = await fetch(EXPORT_SERVER_URL + '/export', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        steps,
+        bgVideoUrl,
+        bgAudioUrl,
+        bgAudioVolume: parseFloat(document.getElementById('bgaudio-volume').value),
+        blurIdentity: document.getElementById('blur-identity-toggle').checked,
+      }),
+    });
+    if (!res.ok) throw new Error('HTTP ' + res.status);
+    const { job_id } = await res.json();
+    pollExportStatus(job_id);
+  } catch (e) {
+    btn.disabled = false;
+    setExportProgress(0, '');
+    document.getElementById('export-progress-wrap').style.display = 'none';
+    resultEl.innerHTML = `<div style="color:#ef4444;font-size:12px">✗ Lỗi: ${esc(e.message)} — kiểm tra media_server.py (8010) và export_server.py (8011) đang chạy.</div>`;
+  }
+}
+
+function pollExportStatus(jobId) {
+  if (exportPollTimer) clearInterval(exportPollTimer);
+  exportPollTimer = setInterval(async () => {
+    try {
+      const res = await fetch(`${EXPORT_SERVER_URL}/export-status/${jobId}`);
+      if (!res.ok) throw new Error('HTTP ' + res.status);
+      const job = await res.json();
+      setExportProgress(job.progress || 0, job.message || '');
+      if (job.status === 'done') {
+        clearInterval(exportPollTimer);
+        document.getElementById('export-btn').disabled = false;
+        const url = EXPORT_SERVER_URL + job.downloadUrl;
+        document.getElementById('export-result').innerHTML =
+          `<a href="${url}" download class="btn btn-primary" style="display:block;text-align:center;text-decoration:none">⭳ Tải video vừa xuất (.mp4)</a>`;
+      } else if (job.status === 'error') {
+        clearInterval(exportPollTimer);
+        document.getElementById('export-btn').disabled = false;
+        document.getElementById('export-result').innerHTML =
+          `<div style="color:#ef4444;font-size:12px">✗ Xuất video lỗi: ${esc(job.message || '')}</div>`;
+      }
+    } catch (e) {
+      clearInterval(exportPollTimer);
+      document.getElementById('export-btn').disabled = false;
+      document.getElementById('export-result').innerHTML =
+        `<div style="color:#ef4444;font-size:12px">✗ Mất kết nối tới export_server.py: ${esc(e.message)}</div>`;
+    }
+  }, 1500);
+}
+
+// ===== Feature 5: Dọn cache =====
+// Xoá 3 thư mục "dùng 1 lần" (media/exports/tts_audio, xem CACHE_DIRS trong
+// media_server.py) — không đụng thư viện tái dùng (memeready/audio/gif/
+// avatarthreads). Chỉ gọi API, không xoá gì phía client.
+function fmtBytes(n) {
+  if (n < 1024) return n + ' B';
+  if (n < 1024 * 1024) return (n / 1024).toFixed(1) + ' KB';
+  if (n < 1024 * 1024 * 1024) return (n / 1024 / 1024).toFixed(1) + ' MB';
+  return (n / 1024 / 1024 / 1024).toFixed(2) + ' GB';
+}
+
+async function refreshCacheSize() {
+  const label = document.getElementById('cache-size-label');
+  if (!label) return;
+  try {
+    const res = await fetch(MEDIA_SERVER_URL + '/cache-size');
+    if (!res.ok) throw new Error('HTTP ' + res.status);
+    const data = await res.json();
+    label.textContent = 'Dung lượng cache: ' + fmtBytes(data.bytes);
+  } catch (e) {
+    label.textContent = 'Dung lượng cache: không kết nối được media_server.py (cổng 8010)';
+  }
+}
+
+async function clearServerCache() {
+  if (!confirm('Xoá toàn bộ file trong media/, exports/, tts_audio/?\n\nXOÁ THẬT, KỂ CẢ ảnh/video/audio đang được step trong kịch bản HIỆN TẠI dùng (kể cả ảnh vừa cắt bằng tính năng "Cắt nhiều vùng") — không có cách khôi phục, kể cả xuất JSON trước rồi nạp lại sau (JSON chỉ lưu URL, không lưu file thật). Preview có thể vẫn hiện ảnh do cache trình duyệt, nhưng xuất video sẽ mất — phải tạo/chọn lại ảnh thủ công cho step nào bị ảnh hưởng.')) return;
+  try {
+    const res = await fetch(MEDIA_SERVER_URL + '/cache', { method: 'DELETE' });
+    if (!res.ok) throw new Error('HTTP ' + res.status);
+    const data = await res.json();
+    alert(`✓ Đã xoá ${data.removed} mục trong cache.`);
+    refreshCacheSize();
+  } catch (e) {
+    alert('Không xoá được cache: ' + e.message + '\n\nKiểm tra media_server.py đang chạy (cổng 8010).');
+  }
+}
+
+// Khởi tạo
+_stepEngineReady = true;
+renderStepList();
+refreshCacheSize();
+</script>
+
+</body>
+</html>

@@ -659,26 +659,42 @@ async def get_cues(job_id: str, request: Request):
 
 @app.post("/api/save-cues/{job_id}")
 async def save_cues(job_id: str, body: dict, request: Request):
-    """Lưu bản dịch đã edit. Map theo VỊ TRÍ (pos) — idx có thể trùng nhau."""
+    """Lưu bản dịch đã edit. Xây LẠI TOÀN BỘ vi_cues từ rows gửi lên (không
+    map theo vị trí của bản cũ) — bắt buộc vì client có thể tách 1 dòng dài
+    thành nhiều dòng (mỗi dòng có start/end mới) hoặc gộp/xoá dòng, nên số
+    lượng và timing đều có thể khác hẳn vi_cues cũ. Map theo vị trí cũ sẽ làm
+    mất các dòng mới thêm và giữ nguyên timing cũ (sai) — đúng lỗi đã gặp."""
     job, err = _get_job(job_id, request.state.user_id)
     if err: return err
     if job.get("status") not in ("translated", "done", "error", "rendering"):
         return JSONResponse({"error": "Job chua dich xong"}, status_code=400)
 
-    rows    = body.get("rows", [])
-    vi_cues = job.get("vi_cues", [])
+    from translate_video import build_srt, srt_time_to_sec
+
+    rows = body.get("rows", [])
+    if not rows:
+        return JSONResponse({"error": "Danh sach rows rong"}, status_code=400)
+
     updated = []
-    for i, c in enumerate(vi_cues):
-        if i < len(rows):
-            updated.append({**c, "text": str(rows[i].get("vi", c.get("text", "")))})
-        else:
-            updated.append(c)
+    for i, r in enumerate(rows):
+        start = str(r.get("start", "")).strip()
+        end   = str(r.get("end", "")).strip()
+        text  = str(r.get("vi", "")).strip()
+        if not start or not end:
+            return JSONResponse({"error": f"Dong {i+1} thieu start/end"}, status_code=400)
+        updated.append({
+            "idx": i + 1,
+            "start": start,
+            "end": end,
+            "start_sec": srt_time_to_sec(start),
+            "end_sec": srt_time_to_sec(end),
+            "text": text,
+        })
     job["vi_cues"] = updated
 
-    from translate_video import build_srt
     srt_path = Path(job["srt_path"])
     srt_path.write_text(build_srt(updated), encoding="utf-8")
-    return {"ok": True}
+    return {"ok": True, "count": len(updated)}
 
 
 @app.post("/api/render/{job_id}")

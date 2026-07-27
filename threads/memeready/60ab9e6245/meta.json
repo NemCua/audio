@@ -1,0 +1,44 @@
+{
+  "id": "60ab9e6245",
+  "label": "meme ảnh khóc nhưng trường hợp hài",
+  "steps": [
+    {
+      "id": 1,
+      "duration": 0.43,
+      "gap": 0,
+      "clearBefore": true,
+      "hue": 248,
+      "offsetX": 0,
+      "offsetY": 0,
+      "rotation": 0,
+      "type": "image",
+      "mediaPath": null,
+      "mediaUrl": "media0.jpg",
+      "mediaName": "meme-khoc-2-1.jpg",
+      "mediaIsVideo": false,
+      "text": "meme ảnh khóc dùng sau khi nói 1 câu cmt hay post nào mà vừa khóc vừa cười hài trong đau khổ (những câu nói dở khóc dở cười)",
+      "_start": 0,
+      "_end": 0.43,
+      "_mediaDuration": 0.04
+    },
+    {
+      "id": 2,
+      "duration": 0.43,
+      "gap": 0,
+      "clearBefore": false,
+      "hue": 30,
+      "offsetX": 0,
+      "offsetY": 0,
+      "rotation": 0,
+      "type": "audio",
+      "mediaPath": null,
+      "mediaUrl": "media1.mp3",
+      "mediaName": "bonk_7zPAD7C.mp3",
+      "mediaIsVideo": false,
+      "parallel": true,
+      "_start": 0,
+      "_end": 0.43,
+      "_mediaDuration": 0.43
+    }
+  ]
+}

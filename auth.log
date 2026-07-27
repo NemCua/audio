@@ -32,3 +32,12 @@ OSError: [Errno 9] Bad file descriptor
 
 Current thread 0x00000001f7a40800 (most recent call first):
   <no Python frame>
+INFO:     Will watch for changes in these directories: ['/Users/nguyenquochuy/test-audio']
+INFO:     Uvicorn running on http://0.0.0.0:8006 (Press CTRL+C to quit)
+INFO:     Started reloader process [90491] using StatReload
+INFO:     Started server process [90514]
+INFO:     Waiting for application startup.
+INFO:     Application startup complete.
+INFO:     127.0.0.1:54132 - "GET / HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:54155 - "GET /auth/me HTTP/1.1" 401 Unauthorized
+INFO:     127.0.0.1:54158 - "POST /auth/login HTTP/1.1" 200 OK

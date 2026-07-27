@@ -617,6 +617,16 @@ def whisper_align_scenes(scenes: list[dict], word_timestamps: list[dict],
                     break
         best_score = best_key[0]
 
+        # Điểm khớp quá thấp (thường do từ chuyên ngành/tên riêng bị Whisper
+        # phiên âm sai hàng loạt) → kết quả tìm kiếm không đáng tin, và vì
+        # win_start luôn ưu tiên vị trí GẦN cursor cũ nhất, best_pos có xu
+        # hướng bị "hút" về sát vị trí của scene TRƯỚC, làm 2 scene trùng mốc
+        # giờ (chồng cảnh / im lặng rồi phát dồn). Khi đó tin cursor (đã đi
+        # đúng hết scene trước qua _walk_scene) hơn là tin việc định vị lại.
+        min_score = max(1, K // 3)
+        if best_score < min_score and cursor < n:
+            best_pos = min(cursor, n - 1)
+
         start_time = word_timestamps[best_pos]['start']
 
         # Trigger word: lấy vị trí từ bước walk (chính xác kể cả khi Whisper

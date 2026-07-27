@@ -1,0 +1,78 @@
+{
+  "ack.mp3": {
+    "label": "ack",
+    "description": "Tiếng \"ack\" ngắn gọn, dùng khi nhân vật/tình huống bị hố hoặc phản ứng bối rối nhẹ."
+  },
+  "among.mp3": {
+    "label": "among",
+    "description": "Âm thanh báo động kiểu game Among Us, dùng nhấn mạnh tình huống \"có biến\", bất ngờ hoặc nghi ngờ ai đó."
+  },
+  "anime-ahh.mp3": {
+    "label": "anime-ahh",
+    "description": "Tiếng thở dài/rên kiểu anime, ngắn, dùng cho khoảnh khắc ngại ngùng hoặc \"deadpan\"."
+  },
+  "bone-crack.mp3": {
+    "label": "bone-crack",
+    "description": "Tiếng xương kêu rắc, dùng minh hoạ động tác mạnh, va chạm hoặc phản ứng đau/ghê rợn hài hước."
+  },
+  "bonk_7zPAD7C.mp3": {
+    "label": "bonk_7zPAD7C",
+    "description": "Tiếng \"bonk\" cộc ngắn, hiệu ứng meme kinh điển khi ai đó làm sai/bị chọc/troll."
+  },
+  "buy_1.mp3": {
+    "label": "buy_1",
+    "description": "Tiếng \"cha-ching\"/thông báo mua hàng, dùng cho cảnh liên quan tiền bạc, mua sắm, chốt đơn."
+  },
+  "cartoonslip.mp3": {
+    "label": "cartoonslip",
+    "description": "Tiếng trượt chân kiểu hoạt hình, rất ngắn, dùng cho pha hụt hẫng/trượt đà hài hước."
+  },
+  "cat-laugh-meme-1.mp3": {
+    "label": "cat-laugh-meme-1",
+    "description": "Tiếng mèo kêu/cười theo kiểu meme, dùng để chọc cười hoặc mỉa mai nhẹ nhàng."
+  },
+  "correct.mp3": {
+    "label": "correct",
+    "description": "Âm báo \"đúng\"/ting tích cực, dùng khi xác nhận câu trả lời đúng hoặc quyết định hợp lý."
+  },
+  "dry-fart.mp3": {
+    "label": "dry-fart",
+    "description": "Tiếng \"xì hơi\" hài hước rất ngắn, dùng cho tình huống bẽ mặt/xấu hổ."
+  },
+  "faaah.mp3": {
+    "label": "faaah",
+    "description": "Tiếng la ngạc nhiên/hoảng hốt ngắn, dùng cho phản ứng bất ngờ nhẹ."
+  },
+  "j-jonah-jameson-original-laugh.mp3": {
+    "label": "j-jonah-jameson-original-laugh",
+    "description": "Đoạn cười lớn kéo dài, dùng để châm biếm/mỉa mai tình huống ai đó vừa nói/làm gì đó buồn cười."
+  },
+  "laughing-dog-meme.mp3": {
+    "label": "laughing-dog-meme",
+    "description": "Tiếng cười (giả giọng chó) kéo dài kiểu meme, dùng để cười nhạo/chê bai hài hước."
+  },
+  "mac-quack.mp3": {
+    "label": "mac-quack",
+    "description": "Tiếng vịt kêu ngắn, dùng làm hiệu ứng hài hước bất ngờ hoặc nhấn nhá câu thoại."
+  },
+  "omgwow.mp3": {
+    "label": "omgwow",
+    "description": "Đoạn thán từ \"OMG/wow\" kéo dài, dùng cho khoảnh khắc gây sốc/kinh ngạc rõ rệt."
+  },
+  "shocked-sound-effect.mp3": {
+    "label": "shocked-sound-effect",
+    "description": "Âm thanh \"sốc\" điển hình (kiểu dây đàn/synth giật), dùng khi tiết lộ thông tin bất ngờ."
+  },
+  "shocking_0NL2w3I.mp3": {
+    "label": "shocking_0NL2w3I",
+    "description": "Hiệu ứng gây sốc dạng riser/nhạc nền ngắn, dùng để tạo kịch tính trước 1 plot twist."
+  },
+  "vine-boom.mp3": {
+    "label": "vine-boom",
+    "description": "Tiếng \"boom\" trầm kinh điển trên mạng xã hội, dùng nhấn mạnh cú twist/chốt hạ gây bất ngờ."
+  },
+  "x-files-theme-song-copy.mp3": {
+    "label": "x-files-theme-song-copy",
+    "description": "Đoạn nhạc nền bí ẩn/hồi hộp, dùng cho tình huống ly kỳ, đáng ngờ hoặc bí ẩn chưa có lời giải."
+  }
+}
