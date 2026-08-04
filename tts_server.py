@@ -59,6 +59,7 @@ class TTSRequest(BaseModel):
     voice_type: str | None = None   # vd "BV074_streaming" — bỏ trống dùng mặc định
     resource_id: str | None = None
     rate: str = "1.0"
+    speed: float = 1.0
     # Hiệu ứng "vang" (mục nhiều đoạn TTS trong index.html) — người dùng chọn
     # sau khi nghe thử 3 mẫu (echo nhẹ/đậm, reverb phòng), chốt dùng đúng
     # công thức aecho=0.8:0.7:60:0.4 (1 tiếng dội mờ dần ngay sau, kiểu nhấn
@@ -73,6 +74,7 @@ class TTSBatchRequest(BaseModel):
     voice_type: str | None = None
     resource_id: str | None = None
     rate: str = "1.0"
+    speed: float = 1.0
     echo: bool = False
 
 
@@ -126,12 +128,44 @@ def _voice_json_by_lang(lang_prefix: str) -> list[dict]:
             "label": str(item.get("display_name") or item.get("voice_type")).strip(),
             "voice_type": item.get("voice_type"),
             "resource_id": item.get("resource_id"),
+            "engine": "edge" if str(item.get("voice_type", "")).lower().endswith("neural") else "capcut",
         }
         for item in voices
         if str(item.get("lang", "")).lower().startswith(lang_prefix.lower())
         and item.get("voice_type")
         and item.get("resource_id")
     ]
+
+
+def _is_edge_voice(voice_type: str | None) -> bool:
+    return str(voice_type or "").lower().endswith("neural")
+
+
+async def _edge_tts_files(texts: list[str], voice_type: str, paths: list[Path]) -> None:
+    import edge_tts
+
+    async def _save_one(text: str, path: Path) -> None:
+        last_error = None
+        for attempt in range(5):
+            try:
+                path.unlink(missing_ok=True)
+                await edge_tts.Communicate(text, voice_type).save(str(path))
+                if path.exists() and path.stat().st_size > 0:
+                    return
+                raise RuntimeError("Edge TTS trả về file rỗng")
+            except Exception as exc:
+                last_error = exc
+                if attempt < 4:
+                    await asyncio.sleep(2 * (attempt + 1))
+        raise RuntimeError(f"Edge TTS lỗi sau 5 lần thử: {last_error}")
+
+    # Edge không hỗ trợ batch nhiều câu trong một task như CapCut. Dù API
+    # nội bộ nhận một mảng để frontend dùng chung luồng, mỗi câu vẫn được
+    # gửi thành một request RIÊNG và chạy tuần tự để tránh rate-limit/block.
+    for index, (text, path) in enumerate(zip(texts, paths)):
+        await _save_one(text, path)
+        if index < len(texts) - 1:
+            await asyncio.sleep(1)
 
 
 def _split_mixed_text(text: str, english_phrases: list[str]) -> list[tuple[str, str]]:
@@ -187,6 +221,20 @@ def _apply_echo(path: Path) -> None:
     tmp_out.replace(path)
 
 
+def _apply_speed(path: Path, speed: float) -> None:
+    """Tăng tốc file đã sinh bằng FFmpeg; không gửi speed lên nhà cung cấp TTS."""
+    speed = max(1.0, min(float(speed or 1.0), 2.0))
+    if abs(speed - 1.0) < 0.001:
+        return
+    tmp_out = path.with_suffix(".speed.mp3")
+    subprocess.run(
+        [FFMPEG_BIN, "-y", "-i", str(path), "-filter:a", f"atempo={speed:.3f}",
+         "-b:a", "160k", str(tmp_out)],
+        capture_output=True, text=True, check=True,
+    )
+    tmp_out.replace(path)
+
+
 @app.get("/voices")
 def list_voices():
     voices = _voice_json_by_lang("vi")
@@ -224,11 +272,26 @@ def generate_tts(req: TTSRequest):
     out_name = f"{uuid.uuid4().hex}.mp3"
     out_path = AUDIO_DIR / out_name
 
+    if _is_edge_voice(voice_type):
+        try:
+            asyncio.run(_edge_tts_files([text], voice_type, [out_path]))
+            _apply_speed(out_path, req.speed)
+            if req.echo:
+                _apply_echo(out_path)
+            duration = _probe_duration(out_path)
+            if duration <= 0:
+                raise RuntimeError("File Edge TTS trả về rỗng/0 giây")
+            return {"audio_url": f"/audio/{out_name}", "duration": duration}
+        except Exception as e:
+            out_path.unlink(missing_ok=True)
+            raise HTTPException(502, f"Edge TTS lỗi: {e}")
+
     current_did = device_id
     last_err = None
     for attempt in range(5):
         try:
             tv.capcut_tts_batch([text], voice_type, resource_id, [out_path], current_did, rate=req.rate)
+            _apply_speed(out_path, req.speed)
             if req.echo:
                 _apply_echo(out_path)
             duration = _probe_duration(out_path)
@@ -258,11 +321,32 @@ def generate_tts_batch(req: TTSBatchRequest):
 
     names = [f"{uuid.uuid4().hex}.mp3" for _ in texts]
     paths = [AUDIO_DIR / name for name in names]
+    if _is_edge_voice(voice_type):
+        try:
+            asyncio.run(_edge_tts_files(texts, voice_type, paths))
+            for path in paths:
+                _apply_speed(path, req.speed)
+            if req.echo:
+                for path in paths:
+                    _apply_echo(path)
+            items = []
+            for name, path in zip(names, paths):
+                duration = _probe_duration(path)
+                if duration <= 0:
+                    raise RuntimeError(f"File Edge TTS {name} rỗng/0 giây")
+                items.append({"audio_url": f"/audio/{name}", "duration": duration})
+            return {"items": items}
+        except Exception as e:
+            for path in paths:
+                path.unlink(missing_ok=True)
+            raise HTTPException(502, f"Edge TTS batch lỗi: {e}")
     current_did = device_id
     last_err = None
     for _attempt in range(5):
         try:
             tv.capcut_tts_batch(texts, voice_type, resource_id, paths, current_did, rate=req.rate)
+            for path in paths:
+                _apply_speed(path, req.speed)
             if req.echo:
                 for path in paths:
                     _apply_echo(path)
