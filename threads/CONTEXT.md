@@ -2398,6 +2398,34 @@ vàng) trong dropdown chọn giọng để tự nhắc tránh chọn nhầm.
 còn lại hoàn toàn không đổi (color rỗng, text nguyên gốc không suffix) —
 khớp chính xác ở cả 2 dropdown, không lệch nhau.
 
+### 5.39. Kịch bản Messenger — nhập cả hội thoại, sinh N step cộng dồn
+
+Thêm loại step `mess` chạy song song về mặt tính năng với Post/Comment,
+nhưng hiển thị một cửa sổ chat Messenger dark mode nổi trên video nền.
+Nút `＋ Messenger` mở modal rộng chia 2 cột: bên trái là bộ soạn tin, bên
+phải preview đoạn chat ngay lập tức.
+
+- Hàng đầu có 2 textarea loại trừ nhau: `Đối phương` (bubble trái) và `Tôi`
+  (bubble phải). Gõ bên nào thì ô bên kia tự xoá để xác định người gửi.
+- Ô TTS phía dưới tự đồng bộ với nội dung hiển thị cho đến khi người dùng tự
+  sửa; mỗi tin có select giọng riêng. `＋ Thêm tin nhắn` chỉ thêm vào bản
+  nháp/preview và KHÔNG đóng modal để tiếp tục nhập.
+- Bấm `Tạo kịch bản Messenger` với N tin sẽ tạo N step `mess` độc lập. Step
+  thứ i lưu `messHistory` gồm tin 1..i, nhưng `text`/`ttsText`/`voiceIdx` và
+  audio TTS chỉ thuộc tin i. Vì vậy mỗi cảnh hiển thị hội thoại cộng dồn,
+  còn giọng đọc chỉ đọc tin mới xuất hiện.
+- Mỗi chuỗi dùng `conversationId` + `messIndex`. Sửa một card `mess` mở lại
+  modal với lịch sử tới card đó; lưu sẽ tạo lại TTS riêng card đang sửa và
+  cập nhật nội dung tương ứng trong mọi `messHistory` phía sau cùng cuộc
+  hội thoại. Xoá một card cũng bỏ tin đó khỏi các cảnh sau và giảm index.
+- `clearBefore:true` mặc định cho mọi step `mess`, để cảnh mới thay ảnh chat
+  cũ thay vì stack nhiều cửa sổ Messenger. Audio/meme vẫn có thể chèn giữa
+  các step như mọi loại kịch bản khác.
+- Markup được build duy nhất bởi `buildMessengerHtml()` trong
+  `render_shared.js`; CSS Messenger phải giữ đồng bộ ở `index.html` và
+  `export_render.html`. `export_server.py` coi `mess` là step có hình tại
+  `compute_breakpoints()` và là step có TTS khi trộn audio.
+
 ## 6. Trạng thái hiện tại — đã làm / chưa làm
 
 ### Đã hoàn thành và test kỹ (Phase 1 + các bổ sung)

@@ -97,7 +97,7 @@ def compute_breakpoints(steps: list[dict], total_duration: float) -> list[float]
     liền kề là 1 "quãng ổn định" của computeSceneAt(), chỉ cần render 1 ảnh."""
     points = {0.0, total_duration}
     for s in steps:
-        if s.get("type") in ("post", "comment", "reply", "image"):
+        if s.get("type") in ("post", "comment", "reply", "image", "mess"):
             points.add(round(s["_start"], 6))
             points.add(round(s["_end"], 6))
     return sorted(points)
@@ -322,7 +322,7 @@ async def run_export_job(job_id: str, req: ExportRequest):
         # audio hiệu ứng mỗi step audio
         audio_tracks = []
         for s in steps:
-            if s.get("type") in ("post", "comment", "reply", "image") and s.get("audioUrl"):
+            if s.get("type") in ("post", "comment", "reply", "image", "mess") and s.get("audioUrl"):
                 # Nhiều đoạn giọng đọc nối tiếp trong CÙNG 1 step (mục "nhiều
                 # đoạn TTS") — đoạn #1 giữ nguyên field cũ (audioUrl/ttsDuration),
                 # các đoạn thêm nằm trong extraTtsSegments[] theo đúng thứ tự
