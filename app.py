@@ -29,7 +29,7 @@ from translate_video import (
     srt_time_to_sec,
     stt_groq,
     translate_srt,
-    CAPCUT_VOICES_VI,
+    CAPCUT_VOICES_VI, EDGE_VOICES_VI,
 )
 
 # Load .env
@@ -1194,10 +1194,7 @@ TTS_VOICES = {
 
 def get_voices(model: str):
     if not model:
-        edge_voices = [
-            ("vi-VN-HoaiMyNeural (Nữ)", "vi-VN-HoaiMyNeural"),
-            ("vi-VN-NamMinhNeural (Nam)", "vi-VN-NamMinhNeural"),
-        ]
+        edge_voices = [(f"{label} — {voice_type}", voice_type) for label, voice_type in EDGE_VOICES_VI]
         return gr.update(choices=edge_voices, value="vi-VN-HoaiMyNeural")
     voices = TTS_VOICES.get(model, [("vi", "vi")])
     return gr.update(choices=voices, value=voices[0][1])
@@ -1249,24 +1246,34 @@ with gr.Blocks(title="Dịch Video Tiếng Trung → Tiếng Việt") as demo:
             # ── PHẦN 3: Test TTS ───────────────────────────────────────────
             with gr.Accordion("🔊 Test giọng đọc TTS", open=False):
                 tts_test_text = gr.Textbox(label="Text thử", placeholder="Nhập câu tiếng Việt...")
-                with gr.Row():
+                with gr.Group():
+                    gr.Markdown("#### CapCut TTS")
                     tts_test_capcut = gr.Dropdown(
-                        label="CapCut TTS (ưu tiên)",
-                        choices=[("-- Không dùng --", "")] + [(n, vt) for n, vt, _ in CAPCUT_VOICES_VI],
+                        label="Chọn giọng CapCut",
+                        choices=[("-- Không dùng CapCut --", "")] + [(n, vt) for n, vt, _ in CAPCUT_VOICES_VI],
                         value="BV421_vivn_streaming", scale=1,
                     )
+                with gr.Group():
+                    gr.Markdown("#### Edge TTS")
+                    tts_test_voice = gr.Dropdown(
+                        label="Chọn giọng Edge",
+                        choices=[(f"{label} — {voice_type}", voice_type) for label, voice_type in EDGE_VOICES_VI],
+                        value="vi-VN-HoaiMyNeural",
+                    )
+                    gr.Markdown("Chọn giọng Edge sẽ tự chuyển khỏi CapCut.")
+                with gr.Row():
                     tts_test_model = gr.Dropdown(
-                        label="Model khác (khi không dùng CapCut)",
+                        label="Model khác (tuỳ chọn)",
                         choices=[("-- Edge TTS --", "")] + [(l, v) for l, v in TTS_MODELS],
                         value="", scale=1,
                     )
-                    tts_test_voice = gr.Dropdown(
-                        label="Voice",
-                        choices=[("vi-VN-HoaiMyNeural (Nữ)", "vi-VN-HoaiMyNeural"), ("vi-VN-NamMinhNeural (Nam)", "vi-VN-NamMinhNeural")],
-                        value="vi-VN-HoaiMyNeural", scale=1,
-                    )
                     btn_test_tts = gr.Button("▶ Test", variant="secondary", scale=1)
                 tts_test_audio = gr.Audio(label="Kết quả", interactive=False)
+                tts_test_voice.change(
+                    fn=lambda _voice: "",
+                    inputs=tts_test_voice,
+                    outputs=tts_test_capcut,
+                )
 
             # ── PHẦN 4: Bảng dịch + nút hành động ────────────────────────
             gr.Markdown("## Chỉnh sửa bản dịch")

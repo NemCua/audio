@@ -1177,9 +1177,11 @@ header span { font-size: 12px; color: #4b5563; }
         <label>Tên đối phương</label>
         <input type="text" id="mess-partner-name" value="Cô nàng nổi loạn 🦄" placeholder="Tên hiển thị trên Messenger" oninput="messPartnerName=this.value;renderMessengerDrafts()"/>
         <div class="row2">
-          <div><label>Giọng mặc định — Đối phương</label><select id="mess-theirs-voice" onchange="messSideVoiceIdx.theirs=parseInt(this.value,10)"></select></div>
-          <div><label>Giọng mặc định — Tôi</label><select id="mess-mine-voice" onchange="messSideVoiceIdx.mine=parseInt(this.value,10)"></select></div>
+          <div><label>Giọng mặc định — Đối phương</label><select id="mess-theirs-voice" onchange="setMessengerSideVoice('theirs',this.value)"></select></div>
+          <div><label>Giọng mặc định — Tôi</label><select id="mess-mine-voice" onchange="setMessengerSideVoice('mine',this.value)"></select></div>
         </div>
+        <label>Tốc độ đọc toàn bộ hội thoại: <b id="mess-tts-speed-label">1.00×</b></label>
+        <input type="range" id="mess-tts-speed" min="1" max="2" step="0.05" value="1" oninput="messTtsSpeed=parseFloat(this.value);document.getElementById('mess-tts-speed-label').textContent=messTtsSpeed.toFixed(2)+'×'"/>
         <div class="mess-side-inputs">
           <div><label>Đối phương</label><textarea id="mess-theirs" placeholder="Nhập tin bên trái..." oninput="onMessSideInput('theirs')"></textarea></div>
           <div><label>Tôi</label><textarea id="mess-mine" placeholder="Nhập tin bên phải..." oninput="onMessSideInput('mine')"></textarea></div>
@@ -1557,6 +1559,16 @@ function voiceOptionHtml(v, i, selected) {
   const style = warn ? ' style="color:#eab308;background:#1c1917"' : '';
   return `<option value="${i}" ${selected ? 'selected' : ''}${style}>${esc(label)}</option>`;
 }
+function voiceOptionsHtml(selected) {
+  const groups = [
+    ['🎙 CapCut TTS', 'capcut'],
+    ['🔊 Edge TTS', 'edge'],
+  ];
+  return groups.map(([label, engine]) => {
+    const options = ttsVoices.map((v, i) => ({v, i})).filter(x => (x.v.engine || 'capcut') === engine);
+    return options.length ? `<optgroup label="${label}">${options.map(x => voiceOptionHtml(x.v, x.i, String(x.i) === String(selected))).join('')}</optgroup>` : '';
+  }).join('');
+}
 
 function ttsServerUrl() {
   return (document.getElementById('tts-server-url').value || '').replace(/\/$/, '');
@@ -1572,7 +1584,7 @@ async function loadTtsVoices() {
     if (!res.ok) throw new Error('HTTP ' + res.status);
     ttsVoices = await res.json();
     const sel = document.getElementById('tts-voice');
-    sel.innerHTML = ttsVoices.map((v, i) => voiceOptionHtml(v, i, i === 0)).join('');
+    sel.innerHTML = voiceOptionsHtml(0);
     statusEl.textContent = `✓ Kết nối OK — ${ttsVoices.length} giọng`;
     document.getElementById('feat-tts').classList.add('done');
   } catch (e) {
@@ -1600,7 +1612,7 @@ function voiceFieldHtml(prefix, currentIdx) {
   }
   const sidebarIdx = document.getElementById('tts-voice').value;
   const useIdx = currentIdx != null ? currentIdx : sidebarIdx;
-  const opts = ttsVoices.map((v, i) => voiceOptionHtml(v, i, String(i) === String(useIdx))).join('');
+  const opts = voiceOptionsHtml(useIdx);
   return `<label>🔊 Giọng đọc</label>
           <select id="${prefix}-voice">${opts}</select>`;
 }
@@ -1616,7 +1628,7 @@ function readVoiceIdx(prefix) {
 // `echo`: hiệu ứng "vang" (mục "nhiều đoạn TTS") — tts_server.py áp FFmpeg
 // aecho lên NGUYÊN đoạn text đó trước khi trả về, dùng để nhấn nhá 1 câu
 // thoại cho hài/gây cười (đã chốt công thức sau khi người dùng nghe thử).
-async function fetchTts(text, voiceIdx, echo = false) {
+async function fetchTts(text, voiceIdx, echo = false, speed = 1) {
   const voice = selectedVoice(voiceIdx);
   const res = await fetch(ttsServerUrl() + '/tts', {
     method: 'POST',
@@ -1626,6 +1638,7 @@ async function fetchTts(text, voiceIdx, echo = false) {
       voice_type: voice ? voice.voice_type : undefined,
       resource_id: voice ? voice.resource_id : undefined,
       echo,
+      speed,
     }),
   });
   if (!res.ok) {
@@ -1638,12 +1651,12 @@ async function fetchTts(text, voiceIdx, echo = false) {
 
 // Tối đa 50 đoạn CÙNG GIỌNG trong một task CapCut — dùng khi tạo cả đoạn
 // chat Messenger để tránh gửi từng request /tts riêng lẻ dễ bị block.
-async function fetchTtsBatch(texts, voiceIdx) {
+async function fetchTtsBatch(texts, voiceIdx, speed = 1) {
   if (!texts.length || texts.length > 50) throw new Error('TTS batch phải có từ 1 đến 50 đoạn');
   const voice = selectedVoice(voiceIdx);
   const res = await fetch(ttsServerUrl() + '/tts-batch', {
     method: 'POST', headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ texts, voice_type: voice?.voice_type, resource_id: voice?.resource_id }),
+    body: JSON.stringify({ texts, voice_type: voice?.voice_type, resource_id: voice?.resource_id, speed }),
   });
   if (!res.ok) {
     const body = await res.json().catch(() => ({}));
@@ -1651,6 +1664,22 @@ async function fetchTtsBatch(texts, voiceIdx) {
   }
   const data = await res.json();
   return (data.items || []).map(item => ({ audioUrl: ttsServerUrl() + item.audio_url, duration: item.duration }));
+}
+
+const waitMs = ms => new Promise(resolve => setTimeout(resolve, ms));
+function isEdgeVoiceIdx(voiceIdx) {
+  return selectedVoice(voiceIdx)?.engine === 'edge';
+}
+async function fetchEdgeTtsReliable(text, voiceIdx, speed = 1) {
+  let lastError;
+  for (let attempt=0; attempt<3; attempt++) {
+    try { return await fetchTts(text, voiceIdx, false, speed); }
+    catch (e) {
+      lastError=e;
+      if(attempt<2) await waitMs((attempt+1)*2000);
+    }
+  }
+  throw lastError;
 }
 
 // Quét toàn bộ steps, tạo lại giọng đọc cho những khối post/comment/reply
@@ -1689,15 +1718,28 @@ async function generateAllTts() {
   try {
     const byVoice = new Map();
     messTargets.forEach(s => {
-      const key = s.voiceIdx ?? messengerDefaultVoice(s.messHistory?.[s.messHistory.length-1]?.side || 'theirs');
-      if (!byVoice.has(key)) byVoice.set(key, []);
-      byVoice.get(key).push(s);
+      const voiceIdx = s.voiceIdx ?? messengerDefaultVoice(s.messHistory?.[s.messHistory.length-1]?.side || 'theirs');
+      const speed = Number(s.messTtsSpeed || 1);
+      const key = `${voiceIdx}|${speed}`;
+      if (!byVoice.has(key)) byVoice.set(key, {voiceIdx,speed,items:[]});
+      byVoice.get(key).items.push(s);
     });
     const chunks=[];
-    for(const [voiceIdx,items] of byVoice)for(let start=0;start<items.length;start+=50)chunks.push({voiceIdx,items:items.slice(start,start+50)});
+    for(const {voiceIdx,speed,items} of byVoice.values()){
+      if(isEdgeVoiceIdx(voiceIdx)){
+        for(let i=0;i<items.length;i++){
+          statusEl.textContent=`🔊 Edge TTS Messenger ${i+1}/${items.length} (từng đoạn)...`;
+          const result=await fetchEdgeTtsReliable((items[i].ttsText&&items[i].ttsText.trim())||items[i].text,voiceIdx,speed);
+          items[i].audioUrl=result.audioUrl;items[i].ttsDuration=result.duration;items[i].duration=result.duration;bumpStepRevision(items[i].id);ok++;
+          await waitMs(700);
+        }
+      }else{
+        for(let start=0;start<items.length;start+=50)chunks.push({voiceIdx,speed,items:items.slice(start,start+50)});
+      }
+    }
     for(let ci=0;ci<chunks.length;ci++){
       const chunk=chunks[ci];statusEl.textContent=`🔊 Messenger batch ${ci+1}/${chunks.length} (${chunk.items.length} đoạn)...`;
-      const results=await fetchTtsBatch(chunk.items.map(s=>(s.ttsText&&s.ttsText.trim())||s.text),chunk.voiceIdx);
+      const results=await fetchTtsBatch(chunk.items.map(s=>(s.ttsText&&s.ttsText.trim())||s.text),chunk.voiceIdx,chunk.speed);
       if(results.length!==chunk.items.length)throw new Error('TTS batch trả về thiếu đoạn');
       chunk.items.forEach((s,i)=>{s.audioUrl=results[i].audioUrl;s.ttsDuration=results[i].duration;s.duration=results[i].duration;bumpStepRevision(s.id);ok++;});
     }
@@ -1780,9 +1822,10 @@ let messVoiceTouched = false;
 let messPartnerName = 'Cô nàng nổi loạn 🦄';
 let messPendingImage = null;
 let messSideVoiceIdx = { theirs: 0, mine: 8 };
+let messTtsSpeed = 1;
 
 function messVoiceOptions(selected) {
-  return ttsVoices.map((v,i) => `<option value="${i}" ${String(i)===String(selected)?'selected':''}>${esc(v.label)}</option>`).join('');
+  return voiceOptionsHtml(selected);
 }
 function openMessengerModal(stepId = null) {
   messEditingStepId = stepId;
@@ -1791,14 +1834,17 @@ function openMessengerModal(stepId = null) {
   const s = stepId != null ? steps.find(x => x.id === stepId) : null;
   messPartnerName = (s && s.messPartnerName) || 'Cô nàng nổi loạn 🦄';
   messSideVoiceIdx = s && s.messSideVoices ? { ...s.messSideVoices } : { theirs: messengerVoiceIndexByLabel('Nhỏ Ngọt Ngào',0), mine: messengerVoiceIndexByLabel('Nam Minh',5) };
+  messTtsSpeed = Math.max(1, Math.min(2, Number(s?.messTtsSpeed || 1)));
   messPendingImage = null;
-  messDrafts = s ? (s.messHistory || []).map(x => ({...x})) : [];
+  messDrafts = s ? (s.messHistory || []).map(x => ({...x, voiceOverride:x.voiceOverride ?? true})) : [];
   document.getElementById('mess-modal-title').textContent = s ? 'Sửa tin nhắn Messenger' : 'Thêm đoạn chat Messenger';
   document.getElementById('mess-json-paste-wrap').style.display = 'none';
   document.getElementById('mess-json-paste').value = '';
   document.getElementById('mess-partner-name').value = messPartnerName;
   document.getElementById('mess-theirs-voice').innerHTML=messVoiceOptions(messSideVoiceIdx.theirs);
   document.getElementById('mess-mine-voice').innerHTML=messVoiceOptions(messSideVoiceIdx.mine);
+  document.getElementById('mess-tts-speed').value=String(messTtsSpeed);
+  document.getElementById('mess-tts-speed-label').textContent=messTtsSpeed.toFixed(2)+'×';
   document.getElementById('mess-add-btn').style.display = s ? 'none' : 'block';
   document.getElementById('mess-finish-btn').textContent = s ? 'Lưu thay đổi' : 'Tạo kịch bản Messenger';
   const current = s ? messDrafts[messDrafts.length - 1] : null;
@@ -1809,7 +1855,7 @@ function openMessengerModal(stepId = null) {
   document.getElementById('mess-image-side').value = current ? current.side : 'theirs';
   document.getElementById('mess-image-url').value = current && current.imageUrl && /^https?:/i.test(current.imageUrl) ? current.imageUrl : '';
   renderMessengerImagePreview();
-  document.getElementById('mess-voice').innerHTML = '<option value="">Theo giọng mặc định của bên gửi</option>' + messVoiceOptions(current ? current.voiceIdx : null);
+  document.getElementById('mess-voice').innerHTML = '<option value="">Theo giọng mặc định của bên gửi</option>' + messVoiceOptions(current?.voiceOverride ? current.voiceIdx : null);
   document.getElementById('mess-tts-status').textContent = '';
   renderMessengerDrafts();
   document.getElementById('mess-modal-overlay').classList.add('open');
@@ -1825,6 +1871,15 @@ function onMessSideInput(side) {
 function messengerDefaultVoice(side) {
   return messSideVoiceIdx[side] ?? (side === 'mine' ? 8 : 0);
 }
+function setMessengerSideVoice(side, value) {
+  const voiceIdx=parseInt(value,10);
+  if(Number.isNaN(voiceIdx))return;
+  messSideVoiceIdx[side]=voiceIdx;
+  for(const msg of messDrafts){
+    if(msg.side===side && !msg.voiceOverride)msg.voiceIdx=voiceIdx;
+  }
+  renderMessengerDrafts();
+}
 function messengerVoiceIndexByLabel(label,fallback){const idx=ttsVoices.findIndex(v=>v.label===label);return idx>=0?idx:fallback;}
 function readMessengerComposer() {
   const theirs = document.getElementById('mess-theirs').value.trim();
@@ -1832,7 +1887,7 @@ function readMessengerComposer() {
   if (!theirs && !mine && !messPendingImage) return null;
   const side = mine ? 'mine' : theirs ? 'theirs' : document.getElementById('mess-image-side').value;
   const selectedOverride=parseInt(document.getElementById('mess-voice').value,10);
-  return { side, text: mine || theirs, ttsText: document.getElementById('mess-tts').value.trim() || mine || theirs, voiceIdx: Number.isNaN(selectedOverride)?messengerDefaultVoice(side):selectedOverride, imageUrl: messPendingImage?.url || null, imageName: messPendingImage?.name || null };
+  return { side, text: mine || theirs, ttsText: document.getElementById('mess-tts').value.trim() || mine || theirs, voiceIdx: Number.isNaN(selectedOverride)?messengerDefaultVoice(side):selectedOverride, voiceOverride:!Number.isNaN(selectedOverride), imageUrl: messPendingImage?.url || null, imageName: messPendingImage?.name || null };
 }
 function renderMessengerImagePreview() {
   const box=document.getElementById('mess-image-preview');
@@ -1866,6 +1921,9 @@ function applyMessengerJson(raw) {
     if (Number.isInteger(Number(mineVoice))) messSideVoiceIdx.mine = Number(mineVoice);
     document.getElementById('mess-theirs-voice').value = String(messSideVoiceIdx.theirs);
     document.getElementById('mess-mine-voice').value = String(messSideVoiceIdx.mine);
+    messTtsSpeed=Math.max(1,Math.min(2,Number(raw.ttsSpeed || 1)));
+    document.getElementById('mess-tts-speed').value=String(messTtsSpeed);
+    document.getElementById('mess-tts-speed-label').textContent=messTtsSpeed.toFixed(2)+'×';
   }
   const items = Array.isArray(raw) ? raw : raw.messages;
   if (!Array.isArray(items) || !items.length) throw new Error('JSON phải là một mảng hoặc object có mảng "messages".');
@@ -1876,7 +1934,9 @@ function applyMessengerJson(raw) {
     const text = String(item.text ?? '').trim();
     const imageUrl = String(item.imageUrl ?? '').trim();
     if (!side || (!text && !imageUrl)) throw new Error(`Tin thứ ${i + 1} thiếu side hợp lệ hoặc cả text/imageUrl đều trống.`);
-    return { side, text, ttsText: String(item.ttsText ?? text).trim() || text, voiceIdx: messengerDefaultVoice(side), imageUrl: imageUrl || null, imageName: item.imageName || null };
+    const importedVoiceIdx=Number(item.voiceIdx);
+    const hasVoiceOverride=item.voiceIdx!==undefined && Number.isInteger(importedVoiceIdx);
+    return { side, text, ttsText: String(item.ttsText ?? text).trim() || text, voiceIdx: hasVoiceOverride?importedVoiceIdx:messengerDefaultVoice(side), voiceOverride:hasVoiceOverride, imageUrl: imageUrl || null, imageName: item.imageName || null };
   });
   messPartnerName = Array.isArray(raw) ? 'Cô nàng nổi loạn 🦄' : String(raw.partnerName || raw.name || 'Cô nàng nổi loạn 🦄').trim();
   document.getElementById('mess-partner-name').value = messPartnerName;
@@ -1918,11 +1978,11 @@ async function submitMessengerConversation() {
     if (!s || !msg) { alert('Tin nhắn không được để trống.'); return; }
     finish.disabled=true;
     try {
-      let r=null; if (!document.getElementById('tts-disabled-toggle').checked && msg.ttsText) { status.textContent='🔊 Đang tạo lại giọng đọc...'; r=await fetchTts(msg.ttsText,msg.voiceIdx); }
+      let r=null; if (!document.getElementById('tts-disabled-toggle').checked && msg.ttsText) { status.textContent='🔊 Đang tạo lại giọng đọc...'; r=await fetchTts(msg.ttsText,msg.voiceIdx,false,messTtsSpeed); }
       const idx=(s.messHistory||[]).length-1; const conv=s.conversationId;
       messSideVoiceIdx={theirs:parseInt(document.getElementById('mess-theirs-voice').value,10),mine:parseInt(document.getElementById('mess-mine-voice').value,10)};
       messPartnerName=document.getElementById('mess-partner-name').value.trim()||'Cô nàng nổi loạn 🦄';
-      for(const related of steps.filter(x=>x.type==='mess'&&x.conversationId===conv)){related.messPartnerName=messPartnerName;related.messSideVoices={...messSideVoiceIdx};}
+      for(const related of steps.filter(x=>x.type==='mess'&&x.conversationId===conv)){related.messPartnerName=messPartnerName;related.messSideVoices={...messSideVoiceIdx};related.messTtsSpeed=messTtsSpeed;}
       for (const later of steps.filter(x=>x.type==='mess'&&x.conversationId===conv&&((x.messIndex??0)>=idx))) if(later.messHistory&&later.messHistory[idx]) later.messHistory[idx]={...msg};
       s.text=msg.text;s.ttsText=msg.ttsText;s.voiceIdx=msg.voiceIdx;s.audioUrl=r?r.audioUrl:null;s.ttsDuration=r?r.duration:null;if(r)s.duration=r.duration;
       for (const x of steps.filter(x=>x.type==='mess'&&x.conversationId===conv)) bumpStepRevision(x.id);
@@ -1950,12 +2010,21 @@ async function submitMessengerConversation() {
       });
       const chunks = [];
       for (const [voiceIdx, items] of byVoice) {
-        for (let start=0; start<items.length; start+=50) chunks.push({ voiceIdx, items: items.slice(start,start+50) });
+        if(isEdgeVoiceIdx(voiceIdx)){
+          for(let i=0;i<items.length;i++){
+            status.textContent=`🔊 Edge TTS ${i+1}/${items.length} (từng tin nhắn)...`;
+            const result=await fetchEdgeTtsReliable(items[i].text,voiceIdx,messTtsSpeed);
+            ttsResults.set(items[i].index,result);
+            await waitMs(700);
+          }
+        }else{
+          for (let start=0; start<items.length; start+=50) chunks.push({ voiceIdx, items: items.slice(start,start+50) });
+        }
       }
       for (let ci=0; ci<chunks.length; ci++) {
         const chunk=chunks[ci];
         status.textContent=`🔊 Đang tạo TTS batch ${ci+1}/${chunks.length} (${chunk.items.length} đoạn)...`;
-        const results=await fetchTtsBatch(chunk.items.map(x=>x.text),chunk.voiceIdx);
+        const results=await fetchTtsBatch(chunk.items.map(x=>x.text),chunk.voiceIdx,messTtsSpeed);
         if(results.length!==chunk.items.length)throw new Error('TTS batch trả về thiếu đoạn');
         chunk.items.forEach((item,j)=>ttsResults.set(item.index,results[j]));
       }
@@ -1963,7 +2032,7 @@ async function submitMessengerConversation() {
     for(let i=0;i<messDrafts.length;i++){
       const msg=messDrafts[i];
       const r=ttsResults.get(i)||null;
-      history.push({...msg}); steps.push({id:stepIdCounter++,type:'mess',conversationId:conv,messIndex:i,messPartnerName:document.getElementById('mess-partner-name').value.trim()||'Cô nàng nổi loạn 🦄',messSideVoices:{...messSideVoiceIdx},messHistory:history.map(x=>({...x})),text:msg.text,ttsText:msg.ttsText,voiceIdx:msg.voiceIdx,audioUrl:r?r.audioUrl:null,ttsDuration:r?r.duration:null,duration:r?r.duration:DEFAULT_DUR.mess,gap:0,clearBefore:true,hue:0,offsetX:0,offsetY:0,rotation:0});
+      history.push({...msg}); steps.push({id:stepIdCounter++,type:'mess',conversationId:conv,messIndex:i,messPartnerName:document.getElementById('mess-partner-name').value.trim()||'Cô nàng nổi loạn 🦄',messSideVoices:{...messSideVoiceIdx},messTtsSpeed,messHistory:history.map(x=>({...x})),text:msg.text,ttsText:msg.ttsText,voiceIdx:msg.voiceIdx,audioUrl:r?r.audioUrl:null,ttsDuration:r?r.duration:null,duration:r?r.duration:DEFAULT_DUR.mess,gap:0,clearBefore:true,hue:0,offsetX:0,offsetY:0,rotation:0});
     }
   }catch(e){alert('Không tạo được giọng đọc: '+e.message);finish.disabled=false;return}
   finish.disabled=false;closeMessengerModal();renderStepList();renderIdleScene();
@@ -2582,7 +2651,7 @@ function renderExtraTtsSegmentsUI() {
   if (!box) return;
   box.innerHTML = modalExtraTts.map((seg, i) => {
     const opts = ttsVoices.length
-      ? ttsVoices.map((v, vi) => voiceOptionHtml(v, vi, String(vi) === String(seg.voiceIdx ?? ''))).join('')
+      ? voiceOptionsHtml(seg.voiceIdx ?? '')
       : '';
     return `<div style="border-top:1px dashed #2a3050;margin-top:10px;padding-top:10px">
       <label style="display:flex;justify-content:space-between;align-items:center">

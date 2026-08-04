@@ -16,6 +16,7 @@ Cách dùng:
 
 import argparse
 import asyncio
+import json
 import os
 import re
 import shutil
@@ -495,7 +496,7 @@ def translate_srt(cues: list[dict], groq_key: str,
 CAPCUT_DEVICE_ID = os.environ.get("CAPCUT_DEVICE_ID", "7581502458217252368")
 CAPCUT_IID       = os.environ.get("CAPCUT_IID",       "7581504179703056144")
 
-CAPCUT_VOICES_VI = [
+_CAPCUT_VOICES_VI_FALLBACK = [
     ("Nhỏ Ngọt Ngào",       "BV421_vivn_streaming",                   "7252594014782755330"),
     ("Cô Gái Hoạt Ngôn",    "BV074_streaming",                        "7102355709945188865"),
     ("Giọng Nữ Phổ Thông",  "vi_female_huong",                        "7264854897953083905"),
@@ -507,6 +508,44 @@ CAPCUT_VOICES_VI = [
     ("Thanh Niên Tự Tin",   "BV075_streaming",                        "7102355803792740865"),
     ("Giọng Nam Trầm",      "multi_male_felipe_uranus_bigtts",        "7637456729696996628"),
     ("Alex Đại Đế",          "BV560_streaming",                        "7483736167565758992"),
+]
+
+
+def _load_capcut_voices_vi() -> list[tuple[str, str, str]]:
+    """Đọc danh sách giọng Việt từ file dữ liệu CapCut dùng chung.
+
+    Giữ fallback viết cứng để app vẫn khởi động được nếu Voice.json bị
+    thiếu/hỏng, nhưng khi file hợp lệ thì đây là source of truth duy nhất.
+    """
+    voice_path = BASE_DIR / "capcut-tts-api-main" / "Voice.json"
+    try:
+        raw = json.loads(voice_path.read_text(encoding="utf-8"))
+        voices = []
+        for item in raw:
+            if not str(item.get("lang", "")).lower().startswith("vi"):
+                continue
+            voice_type = str(item.get("voice_type") or "").strip()
+            resource_id = str(item.get("resource_id") or "").strip()
+            if not voice_type or not resource_id:
+                continue
+            label = str(item.get("display_name") or voice_type).strip()
+            voices.append((label, voice_type, resource_id))
+        if voices:
+            return voices
+    except (OSError, ValueError, TypeError):
+        pass
+    return list(_CAPCUT_VOICES_VI_FALLBACK)
+
+
+_ALL_VOICES_VI = _load_capcut_voices_vi()
+EDGE_VOICES_VI = [
+    (label, voice_type)
+    for label, voice_type, _resource_id in _ALL_VOICES_VI
+    if voice_type.lower().endswith("neural")
+]
+CAPCUT_VOICES_VI = [
+    voice for voice in _ALL_VOICES_VI
+    if not voice[1].lower().endswith("neural")
 ]
 
 
