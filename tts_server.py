@@ -10,15 +10,22 @@ Chạy: python3 threads/tts_server.py  (mặc định cổng 8007, các server k
 trong repo dùng 8004/8005/8006 nên tránh trùng).
 """
 import os
+import json
 import random
+import re
 import sys
 import uuid
+import threading
+import time
+import asyncio
+import subprocess
 from pathlib import Path
 
 from dotenv import load_dotenv
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse
+from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 
 BASE_DIR = Path(__file__).resolve().parent.parent  # gốc repo, nơi có translate_video.py
@@ -29,14 +36,22 @@ import translate_video as tv  # noqa: E402  (tái dùng capcut_tts_batch + danh 
 
 AUDIO_DIR = Path(__file__).resolve().parent / "tts_audio"
 AUDIO_DIR.mkdir(exist_ok=True)
+VIDEO_PHANBIET_DIR = BASE_DIR / "allYoutube" / "videoPhanBiet"
+EXPORT_DIR = VIDEO_PHANBIET_DIR / "exports"
+EXPORT_DIR.mkdir(exist_ok=True)
+FFMPEG_BIN = os.environ.get("FFMPEG_BIN", "ffmpeg")
+FFPROBE_BIN = os.environ.get("FFPROBE_BIN", "ffprobe")
 
 app = FastAPI(title="Threads TTS Service")
+AI_REQUEST_LOCK = threading.Lock()
+export_jobs: dict[str, dict] = {}
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
     allow_methods=["*"],
     allow_headers=["*"],
 )
+app.mount("/videoPhanBiet", StaticFiles(directory=str(VIDEO_PHANBIET_DIR)), name="videoPhanBiet")
 
 
 class TTSRequest(BaseModel):
@@ -53,14 +68,104 @@ class TTSRequest(BaseModel):
     echo: bool = False
 
 
+class TTSBatchRequest(BaseModel):
+    texts: list[str]
+    voice_type: str | None = None
+    resource_id: str | None = None
+    rate: str = "1.0"
+    echo: bool = False
+
+
+class MixedTTSItem(BaseModel):
+    text: str
+    englishPhrases: list[str] = []
+
+
+class MixedTTSBatchRequest(BaseModel):
+    items: list[MixedTTSItem]
+    vi_voice_type: str | None = None
+    vi_resource_id: str | None = None
+    en_voice_type: str | None = None
+    en_resource_id: str | None = None
+    rate: str = "1.0"
+
+
+class GenerateComparisonsRequest(BaseModel):
+    count: int
+    theme: str = ""
+
+
+class ExportTrack(BaseModel):
+    comparisonIndex: int
+    scene: str
+    audioUrl: str
+    duration: float
+
+
+class ExportPhanBietRequest(BaseModel):
+    comparisons: list[dict]
+    tracks: list[ExportTrack]
+
+
 def _probe_duration(path: Path) -> float:
-    import subprocess
     r = subprocess.run(
-        ["ffprobe", "-v", "quiet", "-show_entries", "format=duration",
+        [FFPROBE_BIN, "-v", "quiet", "-show_entries", "format=duration",
          "-of", "csv=p=0", str(path)],
         capture_output=True, text=True,
     )
     return float(r.stdout.strip() or "0")
+
+
+def _voice_json_by_lang(lang_prefix: str) -> list[dict]:
+    voice_path = BASE_DIR / "capcut-tts-api-main" / "Voice.json"
+    if not voice_path.exists():
+        return []
+    voices = json.loads(voice_path.read_text(encoding="utf-8"))
+    return [
+        {
+            "label": str(item.get("display_name") or item.get("voice_type")).strip(),
+            "voice_type": item.get("voice_type"),
+            "resource_id": item.get("resource_id"),
+        }
+        for item in voices
+        if str(item.get("lang", "")).lower().startswith(lang_prefix.lower())
+        and item.get("voice_type")
+        and item.get("resource_id")
+    ]
+
+
+def _split_mixed_text(text: str, english_phrases: list[str]) -> list[tuple[str, str]]:
+    clean_text = " ".join((text or "").split())
+    phrases = sorted({" ".join(p.split()) for p in english_phrases if p and p.strip()}, key=len, reverse=True)
+    if not clean_text or not phrases:
+        return [("vi", clean_text)] if clean_text else []
+
+    pattern = re.compile("|".join(re.escape(p) for p in phrases), re.IGNORECASE)
+    pieces: list[tuple[str, str]] = []
+    cursor = 0
+    for match in pattern.finditer(clean_text):
+        if match.start() > cursor:
+            pieces.append(("vi", clean_text[cursor:match.start()].strip()))
+        pieces.append(("en", match.group(0).strip()))
+        cursor = match.end()
+    if cursor < len(clean_text):
+        pieces.append(("vi", clean_text[cursor:].strip()))
+    return [(lang, part) for lang, part in pieces if part]
+
+
+def _concat_audio(parts: list[Path], out_path: Path) -> None:
+    if len(parts) == 1:
+        parts[0].replace(out_path)
+        return
+    list_path = out_path.with_suffix(".concat.txt")
+    list_path.write_text("".join(f"file '{p.as_posix()}'\n" for p in parts), encoding="utf-8")
+    subprocess.run(
+        [FFMPEG_BIN, "-y", "-f", "concat", "-safe", "0", "-i", str(list_path), "-c", "copy", str(out_path)],
+        capture_output=True,
+        text=True,
+        check=True,
+    )
+    list_path.unlink(missing_ok=True)
 
 
 def _apply_echo(path: Path) -> None:
@@ -70,14 +175,13 @@ def _apply_echo(path: Path) -> None:
     1 câu thoại cho hài/gây cười, không phải hiệu ứng vọng liên tục kiểu
     phòng lớn. in_gain=0.8, out_gain=0.7 (tiếng dội nhỏ hơn gốc, không đè
     lấn), delay=60ms (đủ tách bạch, không dính liền thành tiếng đôi), decay=0.4."""
-    import subprocess
     tmp_out = path.with_suffix(".echo.mp3")
     # BUG đã gặp lúc verify: không chỉ định -b:a, FFmpeg tự chọn bitrate mp3
     # mặc định rất thấp (~33kbps thay vì 160kbps gốc CapCut trả về) — nghe
     # rè/mất chất lượng rõ rệt dù hiệu ứng echo đúng. Ép lại đúng 160k để
     # khớp chất lượng gốc.
     subprocess.run(
-        ["ffmpeg", "-y", "-i", str(path), "-af", "aecho=0.8:0.7:60:0.4", "-b:a", "160k", str(tmp_out)],
+        [FFMPEG_BIN, "-y", "-i", str(path), "-af", "aecho=0.8:0.7:60:0.4", "-b:a", "160k", str(tmp_out)],
         capture_output=True, check=True,
     )
     tmp_out.replace(path)
@@ -85,9 +189,23 @@ def _apply_echo(path: Path) -> None:
 
 @app.get("/voices")
 def list_voices():
+    voices = _voice_json_by_lang("vi")
+    if voices:
+        return voices
     return [
         {"label": label, "voice_type": voice_type, "resource_id": resource_id}
         for label, voice_type, resource_id in tv.CAPCUT_VOICES_VI
+    ]
+
+
+@app.get("/voices-en")
+def list_english_voices():
+    voices = _voice_json_by_lang("en")
+    if voices:
+        return voices
+    return [
+        {"label": "English", "voice_type": "BV510_streaming", "resource_id": "7081169180120060418"},
+        {"label": "American Female", "voice_type": "BV029_streaming", "resource_id": "6898240012404396546"},
     ]
 
 
@@ -121,6 +239,360 @@ def generate_tts(req: TTSRequest):
             last_err = e
             current_did = str(random.randint(7000000000000000000, 7999999999999999999))
     raise HTTPException(502, f"CapCut TTS lỗi sau 5 lần đổi device_id: {last_err}")
+
+
+@app.post("/tts-batch")
+def generate_tts_batch(req: TTSBatchRequest):
+    """Tạo tối đa 50 đoạn trong đúng một task CapCut để giảm số request."""
+    texts = [text.strip() for text in req.texts]
+    if not texts or any(not text for text in texts):
+        raise HTTPException(400, "texts phải là mảng các chuỗi không rỗng")
+    if len(texts) > 50:
+        raise HTTPException(400, "Mỗi batch tối đa 50 đoạn")
+
+    voice_type = req.voice_type or tv.CAPCUT_VOICES_VI[1][1]
+    resource_id = req.resource_id or tv.CAPCUT_VOICES_VI[1][2]
+    device_id = os.environ.get("CAPCUT_DEVICE_ID")
+    if not device_id:
+        raise HTTPException(500, "Thiếu CAPCUT_DEVICE_ID trong .env")
+
+    names = [f"{uuid.uuid4().hex}.mp3" for _ in texts]
+    paths = [AUDIO_DIR / name for name in names]
+    current_did = device_id
+    last_err = None
+    for _attempt in range(5):
+        try:
+            tv.capcut_tts_batch(texts, voice_type, resource_id, paths, current_did, rate=req.rate)
+            if req.echo:
+                for path in paths:
+                    _apply_echo(path)
+            items = []
+            for name, path in zip(names, paths):
+                duration = _probe_duration(path)
+                if duration <= 0:
+                    raise RuntimeError(f"File TTS {name} rỗng/0 giây")
+                items.append({"audio_url": f"/audio/{name}", "duration": duration})
+            return {"items": items}
+        except Exception as exc:
+            last_err = exc
+            current_did = str(random.randint(7000000000000000000, 7999999999999999999))
+    for path in paths:
+        path.unlink(missing_ok=True)
+    raise HTTPException(502, f"CapCut TTS batch lỗi sau 5 lần đổi device_id: {last_err}")
+
+
+@app.post("/tts-mixed-batch")
+def generate_tts_mixed_batch(req: MixedTTSBatchRequest):
+    if not req.items or len(req.items) > 50:
+        raise HTTPException(400, "items phải có từ 1 đến 50 đoạn")
+
+    vi_voice_type = req.vi_voice_type or tv.CAPCUT_VOICES_VI[1][1]
+    vi_resource_id = req.vi_resource_id or tv.CAPCUT_VOICES_VI[1][2]
+    en_fallback = list_english_voices()[0]
+    en_voice_type = req.en_voice_type or en_fallback["voice_type"]
+    en_resource_id = req.en_resource_id or en_fallback["resource_id"]
+    device_id = os.environ.get("CAPCUT_DEVICE_ID")
+    if not device_id:
+        raise HTTPException(500, "Thiếu CAPCUT_DEVICE_ID trong .env")
+
+    split_items = [_split_mixed_text(item.text, item.englishPhrases) for item in req.items]
+    flat_parts = [(item_index, part_index, lang, text)
+                  for item_index, parts in enumerate(split_items)
+                  for part_index, (lang, text) in enumerate(parts)]
+    if not flat_parts:
+        raise HTTPException(400, "Không có nội dung TTS")
+
+    part_paths: dict[tuple[int, int], Path] = {}
+    current_device_id = device_id
+    last_err = None
+    for _attempt in range(5):
+        try:
+            part_paths.clear()
+            for lang in ("vi", "en"):
+                batch = [(item_index, part_index, text)
+                         for item_index, part_index, part_lang, text in flat_parts
+                         if part_lang == lang]
+                if not batch:
+                    continue
+                voice_type = vi_voice_type if lang == "vi" else en_voice_type
+                resource_id = vi_resource_id if lang == "vi" else en_resource_id
+                for start in range(0, len(batch), 50):
+                    chunk = batch[start:start + 50]
+                    paths = [AUDIO_DIR / f"{uuid.uuid4().hex}.mp3" for _ in chunk]
+                    texts = [text for _item_index, _part_index, text in chunk]
+                    tv.capcut_tts_batch(texts, voice_type, resource_id, paths, current_device_id, rate=req.rate)
+                    for (item_index, part_index, _text), path in zip(chunk, paths):
+                        part_paths[(item_index, part_index)] = path
+
+            items = []
+            for item_index, parts in enumerate(split_items):
+                out_name = f"{uuid.uuid4().hex}.mp3"
+                out_path = AUDIO_DIR / out_name
+                ordered_paths = [part_paths[(item_index, part_index)] for part_index in range(len(parts))]
+                _concat_audio(ordered_paths, out_path)
+                duration = _probe_duration(out_path)
+                if duration <= 0:
+                    raise RuntimeError(f"File mixed TTS {out_name} rỗng/0 giây")
+                items.append({"audio_url": f"/audio/{out_name}", "duration": duration})
+            return {"items": items}
+        except Exception as exc:
+            last_err = exc
+            current_device_id = str(random.randint(7000000000000000000, 7999999999999999999))
+    raise HTTPException(502, f"CapCut mixed TTS lỗi sau 5 lần đổi device_id: {last_err}")
+
+
+@app.post("/generate-comparisons")
+def generate_comparisons(req: GenerateComparisonsRequest):
+    if req.count < 1 or req.count > 50:
+        raise HTTPException(400, "Số cặp phải từ 1 đến 50")
+    api_key = os.environ.get("BEEKNOEE_API_KEY2", "").strip()
+    if not api_key:
+        raise HTTPException(500, "Thiếu BEEKNOEE_API_KEY2 trong .env")
+
+    from openai import OpenAI
+    client = OpenAI(api_key=api_key, base_url=tv.BEEKNOEE_BASE_URL)
+    theme = req.theme.strip()
+    theme_instruction = (
+        f"Chủ đề chung người dùng muốn: {theme}." if theme
+        else "Tự chọn các cặp khái niệm rất gần nhau về nghĩa, hình thức hoặc ngữ cảnh sử dụng để người xem dễ nhầm."
+    )
+    prompt = f"""Tạo đúng {req.count} cặp khái niệm để làm video giáo dục ngắn dạng “gần giống nhau nhưng khác nhau”.
+{theme_instruction}
+
+Yêu cầu:
+- Mỗi cặp phải là hai khái niệm gần nhau, thường bị nhầm lẫn, nhưng khác nhau thật sự ở bản chất hoặc sắc thái.
+- Ưu tiên các cặp có tính “fact” hoặc kiến thức đời sống, ngôn ngữ, tâm lý, xã hội, thói quen, cảm xúc, không chọn những cặp quá xa nhau.
+- Mỗi cặp phải hữu ích, dễ hiểu, không lặp ý với cặp khác.
+- topicA và topicB ngắn gọn, ưu tiên 1 đến 4 từ.
+- explanationA và explanationB là câu giải thích tiếng Việt tự nhiên, chính xác, khoảng 15 đến 30 từ, tự chứa tên khái niệm để TTS đọc trực tiếp.
+- imageA và imageB để chuỗi rỗng.
+- Không tạo nội dung nguy hiểm, thù ghét hoặc khẳng định y khoa/pháp lý thiếu căn cứ.
+
+Trả về duy nhất JSON array hợp lệ, không markdown, đúng cấu trúc:
+[
+  {{
+    "topicA": "...",
+    "topicB": "...",
+    "explanationA": "...",
+    "explanationB": "...",
+    "imageA": "",
+    "imageB": ""
+  }}
+]
+Mảng phải có đúng {req.count} phần tử."""
+
+    try:
+        with AI_REQUEST_LOCK:
+            last_error = None
+            raw = ""
+            for attempt in range(5):
+                try:
+                    response = client.chat.completions.create(
+                        model="google/gemini-2.5-flash-lite",
+                        messages=[
+                            {"role": "system", "content": "Bạn là biên tập viên nội dung giáo dục tiếng Việt. Luôn trả về JSON thuần hợp lệ."},
+                            {"role": "user", "content": prompt},
+                        ],
+                        temperature=0.7,
+                        max_tokens=12000,
+                    )
+                    raw = (response.choices[0].message.content or "").strip()
+                    break
+                except Exception as exc:
+                    last_error = exc
+                    message = str(exc).lower()
+                    if "concurrent_limit_exceeded" not in message and "too many concurrent requests" not in message:
+                        raise
+                    time.sleep(1.5 * (attempt + 1))
+            else:
+                raise last_error or RuntimeError("AI request failed")
+
+        raw = re.sub(r"^```(?:json)?\s*|\s*```$", "", raw, flags=re.IGNORECASE)
+        try:
+            data = json.loads(raw)
+        except json.JSONDecodeError:
+            start, end = raw.find("["), raw.rfind("]")
+            if start < 0 or end <= start:
+                raise
+            data = json.loads(raw[start:end + 1])
+        if not isinstance(data, list) or len(data) != req.count:
+            raise ValueError(f"AI trả {len(data) if isinstance(data, list) else 0}/{req.count} cặp")
+        required = ("topicA", "topicB", "explanationA", "explanationB")
+        cleaned = []
+        for index, item in enumerate(data):
+            if not isinstance(item, dict) or any(not str(item.get(key, "")).strip() for key in required):
+                raise ValueError(f"Cặp {index + 1} thiếu trường bắt buộc")
+            cleaned.append({
+                "topicA": str(item["topicA"]).strip(),
+                "topicB": str(item["topicB"]).strip(),
+                "explanationA": str(item["explanationA"]).strip(),
+                "explanationB": str(item["explanationB"]).strip(),
+                "imageA": "",
+                "imageB": "",
+            })
+        return {"comparisons": cleaned, "model": "google/gemini-2.5-flash-lite"}
+    except HTTPException:
+        raise
+    except Exception as exc:
+        raise HTTPException(502, f"Beeknoee AI lỗi: {exc}")
+
+
+def _export_timeline(tracks: list[ExportTrack]) -> list[dict]:
+    cursor = 0.0
+    segments = []
+    for index, track in enumerate(tracks):
+        duration = max(0.1, float(track.duration) + 0.2)
+        segment = {
+            "index": index,
+            "comparisonIndex": track.comparisonIndex,
+            "scene": track.scene,
+            "start": cursor,
+            "end": cursor + duration,
+            "duration": duration,
+            "audioUrl": track.audioUrl,
+        }
+        segments.append(segment)
+        cursor = segment["end"]
+    return segments
+
+
+def _audio_path_from_url(audio_url: str) -> Path:
+    filename = audio_url.rstrip("/").split("/")[-1]
+    path = AUDIO_DIR / filename
+    if not path.exists():
+        raise RuntimeError(f"Không tìm thấy audio: {filename}")
+    return path
+
+
+def _set_export_job(job_id: str, **kwargs) -> None:
+    export_jobs[job_id].update(kwargs)
+
+
+async def _render_phanbiet_frames(job_id: str, comparisons: list[dict], segments: list[dict], job_dir: Path) -> list[Path]:
+    from playwright.async_api import async_playwright
+
+    frame_paths = []
+    async with async_playwright() as p:
+        browser = await p.chromium.launch()
+        page = await browser.new_page(viewport={"width": 1080, "height": 1920}, device_scale_factor=1)
+        await page.goto("http://localhost:8007/videoPhanBiet/export_render.html")
+        await page.wait_for_load_state("networkidle")
+        await page.evaluate("setExportProject", {"comparisons": comparisons, "segments": segments})
+        for index, _segment in enumerate(segments):
+            await page.evaluate("renderExportSegment", index)
+            frame_path = job_dir / f"frame_{index:04d}.png"
+            await page.locator("#video-stage").screenshot(path=str(frame_path), omit_background=False)
+            frame_paths.append(frame_path)
+            pct = 5 + int(((index + 1) / max(len(segments), 1)) * 50)
+            _set_export_job(job_id, progress=pct, message=f"Đang chụp cảnh {index + 1}/{len(segments)}...")
+        await browser.close()
+    return frame_paths
+
+
+def _build_phanbiet_ffmpeg(frame_paths: list[Path], segments: list[dict], out_path: Path) -> list[str]:
+    inputs = []
+    filters = []
+    video_labels = []
+    for index, (frame_path, segment) in enumerate(zip(frame_paths, segments)):
+        duration = segment["duration"]
+        inputs += ["-loop", "1", "-t", f"{duration:.3f}", "-i", str(frame_path)]
+        label = f"v{index}"
+        filters.append(f"[{index}:v]scale=1080:1920,setsar=1,format=yuv420p[{label}]")
+        video_labels.append(label)
+
+    audio_labels = []
+    audio_start_index = len(frame_paths)
+    for offset, segment in enumerate(segments):
+        audio_path = _audio_path_from_url(segment["audioUrl"])
+        input_index = audio_start_index + offset
+        inputs += ["-i", str(audio_path)]
+        label = f"a{offset}"
+        ms = int(round(segment["start"] * 1000))
+        filters.append(f"[{input_index}:a]adelay={ms}|{ms},volume=1.0[{label}]")
+        audio_labels.append(label)
+
+    filters.append("".join(f"[{label}]" for label in video_labels) + f"concat=n={len(video_labels)}:v=1:a=0[vout]")
+    if audio_labels:
+        filters.append(
+            "".join(f"[{label}]" for label in audio_labels)
+            + f"amix=inputs={len(audio_labels)}:duration=longest:dropout_transition=0:normalize=0,alimiter=limit=0.97[aout]"
+        )
+    else:
+        filters.append("anullsrc=channel_layout=stereo:sample_rate=44100[aout]")
+
+    total_duration = segments[-1]["end"] if segments else 0.0
+    return [FFMPEG_BIN, "-y"] + inputs + [
+        "-filter_complex", ";".join(filters),
+        "-map", "[vout]",
+        "-map", "[aout]",
+        "-t", f"{total_duration:.3f}",
+        "-c:v", "libx264",
+        "-preset", "fast",
+        "-pix_fmt", "yuv420p",
+        "-c:a", "aac",
+        "-progress", "pipe:1",
+        str(out_path),
+    ]
+
+
+async def _run_phanbiet_export(job_id: str, req: ExportPhanBietRequest) -> None:
+    job_dir = EXPORT_DIR / job_id
+    job_dir.mkdir(exist_ok=True)
+    try:
+        if not req.comparisons:
+            raise RuntimeError("Chưa có cặp phân biệt nào")
+        expected_tracks = len(req.comparisons) * 5
+        if len(req.tracks) != expected_tracks:
+            raise RuntimeError("Cần tạo TTS đầy đủ trước khi xuất video")
+
+        segments = _export_timeline(req.tracks)
+        _set_export_job(job_id, status="rendering", progress=5, message="Đang dựng ảnh từng cảnh...")
+        frame_paths = await _render_phanbiet_frames(job_id, req.comparisons, segments, job_dir)
+
+        _set_export_job(job_id, status="encoding", progress=58, message="Đang ghép MP4 bằng FFmpeg...")
+        out_path = job_dir / "output.mp4"
+        cmd = _build_phanbiet_ffmpeg(frame_paths, segments, out_path)
+        (job_dir / "ffmpeg_cmd.txt").write_text(" ".join(cmd), encoding="utf-8")
+
+        total_duration = segments[-1]["end"]
+        proc = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
+        for line in proc.stdout:
+            match = re.search(r"out_time_ms=(\d+)", line)
+            if match:
+                done_s = int(match.group(1)) / 1_000_000
+                pct = 58 + int(min(done_s / max(total_duration, 0.1), 1) * 40)
+                _set_export_job(job_id, progress=pct, message=f"Đang encode... {done_s:.1f}s/{total_duration:.1f}s")
+        stderr_out = proc.stderr.read()
+        proc.wait()
+        if proc.returncode != 0:
+            raise RuntimeError(f"FFmpeg lỗi: {stderr_out[-1600:]}")
+        _set_export_job(job_id, status="done", progress=100, message="Hoàn tất!", downloadUrl=f"/export-phanbiet-download/{job_id}")
+    except Exception as exc:
+        _set_export_job(job_id, status="error", message=str(exc))
+
+
+@app.post("/export-phanbiet")
+async def export_phanbiet(req: ExportPhanBietRequest):
+    job_id = uuid.uuid4().hex[:12]
+    export_jobs[job_id] = {"status": "queued", "progress": 0, "message": "Đang chờ...", "downloadUrl": None}
+    asyncio.create_task(_run_phanbiet_export(job_id, req))
+    return {"job_id": job_id}
+
+
+@app.get("/export-phanbiet-status/{job_id}")
+def export_phanbiet_status(job_id: str):
+    job = export_jobs.get(job_id)
+    if not job:
+        raise HTTPException(404, "Không tìm thấy job export")
+    return job
+
+
+@app.get("/export-phanbiet-download/{job_id}")
+def export_phanbiet_download(job_id: str):
+    out_path = EXPORT_DIR / job_id / "output.mp4"
+    if not out_path.exists():
+        raise HTTPException(404, "File chưa sẵn sàng")
+    return FileResponse(out_path, media_type="video/mp4", filename=f"video-phan-biet-{job_id}.mp4")
 
 
 @app.get("/audio/{filename}")

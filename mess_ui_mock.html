@@ -1,0 +1,111 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>Messenger chat UI mock</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+@font-face{font-family:SFPro;src:local("SFNS"),local(".AppleSystemUIFont")}
+:root{--blue:#0084ff;--incoming:#f0f0f0;--text:#050505;--muted:#65676b}
+body{min-height:100vh;display:grid;place-items:center;padding:30px;background:#171717;font-family:SFPro,-apple-system,BlinkMacSystemFont,"Segoe UI",Arial,sans-serif;-webkit-font-smoothing:antialiased}
+.mock-controls{position:fixed;z-index:20;top:18px;right:18px;width:330px;padding:14px;border:1px solid #39405c;border-radius:12px;background:#0d1020;color:#e5e7eb;box-shadow:0 14px 45px #0008}.mock-controls h2{font-size:15px;margin-bottom:10px;color:#a78bfa}.mock-controls label{display:block;margin:8px 0 4px;font-size:11px;color:#9ca3af}.mock-controls input,.mock-controls select{width:100%;padding:8px;border:1px solid #343a57;border-radius:7px;background:#171b31;color:#fff}.mock-controls button{width:100%;margin-top:10px;padding:9px;border:0;border-radius:7px;background:#2563eb;color:#fff;font-weight:700;cursor:pointer}
+.frame{position:relative;width:1080px;height:1920px;overflow:hidden;background:linear-gradient(145deg,#355c7d,#6c5b7b 48%,#c06c84);box-shadow:0 20px 70px #000;border-radius:18px}
+.frame:before{content:"VIDEO NỀN / GAMEPLAY LOOP";position:absolute;inset:0;display:grid;place-items:center;color:#ffffff2c;font-size:38px;font-weight:800;letter-spacing:3px;transform:rotate(-12deg)}
+
+/* Tỷ lệ cửa sổ bám theo ảnh tham chiếu 330 × 454, không kéo full màn hình. */
+.chat-window{position:absolute;width:760px;height:1046px;left:160px;top:420px;display:flex;flex-direction:column;overflow:hidden;border-radius:24px;background:#fff;color:var(--text);box-shadow:0 24px 80px #0007}
+.chat-header{height:104px;flex:0 0 104px;display:flex;align-items:center;padding:12px 15px 12px 20px;border-bottom:1px solid #ddd;background:#fff}
+.avatar{position:relative;width:70px;height:70px;flex:0 0 70px;border-radius:50%;background:#d8dadf;overflow:visible}
+.avatar>img{width:100%;height:100%;display:block;border-radius:50%;object-fit:cover}
+.online{position:absolute;right:0;bottom:1px;width:18px;height:18px;border:3px solid #fff;border-radius:50%;background:#31a24c;z-index:2}
+.person{min-width:0;flex:1;padding-left:12px}.name-row{display:flex;align-items:center;gap:7px}.name{overflow:hidden;font-size:30px;font-weight:700;text-overflow:ellipsis;white-space:nowrap}.chevron{width:13px;height:13px;border-right:2px solid #8a8d91;border-bottom:2px solid #8a8d91;transform:rotate(45deg) translateY(-3px)}
+.actions{display:flex;align-items:center;gap:3px}.icon-btn{width:52px;height:52px;display:grid;place-items:center;border:0;border-radius:50%;background:transparent;color:var(--blue)}.icon-btn svg{width:36px;height:36px;fill:currentColor}.actions .small svg{width:31px;height:31px}
+
+.messages{position:relative;flex:1;overflow:hidden;padding:34px 22px 20px;background:#fff}.time{margin:0 0 24px;text-align:center;color:#8a8d91;font-size:21px;font-weight:600}.row{display:flex;align-items:flex-end;gap:10px;margin-top:7px}.row.mine{justify-content:flex-end;padding-left:130px}.row.theirs{padding-right:130px}.mini-avatar,.avatar-space{width:46px;height:46px;flex:0 0 46px}.mini-avatar{position:relative;overflow:hidden;border-radius:50%;background:#d8dadf}.mini-avatar img{width:100%;height:100%;display:block;object-fit:cover}
+.bubble{max-width:520px;padding:15px 22px 17px;border-radius:35px;background:var(--incoming);font-size:29px;line-height:1.27;overflow-wrap:anywhere}.mine .bubble{background:var(--blue);color:#fff}.theirs.first .bubble{border-bottom-left-radius:8px}.theirs.middle .bubble{border-top-left-radius:8px;border-bottom-left-radius:8px}.theirs.last .bubble{border-top-left-radius:8px}.mine.first .bubble{border-bottom-right-radius:8px}.mine.middle .bubble{border-top-right-radius:8px;border-bottom-right-radius:8px}.mine.last .bubble{border-top-right-radius:8px}
+.image-message{display:block;max-width:430px;max-height:330px;object-fit:cover;border-radius:28px;background:#e5e7eb}.image-message-error{width:330px;padding:25px;border-radius:28px;background:#f0f0f0;color:#65676b;font-size:22px;text-align:center}
+.seen{height:31px;display:flex;justify-content:flex-end;align-items:center}.seen .mini-avatar{width:24px;height:24px;flex-basis:24px}
+.typing{width:79px;height:49px;display:flex;align-items:center;justify-content:center;gap:6px;border-radius:25px;background:var(--incoming)}.typing i{width:9px;height:9px;border-radius:50%;background:#8a8d91}
+
+.composer{height:94px;flex:0 0 94px;display:flex;align-items:center;gap:5px;padding:13px 13px 18px;background:#fff}.composer .icon-btn{width:45px;height:45px;flex:0 0 45px}.composer .icon-btn svg{width:32px;height:32px}.input{height:56px;min-width:0;flex:1;display:flex;align-items:center;padding:0 10px 0 18px;border-radius:28px;background:#f0f2f5;color:#8a8d91;font-size:26px}.input span{flex:1}.input svg{width:33px;height:33px;flex:0 0 33px}.like{width:43px;flex:0 0 43px;text-align:center;color:var(--blue);font-size:39px;line-height:1}
+.label{position:absolute;top:24px;left:24px;padding:10px 16px;border-radius:8px;background:#000c;color:#6ee7b7;font:700 22px ui-monospace,monospace}
+</style>
+</head>
+<body>
+<aside class="mock-controls">
+  <h2>Test tin nhắn ảnh</h2>
+  <label>Người gửi</label>
+  <select id="mock-image-side"><option value="mine">Tôi — bên phải</option><option value="theirs">Đối phương — bên trái</option></select>
+  <label>Chọn ảnh từ máy</label>
+  <input type="file" id="mock-image-file" accept="image/*" onchange="previewMockImageFile(this.files[0])"/>
+  <label>Hoặc dán link ảnh web</label>
+  <input type="text" id="mock-image-url" placeholder="https://..."/>
+  <button type="button" onclick="previewMockImageUrl()">Hiển thị ảnh trong chat</button>
+</aside>
+<div class="frame">
+  <div class="label">MESSENGER CHAT OVERLAY MOCK</div>
+  <section class="chat-window">
+    <header class="chat-header">
+      <div class="avatar"><img class="default-avatar" alt="" referrerpolicy="no-referrer"/><span class="online"></span></div>
+      <div class="person"><div class="name-row"><div class="name">Cô nàng nổi loạn 🦄</div><span class="chevron"></span></div></div>
+      <div class="actions">
+        <button class="icon-btn" aria-label="Gọi"><svg viewBox="0 0 16 16"><path d="M4.776 1.111a1.728 1.728 0 0 0-2.56-.127l-.472.472a4.516 4.516 0 0 0-.739 5.415 21.46 21.46 0 0 0 8.123 8.123 4.516 4.516 0 0 0 5.415-.738L15 13.8a1.75 1.75 0 0 0-.13-2.591l-2.131-1.745a1.75 1.75 0 0 0-2.143-.056L9.22 10.416a.052.052 0 0 1-.06.002 12.077 12.077 0 0 1-3.578-3.58.052.052 0 0 1 .002-.058l1.008-1.375a1.75 1.75 0 0 0-.056-2.143l-1.76-2.15z"/></svg></button>
+        <button class="icon-btn" aria-label="Gọi video"><svg viewBox="0 0 16 16"><path d="M6.304 2h-.108c-1.133 0-2.058 0-2.79.098-.763.103-1.425.325-1.954.854C.923 3.48.7 4.142.598 4.907.5 5.637.5 6.563.5 7.697v.607c0 1.133 0 2.058.098 2.79.103.763.325 1.425.854 1.954.529.529 1.19.751 1.955.854.73.098 1.656.098 2.79.098h.107c1.133 0 2.058 0 2.79-.098.763-.103 1.425-.325 1.954-.854.529-.529.751-1.19.854-1.955.038-.286.062-.602.076-.949l1.93 1.418a1 1 0 0 0 1.592-.806V5.228a1 1 0 0 0-1.57-.822l-1.956 1.357a9.984 9.984 0 0 0-.072-.856c-.103-.764-.325-1.426-.854-1.955-.529-.529-1.19-.751-1.955-.854C8.363 2 7.437 2 6.303 2z"/></svg></button>
+        <button class="icon-btn small" aria-label="Thu gọn"><svg viewBox="0 0 16 16"><path d="M3 8a1 1 0 0 1 1-1h8a1 1 0 1 1 0 2H4a1 1 0 0 1-1-1z"/></svg></button>
+        <button class="icon-btn small" aria-label="Đóng"><svg viewBox="0 0 16 16"><path d="M13.457 3.957a1 1 0 0 0-1.414-1.414L8 6.586 3.957 2.543a1 1 0 0 0-1.414 1.414L6.586 8l-4.043 4.043a1 1 0 1 0 1.414 1.414L8 9.414l4.043 4.043a1 1 0 0 0 1.414-1.414L9.414 8l4.043-4.043z"/></svg></button>
+      </div>
+    </header>
+
+    <main class="messages">
+      <div class="time">19:38</div>
+      <div class="row mine"><div class="bubble">Kệ đi, mấy ngày nào rảnh anh ngủ bù.</div></div>
+      <div class="row theirs first"><div class="avatar-space"></div><div class="bubble">Má</div></div>
+      <div class="row theirs last"><div class="mini-avatar"><img class="default-avatar" alt="" referrerpolicy="no-referrer"/></div><div class="bubble">Vừa bị công an tóm.</div></div>
+      <div class="row mine first"><div class="bubble">Em bị tóm á?</div></div>
+      <div class="row mine middle"><div class="bubble">Có phạt không?</div></div>
+      <div class="row mine last"><div class="bubble">Lỗi gì thế?</div></div>
+      <div class="row mine" id="mock-image-row"><img class="image-message" id="mock-chat-image" src="commentIMG.jpg" alt="Ảnh trong tin nhắn"/></div>
+      <div class="seen"><div class="mini-avatar"><img class="default-avatar" alt="" referrerpolicy="no-referrer"/></div></div>
+      <div class="row theirs"><div class="mini-avatar"><img class="default-avatar" alt="" referrerpolicy="no-referrer"/></div><div class="typing"><i></i><i></i><i></i></div></div>
+    </main>
+
+    <footer class="composer">
+      <button class="icon-btn" aria-label="Tin nhắn thoại"><svg viewBox="0 0 16 16"><path d="M8 .5A3.5 3.5 0 0 0 4.5 4v4a3.5 3.5 0 1 0 7 0V4A3.5 3.5 0 0 0 8 .5z"/><path d="M8.749 13.954 8.75 14v.75a.75.75 0 0 1-1.5 0V14l.001-.046A6.001 6.001 0 0 1 2 8v-.25a.75.75 0 0 1 1.5 0V8a4.5 4.5 0 1 0 9 0v-.25a.75.75 0 0 1 1.5 0V8a6.001 6.001 0 0 1-5.251 5.954z"/></svg></button>
+      <button class="icon-btn" aria-label="Gửi hình ảnh"><svg viewBox="0 0 16 16"><path d="M7 4.25a1.25 1.25 0 1 1-2.5 0 1.25 1.25 0 0 1 2.5 0z"/><path d="M9.302.5H6.698C5.8.5 5.05.5 4.456.58c-.628.084-1.195.27-1.65.725-.456.456-.642 1.023-.726 1.65C2 3.55 2 4.3 2 5.199v5.604c0 .899 0 1.648.08 2.242.084.628.27 1.195.725 1.65a2.3 2.3 0 0 0 .81.522c.237.092.489.152.752.192.571.086 1.281.091 2.122.092h3.174c.795-.002 1.472-.011 2.023-.1.573-.094 1.088-.285 1.509-.705.455-.456.64-1.023.725-1.65.08-.595.08-1.344.08-2.243V5.198c0-.898 0-1.648-.08-2.242-.084-.628-.27-1.195-.726-1.65C12.74.85 12.172.663 11.544.58 10.95.5 10.2.5 9.302.5zm2.602 6.427a1.75 1.75 0 0 0-2.475 0L7 9.356l-.43-.43a1.75 1.75 0 0 0-2.474 0l-.596.597V5.25c0-.964.002-1.612.067-2.095.062-.461.169-.659.3-.789.13-.13.327-.237.788-.3C5.138 2.003 5.786 2 6.75 2h2.5c.964 0 1.612.002 2.095.067.461.062.659.169.789.3.13.13.237.327.3.788.064.483.066 1.131.066 2.095v2.272l-.596-.595z"/></svg></button>
+      <button class="icon-btn" aria-label="Sticker"><svg viewBox="0 0 16 16"><path d="M8.305 1h-.61c-1.368 0-2.47 0-3.337.116-.9.121-1.658.38-2.26.982-.602.602-.86 1.36-.982 2.26C1 5.225 1 6.327 1 7.695v.61c0 1.367 0 2.47.116 3.336.121.9.38 1.658.982 2.26.602.602 1.36.861 2.26.982.867.117 1.97.117 3.337.117.268 0 .537.002.805-.004v-1.034c0-.764 0-1.423.028-1.99a5.007 5.007 0 0 1-3.761-1.149.75.75 0 0 1 .966-1.147c.61.513 1.4.823 2.267.823.212 0 .419-.018.62-.053a.754.754 0 0 1 .137-.012c.127-.404.32-.755.621-1.056.475-.474 1.076-.684 1.812-.783.714-.096 1.626-.096 2.772-.095h1.034c.006-.269.004-.537.004-.805 0-1.368 0-2.47-.117-3.337-.12-.9-.38-1.658-.982-2.26-.601-.602-1.36-.86-2.26-.982C10.774.999 9.673.999 8.306 1zm3.693 4.747a1.249 1.249 0 1 1-2.498 0 1.249 1.249 0 0 1 2.498 0zM5.248 7a1.249 1.249 0 1 1 0-2.498 1.249 1.249 0 0 1 0 2.498z"/><path d="M14.87 9.5H14c-1.193 0-2.037 0-2.677.087-.625.084-.98.24-1.238.498-.257.258-.414.613-.498 1.238-.086.64-.087 1.484-.087 2.676v.87c.076-.022.15-.048.224-.079.508-.21.899-.602 1.392-1.096l2.578-2.578c.494-.493.886-.884 1.096-1.393.03-.073.057-.148.08-.223z"/></svg></button>
+      <button class="icon-btn" aria-label="GIF"><svg viewBox="0 0 16 16"><path d="M7.695 1h.61c1.367 0 2.47 0 3.337.117.9.12 1.658.38 2.26.981.602.602.86 1.36.982 2.26.116.867.116 1.97.116 3.337v.61c0 1.367 0 2.47-.117 3.337-.12.9-.38 1.658-.981 2.26-.602.602-1.36.86-2.26.982-.867.116-1.97.116-3.337.116h-.61c-1.367 0-2.47 0-3.337-.117-.9-.12-1.658-.38-2.26-.981-.602-.602-.86-1.36-.981-2.26C1 10.775 1 9.672 1 8.305v-.61c0-1.367 0-2.47.117-3.337.12-.9.38-1.658.981-2.26.602-.602 1.36-.86 2.26-.981C5.225 1 6.328 1 7.695 1zM4.812 5.008A2.062 2.062 0 0 0 2.75 7.07v1.942a1.995 1.995 0 0 0 3.99 0v-.727a.75.75 0 0 0-1.5 0v.727a.495.495 0 0 1-.99 0V7.07c0-.31.252-.562.562-.562H5a.75.75 0 1 0 0-1.5h-.188zm3.438 0a.75.75 0 0 0-.75.75v4.5a.75.75 0 0 0 1.5 0v-4.5a.75.75 0 0 0-.75-.75zm2.5 0a.75.75 0 0 0-.75.75v4.5a.75.75 0 0 0 1.5 0v-1.5h.5a.75.75 0 0 0 0-1.5h-.5v-.75h1a.75.75 0 0 0 0-1.5h-1.75z"/></svg></button>
+      <div class="input"><span>Aa</span><svg viewBox="0 0 38 38"><g fill="none" fill-rule="evenodd"><path d="M26.5 18c-1.379 0-2.5-1.121-2.5-2.5s1.121-2.5 2.5-2.5 2.5 1.121 2.5 2.5-1.121 2.5-2.5 2.5m2.072 6.549C26.428 26.742 22.938 28 19 28s-7.428-1.258-9.572-3.451a1.5 1.5 0 0 1 2.144-2.098C13.133 24.047 15.909 25 19 25s5.867-.953 7.428-2.549a1.5 1.5 0 0 1 2.144 2.098M11.5 13c1.379 0 2.5 1.121 2.5 2.5S12.879 18 11.5 18 9 16.879 9 15.5s1.121-2.5 2.5-2.5M19 0C8.523 0 0 8.523 0 19s8.523 19 19 19 19-8.523 19-19S29.477 0 19 0" fill="var(--blue)"/></g></svg></div>
+      <div class="like">♥</div>
+    </footer>
+  </section>
+</div>
+<script>
+const DEFAULT_AVATAR_URL = 'https://scontent.fsgn2-6.fna.fbcdn.net/v/t1.30497-1/453178253_471506465671661_2781666950760530985_n.png?stp=dst-png_s200x200&_nc_cat=110&ccb=1-7&_nc_sid=b224c7&_nc_ohc=37S9MJzUa4AQ7kNvwFpaTtl&_nc_oc=AdoHkBq6RhqdatGu3Nr_2oC2jy4r8U1V6UOn5fGIQOiMaoLOpewLVlpXS3s5T6Bx-RSoWHQ39WJv5VinMwSkBfTJ&_nc_ad=z-m&_nc_cid=0&_nc_zt=24&_nc_ht=scontent.fsgn2-6.fna&_nc_ss=7a22e&oh=00_AQHnmeH6FCOqTPiPzWVETrLxP3ReV40dXBTzcNYByY2Hpw&oe=6A981C7A';
+document.querySelectorAll('.default-avatar').forEach(img => { img.src = DEFAULT_AVATAR_URL; });
+let mockImageObjectUrl = null;
+function setMockChatImage(src) {
+  const row = document.getElementById('mock-image-row');
+  const side = document.getElementById('mock-image-side').value;
+  row.className = 'row ' + side;
+  row.innerHTML = (side === 'theirs' ? '<div class="mini-avatar"><img src="' + DEFAULT_AVATAR_URL + '" alt="" referrerpolicy="no-referrer"/></div>' : '') + '<img class="image-message" id="mock-chat-image" alt="Ảnh trong tin nhắn" referrerpolicy="no-referrer"/>';
+  const img = document.getElementById('mock-chat-image');
+  img.onerror = () => { row.innerHTML = (side === 'theirs' ? '<div class="avatar-space"></div>' : '') + '<div class="image-message-error">Không tải được ảnh này</div>'; };
+  img.src = src;
+}
+function previewMockImageFile(file) {
+  if (!file) return;
+  if (mockImageObjectUrl) URL.revokeObjectURL(mockImageObjectUrl);
+  mockImageObjectUrl = URL.createObjectURL(file);
+  document.getElementById('mock-image-url').value = '';
+  setMockChatImage(mockImageObjectUrl);
+}
+function previewMockImageUrl() {
+  const url = document.getElementById('mock-image-url').value.trim();
+  if (!url) return alert('Hãy dán URL ảnh trước.');
+  document.getElementById('mock-image-file').value = '';
+  setMockChatImage(url);
+}
+</script>
+</body>
+</html>
