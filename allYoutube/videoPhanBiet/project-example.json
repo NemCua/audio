@@ -1,0 +1,22 @@
+[
+  {
+    "topicA": "Thương",
+    "topicB": "Yêu",
+    "explanationA": "Thương là sự quan tâm, đồng cảm và mong người kia được bình an.",
+    "explanationB": "Yêu là tình cảm sâu sắc đi kèm sự gắn bó và mong muốn đồng hành.",
+    "imageA": "",
+    "imageB": "",
+    "useTextA": true,
+    "useTextB": true
+  },
+  {
+    "topicA": "Đau",
+    "topicB": "Buồn",
+    "explanationA": "Đau là cảm giác khó chịu có thể xuất hiện ở thể chất hoặc tinh thần.",
+    "explanationB": "Buồn là trạng thái cảm xúc khi ta mất mát, thất vọng hoặc không như ý.",
+    "imageA": "",
+    "imageB": "",
+    "useTextA": true,
+    "useTextB": true
+  }
+]

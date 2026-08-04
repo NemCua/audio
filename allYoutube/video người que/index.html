@@ -1,0 +1,178 @@
+<!doctype html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Video người que</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <header class="topbar">
+    <div>
+      <p class="eyebrow">ALL YOUTUBE</p>
+      <h1>Video người que</h1>
+    </div>
+    <a class="sample-link" href="scene-example.json" download>File JSON mẫu</a>
+  </header>
+
+  <main class="app-shell">
+    <aside class="sidebar">
+      <section class="panel">
+        <div class="panel-head">
+          <span>01</span>
+          <h2>Nạp kịch bản AI</h2>
+        </div>
+        <p class="hint">JSON chỉ cần chứa content và danh sách cảnh/câu. Layout sẽ chỉnh trong tool.</p>
+        <label class="file-button">
+          <input id="json-file" type="file" accept="application/json,.json">
+          Nạp JSON
+        </label>
+        <textarea id="json-paste" rows="8" spellcheck="false" placeholder='Dán JSON nhanh, ví dụ {"scenes":["Tiểu học","Cấp 2","Cấp 3"]}'></textarea>
+        <button id="load-pasted-json" class="primary" type="button">Nạp JSON đã dán</button>
+        <p id="json-status" class="status-text"></p>
+      </section>
+
+      <section class="panel">
+        <div class="panel-head">
+          <span>02</span>
+          <h2>Cụm text nối vòng</h2>
+        </div>
+        <p class="hint">Nhập mỗi dòng một text. Tool tự tạo đủ cảnh theo kiểu hiện dần từng chữ.</p>
+        <textarea id="chain-texts" rows="5" placeholder="Tiểu học&#10;Cấp 2&#10;Cấp 3&#10;Đại học"></textarea>
+        <div class="chain-grid">
+          <label>Cỡ chữ cả cụm
+            <input id="chain-font-size" type="number" value="62" min="24" max="130">
+          </label>
+          <label>Kiểu
+            <select id="chain-layout">
+              <option value="arc">Vòng cung</option>
+              <option value="line">Ngang đơn giản</option>
+            </select>
+          </label>
+        </div>
+        <button id="create-chain-scenes" class="primary" type="button">Tạo cảnh từ cụm text</button>
+        <p id="chain-status" class="status-text"></p>
+      </section>
+
+      <section class="panel">
+        <div class="panel-head">
+          <span>03</span>
+          <h2>Cảnh</h2>
+        </div>
+        <div class="scene-actions">
+          <button id="add-scene" type="button">Thêm cảnh</button>
+          <button id="duplicate-scene" type="button">Copy cảnh</button>
+          <button id="delete-scene" type="button">Xóa cảnh</button>
+        </div>
+        <div id="scene-list" class="scene-list"></div>
+      </section>
+    </aside>
+
+    <section class="stage-area">
+      <div class="stage-toolbar">
+        <div>
+          <p class="eyebrow">PREVIEW 16:9</p>
+          <h2 id="active-title">Cảnh 1</h2>
+        </div>
+        <div class="global-controls">
+          <label>Nền
+            <input id="bg-color" type="color" value="#efe3bd">
+          </label>
+          <label>Chữ
+            <input id="font-color" type="color" value="#090807">
+          </label>
+          <label>Font
+            <select id="font-family">
+              <option value="Trebuchet MS, Segoe UI, sans-serif">Đậm rõ</option>
+              <option value="Comic Sans MS, Comic Sans, cursive">Viết tay tròn</option>
+              <option value="Chalkboard SE, Comic Sans MS, cursive">Bảng phấn</option>
+              <option value="Marker Felt, Comic Sans MS, cursive">Bút marker</option>
+              <option value="Bradley Hand, Comic Sans MS, cursive">Viết tay mềm</option>
+            </select>
+          </label>
+          <label>Cỡ mặc định
+            <input id="default-font-size" type="number" value="58" min="16" max="160">
+          </label>
+          <label class="guide-toggle">
+            <input id="show-guides" type="checkbox" checked>
+            Đường canh
+          </label>
+        </div>
+      </div>
+
+      <div id="stage" class="stage">
+        <div id="stickman" class="stickman pose-point">
+          <div class="hair"></div>
+          <div class="head"><span></span><span></span><i></i></div>
+          <div class="body"></div>
+          <div class="arm left"></div>
+          <div class="arm right"></div>
+          <div class="leg left"></div>
+          <div class="leg right"></div>
+        </div>
+        <div id="scene-text-layer"></div>
+        <div id="scene-arrow-layer"></div>
+        <button id="arrow-popover" class="arrow-popover" type="button">Thêm mũi tên</button>
+      </div>
+
+      <section class="panel editor-panel">
+        <div class="panel-head">
+          <span>04</span>
+          <h2>Chỉnh cảnh hiện tại</h2>
+        </div>
+        <div class="editor-grid">
+          <label>Câu/ý từ JSON
+            <textarea id="scene-prompt" rows="3"></textarea>
+          </label>
+          <label>Dáng người que
+            <select id="stickman-pose">
+              <option value="point">Chỉ bảng</option>
+              <option value="explain">Giải thích hai tay</option>
+              <option value="think">Đứng hình</option>
+              <option value="teacher">Giáo viên</option>
+            </select>
+          </label>
+        </div>
+        <div class="special-topic-tools">
+          <label>Tiêu đề ghim
+            <input id="sticky-title-input" type="text" placeholder="#1 Sự thật về từ vựng">
+          </label>
+          <button id="add-title-scene" type="button">Tạo cảnh tiêu đề</button>
+          <button id="start-sticky-title" type="button">Ghim từ cảnh này</button>
+          <button id="stop-sticky-title" type="button">Tắt ghim từ cảnh này</button>
+        </div>
+        <label class="inline-control">
+          <input id="show-stickman" type="checkbox" checked>
+          Hiện người que trong cảnh này
+        </label>
+
+        <div class="layer-actions">
+          <button id="add-text" type="button">Thêm text</button>
+          <button id="add-arrow" type="button">Thêm mũi tên</button>
+          <button id="add-image" type="button">Thêm ảnh</button>
+        </div>
+
+        <section class="stickman-library">
+          <div class="panel-head mini">
+            <span>NG</span>
+            <h3>Thêm ng que vào cảnh</h3>
+          </div>
+          <p class="hint">Bấm vào một ảnh để chèn ngay vào cảnh hiện tại.</p>
+          <div class="stickman-library-group">
+            <h4>Biểu cảm</h4>
+            <div class="stickman-preview-grid" data-library-group="expression"></div>
+          </div>
+          <div class="stickman-library-group">
+            <h4>Hành động</h4>
+            <div class="stickman-preview-grid" data-library-group="action"></div>
+          </div>
+        </section>
+
+        <div id="layer-editor" class="layer-editor"></div>
+      </section>
+    </section>
+  </main>
+
+  <script src="app.js"></script>
+</body>
+</html>

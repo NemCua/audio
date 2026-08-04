@@ -1,0 +1,45 @@
+<!doctype html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8">
+  <title>Render Video Phan Biet</title>
+  <link rel="stylesheet" href="styles.css">
+  <style>
+    html, body { margin: 0; width: 100%; height: 100%; background: transparent; overflow: hidden; }
+    body { display: block; }
+    .video-stage { width: 1080px; height: 1920px; border-radius: 0; }
+    .brand { font-size: 25px; }
+    .visual-card h3 { font-size: 70px; }
+    .caption { font-size: 34px; border-radius: 26px; padding: 22px 30px; }
+    .video-stage[data-scene^="explain"] .caption { font-size: 28px; padding: 20px 28px; }
+    .placeholder { font-size: 112px; }
+    .progress-track { display: none; }
+  </style>
+</head>
+<body>
+  <div id="video-stage" class="video-stage" data-scene="point-a">
+    <div class="brand">PHÂN BIỆT NHANH</div>
+    <div class="comparison-grid">
+      <article class="visual-card card-a">
+        <h3 id="preview-topic-a">A</h3>
+        <div class="image-frame">
+          <img id="preview-image-a" alt="">
+          <span id="preview-text-a" class="placeholder">A</span>
+        </div>
+      </article>
+      <article class="visual-card card-b">
+        <h3 id="preview-topic-b">B</h3>
+        <div class="image-frame">
+          <img id="preview-image-b" alt="">
+          <span id="preview-text-b" class="placeholder">B</span>
+        </div>
+      </article>
+    </div>
+    <div class="character" aria-label="Nhan vat hoat hinh">
+      <img id="character-image" src="assets/character-point-up-left.png" alt="">
+    </div>
+    <div id="caption" class="caption"></div>
+  </div>
+  <script src="export_render.js"></script>
+</body>
+</html>

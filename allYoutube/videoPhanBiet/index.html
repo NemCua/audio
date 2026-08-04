@@ -1,0 +1,164 @@
+<!doctype html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Video phân biệt</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <header class="topbar">
+    <div>
+      <p class="eyebrow">ALL YOUTUBE</p>
+      <h1>Video phân biệt</h1>
+    </div>
+    <span class="status" id="build-status"><i></i> Chưa tạo TTS</span>
+  </header>
+
+  <main class="workspace">
+    <section class="editor" aria-label="Nội dung video">
+      <div class="intro">
+        <span class="step-number">01</span>
+        <div>
+          <h2>Nhập nội dung</h2>
+          <p>Thêm hai khái niệm, hình minh họa và lời giải thích ngắn.</p>
+        </div>
+      </div>
+
+      <div class="project-card">
+        <div>
+          <strong>⚡ Nạp nhanh dự án JSON</strong>
+          <p>Nạp một mảng gồm bao nhiêu cặp phân biệt tùy ý.</p>
+        </div>
+        <label class="json-button">
+          <input id="project-json" type="file" accept="application/json,.json">
+          Nạp JSON
+        </label>
+        <a class="json-example" href="project-example.json" download>Tải file mẫu</a>
+        <p id="json-status" class="json-status"></p>
+      </div>
+
+      <div class="ai-card">
+        <div class="concept-heading">
+          <span>AI</span>
+          <strong>Tạo các cặp tự động</strong>
+        </div>
+        <p class="tts-hint">Dùng Beeknoee với model <code>google/gemini-2.5-flash-lite</code>. API key chỉ được đọc ở FastAPI, không đưa ra trình duyệt.</p>
+        <div class="ai-fields">
+          <label>Số cặp
+            <input id="ai-count" type="number" value="5" min="1" max="50">
+          </label>
+          <label>Chủ đề chung (không bắt buộc)
+            <input id="ai-theme" type="text" placeholder="Ví dụ: cảm xúc, tài chính, khoa học...">
+          </label>
+        </div>
+        <button id="generate-ai" class="primary-button ai-generate" type="button">✨ AI tạo cặp phân biệt</button>
+        <p id="ai-status" class="tts-status"></p>
+      </div>
+
+      <div id="comparison-editors"></div>
+      <button id="add-comparison" class="add-comparison" type="button">＋ Thêm một cặp phân biệt</button>
+
+      <div class="note">
+        <span>✨</span>
+        <p><b>Prompt AI sẽ được thêm sau.</b> Hiện tại bạn chỉ cần nhập nội dung và đưa hai ảnh vào.</p>
+      </div>
+
+      <div class="tts-card">
+        <div class="concept-heading">
+          <span>🔊</span>
+          <strong>Giọng đọc TTS</strong>
+        </div>
+        <p class="tts-hint">Dùng chung FastAPI CapCut TTS của thư mục <code>threads</code>. Tối đa 50 đoạn được gửi trong một batch để giảm nguy cơ bị chặn.</p>
+        <label>
+          Địa chỉ TTS server
+          <input id="tts-server-url" type="text" value="http://localhost:8007">
+        </label>
+        <label>
+          Giọng đọc
+          <select id="tts-voice" disabled>
+            <option>Đang tải danh sách giọng...</option>
+          </select>
+        </label>
+        <label>
+          Giọng tiếng Anh
+          <select id="tts-en-voice" disabled>
+            <option>Đang tải danh sách giọng...</option>
+          </select>
+        </label>
+        <div class="tts-actions">
+          <button id="connect-tts" class="secondary-button" type="button">Kiểm tra kết nối</button>
+          <button id="generate-tts" class="primary-button" type="button" disabled>🔊 Tạo giọng đọc</button>
+        </div>
+        <p id="tts-status" class="tts-status">Đang kiểm tra TTS server...</p>
+      </div>
+
+      <div class="export-card">
+        <div class="concept-heading">
+          <span>MP4</span>
+          <strong>Xuất video</strong>
+        </div>
+        <p class="tts-hint">Xuất file MP4 9:16 từ preview hiện tại và các đoạn TTS đã tạo.</p>
+        <button id="export-video" class="primary-button" type="button" disabled>Xuất video MP4</button>
+        <div id="export-progress-wrap" class="export-progress-wrap">
+          <div class="export-progress"><span id="export-progress-bar"></span></div>
+          <p id="export-progress-text" class="tts-status"></p>
+        </div>
+        <div id="export-result" class="export-result"></div>
+      </div>
+    </section>
+
+    <section class="stage-panel" aria-label="Xem trước video">
+      <div class="stage-head">
+        <div>
+          <p class="eyebrow">PREVIEW 9:16</p>
+          <h2>Xem trước chuyển động</h2>
+        </div>
+        <button id="restart" class="secondary-button" type="button">↻ Chạy lại</button>
+      </div>
+
+      <div class="phone-shell">
+        <div id="video-stage" class="video-stage" data-scene="intro">
+          <div class="brand">PHÂN BIỆT NHANH</div>
+          <div class="comparison-grid">
+            <article class="visual-card card-a">
+              <h3 id="preview-topic-a">Nhu cầu</h3>
+              <div class="image-frame">
+                <img id="preview-image-a" alt="Hình minh họa nhu cầu">
+                <span id="preview-text-a" class="placeholder">A</span>
+              </div>
+            </article>
+            <article class="visual-card card-b">
+              <h3 id="preview-topic-b">Mong muốn</h3>
+              <div class="image-frame">
+                <img id="preview-image-b" alt="Hình minh họa mong muốn">
+                <span id="preview-text-b" class="placeholder">B</span>
+              </div>
+            </article>
+          </div>
+
+          <div class="character" aria-label="Nhân vật hoạt hình">
+            <img id="character-image" src="assets/character-point-up-left.png" alt="Nhân vật hoạt hình đang chỉ lên">
+          </div>
+
+          <div id="caption" class="caption">Đây là <b>Nhu cầu</b></div>
+          <div class="progress-track"><span id="progress"></span></div>
+        </div>
+      </div>
+
+      <div class="controls">
+        <button id="play" class="primary-button" type="button"><span>▶</span> Phát video mẫu</button>
+        <span id="time-label">00:00 / 00:16</span>
+      </div>
+      <div class="timeline-legend">
+        <span><i class="purple"></i> Chỉ A</span>
+        <span><i class="orange"></i> Chỉ B</span>
+        <span><i class="blue"></i> Câu hỏi</span>
+        <span><i class="green"></i> Giải thích</span>
+      </div>
+    </section>
+  </main>
+
+  <script src="app.js"></script>
+</body>
+</html>
