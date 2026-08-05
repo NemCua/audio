@@ -261,24 +261,42 @@ function buildCardHtml(s) {
 const MESS_DEFAULT_AVATAR = 'https://scontent.fsgn2-6.fna.fbcdn.net/v/t1.30497-1/453178253_471506465671661_2781666950760530985_n.png?stp=dst-png_s200x200&_nc_cat=110&ccb=1-7&_nc_sid=b224c7&_nc_ohc=37S9MJzUa4AQ7kNvwFpaTtl&_nc_oc=AdoHkBq6RhqdatGu3Nr_2oC2jy4r8U1V6UOn5fGIQOiMaoLOpewLVlpXS3s5T6Bx-RSoWHQ39WJv5VinMwSkBfTJ&_nc_ad=z-m&_nc_cid=0&_nc_zt=24&_nc_ht=scontent.fsgn2-6.fna&_nc_ss=7a22e&oh=00_AQHnmeH6FCOqTPiPzWVETrLxP3ReV40dXBTzcNYByY2Hpw&oe=6A981C7A';
 function buildMessengerHtml(s) {
   const history = s.messHistory || [];
+  const editable = !!s.messEditable;
+  const identityEditable = !!s.messIdentityEditable;
   const partnerName = s.messPartnerName || 'Cô nàng nổi loạn 🦄';
+  const partnerAvatar = s.messPartnerAvatar || MESS_DEFAULT_AVATAR;
+  const partnerNameAttr = esc(partnerName).replace(/"/g,'&quot;').replace(/'/g,'&#39;');
+  const partnerNameSize = Math.max(1, Math.min(24, Array.from(partnerName).length));
   const rows = history.map((m,i) => {
     const prevSame = i>0 && history[i-1].side===m.side, nextSame=i<history.length-1&&history[i+1].side===m.side;
     const groupCls = prevSame&&nextSame?' middle':nextSame?' first':prevSame?' last':'';
-    const avatar = m.side==='theirs' ? (nextSame?'<div class="mess-avatar-space"></div>':`<div class="mess-mini-avatar"><img src="${MESS_DEFAULT_AVATAR}" alt="" referrerpolicy="no-referrer"/></div>`) : '';
+    const avatar = m.side==='theirs' ? (nextSame?'<div class="mess-avatar-space"></div>':`<div class="mess-mini-avatar"><img src="${esc(partnerAvatar)}" alt="" referrerpolicy="no-referrer"/></div>`) : '';
     const textHtml = m.text ? `<div class="mess-bubble">${esc(m.text)}</div>` : '';
     const imageHtml = m.imageUrl ? `<img class="mess-chat-image" src="${esc(m.imageUrl)}" alt="" referrerpolicy="no-referrer"/>` : '';
-    return `<div class="mess-row ${m.side}${groupCls}">${avatar}<div class="mess-content">${textHtml}${imageHtml}</div></div>`;
+    const insert = editable ? `<div class="mess-insert-slot" onclick="event.stopPropagation();beginMessengerInsert(${i})" title="Chèn tin nhắn trước tin này"><span>＋ Chèn tin tại đây</span></div>` : '';
+    const menuDirection = i >= history.length - 2 ? ' menu-up' : '';
+    const actions = editable ? `<div class="mess-draft-actions${menuDirection}">
+      <button type="button" class="mess-more-btn" onclick="event.stopPropagation();toggleMessengerDraftMenu(${i})" title="Tùy chọn tin nhắn" aria-label="Tùy chọn tin nhắn">•••</button>
+      <div class="mess-draft-menu" id="mess-draft-menu-${i}">
+        <button type="button" onclick="event.stopPropagation();editMessengerDraft(${i})">Chỉnh sửa</button>
+        <button type="button" class="danger" onclick="event.stopPropagation();deleteMessengerDraft(${i})">Xóa</button>
+      </div></div>` : '';
+    return `<div class="mess-row ${m.side}${groupCls}" data-mess-index="${i}">${insert}${avatar}<div class="mess-content">${textHtml}${imageHtml}</div>${actions}</div>`;
   }).join('');
+  const appendControl = editable ? `<button type="button" class="mess-append-btn" onclick="event.stopPropagation();beginMessengerInsert(${history.length})">＋ Thêm tin ở cuối</button>` : '';
+  const avatarEditAttr = identityEditable ? ` role="button" tabindex="0" title="Đổi ảnh đại diện" onclick="event.stopPropagation();document.getElementById('mess-avatar-file').click()" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();document.getElementById('mess-avatar-file').click()}"` : '';
+  const nameHtml = identityEditable
+    ? `<input class="mess-name-input" value="${partnerNameAttr}" size="${partnerNameSize}" aria-label="Tên đối phương" title="Nhấn để sửa tên" oninput="messPartnerName=this.value;this.size=Math.max(1,Math.min(24,Array.from(this.value).length))" onblur="commitMessengerPartnerName(this)" onkeydown="if(event.key==='Enter'){event.preventDefault();this.blur()}"/>`
+    : `<span>${esc(partnerName)}</span>`;
   return `<div class="mess-card">
-    <div class="mess-head"><div class="mess-avatar"><img src="${MESS_DEFAULT_AVATAR}" alt="" referrerpolicy="no-referrer"/><span class="mess-online-dot"></span></div>
-      <div class="mess-who"><div class="mess-name">${esc(partnerName)} <span class="mess-name-chevron"></span></div></div>
+    <div class="mess-head"><div class="mess-avatar${identityEditable?' is-editable':''}"${avatarEditAttr}><img src="${esc(partnerAvatar)}" alt="" referrerpolicy="no-referrer"/><span class="mess-online-dot"></span></div>
+      <div class="mess-who"><div class="mess-name">${nameHtml} <span class="mess-name-chevron"></span></div></div>
       <div class="mess-head-icons">
         <svg viewBox="0 0 16 16"><path d="M4.776 1.111a1.728 1.728 0 0 0-2.56-.127l-.472.472a4.516 4.516 0 0 0-.739 5.415 21.46 21.46 0 0 0 8.123 8.123 4.516 4.516 0 0 0 5.415-.738L15 13.8a1.75 1.75 0 0 0-.13-2.591l-2.131-1.745a1.75 1.75 0 0 0-2.143-.056L9.22 10.416a.052.052 0 0 1-.06.002 12.077 12.077 0 0 1-3.578-3.58.052.052 0 0 1 .002-.058l1.008-1.375a1.75 1.75 0 0 0-.056-2.143l-1.76-2.15z"/></svg>
         <svg viewBox="0 0 16 16"><path d="M6.304 2h-.108c-1.133 0-2.058 0-2.79.098-.763.103-1.425.325-1.954.854C.923 3.48.7 4.142.598 4.907.5 5.637.5 6.563.5 7.697v.607c0 1.133 0 2.058.098 2.79.103.763.325 1.425.854 1.954.529.529 1.19.751 1.955.854.73.098 1.656.098 2.79.098h.107c1.133 0 2.058 0 2.79-.098.763-.103 1.425-.325 1.954-.854.529-.529.751-1.19.854-1.955.038-.286.062-.602.076-.949l1.93 1.418a1 1 0 0 0 1.592-.806V5.228a1 1 0 0 0-1.57-.822l-1.956 1.357a9.984 9.984 0 0 0-.072-.856c-.103-.764-.325-1.426-.854-1.955-.529-.529-1.19-.751-1.955-.854C8.363 2 7.437 2 6.303 2z"/></svg>
         <svg viewBox="0 0 16 16"><path d="M3 8a1 1 0 0 1 1-1h8a1 1 0 1 1 0 2H4a1 1 0 0 1-1-1z"/></svg>
         <svg viewBox="0 0 16 16"><path d="M13.457 3.957a1 1 0 0 0-1.414-1.414L8 6.586 3.957 2.543a1 1 0 0 0-1.414 1.414L6.586 8l-4.043 4.043a1 1 0 1 0 1.414 1.414L8 9.414l4.043 4.043a1 1 0 0 0 1.414-1.414L9.414 8l4.043-4.043z"/></svg>
-      </div></div><div class="mess-body">${rows}</div></div>`;
+      </div></div><div class="mess-body">${rows}${appendControl}</div></div>`;
 }
 
 // TikTok comment/reply — copy nguyên cấu trúc từ threads/tiktok_ui_mock.html
