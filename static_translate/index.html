@@ -84,6 +84,13 @@ td.vi-cell{min-width:260px}
 td.vi-cell textarea{width:100%;background:transparent;border:none;color:#e2e8f0;font-size:12px;font-family:inherit;resize:vertical;min-height:36px;outline:none;line-height:1.5}
 td.vi-cell textarea:focus{background:#1e1b4b44}
 .ts{color:#4b5563;white-space:nowrap;font-family:monospace;font-size:11px}
+.time-cell{min-width:148px}
+.time-field{display:grid;grid-template-columns:30px 1fr;align-items:center;gap:5px;margin-bottom:5px;color:#6b7280;font-family:inherit;font-size:9px;font-weight:700;text-transform:uppercase}
+.time-field:last-child{margin-bottom:0}
+.time-input{width:108px;box-sizing:border-box;background:#0a0c14;border:1px solid #252b48;border-radius:5px;color:#cbd5e1;padding:5px 6px;font:11px/1.2 monospace;outline:none}
+.time-input:focus{border-color:#7c3aed;box-shadow:0 0 0 1px #7c3aed55}
+tr.timing-invalid td{background:#450a0a55}
+tr.timing-invalid .time-input{border-color:#ef4444;color:#fecaca}
 
 /* Video output */
 .video-wrap{background:#0a0c14;border:1px solid #1e2340;border-radius:10px;overflow:hidden;aspect-ratio:16/9;display:flex;align-items:center;justify-content:center;margin-bottom:12px;max-height:480px}
@@ -1350,10 +1357,14 @@ function renderTable() {
   tbody.innerHTML = subtitleRows.slice(from, to).map((r, k) => {
     const i = from + k;
     const isHan = HAN_REGEX.test(r.vi || '');
+    const timingIssue = subtitleTimingIssue(i);
     return `
-    <tr id="row-${i}" ${isHan ? 'style="background:#450a0a44"' : ''}>
+    <tr id="row-${i}" class="${timingIssue?'timing-invalid':''}" ${isHan ? 'style="background:#450a0a44"' : ''} title="${timingIssue?escAttr(timingIssue):''}">
       <td class="ts">${r.idx}</td>
-      <td class="ts">${r.start}<br>${r.end}</td>
+      <td class="ts time-cell">
+        <label class="time-field">Từ <input class="time-input" value="${escAttr(r.start)}" inputmode="numeric" placeholder="00:00:00,000" oninput="onTimeEdit(${i},'start',this.value)" onblur="refreshTimingRows(${i})"/></label>
+        <label class="time-field">Đến <input class="time-input" value="${escAttr(r.end)}" inputmode="numeric" placeholder="00:00:00,000" oninput="onTimeEdit(${i},'end',this.value)" onblur="refreshTimingRows(${i})"/></label>
+      </td>
       <td class="zh">${esc(r.zh)}</td>
       <td class="vi-cell">
         <textarea oninput="onViEdit(${i},this.value)" id="ta-${i}"
@@ -1411,7 +1422,33 @@ function scanChinese() {
 function esc(s) {
   return (s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
 }
+function escAttr(s) { return esc(String(s||'')).replace(/"/g,'&quot;').replace(/'/g,'&#39;'); }
 function onViEdit(i, val) { subtitleRows[i].vi = val; }
+function parseSrtTimeStrict(ts) {
+  const m=String(ts||'').trim().match(/^(\d{2,}):(\d{2}):(\d{2}),(\d{3})$/);
+  if(!m||+m[2]>59||+m[3]>59)return null;
+  return (+m[1])*3600+(+m[2])*60+(+m[3])+(+m[4])/1000;
+}
+function subtitleTimingIssue(i) {
+  const r=subtitleRows[i];if(!r)return '';
+  const start=parseSrtTimeStrict(r.start),end=parseSrtTimeStrict(r.end);
+  if(start===null||end===null)return 'Thời gian phải có dạng HH:MM:SS,mmm';
+  if(end<=start)return 'Thời gian kết thúc phải lớn hơn thời gian bắt đầu';
+  const next=subtitleRows[i+1],nextStart=next?parseSrtTimeStrict(next.start):null;
+  if(next&&nextStart!==null&&end>nextStart)return `Câu này chồng lên câu #${next.idx||i+2}`;
+  return '';
+}
+function onTimeEdit(i,field,val){subtitleRows[i][field]=val;refreshTimingRows(i);}
+function refreshTimingRows(i){
+  [i-1,i].forEach(idx=>{
+    const row=document.getElementById(`row-${idx}`);if(!row)return;
+    const issue=subtitleTimingIssue(idx);row.classList.toggle('timing-invalid',!!issue);row.title=issue;
+  });
+}
+function validateSubtitleTimings(){
+  for(let i=0;i<subtitleRows.length;i++){const issue=subtitleTimingIssue(i);if(issue)return {index:i,message:issue};}
+  return null;
+}
 
 // ── Tách dòng dài thành nhiều câu, chia lại thời gian theo tỉ lệ độ dài
 // ký tự, đẩy lại index — thuần quy tắc/regex, KHÔNG dùng AI ──
@@ -1537,19 +1574,29 @@ async function loadJsonFile(input) {
 
 async function saveCues() {
   if (!currentJobId) return;
+  const timingError=validateSubtitleTimings();
+  if(timingError){
+    const page=Math.floor(timingError.index/SUBS_PER_PAGE);
+    subsGoto(page,timingError.index);
+    alert(`Không thể lưu dòng #${timingError.index+1}: ${timingError.message}`);
+    return;
+  }
   const btn = document.getElementById('btn-save');
   const orig = btn.textContent;
   btn.disabled = true;
   btn.textContent = 'Đang lưu...';
 
-  await apiFetch(`${API}/api/save-cues/${currentJobId}`, {
-    method: 'POST',
-    headers: {'Content-Type': 'application/json'},
-    body: JSON.stringify({ rows: subtitleRows }),
-  });
-
-  btn.textContent = '✓ Đã lưu';
-  setTimeout(() => { btn.textContent = orig; btn.disabled = false; }, 1500);
+  try{
+    const res=await apiFetch(`${API}/api/save-cues/${currentJobId}`, {
+      method: 'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({rows:subtitleRows}),
+    });
+    const data=await res.json().catch(()=>({}));
+    if(!res.ok)throw new Error(data.error||`HTTP ${res.status}`);
+    btn.textContent='✓ Đã lưu cả thời gian';
+    setTimeout(()=>{btn.textContent=orig;btn.disabled=false;},1500);
+  }catch(e){
+    btn.textContent=orig;btn.disabled=false;alert('Không lưu được phụ đề: '+e.message);
+  }
 }
 
 // ── Helpers ─────────────────────────────────────────────────────

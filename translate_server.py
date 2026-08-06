@@ -9,6 +9,7 @@ import io
 import json
 import math
 import os
+import re
 import shutil
 import subprocess
 import sys
@@ -676,20 +677,34 @@ async def save_cues(job_id: str, body: dict, request: Request):
         return JSONResponse({"error": "Danh sach rows rong"}, status_code=400)
 
     updated = []
+    previous_end = None
     for i, r in enumerate(rows):
         start = str(r.get("start", "")).strip()
         end   = str(r.get("end", "")).strip()
         text  = str(r.get("vi", "")).strip()
         if not start or not end:
             return JSONResponse({"error": f"Dong {i+1} thieu start/end"}, status_code=400)
+        time_pattern = r"^\d{2,}:([0-5]\d):([0-5]\d),(\d{3})$"
+        if not re.fullmatch(time_pattern, start) or not re.fullmatch(time_pattern, end):
+            return JSONResponse({"error": f"Dong {i+1} co timestamp sai dinh dang HH:MM:SS,mmm"}, status_code=400)
+        try:
+            start_sec = srt_time_to_sec(start)
+            end_sec = srt_time_to_sec(end)
+        except Exception:
+            return JSONResponse({"error": f"Dong {i+1} co timestamp sai dinh dang HH:MM:SS,mmm"}, status_code=400)
+        if start_sec < 0 or end_sec <= start_sec:
+            return JSONResponse({"error": f"Dong {i+1}: thoi gian ket thuc phai lon hon bat dau"}, status_code=400)
+        if previous_end is not None and start_sec < previous_end:
+            return JSONResponse({"error": f"Dong {i+1} bi chong thoi gian voi dong truoc"}, status_code=400)
         updated.append({
             "idx": i + 1,
             "start": start,
             "end": end,
-            "start_sec": srt_time_to_sec(start),
-            "end_sec": srt_time_to_sec(end),
+            "start_sec": start_sec,
+            "end_sec": end_sec,
             "text": text,
         })
+        previous_end = end_sec
     job["vi_cues"] = updated
 
     srt_path = Path(job["srt_path"])
