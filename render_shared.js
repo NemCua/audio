@@ -263,6 +263,7 @@ function buildMessengerHtml(s) {
   const history = s.messHistory || [];
   const editable = !!s.messEditable;
   const identityEditable = !!s.messIdentityEditable;
+  const audioIndexes = new Set(s.messAudioIndexes || []);
   const partnerName = s.messPartnerName || 'Cô nàng nổi loạn 🦄';
   const partnerAvatar = s.messPartnerAvatar || MESS_DEFAULT_AVATAR;
   const partnerNameAttr = esc(partnerName).replace(/"/g,'&quot;').replace(/'/g,'&#39;');
@@ -273,15 +274,17 @@ function buildMessengerHtml(s) {
     const avatar = m.side==='theirs' ? (nextSame?'<div class="mess-avatar-space"></div>':`<div class="mess-mini-avatar"><img src="${esc(partnerAvatar)}" alt="" referrerpolicy="no-referrer"/></div>`) : '';
     const textHtml = m.text ? `<div class="mess-bubble">${esc(m.text)}</div>` : '';
     const imageHtml = m.imageUrl ? `<img class="mess-chat-image" src="${esc(m.imageUrl)}" alt="" referrerpolicy="no-referrer"/>` : '';
+    const audioBadge = editable && (audioIndexes.has(i) || (m.parallelAudios && m.parallelAudios.length)) ? `<span class="mess-audio-badge">🔊 ${m.parallelAudios?.length || 1}<button type="button" onclick="event.stopPropagation();removeMessengerQuickAudio(${i})" title="Xóa âm thanh song song" aria-label="Xóa âm thanh song song">×</button></span>` : '';
     const insert = editable ? `<div class="mess-insert-slot" onclick="event.stopPropagation();beginMessengerInsert(${i})" title="Chèn tin nhắn trước tin này"><span>＋ Chèn tin tại đây</span></div>` : '';
-    const menuDirection = i >= history.length - 2 ? ' menu-up' : '';
+    const menuDirection = i < 4 ? '' : ' menu-up';
     const actions = editable ? `<div class="mess-draft-actions${menuDirection}">
       <button type="button" class="mess-more-btn" onclick="event.stopPropagation();toggleMessengerDraftMenu(${i})" title="Tùy chọn tin nhắn" aria-label="Tùy chọn tin nhắn">•••</button>
       <div class="mess-draft-menu" id="mess-draft-menu-${i}">
         <button type="button" onclick="event.stopPropagation();editMessengerDraft(${i})">Chỉnh sửa</button>
+        <button type="button" onclick="event.stopPropagation();openMessengerQuickAudio(${i})">Thêm âm thanh</button>
         <button type="button" class="danger" onclick="event.stopPropagation();deleteMessengerDraft(${i})">Xóa</button>
       </div></div>` : '';
-    return `<div class="mess-row ${m.side}${groupCls}" data-mess-index="${i}">${insert}${avatar}<div class="mess-content">${textHtml}${imageHtml}</div>${actions}</div>`;
+    return `<div class="mess-row ${m.side}${groupCls}" data-mess-index="${i}">${insert}${avatar}<div class="mess-content">${textHtml}${imageHtml}</div>${audioBadge}${actions}</div>`;
   }).join('');
   const appendControl = editable ? `<button type="button" class="mess-append-btn" onclick="event.stopPropagation();beginMessengerInsert(${history.length})">＋ Thêm tin ở cuối</button>` : '';
   const avatarEditAttr = identityEditable ? ` role="button" tabindex="0" title="Đổi ảnh đại diện" onclick="event.stopPropagation();document.getElementById('mess-avatar-file').click()" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();document.getElementById('mess-avatar-file').click()}"` : '';
