@@ -94,7 +94,27 @@
 
   window.refreshCacheSize = refreshCacheSize = async function () {
     const label = document.getElementById('cache-size-label');
-    if (label) label.textContent = `${localUrls.size} media tạm trong phiên này`;
+    if (!label) return;
+    if (window.desktopApp?.getMediaStats) {
+      const stats = await window.desktopApp.getMediaStats();
+      label.textContent = `${stats.files} file media cục bộ — ${fmtBytes(stats.bytes)}`;
+    } else {
+      label.textContent = `${localUrls.size} media tạm trong phiên này`;
+    }
+  };
+
+  window.clearDesktopMedia = async function () {
+    if (!window.desktopApp?.clearLocalMedia) {
+      alert('Tính năng này chỉ có trong ứng dụng desktop.');
+      return;
+    }
+    const warning = 'Xóa TOÀN BỘ MP3 TTS, ảnh, audio và video đã chép vào thư mục Media của app?\n\nDự án đang mở hoặc dự án cũ tham chiếu các file này sẽ mất media và không thể xuất đúng. Projects, Exports và file gốc bên ngoài app không bị xóa. Hành động này không thể hoàn tác.';
+    if (!confirm(warning)) return;
+    const deleted = await window.desktopApp.clearLocalMedia();
+    localUrls.forEach(url => URL.revokeObjectURL(url));
+    localUrls.clear();
+    await refreshCacheSize();
+    alert(`✓ Đã xóa ${deleted.files} file (${fmtBytes(deleted.bytes)}).`);
   };
 
   window.clearServerCache = clearServerCache = async function () {

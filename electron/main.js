@@ -73,6 +73,24 @@ function localAssetResult(filePath) {
   return { path: filePath, url: pathToFileURL(filePath).href };
 }
 
+function mediaDirectories() {
+  return ['TTS', 'Images', 'Audio', 'Video'].map(name => path.join(workspaceRoot(), 'Media', name));
+}
+
+function directoryStats(root) {
+  let files = 0, bytes = 0;
+  for (const entry of fs.readdirSync(root, { withFileTypes: true })) {
+    const target = path.join(root, entry.name);
+    if (entry.isDirectory()) {
+      const nested = directoryStats(target);
+      files += nested.files; bytes += nested.bytes;
+    } else if (entry.isFile()) {
+      files++; bytes += fs.statSync(target).size;
+    }
+  }
+  return { files, bytes };
+}
+
 function runFfmpeg(args) {
   return new Promise((resolve, reject) => {
     const child = spawn(ffmpegPath(), args, { windowsHide: true });
@@ -100,6 +118,20 @@ ipcMain.handle('desktop:check-assets', () => {
 });
 
 ipcMain.handle('desktop:get-workspace-info', () => ({ root: workspaceRoot() }));
+
+ipcMain.handle('desktop:get-media-stats', () => mediaDirectories().reduce((total, dir) => {
+  const stats = directoryStats(dir);
+  return { files: total.files + stats.files, bytes: total.bytes + stats.bytes };
+}, { files: 0, bytes: 0 }));
+
+ipcMain.handle('desktop:clear-local-media', () => {
+  const before = mediaDirectories().reduce((total, dir) => {
+    const stats = directoryStats(dir);
+    for (const entry of fs.readdirSync(dir)) fs.rmSync(path.join(dir, entry), { recursive: true, force: true });
+    return { files: total.files + stats.files, bytes: total.bytes + stats.bytes };
+  }, { files: 0, bytes: 0 });
+  return before;
+});
 
 ipcMain.handle('desktop:save-local-asset', (_event, bytes, kind, originalName) => {
   const output = path.join(assetDirectory(kind), safeAssetName(originalName, kind || 'asset'));
