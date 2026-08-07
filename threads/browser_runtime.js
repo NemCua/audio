@@ -229,9 +229,21 @@
     if (!desktopBgVideoPath) { alert('Hãy chọn lại video nền từ máy trước khi xuất.'); return; }
     computeTimeline();
     const btn = document.getElementById('export-btn'), result = document.getElementById('export-result');
+    const creditInfo = document.getElementById('export-credit-info');
     btn.disabled = true; result.innerHTML = '';
     const unsubscribe = window.desktopApp.onExportProgress(progress => setExportProgress(progress.percent || 0, progress.text || ''));
+    let reservation = null;
+    let exportCompleted = false;
     try {
+      if (!window.creditClient) throw new Error('Chưa kết nối được hệ thống credit. Hãy đăng nhập lại.');
+      const pricingInput = { duration_seconds: totalDuration(), width: 1080, height: 1920 };
+      const quote = await window.creditClient.quoteExport(pricingInput);
+      if (creditInfo) creditInfo.textContent = `Video này: ${quote.cost} credit · Số dư: ${quote.balance} credit`;
+      if (!quote.can_export) throw new Error(`Không đủ credit: cần ${quote.cost}, hiện có ${quote.balance}.`);
+      reservation = await window.creditClient.reserveExport({
+        ...pricingInput,
+        idempotency_key: `desktop-export:${crypto.randomUUID()}`,
+      });
       const exported = await window.desktopApp.exportProject({
         steps,
         bgVideoPath: desktopBgVideoPath,
@@ -239,15 +251,47 @@
         bgAudioVolume: parseFloat(document.getElementById('bgaudio-volume').value),
         blurIdentity: document.getElementById('blur-identity-toggle').checked,
       });
-      if (exported.canceled) { document.getElementById('export-progress-wrap').style.display = 'none'; return; }
+      if (exported.canceled) {
+        await window.creditClient.refundExport(reservation.id);
+        reservation = null;
+        document.getElementById('export-progress-wrap').style.display = 'none';
+        if (creditInfo) creditInfo.textContent = 'Đã hủy xuất — credit đã được hoàn lại.';
+        return;
+      }
+      exportCompleted = true;
+      await window.creditClient.consumeExport(reservation.id);
+      reservation = null;
       const safePath = esc(exported.path);
       result.innerHTML = `<button class="btn btn-primary" onclick="desktopApp.revealFile('${safePath.replace(/'/g, "\\'")}')">✓ MP4 đã lưu — Hiện trong thư mục</button><div style="font-size:11px;color:#94a3b8;margin-top:6px;word-break:break-all">${safePath}</div>`;
+      if (creditInfo) creditInfo.textContent = `✓ Đã thanh toán ${quote.cost} credit · Còn ${window.creditClient.balance()} credit`;
     } catch (error) {
-      result.innerHTML = `<div style="color:#ef4444;font-size:12px">✗ ${esc(error.message || String(error))}</div>`;
+      let refundNote = '';
+      if (reservation && !exportCompleted) {
+        try {
+          await window.creditClient.refundExport(reservation.id);
+          refundNote = ' Credit đã được hoàn lại.';
+        } catch (_refundError) {
+          refundNote = ' Chưa thể xác nhận hoàn credit; server sẽ tự hoàn reservation hết hạn.';
+        }
+      }
+      const prefix = exportCompleted ? 'MP4 đã tạo nhưng chưa xác nhận được giao dịch credit: ' : '';
+      result.innerHTML = `<div style="color:#ef4444;font-size:12px">✗ ${esc(prefix + (error.message || String(error)) + refundNote)}</div>`;
     } finally {
       unsubscribe?.(); btn.disabled = false;
     }
   }
+
+  async function refreshExportCreditInfo() {
+    const el = document.getElementById('export-credit-info');
+    if (!el || !window.creditClient || !steps.length) return;
+    try {
+      computeTimeline();
+      const quote = await window.creditClient.quoteExport({ duration_seconds: totalDuration(), width: 1080, height: 1920 });
+      el.textContent = `Dự kiến ${quote.cost} credit · Số dư ${quote.balance} credit`;
+      el.style.color = quote.can_export ? '#94a3b8' : '#fca5a5';
+    } catch (_error) {}
+  }
+  window.addEventListener('credit-balance-changed', refreshExportCreditInfo);
 
   // Server-backed reusable libraries are intentionally disabled in static mode.
   window.loadBgVideoLibrary = loadBgVideoLibrary = async () => {};

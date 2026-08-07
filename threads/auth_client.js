@@ -44,13 +44,45 @@
   window.authFetch = request;
   window.authHeaders = () => accessToken ? { Authorization: `Bearer ${accessToken}` } : {};
 
+  async function jsonRequest(path, options = {}) {
+    const response = await request(path, options);
+    const data = await response.json().catch(() => ({}));
+    if (!response.ok) {
+      const error = new Error(data.detail || `HTTP ${response.status}`);
+      error.status = response.status;
+      throw error;
+    }
+    return data;
+  }
+
+  function setCurrentUser(user) {
+    currentUser = user;
+    renderAccount();
+    window.dispatchEvent(new CustomEvent('credit-balance-changed', { detail: { balance: Number(user?.balance || 0) } }));
+  }
+
+  async function refreshUser() {
+    const user = await jsonRequest('/auth/me');
+    setCurrentUser(user);
+    return user;
+  }
+
+  window.creditClient = Object.freeze({
+    quoteExport: input => jsonRequest('/auth/exports/quote', { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(input) }),
+    reserveExport: input => jsonRequest('/auth/exports/reserve', { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(input) }).then(async data => { await refreshUser(); return data; }),
+    consumeExport: reservationId => jsonRequest('/auth/exports/consume', { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({reservation_id:reservationId}) }).then(async data => { await refreshUser(); return data; }),
+    refundExport: reservationId => jsonRequest('/auth/exports/refund', { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({reservation_id:reservationId}) }).then(async data => { await refreshUser(); return data; }),
+    refresh: refreshUser,
+    balance: () => Number(currentUser?.balance || 0),
+  });
+
   async function acceptSession(data) {
     accessToken = data.access_token || data.token;
     window.authAccessToken = accessToken;
     currentUser = data.user;
     if (data.refresh_token) await window.desktopApp.saveRefreshToken(data.refresh_token);
     gate.style.display = 'none';
-    renderAccount();
+    setCurrentUser(currentUser);
   }
   async function refreshSession() {
     const refreshToken = await window.desktopApp.loadRefreshToken();

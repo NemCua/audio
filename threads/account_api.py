@@ -195,11 +195,27 @@ class LoginRequest(BaseModel):
 class RefreshRequest(BaseModel):
     refresh_token: str
 class ReserveRequest(BaseModel):
-    idempotency_key: str; cost: int | None = None
+    idempotency_key: str
+    duration_seconds: float = 0
+    width: int = 1080
+    height: int = 1920
+class ExportQuoteRequest(BaseModel):
+    duration_seconds: float = 0
+    width: int = 1080
+    height: int = 1920
 class ReservationRequest(BaseModel):
     reservation_id: str
 class AdminCreditRequest(BaseModel):
     user_id: int; amount: int; reference: str = "manual"; idempotency_key: str
+
+
+def _export_credit_cost(duration_seconds: float, width: int, height: int) -> int:
+    """Điểm thay duy nhất khi chốt công thức giá; client không được tự đặt cost."""
+    if duration_seconds < 0 or duration_seconds > 24 * 60 * 60:
+        raise HTTPException(400, "Thời lượng video không hợp lệ")
+    if width < 1 or height < 1 or width > 7680 or height > 7680:
+        raise HTTPException(400, "Kích thước video không hợp lệ")
+    return max(1, EXPORT_CREDIT_COST)
 
 
 @router.post("/register")
@@ -262,10 +278,20 @@ def ledger(identity: dict = Depends(current_identity)):
             return [dict(row) for row in cur.fetchall()]
 
 
+@router.post("/exports/quote")
+def quote_export(req: ExportQuoteRequest, identity: dict = Depends(current_identity)):
+    cost = _export_credit_cost(req.duration_seconds, req.width, req.height)
+    return {
+        "cost": cost,
+        "balance": identity["balance"] or 0,
+        "can_export": (identity["balance"] or 0) >= cost,
+        "pricing": "flat-v1",
+    }
+
+
 @router.post("/exports/reserve")
 def reserve_export(req: ReserveRequest, identity: dict = Depends(current_identity)):
-    cost = EXPORT_CREDIT_COST if req.cost is None else req.cost
-    if cost < 1 or cost > 100: raise HTTPException(400, "Credit cost không hợp lệ")
+    cost = _export_credit_cost(req.duration_seconds, req.width, req.height)
     if not req.idempotency_key.strip(): raise HTTPException(400, "Thiếu idempotency_key")
     with db() as conn:
         with conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
@@ -289,9 +315,13 @@ def reserve_export(req: ReserveRequest, identity: dict = Depends(current_identit
 @router.post("/exports/consume")
 def consume_export(req: ReservationRequest, identity: dict = Depends(current_identity)):
     with db() as conn:
-        with conn.cursor() as cur:
-            cur.execute("UPDATE export_reservations SET status='consumed',finished_at=NOW() WHERE id=%s AND user_id=%s AND status='reserved' AND expires_at>NOW()", (req.reservation_id, identity["id"]))
-            if cur.rowcount != 1: raise HTTPException(409, "Reservation không còn ở trạng thái reserved")
+        with conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
+            cur.execute("SELECT status,expires_at FROM export_reservations WHERE id=%s AND user_id=%s FOR UPDATE", (req.reservation_id, identity["id"])); reservation = cur.fetchone()
+            if not reservation: raise HTTPException(404, "Không tìm thấy reservation")
+            if reservation["status"] == "consumed": return {"ok": True, "already_consumed": True}
+            if reservation["status"] != "reserved" or reservation["expires_at"] <= datetime.now(timezone.utc):
+                raise HTTPException(409, "Reservation không còn ở trạng thái reserved")
+            cur.execute("UPDATE export_reservations SET status='consumed',finished_at=NOW() WHERE id=%s", (req.reservation_id,))
     return {"ok": True}
 
 
@@ -300,7 +330,11 @@ def refund_export(req: ReservationRequest, identity: dict = Depends(current_iden
     with db() as conn:
         with conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
             cur.execute("SELECT * FROM export_reservations WHERE id=%s AND user_id=%s FOR UPDATE", (req.reservation_id, identity["id"])); reservation = cur.fetchone()
-            if not reservation or reservation["status"] != "reserved": raise HTTPException(409, "Reservation không thể hoàn")
+            if not reservation: raise HTTPException(404, "Không tìm thấy reservation")
+            if reservation["status"] in ("refunded", "expired_refunded"):
+                cur.execute("SELECT balance FROM users WHERE id=%s", (identity["id"],))
+                return {"ok": True, "already_refunded": True, "balance": cur.fetchone()["balance"]}
+            if reservation["status"] != "reserved": raise HTTPException(409, "Reservation không thể hoàn")
             cur.execute("UPDATE users SET balance=balance+%s WHERE id=%s RETURNING balance", (reservation["cost"], identity["id"])); balance = cur.fetchone()["balance"]
             cur.execute("UPDATE export_reservations SET status='refunded',finished_at=NOW() WHERE id=%s", (req.reservation_id,))
             cur.execute("INSERT INTO credit_ledger(user_id,amount,balance_after,kind,reference,idempotency_key) VALUES(%s,%s,%s,'export_refund',%s,%s)", (identity["id"], reservation["cost"], balance, req.reservation_id, f"refund:{req.reservation_id}"))
