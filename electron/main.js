@@ -51,7 +51,7 @@ function authStorePath() { return path.join(app.getPath('userData'), 'auth-sessi
 
 function workspaceRoot() {
   const root = path.join(app.getPath('documents'), 'Threads Video Maker');
-  for (const child of ['Projects', path.join('Media', 'TTS'), path.join('Media', 'Images'), path.join('Media', 'Audio'), path.join('Media', 'Video'), 'Exports']) {
+  for (const child of ['Projects', path.join('Media', 'TTS'), path.join('Media', 'Images'), path.join('Media', 'Audio'), path.join('Media', 'Video'), path.join('Media', 'Stickers'), 'Exports']) {
     fs.mkdirSync(path.join(root, child), { recursive: true });
   }
   return root;
@@ -71,6 +71,37 @@ function assetDirectory(kind) {
 
 function localAssetResult(filePath) {
   return { path: filePath, url: pathToFileURL(filePath).href };
+}
+
+function stickerUserRoot() { return path.join(workspaceRoot(), 'Media', 'Stickers'); }
+function stickerOverridesPath() { return path.join(stickerUserRoot(), '_packs.json'); }
+function readStickerOverrides() {
+  try { return JSON.parse(fs.readFileSync(stickerOverridesPath(), 'utf8')); } catch (_error) { return {}; }
+}
+function writeStickerOverrides(value) { fs.writeFileSync(stickerOverridesPath(), JSON.stringify(value, null, 2), 'utf8'); }
+function safePackId(value) { return String(value || '').replace(/[^a-zA-Z0-9_-]/g, '').slice(0, 60); }
+function stickerFiles(root) {
+  if (!fs.existsSync(root)) return [];
+  return fs.readdirSync(root, { withFileTypes: true })
+    .filter(entry => entry.isFile() && !entry.name.startsWith('_') && /\.(png|jpe?g|webp|gif)$/i.test(entry.name))
+    .map(entry => {
+      const filePath = path.join(root, entry.name);
+      return { filename: entry.name, url: pathToFileURL(filePath).href, desktopPath: filePath, isVideo: false };
+    });
+}
+function stickerLibrary() {
+  const bundledRoot = path.join(threadsRoot(), 'stickers'), userRoot = stickerUserRoot(), overrides = readStickerOverrides();
+  const ids = new Set();
+  for (const root of [bundledRoot, userRoot]) if (fs.existsSync(root)) {
+    for (const entry of fs.readdirSync(root, { withFileTypes: true })) if (entry.isDirectory()) ids.add(entry.name);
+  }
+  return [...ids].sort().map(id => {
+    const bundledDir = path.join(bundledRoot, id), userDir = path.join(userRoot, id);
+    let meta = {};
+    try { meta = JSON.parse(fs.readFileSync(path.join(bundledDir, '_pack.json'), 'utf8')); } catch (_error) {}
+    const byName = new Map([...stickerFiles(bundledDir), ...stickerFiles(userDir)].map(item => [item.filename, item]));
+    return { id, name: overrides[id] || meta.name || id, stickers: [...byName.values()] };
+  });
 }
 
 function mediaDirectories() {
@@ -167,6 +198,26 @@ ipcMain.handle('desktop:get-bundled-library', (_event, category) => {
       readOnly: true,
     };
   });
+});
+
+ipcMain.handle('desktop:get-sticker-library', () => stickerLibrary());
+
+ipcMain.handle('desktop:rename-sticker-pack', (_event, packId, name) => {
+  const id = safePackId(packId), cleanName = String(name || '').trim().slice(0, 80);
+  if (!id || !cleanName) throw new Error('Tên bộ sticker không hợp lệ');
+  const overrides = readStickerOverrides(); overrides[id] = cleanName; writeStickerOverrides(overrides);
+  return stickerLibrary();
+});
+
+ipcMain.handle('desktop:add-sticker', (_event, packId, bytes, originalName) => {
+  const id = safePackId(packId);
+  if (!id) throw new Error('Bộ sticker không hợp lệ');
+  const ext = path.extname(String(originalName || '')).toLowerCase();
+  if (!['.png', '.jpg', '.jpeg', '.webp', '.gif'].includes(ext)) throw new Error('Sticker phải là PNG, JPG, WebP hoặc GIF');
+  const dir = path.join(stickerUserRoot(), id); fs.mkdirSync(dir, { recursive: true });
+  const output = path.join(dir, safeAssetName(originalName, 'sticker'));
+  fs.writeFileSync(output, Buffer.from(bytes));
+  return stickerLibrary();
 });
 
 ipcMain.handle('desktop:get-media-stats', () => mediaDirectories().reduce((total, dir) => {

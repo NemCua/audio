@@ -3157,7 +3157,16 @@ function openStepModal(type, stepId = null, targetGroupId = null) {
     html += `<div id="m-extra-tts-box"></div>`;
   } else if (type === 'sticker') {
     modalUploadedMedia = editing && editing.mediaUrl && !editing.mediaPath ? { url: editing.mediaUrl, filename: editing.mediaName, isVideo: editing.mediaIsVideo, desktopPath: editing.mediaDesktopPath } : null;
-    html += `<div style="font-size:12px;color:#6b7280;margin-bottom:10px">Sticker hiển thị độc lập giữa khung, không có nền card và không tạo TTS.</div>`
+    html += `<div style="font-size:12px;color:#6b7280;margin-bottom:10px">Sticker hiển thị độc lập giữa khung, không có nền card và không tạo TTS.</div>
+             <div id="sticker-pack-tabs" style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:8px"></div>
+             <div style="display:flex;gap:7px;margin-bottom:9px">
+               <button type="button" class="btn-cancel" style="flex:1;padding:8px;border:0;border-radius:7px;cursor:pointer" onclick="renameCurrentStickerPack()">✎ Đổi tên bộ</button>
+               <button type="button" class="btn-cancel" style="flex:1;padding:8px;border:0;border-radius:7px;cursor:pointer" onclick="document.getElementById('sticker-library-add-input').click()">＋ Thêm vào bộ</button>
+               <input id="sticker-library-add-input" type="file" accept="image/png,image/jpeg,image/webp,image/gif" style="display:none" onchange="addStickerToCurrentPack(this.files[0]);this.value=''"/>
+             </div>
+             <div id="sticker-library-grid" class="lib-grid" style="display:grid;margin-bottom:14px"></div>
+             <div id="sticker-library-status" style="font-size:11px;color:#94a3b8;margin-bottom:8px"></div>
+             <div style="font-size:11px;color:#6b7280;margin-bottom:8px">Hoặc chọn một file ngoài thư viện:</div>`
              + filePathFieldHtml('Ảnh sticker', editing ? editing.mediaPath : '', editing ? editing.mediaUrl : null, editing ? editing.mediaName : null, 'meme');
   } else if (type === 'audio') {
     modalUploadedMedia = editing && editing.mediaUrl && !editing.mediaPath ? { url: editing.mediaUrl, filename: editing.mediaName, isVideo: editing.mediaIsVideo } : null;
@@ -3176,6 +3185,72 @@ function openStepModal(type, stepId = null, targetGroupId = null) {
   document.getElementById('step-modal-tts-status').textContent = '';
   document.getElementById('step-modal-submit-btn').disabled = false;
   document.getElementById('step-modal-overlay').classList.add('open');
+  if (type === 'sticker') loadStickerLibrary();
+}
+
+let stickerPacks = [];
+let activeStickerPackId = null;
+
+async function loadStickerLibrary(preferredPackId = null) {
+  const grid = document.getElementById('sticker-library-grid');
+  if (!grid || !window.desktopApp?.getStickerLibrary) return;
+  grid.innerHTML = '<div class="lib-empty">Đang mở thư viện sticker...</div>';
+  try {
+    stickerPacks = await window.desktopApp.getStickerLibrary();
+    activeStickerPackId = preferredPackId && stickerPacks.some(pack => pack.id === preferredPackId)
+      ? preferredPackId : (activeStickerPackId && stickerPacks.some(pack => pack.id === activeStickerPackId) ? activeStickerPackId : stickerPacks[0]?.id || null);
+    renderStickerLibrary();
+  } catch (error) {
+    grid.innerHTML = `<div class="lib-empty" style="color:#ef4444">Không mở được thư viện: ${esc(error.message)}</div>`;
+  }
+}
+
+function renderStickerLibrary() {
+  const tabs = document.getElementById('sticker-pack-tabs'), grid = document.getElementById('sticker-library-grid');
+  if (!tabs || !grid) return;
+  tabs.innerHTML = stickerPacks.map(pack => `<button type="button" class="lib-toggle-btn" style="${pack.id === activeStickerPackId ? 'border-color:#7c3aed;color:#ddd6fe' : ''}" onclick="selectStickerPack(decodeURIComponent('${encodeURIComponent(pack.id)}'))">${esc(pack.name)} (${pack.stickers.length})</button>`).join('');
+  const pack = stickerPacks.find(item => item.id === activeStickerPackId);
+  if (!pack || !pack.stickers.length) {
+    grid.innerHTML = '<div class="lib-empty">Bộ này chưa có sticker. Bạn có thể thả file vào thư mục trước khi build hoặc bấm “Thêm vào bộ”.</div>';
+    return;
+  }
+  grid.innerHTML = pack.stickers.map(sticker => {
+    const payload = encodeURIComponent(JSON.stringify(sticker));
+    return `<div class="lib-item lib-item-meme" data-sticker="${payload}" onclick="selectStickerFromLibrary(this)" title="${esc(sticker.filename)}"><img class="lib-thumb" src="${sticker.url}" loading="lazy" alt=""/><span class="lib-item-name">${esc(sticker.filename)}</span></div>`;
+  }).join('');
+}
+
+function selectStickerPack(packId) { activeStickerPackId = packId; renderStickerLibrary(); }
+
+function selectStickerFromLibrary(el) {
+  const sticker = JSON.parse(decodeURIComponent(el.dataset.sticker));
+  modalUploadedMedia = { url: sticker.url, filename: sticker.filename, isVideo: false, desktopPath: sticker.desktopPath };
+  document.querySelectorAll('#sticker-library-grid .lib-item.selected').forEach(item => item.classList.remove('selected'));
+  el.classList.add('selected');
+  document.getElementById('m-dropzone-text').textContent = '✓ ' + sticker.filename;
+  document.getElementById('sticker-library-status').textContent = '✓ Đã chọn từ thư viện sticker';
+}
+
+async function renameCurrentStickerPack() {
+  const pack = stickerPacks.find(item => item.id === activeStickerPackId);
+  if (!pack) return;
+  const name = prompt('Tên mới của bộ sticker:', pack.name);
+  if (!name || name.trim() === pack.name) return;
+  stickerPacks = await window.desktopApp.renameStickerPack(pack.id, name.trim());
+  renderStickerLibrary();
+}
+
+async function addStickerToCurrentPack(file) {
+  if (!file || !activeStickerPackId) return;
+  const status = document.getElementById('sticker-library-status');
+  status.textContent = 'Đang thêm sticker vào thư viện...';
+  try {
+    stickerPacks = await window.desktopApp.addSticker(activeStickerPackId, new Uint8Array(await file.arrayBuffer()), file.name);
+    renderStickerLibrary();
+    status.textContent = '✓ Đã thêm sticker vào bộ hiện tại';
+  } catch (error) {
+    status.textContent = '✗ ' + error.message;
+  }
 }
 
 function closeStepModal() {
