@@ -1,0 +1,59 @@
+{
+  "name": "threads-video-maker-desktop",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Threads Short Video Maker for macOS and Windows",
+  "main": "main.js",
+  "scripts": {
+    "start": "electron .",
+    "build": "electron-builder",
+    "build:mac": "electron-builder --mac",
+    "build:win": "electron-builder --win",
+    "pack": "electron-builder --dir"
+  },
+  "devDependencies": {
+    "electron": "35.7.5",
+    "electron-builder": "25.1.8"
+  },
+  "build": {
+    "appId": "com.threadsvideomaker.desktop",
+    "productName": "Threads Video Maker",
+    "asar": true,
+    "files": [
+      "main.js",
+      "preload.js",
+      "package.json"
+    ],
+    "extraResources": [
+      {
+        "from": "../threads",
+        "to": "threads",
+        "filter": [
+          "**/*",
+          "!exports/**/*",
+          "!media/**/*",
+          "!tts_audio/**/*",
+          "!memeready/**/*",
+          "!audio/**/*"
+        ]
+      }
+    ],
+    "mac": {
+      "category": "public.app-category.video",
+      "target": ["dmg", "zip"],
+      "artifactName": "${productName}-${version}-${arch}.${ext}",
+      "hardenedRuntime": true,
+      "gatekeeperAssess": false
+    },
+    "win": {
+      "target": ["nsis", "portable"],
+      "artifactName": "${productName}-${version}-${arch}.${ext}"
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true
+    }
+  }
+}

@@ -1,0 +1,46 @@
+name: Build desktop app
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [threads_all_browser]
+    paths:
+      - "electron/**"
+      - "threads/**"
+      - ".github/workflows/build-desktop.yml"
+
+jobs:
+  build:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: macos-14
+            command: npm run build:mac -- --arm64
+            artifact: macos-arm64
+          - os: macos-13
+            command: npm run build:mac -- --x64
+            artifact: macos-x64
+          - os: windows-2022
+            command: npm run build:win -- --x64
+            artifact: windows-x64
+    runs-on: ${{ matrix.os }}
+    defaults:
+      run:
+        working-directory: electron
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: electron/package-lock.json
+      - run: npm ci
+      - run: ${{ matrix.command }}
+        env:
+          CSC_IDENTITY_AUTO_DISCOVERY: "false"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: threads-video-maker-${{ matrix.artifact }}
+          path: electron/dist/*
+          if-no-files-found: error

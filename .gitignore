@@ -20,7 +20,9 @@ srt/
 
 # Third-party libs / large deps (not part of this repo)
 TikTok-Api/
-electron/
+electron/node_modules/
+electron/dist/
+electron/.cache/
 
 # Logs and local scratch data
 *.log
