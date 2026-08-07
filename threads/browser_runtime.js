@@ -150,10 +150,25 @@
       await stopped;
 
       const blob = new Blob(recordedChunks, { type: recorder.mimeType || 'video/webm' });
-      const url = makeLocalUrl(blob);
       const stamp = new Date().toISOString().replace(/[:.]/g, '-');
-      result.innerHTML = `<a href="${url}" download="threads-video-${stamp}.webm" class="btn btn-primary" style="display:block;text-align:center;text-decoration:none">⭳ Tải video WebM (${(blob.size / 1048576).toFixed(1)} MB)</a>`;
-      setExportProgress(100, '✓ Ghi xong hoàn toàn trên thiết bị');
+      if (window.desktopApp?.convertWebmToMp4) {
+        setExportProgress(92, 'Đang chuyển sang MP4 bằng FFmpeg trên máy…');
+        const converted = await window.desktopApp.convertWebmToMp4(
+          new Uint8Array(await blob.arrayBuffer()),
+          `threads-video-${stamp}.mp4`,
+        );
+        if (converted.canceled) {
+          result.innerHTML = '<div style="color:#fbbf24;font-size:12px">Đã huỷ lưu file MP4.</div>';
+        } else {
+          const safePath = esc(converted.path);
+          result.innerHTML = `<button class="btn btn-primary" onclick="desktopApp.revealFile('${safePath.replace(/'/g, "\\'")}')">✓ MP4 đã lưu — Hiện trong thư mục</button><div style="font-size:11px;color:#94a3b8;margin-top:6px;word-break:break-all">${safePath}</div>`;
+        }
+        setExportProgress(100, '✓ Đã xuất MP4 trên thiết bị');
+      } else {
+        const url = makeLocalUrl(blob);
+        result.innerHTML = `<a href="${url}" download="threads-video-${stamp}.webm" class="btn btn-primary" style="display:block;text-align:center;text-decoration:none">⭳ Tải video WebM (${(blob.size / 1048576).toFixed(1)} MB)</a>`;
+        setExportProgress(100, '✓ Ghi xong hoàn toàn trên thiết bị');
+      }
     } catch (error) {
       document.getElementById('export-progress-wrap').style.display = 'none';
       result.innerHTML = `<div style="color:#ef4444;font-size:12px">✗ ${esc(error.message || String(error))}</div>`;
@@ -177,5 +192,9 @@
   };
 
   window.addEventListener('beforeunload', () => localUrls.forEach(url => URL.revokeObjectURL(url)));
+  if (window.desktopApp?.isElectron) {
+    const exportButton = document.getElementById('export-btn');
+    if (exportButton) exportButton.textContent = '🎬 Xuất MP4 trên máy';
+  }
   refreshCacheSize();
 })();

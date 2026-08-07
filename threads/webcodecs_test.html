@@ -1,0 +1,35 @@
+<!doctype html>
+<html lang="vi">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>Canvas + WebCodecs thử nghiệm</title>
+<style>
+*{box-sizing:border-box}body{margin:0;background:#0a0c14;color:#e2e8f0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif}
+main{max-width:1180px;margin:auto;padding:24px;display:grid;grid-template-columns:330px 1fr;gap:24px}.panel{background:#12152a;border:1px solid #252947;border-radius:14px;padding:18px}.panel h1{font-size:19px;color:#a78bfa;margin:0 0 8px}.hint{font-size:12px;line-height:1.55;color:#94a3b8;margin-bottom:16px}label{display:block;font-size:12px;font-weight:700;margin:13px 0 6px}input,textarea,button{width:100%;border-radius:8px;border:1px solid #303555;background:#0a0c14;color:#e2e8f0;padding:10px;font:inherit}textarea{height:100px;resize:vertical}button{border:0;background:#6d28d9;font-weight:700;cursor:pointer;margin-top:12px}button:disabled{opacity:.45;cursor:wait}.secondary{background:#252947}.status{font-size:12px;color:#a78bfa;line-height:1.5;margin-top:12px;min-height:36px}.preview{display:flex;justify-content:center;align-items:flex-start}.canvas-wrap{width:min(100%,405px);aspect-ratio:9/16;background:#000;border-radius:12px;overflow:hidden;box-shadow:0 16px 60px #0008}canvas{display:block;width:100%;height:100%}a.download{display:block;text-align:center;text-decoration:none;color:#fff;background:#15803d;border-radius:8px;padding:11px;margin-top:10px;font-weight:700}@media(max-width:760px){main{grid-template-columns:1fr}.canvas-wrap{width:min(100%,360px)}}
+</style>
+</head>
+<body>
+<main>
+  <section class="panel">
+    <h1>Canvas + WebCodecs</h1>
+    <div class="hint">Prototype tách biệt. Video được dựng offline ở đúng 1080×1920, không quay màn hình và không gọi export server. Bản này thử hình ảnh trước, chưa trộn âm thanh.</div>
+    <label>Video nền</label>
+    <input id="video-file" type="file" accept="video/*"/>
+    <label>Tên hiển thị</label>
+    <input id="name" value="Người dùng Threads"/>
+    <label>Nội dung card</label>
+    <textarea id="text">Đây là video thử nghiệm được render trực tiếp bằng Canvas và encode bằng WebCodecs ngay trên máy người dùng.</textarea>
+    <label>Thời lượng thử (giây)</label>
+    <input id="duration" type="number" min="1" max="15" step="1" value="5"/>
+    <button id="snapshot">Vẽ khung kiểm tra</button>
+    <button id="encode">Encode WebM bằng WebCodecs</button>
+    <div class="status" id="status">Chọn video để bắt đầu.</div>
+    <div id="result"></div>
+  </section>
+  <section class="preview"><div class="canvas-wrap"><canvas id="canvas" width="1080" height="1920"></canvas></div></section>
+</main>
+<video id="source" muted playsinline style="display:none"></video>
+<script src="webcodecs_test.js"></script>
+</body>
+</html>
