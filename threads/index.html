@@ -1699,7 +1699,7 @@ async function fetchTts(text, voiceIdx, echo = false, speed = 1) {
   const voice = selectedVoice(voiceIdx);
   const res = await fetch(ttsServerUrl() + '/tts', {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers: { 'Content-Type': 'application/json', ...(window.authHeaders ? window.authHeaders() : {}) },
     body: JSON.stringify({
       text,
       voice_type: voice ? voice.voice_type : undefined,
@@ -1722,7 +1722,7 @@ async function fetchTtsBatch(texts, voiceIdx, speed = 1) {
   if (!texts.length || texts.length > 50) throw new Error('TTS batch phải có từ 1 đến 50 đoạn');
   const voice = selectedVoice(voiceIdx);
   const res = await fetch(ttsServerUrl() + '/tts-batch', {
-    method: 'POST', headers: { 'Content-Type': 'application/json' },
+    method: 'POST', headers: { 'Content-Type': 'application/json', ...(window.authHeaders ? window.authHeaders() : {}) },
     body: JSON.stringify({ texts, voice_type: voice?.voice_type, resource_id: voice?.resource_id, speed }),
   });
   if (!res.ok) {
@@ -4741,6 +4741,7 @@ _stepEngineReady = true;
 renderStepList();
 // Bản browser-first cập nhật trạng thái lưu trữ sau khi runtime khởi tạo.
 </script>
+<script src="auth_client.js?v=20260807-auth-v2"></script>
 <script src="browser_runtime.js?v=20260807-browser-first"></script>
 
 </body>

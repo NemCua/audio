@@ -1,4 +1,4 @@
-const { app, BrowserWindow, ipcMain, shell, session, desktopCapturer, dialog } = require('electron');
+const { app, BrowserWindow, ipcMain, shell, session, desktopCapturer, dialog, safeStorage } = require('electron');
 const path = require('node:path');
 const fs = require('node:fs');
 const os = require('node:os');
@@ -45,6 +45,8 @@ function ffmpegPath() {
   if (isDev) return require('ffmpeg-static');
   return path.join(process.resourcesPath, 'ffmpeg', process.platform === 'win32' ? 'ffmpeg.exe' : 'ffmpeg');
 }
+
+function authStorePath() { return path.join(app.getPath('userData'), 'auth-session.json'); }
 
 function runFfmpeg(args) {
   return new Promise((resolve, reject) => {
@@ -100,6 +102,25 @@ ipcMain.handle('desktop:convert-webm-to-mp4', async (_event, bytes, suggestedNam
 });
 
 ipcMain.handle('desktop:reveal-file', (_event, filePath) => shell.showItemInFolder(filePath));
+
+ipcMain.handle('desktop:auth-save-refresh', (_event, refreshToken) => {
+  if (!safeStorage.isEncryptionAvailable()) throw new Error('Hệ điều hành chưa sẵn sàng mã hóa phiên đăng nhập');
+  const encrypted = safeStorage.encryptString(String(refreshToken));
+  fs.writeFileSync(authStorePath(), JSON.stringify({ token: encrypted.toString('base64') }), { mode: 0o600 });
+  return true;
+});
+
+ipcMain.handle('desktop:auth-load-refresh', () => {
+  try {
+    const payload = JSON.parse(fs.readFileSync(authStorePath(), 'utf8'));
+    return safeStorage.decryptString(Buffer.from(payload.token, 'base64'));
+  } catch (_error) { return null; }
+});
+
+ipcMain.handle('desktop:auth-clear', () => {
+  fs.rmSync(authStorePath(), { force: true });
+  return true;
+});
 
 ipcMain.handle('desktop:export-project', async (event, payload) => {
   const suggestedName = `threads-video-${new Date().toISOString().replace(/[:.]/g, '-')}.mp4`;
