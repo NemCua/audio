@@ -236,7 +236,7 @@
     let exportCompleted = false;
     try {
       if (!window.creditClient) throw new Error('Chưa kết nối được hệ thống credit. Hãy đăng nhập lại.');
-      const pricingInput = { duration_seconds: totalDuration(), width: 1080, height: 1920 };
+      const pricingInput = { type_counts: exportTypeCounts() };
       const quote = await window.creditClient.quoteExport(pricingInput);
       if (creditInfo) creditInfo.textContent = `Video này: ${quote.cost} credit · Số dư: ${quote.balance} credit`;
       if (!quote.can_export) throw new Error(`Không đủ credit: cần ${quote.cost}, hiện có ${quote.balance}.`);
@@ -286,7 +286,7 @@
     if (!el || !window.creditClient || !steps.length) return;
     try {
       computeTimeline();
-      const quote = await window.creditClient.quoteExport({ duration_seconds: totalDuration(), width: 1080, height: 1920 });
+      const quote = await window.creditClient.quoteExport({ type_counts: exportTypeCounts() });
       el.textContent = `Dự kiến ${quote.cost} credit · Số dư ${quote.balance} credit`;
       el.style.color = quote.can_export ? '#94a3b8' : '#fca5a5';
     } catch (_error) {}

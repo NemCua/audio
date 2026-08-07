@@ -21,7 +21,7 @@ from fastapi import APIRouter, Depends, Header, HTTPException, status
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from jose import JWTError, jwt
 from psycopg2.pool import ThreadedConnectionPool
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 load_dotenv()
 
@@ -196,26 +196,31 @@ class RefreshRequest(BaseModel):
     refresh_token: str
 class ReserveRequest(BaseModel):
     idempotency_key: str
-    duration_seconds: float = 0
-    width: int = 1080
-    height: int = 1920
+    type_counts: dict[str, int] = Field(default_factory=dict)
 class ExportQuoteRequest(BaseModel):
-    duration_seconds: float = 0
-    width: int = 1080
-    height: int = 1920
+    type_counts: dict[str, int] = Field(default_factory=dict)
 class ReservationRequest(BaseModel):
     reservation_id: str
 class AdminCreditRequest(BaseModel):
     user_id: int; amount: int; reference: str = "manual"; idempotency_key: str
 
 
-def _export_credit_cost(duration_seconds: float, width: int, height: int) -> int:
+def _export_credit_cost(type_counts: dict[str, int]) -> int:
     """Điểm thay duy nhất khi chốt công thức giá; client không được tự đặt cost."""
-    if duration_seconds < 0 or duration_seconds > 24 * 60 * 60:
-        raise HTTPException(400, "Thời lượng video không hợp lệ")
-    if width < 1 or height < 1 or width > 7680 or height > 7680:
-        raise HTTPException(400, "Kích thước video không hợp lệ")
-    return max(1, EXPORT_CREDIT_COST)
+    allowed = {"post", "comment", "reply", "image", "mess", "audio"}
+    counts: dict[str, int] = {}
+    for kind, raw_count in type_counts.items():
+        if kind not in allowed:
+            continue
+        if isinstance(raw_count, bool) or not isinstance(raw_count, int) or raw_count < 0 or raw_count > 100_000:
+            raise HTTPException(400, "Số lượng nội dung không hợp lệ")
+        counts[kind] = raw_count
+    return (
+        100 * (counts.get("post", 0) + counts.get("comment", 0) + counts.get("reply", 0))
+        + 150 * counts.get("image", 0)
+        + 20 * counts.get("mess", 0)
+        + 10 * counts.get("audio", 0)
+    )
 
 
 @router.post("/register")
@@ -280,18 +285,19 @@ def ledger(identity: dict = Depends(current_identity)):
 
 @router.post("/exports/quote")
 def quote_export(req: ExportQuoteRequest, identity: dict = Depends(current_identity)):
-    cost = _export_credit_cost(req.duration_seconds, req.width, req.height)
+    cost = _export_credit_cost(req.type_counts)
     return {
         "cost": cost,
         "balance": identity["balance"] or 0,
         "can_export": (identity["balance"] or 0) >= cost,
-        "pricing": "flat-v1",
+        "pricing": "content-type-v1",
     }
 
 
 @router.post("/exports/reserve")
 def reserve_export(req: ReserveRequest, identity: dict = Depends(current_identity)):
-    cost = _export_credit_cost(req.duration_seconds, req.width, req.height)
+    cost = _export_credit_cost(req.type_counts)
+    if cost < 1: raise HTTPException(400, "Video chưa có nội dung tính credit")
     if not req.idempotency_key.strip(): raise HTTPException(400, "Thiếu idempotency_key")
     with db() as conn:
         with conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:

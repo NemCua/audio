@@ -1151,6 +1151,7 @@ header span { font-size: 12px; color: #4b5563; }
       <button class="replay-btn" onclick="replayPreview()" title="Xem lại từ đầu">↻</button>
       <input class="timeline-seek" id="play-progress" type="range" min="0" max="0" step="0.01" value="0" aria-label="Tua nhanh timeline" oninput="seekPreview(this.value)"/>
       <span class="tlabel" id="play-tlabel">0.0s / 0.0s</span>
+      <span class="tlabel" id="play-credit-label" style="color:#c4b5fd;white-space:nowrap">0 credit</span>
     </div>
 
     <div class="preview-info" id="preview-info" style="visibility:hidden">
@@ -3749,6 +3750,7 @@ function renderStepList() {
   if (!steps.length) {
     list.innerHTML = '<div class="script-empty">Chưa có step nào.<br/>Bấm một nút ＋ ở trên để thêm.</div>';
     updateTLabel();
+    updateCreditLabels();
     return;
   }
   computeTimeline();
@@ -3770,6 +3772,26 @@ function renderStepList() {
     return stepRowsHtml(row);
   }).join('');
   updateTLabel();
+  updateCreditLabels();
+}
+
+function exportTypeCounts() {
+  const counts = { post:0, comment:0, reply:0, image:0, mess:0, audio:0 };
+  for (const step of steps) if (Object.prototype.hasOwnProperty.call(counts, step.type)) counts[step.type]++;
+  return counts;
+}
+
+function localExportCreditTotal() {
+  const c = exportTypeCounts();
+  return 100 * (c.post + c.comment + c.reply) + 150 * c.image + 20 * c.mess + 10 * c.audio;
+}
+
+function updateCreditLabels() {
+  const total = localExportCreditTotal();
+  const playLabel = document.getElementById('play-credit-label');
+  const exportLabel = document.getElementById('export-credit-info');
+  if (playLabel) playLabel.textContent = `${total} credit`;
+  if (exportLabel) exportLabel.textContent = `Tổng: ${total} credit`;
 }
 
 let _dragStepIds = null; // luôn là mảng — [id] khi kéo 1 card, [id1,id2] khi kéo cả cụm
