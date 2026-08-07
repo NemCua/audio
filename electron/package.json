@@ -22,6 +22,7 @@
     "asar": true,
     "files": [
       "main.js",
+      "exporter.js",
       "preload.js",
       "package.json"
     ],

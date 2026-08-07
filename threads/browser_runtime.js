@@ -3,6 +3,8 @@
   'use strict';
 
   const localUrls = new Set();
+  let desktopBgVideoPath = null;
+  let desktopBgAudioPath = null;
   let recorder = null;
   let captureStream = null;
   let recordedChunks = [];
@@ -13,6 +15,23 @@
     return url;
   }
   window.browserLocalUrl = makeLocalUrl;
+
+  if (window.desktopApp?.getPathForFile) {
+    const originalSetBgVideoFile = setBgVideoFile;
+    window.setBgVideoFile = setBgVideoFile = function (file) {
+      desktopBgVideoPath = window.desktopApp.getPathForFile(file);
+      return originalSetBgVideoFile(file);
+    };
+    const originalSetBgAudioFile = setBgAudioFile;
+    window.setBgAudioFile = setBgAudioFile = function (file) {
+      desktopBgAudioPath = window.desktopApp.getPathForFile(file);
+      return originalSetBgAudioFile(file);
+    };
+    const originalClearBgVideo = clearBgVideo;
+    window.clearBgVideo = clearBgVideo = function () { desktopBgVideoPath = null; return originalClearBgVideo(); };
+    const originalClearBgAudio = clearBgAudio;
+    window.clearBgAudio = clearBgAudio = function () { desktopBgAudioPath = null; return originalClearBgAudio(); };
+  }
 
   async function localUpload(file) {
     if (!file) throw new Error('Chưa chọn file');
@@ -33,7 +52,7 @@
   window.uploadMediaFile = uploadMediaFile = async function (file) {
     const data = await localUpload(file);
     const duration = await localMediaMetadata(file, data.url);
-    modalUploadedMedia = { url: data.url, filename: data.name, isVideo: /^video\//.test(file.type), duration };
+    modalUploadedMedia = { url: data.url, filename: data.name, isVideo: /^video\//.test(file.type), duration, desktopPath: window.desktopApp?.getPathForFile?.(file) || null };
     const nameEl = document.getElementById('m-dropzone-text');
     if (nameEl) nameEl.textContent = `✓ ${data.name}`;
     const status = document.getElementById('m-upload-status');
@@ -105,6 +124,7 @@
   }
 
   window.exportVideo = exportVideo = async function () {
+    if (window.desktopApp?.exportProject) return exportVideoOfflineDesktop();
     if (!steps.length) { alert('Chưa có step nào trong kịch bản.'); return; }
     if (!bgVideoFile && !bgVideoLibraryItem) { alert('Cần chọn video nền trước.'); return; }
     if (!navigator.mediaDevices?.getDisplayMedia || !window.MediaRecorder) {
@@ -179,6 +199,31 @@
     }
   };
 
+  async function exportVideoOfflineDesktop() {
+    if (!steps.length) { alert('Chưa có step nào trong kịch bản.'); return; }
+    if (!desktopBgVideoPath) { alert('Hãy chọn lại video nền từ máy trước khi xuất.'); return; }
+    computeTimeline();
+    const btn = document.getElementById('export-btn'), result = document.getElementById('export-result');
+    btn.disabled = true; result.innerHTML = '';
+    const unsubscribe = window.desktopApp.onExportProgress(progress => setExportProgress(progress.percent || 0, progress.text || ''));
+    try {
+      const exported = await window.desktopApp.exportProject({
+        steps,
+        bgVideoPath: desktopBgVideoPath,
+        bgAudioPath: desktopBgAudioPath,
+        bgAudioVolume: parseFloat(document.getElementById('bgaudio-volume').value),
+        blurIdentity: document.getElementById('blur-identity-toggle').checked,
+      });
+      if (exported.canceled) { document.getElementById('export-progress-wrap').style.display = 'none'; return; }
+      const safePath = esc(exported.path);
+      result.innerHTML = `<button class="btn btn-primary" onclick="desktopApp.revealFile('${safePath.replace(/'/g, "\\'")}')">✓ MP4 đã lưu — Hiện trong thư mục</button><div style="font-size:11px;color:#94a3b8;margin-top:6px;word-break:break-all">${safePath}</div>`;
+    } catch (error) {
+      result.innerHTML = `<div style="color:#ef4444;font-size:12px">✗ ${esc(error.message || String(error))}</div>`;
+    } finally {
+      unsubscribe?.(); btn.disabled = false;
+    }
+  }
+
   // Server-backed reusable libraries are intentionally disabled in static mode.
   window.loadBgVideoLibrary = loadBgVideoLibrary = async () => {};
   window.loadBgAudioLibrary = loadBgAudioLibrary = async () => {};
@@ -194,7 +239,7 @@
   window.addEventListener('beforeunload', () => localUrls.forEach(url => URL.revokeObjectURL(url)));
   if (window.desktopApp?.isElectron) {
     const exportButton = document.getElementById('export-btn');
-    if (exportButton) exportButton.textContent = '🎬 Xuất MP4 trên máy';
+    if (exportButton) exportButton.textContent = '🎬 Xuất MP4 offline (không quay màn hình)';
   }
   refreshCacheSize();
 })();

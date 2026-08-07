@@ -3456,6 +3456,7 @@ async function submitStepModal() {
       data.mediaUrl = modalUploadedMedia.url;
       data.mediaName = modalUploadedMedia.filename;
       data.mediaIsVideo = modalUploadedMedia.isVideo;
+      data.mediaDesktopPath = modalUploadedMedia.desktopPath || null;
     } else if (path) {
       data.mediaPath = path;
       data.mediaUrl = toFileUrl(path);

@@ -1,9 +1,16 @@
-const { contextBridge, ipcRenderer } = require('electron');
+const { contextBridge, ipcRenderer, webUtils } = require('electron');
 
 contextBridge.exposeInMainWorld('desktopApp', Object.freeze({
   isElectron: true,
   getRuntimeInfo: () => ipcRenderer.invoke('desktop:get-runtime-info'),
   checkAssets: () => ipcRenderer.invoke('desktop:check-assets'),
+  getPathForFile: file => webUtils.getPathForFile(file),
+  exportProject: payload => ipcRenderer.invoke('desktop:export-project', payload),
+  onExportProgress: callback => {
+    const listener = (_event, progress) => callback(progress);
+    ipcRenderer.on('desktop:export-progress', listener);
+    return () => ipcRenderer.removeListener('desktop:export-progress', listener);
+  },
   convertWebmToMp4: (bytes, suggestedName) => ipcRenderer.invoke('desktop:convert-webm-to-mp4', bytes, suggestedName),
   revealFile: filePath => ipcRenderer.invoke('desktop:reveal-file', filePath),
 }));

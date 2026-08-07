@@ -4,6 +4,7 @@ const fs = require('node:fs');
 const os = require('node:os');
 const { randomUUID } = require('node:crypto');
 const { spawn } = require('node:child_process');
+const { exportProject } = require('./exporter');
 
 const isDev = !app.isPackaged;
 
@@ -99,6 +100,25 @@ ipcMain.handle('desktop:convert-webm-to-mp4', async (_event, bytes, suggestedNam
 });
 
 ipcMain.handle('desktop:reveal-file', (_event, filePath) => shell.showItemInFolder(filePath));
+
+ipcMain.handle('desktop:export-project', async (event, payload) => {
+  const suggestedName = `threads-video-${new Date().toISOString().replace(/[:.]/g, '-')}.mp4`;
+  const choice = await dialog.showSaveDialog({
+    title: 'Lưu video MP4',
+    defaultPath: path.join(app.getPath('videos'), suggestedName),
+    filters: [{ name: 'MP4 Video', extensions: ['mp4'] }],
+  });
+  if (choice.canceled || !choice.filePath) return { canceled: true };
+  const sendProgress = progress => event.sender.send('desktop:export-progress', progress);
+  await exportProject({
+    payload,
+    outputPath: choice.filePath,
+    threadsRoot: threadsRoot(),
+    ffmpegPath: ffmpegPath(),
+    sendProgress,
+  });
+  return { canceled: false, path: choice.filePath };
+});
 
 app.whenReady().then(() => {
   session.defaultSession.setDisplayMediaRequestHandler(async (_request, callback) => {
