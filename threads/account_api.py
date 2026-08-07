@@ -1,0 +1,321 @@
+"""Account API v2 dùng lại Neon database cũ.
+
+Khác auth_server.py cũ: pool kết nối lazy, retry khi Neon cold-start, access +
+refresh session có thể revoke, credit ledger bất biến và export reservation.
+"""
+import hashlib
+import os
+import secrets
+import time
+import uuid
+import threading
+from collections import defaultdict, deque
+from contextlib import contextmanager
+from datetime import datetime, timedelta, timezone
+
+import bcrypt
+import psycopg2
+import psycopg2.extras
+from dotenv import load_dotenv
+from fastapi import APIRouter, Depends, Header, HTTPException, status
+from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
+from jose import JWTError, jwt
+from psycopg2.pool import ThreadedConnectionPool
+from pydantic import BaseModel
+
+load_dotenv()
+
+DATABASE_URL = os.getenv("DATABASE_URL", "").strip()
+AUTH_SECRET_KEY = os.getenv("AUTH_SECRET_KEY", "").strip()
+AUTH_ADMIN_KEY = os.getenv("AUTH_ADMIN_KEY", "").strip()
+ACCESS_MINUTES = int(os.getenv("AUTH_ACCESS_MINUTES", "30"))
+REFRESH_DAYS = int(os.getenv("AUTH_REFRESH_DAYS", "30"))
+SIGNUP_CREDITS = int(os.getenv("AUTH_SIGNUP_CREDITS", "0"))
+EXPORT_CREDIT_COST = int(os.getenv("EXPORT_CREDIT_COST", "1"))
+RESERVATION_MINUTES = int(os.getenv("EXPORT_RESERVATION_MINUTES", "30"))
+
+if not DATABASE_URL:
+    raise RuntimeError("Thiếu DATABASE_URL")
+if not AUTH_SECRET_KEY:
+    raise RuntimeError("Thiếu AUTH_SECRET_KEY; không được dùng secret ngẫu nhiên trong production")
+
+router = APIRouter(prefix="/auth", tags=["account-v2"])
+bearer = HTTPBearer(auto_error=False)
+_pool: ThreadedConnectionPool | None = None
+_tts_hits: dict[int, deque[float]] = defaultdict(deque)
+_tts_hits_lock = threading.Lock()
+
+
+def _new_pool() -> ThreadedConnectionPool:
+    separator = "&" if "?" in DATABASE_URL else "?"
+    dsn = DATABASE_URL if "connect_timeout=" in DATABASE_URL else f"{DATABASE_URL}{separator}connect_timeout=8"
+    return ThreadedConnectionPool(1, int(os.getenv("DB_POOL_MAX", "8")), dsn=dsn)
+
+
+def pool() -> ThreadedConnectionPool:
+    global _pool
+    if _pool is None:
+        _pool = _new_pool()
+    return _pool
+
+
+@contextmanager
+def db():
+    """Mượn connection từ pool, retry một lần nếu Neon đã đóng socket idle."""
+    global _pool
+    conn = None
+    for attempt in range(2):
+        try:
+            conn = pool().getconn()
+            if conn.closed:
+                raise psycopg2.InterfaceError("connection closed")
+            with conn.cursor() as cur:
+                cur.execute("SELECT 1")
+            break
+        except (psycopg2.InterfaceError, psycopg2.OperationalError) as exc:
+            if conn is not None:
+                try: pool().putconn(conn, close=True)
+                except Exception: pass
+                conn = None
+            if attempt == 0:
+                try: pool().closeall()
+                except Exception: pass
+                _pool = None
+                time.sleep(0.25)
+                continue
+            raise HTTPException(503, f"Database tạm thời không kết nối được: {exc}")
+    try:
+        yield conn
+        conn.commit()
+    except Exception:
+        conn.rollback()
+        raise
+    finally:
+        pool().putconn(conn)
+
+
+def migrate() -> None:
+    statements = [
+        "ALTER TABLE users ADD COLUMN IF NOT EXISTS settings JSONB DEFAULT '{}'",
+        "ALTER TABLE users ADD COLUMN IF NOT EXISTS balance INTEGER DEFAULT 0",
+        """CREATE TABLE IF NOT EXISTS auth_sessions (
+            id UUID PRIMARY KEY, user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+            refresh_hash TEXT NOT NULL, device_name TEXT DEFAULT '', revoked_at TIMESTAMPTZ,
+            expires_at TIMESTAMPTZ NOT NULL, created_at TIMESTAMPTZ DEFAULT NOW(), last_used_at TIMESTAMPTZ DEFAULT NOW()
+        )""",
+        "CREATE INDEX IF NOT EXISTS auth_sessions_user_idx ON auth_sessions(user_id)",
+        """CREATE TABLE IF NOT EXISTS credit_ledger (
+            id BIGSERIAL PRIMARY KEY, user_id INTEGER NOT NULL REFERENCES users(id),
+            amount INTEGER NOT NULL, balance_after INTEGER NOT NULL, kind TEXT NOT NULL,
+            reference TEXT, idempotency_key TEXT, metadata JSONB DEFAULT '{}', created_at TIMESTAMPTZ DEFAULT NOW(),
+            UNIQUE(user_id, idempotency_key)
+        )""",
+        """CREATE TABLE IF NOT EXISTS export_reservations (
+            id UUID PRIMARY KEY, user_id INTEGER NOT NULL REFERENCES users(id), cost INTEGER NOT NULL,
+            status TEXT NOT NULL DEFAULT 'reserved', idempotency_key TEXT NOT NULL,
+            expires_at TIMESTAMPTZ NOT NULL, created_at TIMESTAMPTZ DEFAULT NOW(), finished_at TIMESTAMPTZ,
+            UNIQUE(user_id, idempotency_key)
+        )""",
+    ]
+    with db() as conn:
+        with conn.cursor() as cur:
+            for statement in statements:
+                cur.execute(statement)
+
+
+def _hash_password(password: str) -> str:
+    return bcrypt.hashpw(password.encode(), bcrypt.gensalt(rounds=12)).decode()
+
+
+def _verify_password(password: str, hashed: str) -> bool:
+    try: return bcrypt.checkpw(password.encode(), hashed.encode())
+    except (ValueError, TypeError): return False
+
+
+def _refresh_hash(token: str) -> str:
+    return hashlib.sha256(token.encode()).hexdigest()
+
+
+def _access_token(user_id: int, email: str, session_id: str) -> str:
+    now = datetime.now(timezone.utc)
+    return jwt.encode({"sub": str(user_id), "email": email, "sid": session_id, "type": "access", "iat": now, "exp": now + timedelta(minutes=ACCESS_MINUTES)}, AUTH_SECRET_KEY, algorithm="HS256")
+
+
+def _user(row) -> dict:
+    return {"id": row["id"], "email": row["email"], "display_name": row["display_name"] or "", "balance": row["balance"] or 0}
+
+
+def _create_session(cur, user, device_name: str = "") -> dict:
+    session_id, refresh = str(uuid.uuid4()), secrets.token_urlsafe(48)
+    expires = datetime.now(timezone.utc) + timedelta(days=REFRESH_DAYS)
+    cur.execute("INSERT INTO auth_sessions(id,user_id,refresh_hash,device_name,expires_at) VALUES(%s,%s,%s,%s,%s)", (session_id, user["id"], _refresh_hash(refresh), device_name[:120], expires))
+    access = _access_token(user["id"], user["email"], session_id)
+    return {"token": access, "access_token": access, "refresh_token": refresh, "expires_in": ACCESS_MINUTES * 60, "user": _user(user)}
+
+
+def current_identity(credentials: HTTPAuthorizationCredentials | None = Depends(bearer)) -> dict:
+    if not credentials:
+        raise HTTPException(status.HTTP_401_UNAUTHORIZED, "Thiếu access token")
+    try:
+        payload = jwt.decode(credentials.credentials, AUTH_SECRET_KEY, algorithms=["HS256"])
+        if payload.get("type") != "access": raise JWTError("wrong token type")
+        user_id, session_id = int(payload["sub"]), str(payload["sid"])
+    except (JWTError, KeyError, ValueError):
+        raise HTTPException(status.HTTP_401_UNAUTHORIZED, "Access token không hợp lệ hoặc đã hết hạn")
+    with db() as conn:
+        with conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
+            cur.execute("""SELECT u.id,u.email,u.display_name,u.balance,s.id AS session_id
+                           FROM users u JOIN auth_sessions s ON s.user_id=u.id
+                           WHERE u.id=%s AND s.id=%s AND s.revoked_at IS NULL AND s.expires_at>NOW()""", (user_id, session_id))
+            row = cur.fetchone()
+    if not row: raise HTTPException(status.HTTP_401_UNAUTHORIZED, "Phiên đăng nhập đã bị thu hồi")
+    return dict(row)
+
+
+def tts_identity(credentials: HTTPAuthorizationCredentials | None = Depends(bearer)) -> dict:
+    """Bật REQUIRE_TTS_AUTH=1 ở production; local dev giữ tương thích UI cũ."""
+    if os.getenv("REQUIRE_TTS_AUTH", "0").lower() not in ("1", "true", "yes"):
+        return {"id": 0, "email": "local-dev"}
+    identity = current_identity(credentials)
+    limit = max(1, int(os.getenv("TTS_REQUESTS_PER_MINUTE", "30")))
+    now = time.monotonic()
+    with _tts_hits_lock:
+        hits = _tts_hits[identity["id"]]
+        while hits and now - hits[0] >= 60: hits.popleft()
+        if len(hits) >= limit:
+            raise HTTPException(429, "Bạn tạo TTS quá nhanh, hãy thử lại sau")
+        hits.append(now)
+    return identity
+
+
+class RegisterRequest(BaseModel):
+    email: str; password: str; display_name: str = ""; device_name: str = ""
+class LoginRequest(BaseModel):
+    email: str; password: str; device_name: str = ""
+class RefreshRequest(BaseModel):
+    refresh_token: str
+class ReserveRequest(BaseModel):
+    idempotency_key: str; cost: int | None = None
+class ReservationRequest(BaseModel):
+    reservation_id: str
+class AdminCreditRequest(BaseModel):
+    user_id: int; amount: int; reference: str = "manual"; idempotency_key: str
+
+
+@router.post("/register")
+def register(req: RegisterRequest):
+    email = req.email.strip().lower()
+    if "@" not in email or len(email) > 254: raise HTTPException(400, "Email không hợp lệ")
+    if len(req.password) < 8: raise HTTPException(400, "Mật khẩu tối thiểu 8 ký tự")
+    try:
+        with db() as conn:
+            with conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
+                cur.execute("INSERT INTO users(email,hashed_pw,display_name,balance) VALUES(%s,%s,%s,%s) RETURNING *", (email, _hash_password(req.password), req.display_name.strip(), SIGNUP_CREDITS))
+                user = cur.fetchone()
+                if SIGNUP_CREDITS:
+                    cur.execute("INSERT INTO credit_ledger(user_id,amount,balance_after,kind,reference,idempotency_key) VALUES(%s,%s,%s,'signup','signup',%s)", (user["id"], SIGNUP_CREDITS, SIGNUP_CREDITS, f"signup:{user['id']}"))
+                return _create_session(cur, user, req.device_name)
+    except psycopg2.errors.UniqueViolation:
+        raise HTTPException(409, "Email đã được đăng ký")
+
+
+@router.post("/login")
+def login(req: LoginRequest):
+    with db() as conn:
+        with conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
+            cur.execute("SELECT * FROM users WHERE email=%s", (req.email.strip().lower(),)); user = cur.fetchone()
+            if not user or not _verify_password(req.password, user["hashed_pw"]): raise HTTPException(401, "Email hoặc mật khẩu không đúng")
+            return _create_session(cur, user, req.device_name)
+
+
+@router.post("/refresh")
+def refresh(req: RefreshRequest):
+    token_hash = _refresh_hash(req.refresh_token)
+    with db() as conn:
+        with conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
+            cur.execute("""SELECT s.*,u.email,u.display_name,u.balance FROM auth_sessions s JOIN users u ON u.id=s.user_id
+                           WHERE s.refresh_hash=%s AND s.revoked_at IS NULL AND s.expires_at>NOW() FOR UPDATE""", (token_hash,)); row = cur.fetchone()
+            if not row: raise HTTPException(401, "Refresh token không hợp lệ hoặc đã hết hạn")
+            new_refresh = secrets.token_urlsafe(48)
+            cur.execute("UPDATE auth_sessions SET refresh_hash=%s,last_used_at=NOW() WHERE id=%s", (_refresh_hash(new_refresh), row["id"]))
+            access = _access_token(row["user_id"], row["email"], str(row["id"]))
+            return {"token": access, "access_token": access, "refresh_token": new_refresh, "expires_in": ACCESS_MINUTES * 60, "user": {"id": row["user_id"], "email": row["email"], "display_name": row["display_name"] or "", "balance": row["balance"] or 0}}
+
+
+@router.post("/logout")
+def logout(identity: dict = Depends(current_identity)):
+    with db() as conn:
+        with conn.cursor() as cur: cur.execute("UPDATE auth_sessions SET revoked_at=NOW() WHERE id=%s", (identity["session_id"],))
+    return {"ok": True}
+
+
+@router.get("/me")
+def me(identity: dict = Depends(current_identity)):
+    return _user(identity)
+
+
+@router.get("/credits/ledger")
+def ledger(identity: dict = Depends(current_identity)):
+    with db() as conn:
+        with conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
+            cur.execute("SELECT id,amount,balance_after,kind,reference,metadata,created_at FROM credit_ledger WHERE user_id=%s ORDER BY id DESC LIMIT 100", (identity["id"],))
+            return [dict(row) for row in cur.fetchall()]
+
+
+@router.post("/exports/reserve")
+def reserve_export(req: ReserveRequest, identity: dict = Depends(current_identity)):
+    cost = EXPORT_CREDIT_COST if req.cost is None else req.cost
+    if cost < 1 or cost > 100: raise HTTPException(400, "Credit cost không hợp lệ")
+    if not req.idempotency_key.strip(): raise HTTPException(400, "Thiếu idempotency_key")
+    with db() as conn:
+        with conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
+            # Hoàn tự động các job cũ bị app tắt/crash trước khi tạo reservation mới.
+            cur.execute("SELECT id,cost FROM export_reservations WHERE user_id=%s AND status='reserved' AND expires_at<=NOW() FOR UPDATE", (identity["id"],))
+            for expired in cur.fetchall():
+                cur.execute("UPDATE users SET balance=balance+%s WHERE id=%s RETURNING balance", (expired["cost"], identity["id"])); restored = cur.fetchone()["balance"]
+                cur.execute("UPDATE export_reservations SET status='expired_refunded',finished_at=NOW() WHERE id=%s", (expired["id"],))
+                cur.execute("INSERT INTO credit_ledger(user_id,amount,balance_after,kind,reference,idempotency_key) VALUES(%s,%s,%s,'export_expired_refund',%s,%s) ON CONFLICT(user_id,idempotency_key) DO NOTHING", (identity["id"], expired["cost"], restored, str(expired["id"]), f"expired-refund:{expired['id']}"))
+            cur.execute("SELECT * FROM export_reservations WHERE user_id=%s AND idempotency_key=%s", (identity["id"], req.idempotency_key)); existing = cur.fetchone()
+            if existing: return dict(existing)
+            cur.execute("SELECT balance FROM users WHERE id=%s FOR UPDATE", (identity["id"],)); balance = cur.fetchone()["balance"]
+            if balance < cost: raise HTTPException(402, "Không đủ credit")
+            new_balance, reservation_id = balance - cost, str(uuid.uuid4())
+            cur.execute("UPDATE users SET balance=%s WHERE id=%s", (new_balance, identity["id"]))
+            cur.execute("INSERT INTO export_reservations(id,user_id,cost,idempotency_key,expires_at) VALUES(%s,%s,%s,%s,NOW()+(%s || ' minutes')::interval) RETURNING *", (reservation_id, identity["id"], cost, req.idempotency_key, RESERVATION_MINUTES)); reservation = cur.fetchone()
+            cur.execute("INSERT INTO credit_ledger(user_id,amount,balance_after,kind,reference,idempotency_key) VALUES(%s,%s,%s,'export_reserve',%s,%s)", (identity["id"], -cost, new_balance, reservation_id, f"reserve:{reservation_id}"))
+            return {**dict(reservation), "balance": new_balance}
+
+
+@router.post("/exports/consume")
+def consume_export(req: ReservationRequest, identity: dict = Depends(current_identity)):
+    with db() as conn:
+        with conn.cursor() as cur:
+            cur.execute("UPDATE export_reservations SET status='consumed',finished_at=NOW() WHERE id=%s AND user_id=%s AND status='reserved' AND expires_at>NOW()", (req.reservation_id, identity["id"]))
+            if cur.rowcount != 1: raise HTTPException(409, "Reservation không còn ở trạng thái reserved")
+    return {"ok": True}
+
+
+@router.post("/exports/refund")
+def refund_export(req: ReservationRequest, identity: dict = Depends(current_identity)):
+    with db() as conn:
+        with conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
+            cur.execute("SELECT * FROM export_reservations WHERE id=%s AND user_id=%s FOR UPDATE", (req.reservation_id, identity["id"])); reservation = cur.fetchone()
+            if not reservation or reservation["status"] != "reserved": raise HTTPException(409, "Reservation không thể hoàn")
+            cur.execute("UPDATE users SET balance=balance+%s WHERE id=%s RETURNING balance", (reservation["cost"], identity["id"])); balance = cur.fetchone()["balance"]
+            cur.execute("UPDATE export_reservations SET status='refunded',finished_at=NOW() WHERE id=%s", (req.reservation_id,))
+            cur.execute("INSERT INTO credit_ledger(user_id,amount,balance_after,kind,reference,idempotency_key) VALUES(%s,%s,%s,'export_refund',%s,%s)", (identity["id"], reservation["cost"], balance, req.reservation_id, f"refund:{req.reservation_id}"))
+    return {"ok": True, "balance": balance}
+
+
+@router.post("/admin/credits")
+def admin_credit(req: AdminCreditRequest, x_admin_key: str = Header(default="")):
+    if not AUTH_ADMIN_KEY or not secrets.compare_digest(x_admin_key, AUTH_ADMIN_KEY): raise HTTPException(403, "Admin key không hợp lệ")
+    if req.amount == 0 or abs(req.amount) > 1_000_000: raise HTTPException(400, "Amount không hợp lệ")
+    with db() as conn:
+        with conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
+            cur.execute("SELECT id,amount,balance_after FROM credit_ledger WHERE user_id=%s AND idempotency_key=%s", (req.user_id, req.idempotency_key)); existing = cur.fetchone()
+            if existing: return dict(existing)
+            cur.execute("UPDATE users SET balance=balance+%s WHERE id=%s RETURNING balance", (req.amount, req.user_id)); row = cur.fetchone()
+            if not row: raise HTTPException(404, "User không tồn tại")
+            cur.execute("INSERT INTO credit_ledger(user_id,amount,balance_after,kind,reference,idempotency_key) VALUES(%s,%s,%s,'admin',%s,%s) RETURNING id", (req.user_id, req.amount, row["balance"], req.reference, req.idempotency_key)); ledger_id = cur.fetchone()["id"]
+            return {"id": ledger_id, "balance": row["balance"]}

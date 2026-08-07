@@ -22,7 +22,7 @@ import subprocess
 from pathlib import Path
 
 from dotenv import load_dotenv
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, Depends
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
@@ -33,6 +33,11 @@ load_dotenv(BASE_DIR / ".env")
 sys.path.insert(0, str(BASE_DIR))
 
 import translate_video as tv  # noqa: E402  (tái dùng capcut_tts_batch + danh sách giọng VN)
+try:
+    from account_api import tts_identity
+except ImportError:
+    # Cho phép chạy dạng module từ repo root.
+    from threads.account_api import tts_identity
 
 AUDIO_DIR = Path(__file__).resolve().parent / "tts_audio"
 AUDIO_DIR.mkdir(exist_ok=True)
@@ -258,10 +263,12 @@ def list_english_voices():
 
 
 @app.post("/tts")
-def generate_tts(req: TTSRequest):
+def generate_tts(req: TTSRequest, _identity: dict = Depends(tts_identity)):
     text = req.text.strip()
     if not text:
         raise HTTPException(400, "text rỗng")
+    if len(text) > int(os.getenv("TTS_MAX_CHARS", "5000")):
+        raise HTTPException(400, "Nội dung TTS quá dài")
 
     voice_type = req.voice_type or tv.CAPCUT_VOICES_VI[1][1]
     resource_id = req.resource_id or tv.CAPCUT_VOICES_VI[1][2]
@@ -305,13 +312,15 @@ def generate_tts(req: TTSRequest):
 
 
 @app.post("/tts-batch")
-def generate_tts_batch(req: TTSBatchRequest):
+def generate_tts_batch(req: TTSBatchRequest, _identity: dict = Depends(tts_identity)):
     """Tạo tối đa 50 đoạn trong đúng một task CapCut để giảm số request."""
     texts = [text.strip() for text in req.texts]
     if not texts or any(not text for text in texts):
         raise HTTPException(400, "texts phải là mảng các chuỗi không rỗng")
     if len(texts) > 50:
         raise HTTPException(400, "Mỗi batch tối đa 50 đoạn")
+    if sum(map(len, texts)) > int(os.getenv("TTS_BATCH_MAX_CHARS", "20000")):
+        raise HTTPException(400, "Tổng nội dung TTS batch quá dài")
 
     voice_type = req.voice_type or tv.CAPCUT_VOICES_VI[1][1]
     resource_id = req.resource_id or tv.CAPCUT_VOICES_VI[1][2]
@@ -366,9 +375,11 @@ def generate_tts_batch(req: TTSBatchRequest):
 
 
 @app.post("/tts-mixed-batch")
-def generate_tts_mixed_batch(req: MixedTTSBatchRequest):
+def generate_tts_mixed_batch(req: MixedTTSBatchRequest, _identity: dict = Depends(tts_identity)):
     if not req.items or len(req.items) > 50:
         raise HTTPException(400, "items phải có từ 1 đến 50 đoạn")
+    if sum(len(item.text or "") for item in req.items) > int(os.getenv("TTS_BATCH_MAX_CHARS", "20000")):
+        raise HTTPException(400, "Tổng nội dung mixed TTS quá dài")
 
     vi_voice_type = req.vi_voice_type or tv.CAPCUT_VOICES_VI[1][1]
     vi_resource_id = req.vi_resource_id or tv.CAPCUT_VOICES_VI[1][2]
