@@ -35,6 +35,11 @@
 
   async function localUpload(file) {
     if (!file) throw new Error('Chưa chọn file');
+    if (window.desktopApp?.saveLocalAsset) {
+      const kind = /^video\//.test(file.type) ? 'video' : /^audio\//.test(file.type) ? 'audio' : 'image';
+      const saved = await window.desktopApp.saveLocalAsset(new Uint8Array(await file.arrayBuffer()), kind, file.name || `asset.${kind === 'image' ? 'png' : 'bin'}`);
+      return { url: saved.url, desktopPath: saved.path, name: file.name || saved.path.split(/[\\/]/).pop(), originalName: file.name };
+    }
     return { url: makeLocalUrl(file), name: file.name, originalName: file.name };
   }
 
@@ -52,7 +57,7 @@
   window.uploadMediaFile = uploadMediaFile = async function (file) {
     const data = await localUpload(file);
     const duration = await localMediaMetadata(file, data.url);
-    modalUploadedMedia = { url: data.url, filename: data.name, isVideo: /^video\//.test(file.type), duration, desktopPath: window.desktopApp?.getPathForFile?.(file) || null };
+    modalUploadedMedia = { url: data.url, filename: data.name, isVideo: /^video\//.test(file.type), duration, desktopPath: data.desktopPath || window.desktopApp?.getPathForFile?.(file) || null };
     const nameEl = document.getElementById('m-dropzone-text');
     if (nameEl) nameEl.textContent = `✓ ${data.name}`;
     const status = document.getElementById('m-upload-status');

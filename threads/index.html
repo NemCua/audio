@@ -1713,7 +1713,12 @@ async function fetchTts(text, voiceIdx, echo = false, speed = 1) {
     throw new Error(body.detail || ('HTTP ' + res.status));
   }
   const data = await res.json();
-  return { audioUrl: ttsServerUrl() + data.audio_url, duration: data.duration };
+  const remoteUrl = ttsServerUrl() + data.audio_url;
+  if (window.desktopApp?.downloadAsset) {
+    const saved = await window.desktopApp.downloadAsset(remoteUrl, 'tts', 'tts.mp3', window.authHeaders ? window.authHeaders() : {});
+    return { audioUrl: saved.url, audioDesktopPath: saved.path, duration: data.duration };
+  }
+  return { audioUrl: remoteUrl, duration: data.duration };
 }
 
 // Tối đa 50 đoạn CÙNG GIỌNG trong một task CapCut — dùng khi tạo cả đoạn
@@ -1730,7 +1735,14 @@ async function fetchTtsBatch(texts, voiceIdx, speed = 1) {
     throw new Error(body.detail || ('HTTP ' + res.status));
   }
   const data = await res.json();
-  return (data.items || []).map(item => ({ audioUrl: ttsServerUrl() + item.audio_url, duration: item.duration }));
+  return Promise.all((data.items || []).map(async item => {
+    const remoteUrl = ttsServerUrl() + item.audio_url;
+    if (window.desktopApp?.downloadAsset) {
+      const saved = await window.desktopApp.downloadAsset(remoteUrl, 'tts', 'tts.mp3', window.authHeaders ? window.authHeaders() : {});
+      return { audioUrl: saved.url, audioDesktopPath: saved.path, duration: item.duration };
+    }
+    return { audioUrl: remoteUrl, duration: item.duration };
+  }));
 }
 
 const waitMs = ms => new Promise(resolve => setTimeout(resolve, ms));
@@ -3304,7 +3316,10 @@ async function addImageCropStep() {
     //    dùng dùng cả 2 cách trong cùng 1 lần mở modal).
     statusEl.textContent = '⏳ Đang chuẩn bị ảnh đã cắt...';
     let uploaded;
-    if (window.browserLocalUrl) {
+    if (window.desktopApp?.saveLocalAsset) {
+      const saved = await window.desktopApp.saveLocalAsset(new Uint8Array(await blob.arrayBuffer()), 'image', 'crop.png');
+      uploaded = { url: saved.url, desktopPath: saved.path, originalName: 'crop.png', local: true };
+    } else if (window.browserLocalUrl) {
       uploaded = { url: window.browserLocalUrl(blob), originalName: 'crop.png', local: true };
     } else {
       const form = new FormData();
@@ -3319,6 +3334,7 @@ async function addImageCropStep() {
       type: 'image',
       mediaPath: null,
       mediaUrl: uploaded.local ? uploaded.url : MEDIA_SERVER_URL + uploaded.url,
+      mediaDesktopPath: uploaded.desktopPath || null,
       mediaName: uploaded.originalName,
       mediaIsVideo: false,
       text,
@@ -4112,7 +4128,7 @@ function deleteStep(id) {
 // nhạc nền (vẫn là File object chọn qua <input type=file>, quá nặng để nhét
 // vào JSON và không có cách nào phục hồi lại File từ JSON) — sau khi nạp lại,
 // người dùng phải tự chọn lại 2 file đó, UI có nhắc rõ.
-function exportProjectJson() {
+async function exportProjectJson() {
   computeTimeline();
   const project = {
     _format: 'threads-short-video-project',
@@ -4126,9 +4142,18 @@ function exportProjectJson() {
       // "Tải tất cả TTS còn thiếu" để tạo lại sau khi nạp. Áp dụng ĐÚNG quy tắc
       // này cho từng phần tử extraTtsSegments (mục "nhiều đoạn TTS") — giữ
       // text/voiceIdx (soạn lại được), bỏ audioUrl/duration (file tạm).
-      const { _start, _end, audioUrl, ttsDuration, ...clean } = s;
+      const { _start, _end, ...clean } = s;
+      if (clean.audioUrl && !String(clean.audioUrl).startsWith('file:')) {
+        delete clean.audioUrl;
+        delete clean.audioDesktopPath;
+        delete clean.ttsDuration;
+      }
       if (clean.extraTtsSegments) {
-        clean.extraTtsSegments = clean.extraTtsSegments.map(({ audioUrl, duration, ...cleanSeg }) => cleanSeg);
+        clean.extraTtsSegments = clean.extraTtsSegments.map(seg => {
+          if (seg.audioUrl && String(seg.audioUrl).startsWith('file:')) return { ...seg };
+          const { audioUrl, audioDesktopPath, duration, ...cleanSeg } = seg;
+          return cleanSeg;
+        });
       }
       return clean;
     }),
@@ -4145,10 +4170,16 @@ function exportProjectJson() {
     bgVideoLibrary: bgVideoLibraryItem,
     bgAudioLibrary: bgAudioLibraryItem,
   };
-  const blob = new Blob([JSON.stringify(project, null, 2)], { type: 'application/json' });
+  const ts = new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19);
+  const json = JSON.stringify(project, null, 2);
+  if (window.desktopApp?.saveProjectFile) {
+    const saved = await window.desktopApp.saveProjectFile(json, `threads-project-${ts}.json`);
+    if (!saved.canceled) alert(`✓ Đã lưu dự án:\n${saved.path}`);
+    return;
+  }
+  const blob = new Blob([json], { type: 'application/json' });
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a');
-  const ts = new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19);
   a.href = url;
   a.download = `threads-project-${ts}.json`;
   document.body.appendChild(a);
@@ -4224,9 +4255,18 @@ async function importProjectJson(input) {
     // bộ, tránh phát nhầm audio chết hoặc audio của lần chạy trước không
     // khớp giọng đọc hiện tại.
     steps = project.steps.map(s => {
-      const { audioUrl, ttsDuration, ...clean } = s;
+      const clean = { ...s };
+      if (clean.audioUrl && !String(clean.audioUrl).startsWith('file:')) {
+        delete clean.audioUrl;
+        delete clean.audioDesktopPath;
+        delete clean.ttsDuration;
+      }
       if (clean.extraTtsSegments) {
-        clean.extraTtsSegments = clean.extraTtsSegments.map(({ audioUrl, duration, ...cleanSeg }) => ({ ...cleanSeg, duration: 0 }));
+        clean.extraTtsSegments = clean.extraTtsSegments.map(seg => {
+          if (seg.audioUrl && String(seg.audioUrl).startsWith('file:')) return { ...seg };
+          const { audioUrl, audioDesktopPath, duration, ...cleanSeg } = seg;
+          return { ...cleanSeg, duration: 0 };
+        });
       }
       return clean;
     });

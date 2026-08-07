@@ -46,6 +46,7 @@ EXPORT_DIR = VIDEO_PHANBIET_DIR / "exports"
 EXPORT_DIR.mkdir(exist_ok=True)
 FFMPEG_BIN = os.environ.get("FFMPEG_BIN", "ffmpeg")
 FFPROBE_BIN = os.environ.get("FFPROBE_BIN", "ffprobe")
+TTS_FILE_TTL_SECONDS = max(300, int(os.environ.get("TTS_FILE_TTL_SECONDS", "3600")))
 
 app = FastAPI(title="Threads TTS Service")
 AI_REQUEST_LOCK = threading.Lock()
@@ -57,6 +58,17 @@ app.add_middleware(
     allow_headers=["*"],
 )
 app.mount("/videoPhanBiet", StaticFiles(directory=str(VIDEO_PHANBIET_DIR)), name="videoPhanBiet")
+
+
+def _cleanup_expired_tts_files() -> None:
+    """TTS là file chuyển tiếp; bản desktop tải về máy user ngay sau khi tạo."""
+    cutoff = time.time() - TTS_FILE_TTL_SECONDS
+    for path in AUDIO_DIR.glob("*.mp3"):
+        try:
+            if path.stat().st_mtime < cutoff:
+                path.unlink(missing_ok=True)
+        except OSError:
+            pass
 
 
 class TTSRequest(BaseModel):
@@ -264,6 +276,7 @@ def list_english_voices():
 
 @app.post("/tts")
 def generate_tts(req: TTSRequest, _identity: dict = Depends(tts_identity)):
+    _cleanup_expired_tts_files()
     text = req.text.strip()
     if not text:
         raise HTTPException(400, "text rỗng")
@@ -313,6 +326,7 @@ def generate_tts(req: TTSRequest, _identity: dict = Depends(tts_identity)):
 
 @app.post("/tts-batch")
 def generate_tts_batch(req: TTSBatchRequest, _identity: dict = Depends(tts_identity)):
+    _cleanup_expired_tts_files()
     """Tạo tối đa 50 đoạn trong đúng một task CapCut để giảm số request."""
     texts = [text.strip() for text in req.texts]
     if not texts or any(not text for text in texts):
@@ -376,6 +390,7 @@ def generate_tts_batch(req: TTSBatchRequest, _identity: dict = Depends(tts_ident
 
 @app.post("/tts-mixed-batch")
 def generate_tts_mixed_batch(req: MixedTTSBatchRequest, _identity: dict = Depends(tts_identity)):
+    _cleanup_expired_tts_files()
     if not req.items or len(req.items) > 50:
         raise HTTPException(400, "items phải có từ 1 đến 50 đoạn")
     if sum(len(item.text or "") for item in req.items) > int(os.getenv("TTS_BATCH_MAX_CHARS", "20000")):

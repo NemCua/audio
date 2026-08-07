@@ -3,6 +3,7 @@ const fs = require('node:fs');
 const path = require('node:path');
 const os = require('node:os');
 const { spawn } = require('node:child_process');
+const { fileURLToPath } = require('node:url');
 
 const WIDTH = 1080;
 const HEIGHT = 1920;
@@ -65,6 +66,14 @@ async function renderSegments({ steps, total, threadsRoot, workDir, blurIdentity
 }
 
 async function download(url, output) {
+  if (String(url).startsWith('file:')) {
+    fs.copyFileSync(fileURLToPath(url), output);
+    return output;
+  }
+  if (path.isAbsolute(String(url)) && fs.existsSync(String(url))) {
+    fs.copyFileSync(String(url), output);
+    return output;
+  }
   const response = await fetch(url);
   if (!response.ok) throw new Error(`Không tải được audio TTS: HTTP ${response.status}`);
   fs.writeFileSync(output, Buffer.from(await response.arrayBuffer()));

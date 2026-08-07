@@ -4,6 +4,7 @@ const fs = require('node:fs');
 const os = require('node:os');
 const { randomUUID } = require('node:crypto');
 const { spawn } = require('node:child_process');
+const { pathToFileURL } = require('node:url');
 const { exportProject } = require('./exporter');
 
 const isDev = !app.isPackaged;
@@ -48,6 +49,30 @@ function ffmpegPath() {
 
 function authStorePath() { return path.join(app.getPath('userData'), 'auth-session.json'); }
 
+function workspaceRoot() {
+  const root = path.join(app.getPath('documents'), 'Threads Video Maker');
+  for (const child of ['Projects', path.join('Media', 'TTS'), path.join('Media', 'Images'), path.join('Media', 'Audio'), path.join('Media', 'Video'), 'Exports']) {
+    fs.mkdirSync(path.join(root, child), { recursive: true });
+  }
+  return root;
+}
+
+function safeAssetName(name, fallback) {
+  const parsed = path.parse(String(name || fallback));
+  const base = (parsed.name || fallback).replace(/[^\p{L}\p{N}._-]+/gu, '-').slice(0, 80);
+  const ext = parsed.ext.replace(/[^a-zA-Z0-9.]/g, '').slice(0, 10);
+  return `${base || fallback}-${Date.now()}-${randomUUID().slice(0, 8)}${ext}`;
+}
+
+function assetDirectory(kind) {
+  const folders = { tts: path.join('Media', 'TTS'), image: path.join('Media', 'Images'), audio: path.join('Media', 'Audio'), video: path.join('Media', 'Video') };
+  return path.join(workspaceRoot(), folders[kind] || path.join('Media', 'Images'));
+}
+
+function localAssetResult(filePath) {
+  return { path: filePath, url: pathToFileURL(filePath).href };
+}
+
 function runFfmpeg(args) {
   return new Promise((resolve, reject) => {
     const child = spawn(ffmpegPath(), args, { windowsHide: true });
@@ -72,6 +97,36 @@ ipcMain.handle('desktop:check-assets', () => {
     root,
     files: Object.fromEntries(required.map(name => [name, fs.existsSync(path.join(root, name))])),
   };
+});
+
+ipcMain.handle('desktop:get-workspace-info', () => ({ root: workspaceRoot() }));
+
+ipcMain.handle('desktop:save-local-asset', (_event, bytes, kind, originalName) => {
+  const output = path.join(assetDirectory(kind), safeAssetName(originalName, kind || 'asset'));
+  fs.writeFileSync(output, Buffer.from(bytes));
+  return localAssetResult(output);
+});
+
+ipcMain.handle('desktop:download-asset', async (_event, url, kind, originalName, headers = {}) => {
+  const response = await fetch(url, { headers });
+  if (!response.ok) throw new Error(`Không tải được file từ server: HTTP ${response.status}`);
+  const contentType = response.headers.get('content-type') || '';
+  const fallbackExt = contentType.includes('mpeg') ? '.mp3' : '';
+  const output = path.join(assetDirectory(kind), safeAssetName(originalName || `${kind || 'asset'}${fallbackExt}`, kind || 'asset'));
+  fs.writeFileSync(output, Buffer.from(await response.arrayBuffer()));
+  return localAssetResult(output);
+});
+
+ipcMain.handle('desktop:save-project-file', async (_event, json, suggestedName) => {
+  const name = String(suggestedName || 'threads-project.json').replace(/[^\p{L}\p{N}._-]+/gu, '-');
+  const choice = await dialog.showSaveDialog({
+    title: 'Lưu dự án Threads',
+    defaultPath: path.join(workspaceRoot(), 'Projects', name.endsWith('.json') ? name : `${name}.json`),
+    filters: [{ name: 'Threads Project', extensions: ['json'] }],
+  });
+  if (choice.canceled || !choice.filePath) return { canceled: true };
+  fs.writeFileSync(choice.filePath, String(json), 'utf8');
+  return { canceled: false, path: choice.filePath };
 });
 
 ipcMain.handle('desktop:convert-webm-to-mp4', async (_event, bytes, suggestedName) => {
@@ -126,7 +181,7 @@ ipcMain.handle('desktop:export-project', async (event, payload) => {
   const suggestedName = `threads-video-${new Date().toISOString().replace(/[:.]/g, '-')}.mp4`;
   const choice = await dialog.showSaveDialog({
     title: 'Lưu video MP4',
-    defaultPath: path.join(app.getPath('videos'), suggestedName),
+    defaultPath: path.join(workspaceRoot(), 'Exports', suggestedName),
     filters: [{ name: 'MP4 Video', extensions: ['mp4'] }],
   });
   if (choice.canceled || !choice.filePath) return { canceled: true };
@@ -142,6 +197,7 @@ ipcMain.handle('desktop:export-project', async (event, payload) => {
 });
 
 app.whenReady().then(() => {
+  workspaceRoot();
   session.defaultSession.setDisplayMediaRequestHandler(async (_request, callback) => {
     try {
       const sources = await desktopCapturer.getSources({ types: ['window', 'screen'] });

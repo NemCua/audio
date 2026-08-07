@@ -4,7 +4,11 @@ contextBridge.exposeInMainWorld('desktopApp', Object.freeze({
   isElectron: true,
   getRuntimeInfo: () => ipcRenderer.invoke('desktop:get-runtime-info'),
   checkAssets: () => ipcRenderer.invoke('desktop:check-assets'),
+  getWorkspaceInfo: () => ipcRenderer.invoke('desktop:get-workspace-info'),
   getPathForFile: file => webUtils.getPathForFile(file),
+  saveLocalAsset: (bytes, kind, originalName) => ipcRenderer.invoke('desktop:save-local-asset', bytes, kind, originalName),
+  downloadAsset: (url, kind, originalName, headers) => ipcRenderer.invoke('desktop:download-asset', url, kind, originalName, headers),
+  saveProjectFile: (json, suggestedName) => ipcRenderer.invoke('desktop:save-project-file', json, suggestedName),
   exportProject: payload => ipcRenderer.invoke('desktop:export-project', payload),
   onExportProgress: callback => {
     const listener = (_event, progress) => callback(progress);
