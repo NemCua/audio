@@ -998,7 +998,7 @@ header span { font-size: 12px; color: #4b5563; }
         <div class="hint">Chọn 1 video gameplay chạy nền (vd: Subway Surfers, Minecraft parkour...). Video sẽ được crop phủ kín khung 9:16.</div>
         <div class="platform-picker">
           <button type="button" class="platform-btn active" onclick="setBgVideoSourceTab('file',this)">💻 Từ máy</button>
-          <button type="button" class="platform-btn" onclick="setBgVideoSourceTab('library',this)">📂 Thư viện</button>
+          <button type="button" class="platform-btn" style="display:none" disabled>📂 Thư viện server</button>
         </div>
         <div id="bgvideo-file-tab">
           <div class="drop-zone" id="bgvideo-dropzone">
@@ -1013,8 +1013,7 @@ header span { font-size: 12px; color: #4b5563; }
         </div>
         <button class="btn btn-primary" id="bgvideo-apply" onclick="applyBgVideo()" disabled>▶ Xem thử trong khung 9:16</button>
         <button class="btn btn-ghost" onclick="clearBgVideo()">Xoá video</button>
-        <button class="btn btn-ghost" onclick="window.open(MEDIA_SERVER_URL + '/static/video_tool.html', '_blank')">✂️ Cắt / Crop video (mở tab mới)</button>
-        <div class="hint" style="margin-top:6px">Công cụ cắt đoạn (kéo tay cầm trên dải khung hình) + crop khung — file xuất ra tự lưu vào thư viện media, dùng ngay được.</div>
+        <div class="hint" style="margin-top:6px">Video được crop phủ khung 9:16 ngay trong preview.</div>
       </div>
     </div>
 
@@ -1029,7 +1028,7 @@ header span { font-size: 12px; color: #4b5563; }
         <div class="hint">Chọn nhạc nền phát cùng lúc với video khi xem thử. Video gameplay sẽ tự tắt tiếng gốc.</div>
         <div class="platform-picker">
           <button type="button" class="platform-btn active" onclick="setBgAudioSourceTab('file',this)">💻 Từ máy</button>
-          <button type="button" class="platform-btn" onclick="setBgAudioSourceTab('library',this)">📂 Thư viện</button>
+          <button type="button" class="platform-btn" style="display:none" disabled>📂 Thư viện server</button>
         </div>
         <div id="bgaudio-file-tab">
           <div class="drop-zone" id="bgaudio-dropzone">
@@ -1066,19 +1065,19 @@ header span { font-size: 12px; color: #4b5563; }
         <span class="chevron">▶</span>
       </div>
       <div class="feature-body">
-        <div class="hint">Mỗi khi thêm/sửa post, comment hoặc reply, hệ thống tự tạo giọng đọc thật (CapCut TTS) và tính lại thời lượng theo đúng độ dài audio — không cần gõ tay số giây nữa.</div>
+        <div class="hint">Giọng đọc CapCut được tạo qua API TTS nhỏ trên server. Media, timeline và xuất video vẫn xử lý trên thiết bị người dùng.</div>
         <label style="display:flex;align-items:center;gap:6px;cursor:pointer;margin-bottom:10px">
           <input type="checkbox" id="tts-disabled-toggle" style="width:auto"/>
-          <span>Tắt TTS (dùng thời lượng giả, không gọi server) — để debug/test</span>
+          <span>Tắt TTS (dùng thời lượng giả) — để debug/test</span>
         </label>
         <label>Giọng đọc</label>
         <select id="tts-voice"></select>
-        <label>Địa chỉ TTS server</label>
+        <label>Địa chỉ CapCut TTS API</label>
         <input type="text" id="tts-server-url" value="http://localhost:8007" onchange="loadTtsVoices()"/>
-        <div class="fname" id="tts-server-status" style="margin-top:6px">Đang kiểm tra kết nối...</div>
+        <div class="fname" id="tts-server-status" style="margin-top:6px">Đang kiểm tra kết nối…</div>
         <button class="btn" id="gen-all-tts-btn" style="margin-top:10px" onclick="generateAllTts()">🔊 Tải tất cả TTS còn thiếu</button>
         <div class="hint" id="gen-all-tts-status" style="margin-top:6px"></div>
-        <div class="hint" style="margin-top:10px">Meme/âm thanh hiệu ứng dùng kéo-thả để upload — cần chạy thêm <code>python3 threads/media_server.py</code> (cổng 8010).</div>
+        <div class="hint" style="margin-top:10px">Chỉ TTS gọi server. Meme, ảnh và âm thanh hiệu ứng dùng trực tiếp trên thiết bị.</div>
       </div>
     </div>
 
@@ -1098,8 +1097,8 @@ header span { font-size: 12px; color: #4b5563; }
         <span class="chevron">▶</span>
       </div>
       <div class="feature-body">
-        <div class="hint">Ghép toàn bộ kịch bản (video nền + thẻ Threads + giọng đọc + nhạc nền + meme + âm thanh hiệu ứng) thành 1 file .mp4 hoàn chỉnh 9:16. Cần chạy thêm <code>python3 threads/export_server.py</code> (cổng 8011) và <code>python3 threads/media_server.py</code> (cổng 8010, để upload video/nhạc nền).</div>
-        <button class="btn btn-primary" id="export-btn" onclick="exportVideo()">🎬 Xuất video</button>
+        <div class="hint">Ghi bản xem trước ngay trên máy bằng trình duyệt. Khi được hỏi, hãy chia sẻ <b>tab hiện tại</b> và bật <b>Chia sẻ âm thanh tab</b>. Chrome/Edge mới có thể cắt đúng riêng khung 9:16.</div>
+        <button class="btn btn-primary" id="export-btn" onclick="exportVideo()">🎬 Ghi &amp; xuất WebM</button>
         <div id="export-progress-wrap" style="display:none;margin-top:10px">
           <div class="progress"><div class="bar" id="export-progress-bar" style="width:0%"></div></div>
           <div id="export-progress-text" style="font-size:11px;color:#a78bfa;margin-top:6px"></div>
@@ -1116,9 +1115,9 @@ header span { font-size: 12px; color: #4b5563; }
         <span class="chevron">▶</span>
       </div>
       <div class="feature-body">
-        <div class="hint">Xoá file tạm dùng 1 lần cho dự án (video/ảnh đã upload, video đã xuất, mp3 giọng đọc TTS) — không đụng thư viện tái dùng (avatar giả, meme sẵn, âm thanh/gif thư viện gốc). Cần <code>python3 threads/media_server.py</code> đang chạy (cổng 8010).</div>
-        <div class="fname" id="cache-size-label" style="margin-bottom:8px">Dung lượng cache: đang kiểm tra…</div>
-        <button class="btn btn-ghost" onclick="clearServerCache()">🗑️ Xoá cache (media / exports / tts_audio)</button>
+        <div class="hint">Thu hồi các URL media tạm của phiên làm việc hiện tại. File gốc trên máy không bị xoá.</div>
+        <div class="fname" id="cache-size-label" style="margin-bottom:8px">Dữ liệu nằm trên thiết bị</div>
+        <button class="btn btn-ghost" onclick="clearServerCache()">🗑️ Dọn media tạm</button>
       </div>
     </div>
   </div>
@@ -1174,7 +1173,7 @@ header span { font-size: 12px; color: #4b5563; }
       <button onclick="openStepModal('image')">＋ Ảnh</button>
       <button onclick="openStepModal('audio')">＋ Âm thanh</button>
       <button onclick="openMessengerModal()">＋ Messenger</button>
-      <button onclick="openMemereadyModal()">🎁 Meme sẵn</button>
+      <button style="display:none" disabled>🎁 Meme sẵn (server)</button>
     </div>
     <div id="step-list" ondragover="onDragContainerOver(event)" ondrop="dropAtDragPreview(event)">
       <div class="script-empty">Chưa có step nào.<br/>Bấm một nút ＋ ở trên để thêm.</div>
@@ -1266,11 +1265,11 @@ header span { font-size: 12px; color: #4b5563; }
     <div style="font-size:12px;color:#9ca3af;margin-bottom:12px">Âm thanh sẽ chạy song song với tin nhắn đang chọn và hiện thành card âm thanh trong Box Messenger.</div>
     <button type="button" class="btn-cancel" style="width:100%;padding:10px;border:0;border-radius:8px;cursor:pointer;margin-bottom:10px" onclick="document.getElementById('mess-quick-audio-file').click()">📁 Nạp âm thanh từ máy</button>
     <input type="file" id="mess-quick-audio-file" accept="audio/*" style="display:none" onchange="uploadMessengerQuickAudio(this.files[0]);this.value=''"/>
-    <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;margin:8px 0">
+    <div style="display:none;align-items:center;justify-content:space-between;gap:8px;margin:8px 0">
       <label style="margin:0">Thư viện âm thanh</label>
       <button type="button" class="btn-cancel" style="padding:6px 9px;border:0;border-radius:7px;cursor:pointer" onclick="loadMessengerQuickAudioLibrary()">Tải lại</button>
     </div>
-    <div id="mess-quick-audio-library" class="quick-audio-grid"><div class="lib-empty">Đang tải...</div></div>
+    <div id="mess-quick-audio-library" class="quick-audio-grid" style="display:none"></div>
     <div id="mess-quick-audio-picked" class="quick-audio-picked"></div>
     <div id="mess-quick-audio-status" style="font-size:11px;color:#a78bfa;margin-top:6px;min-height:14px"></div>
     <div class="quick-audio-actions">
@@ -1313,6 +1312,7 @@ header span { font-size: 12px; color: #4b5563; }
   </div>
 </div>
 
+<script>window.BROWSER_FIRST = true;</script>
 <script src="render_shared.js?v=20260806-mess-box-controls"></script>
 <script>
 // ===== Sidebar accordion =====
@@ -2448,6 +2448,7 @@ function filePathFieldHtml(label, currentPath, currentMediaUrl, currentMediaName
 // chạy hoạt hình luôn trong ô nhỏ) — thay cho dropdown chỉ có tên file
 // (phải chọn mù, không biết trước nghe/nhìn thế nào).
 function libraryPickerHtml(category) {
+  if (window.BROWSER_FIRST) return '';
   return `<div class="lib-toggle-row">
       <button type="button" class="lib-toggle-btn" onclick="toggleLibraryGrid()">📂 Chọn từ thư viện có sẵn</button>
     </div>
@@ -3300,18 +3301,23 @@ async function addImageCropStep() {
     //    uploadMediaFile() có sẵn (hàm đó ghi vào modalUploadedMedia
     //    module-scope, sẽ đá với luồng "chọn ảnh làm step luôn" nếu người
     //    dùng dùng cả 2 cách trong cùng 1 lần mở modal).
-    statusEl.textContent = '⏳ Đang tải ảnh đã cắt lên...';
-    const form = new FormData();
-    form.append('file', new File([blob], 'crop.png', { type: 'image/png' }));
-    const res = await fetch(MEDIA_SERVER_URL + '/upload', { method: 'POST', body: form });
-    if (!res.ok) throw new Error('HTTP ' + res.status);
-    const uploaded = await res.json();
+    statusEl.textContent = '⏳ Đang chuẩn bị ảnh đã cắt...';
+    let uploaded;
+    if (window.browserLocalUrl) {
+      uploaded = { url: window.browserLocalUrl(blob), originalName: 'crop.png', local: true };
+    } else {
+      const form = new FormData();
+      form.append('file', new File([blob], 'crop.png', { type: 'image/png' }));
+      const res = await fetch(MEDIA_SERVER_URL + '/upload', { method: 'POST', body: form });
+      if (!res.ok) throw new Error('HTTP ' + res.status);
+      uploaded = await res.json();
+    }
 
     // 4. Build step data — giống hệt field của nhánh 'image' trong submitStepModal().
     const data = {
       type: 'image',
       mediaPath: null,
-      mediaUrl: MEDIA_SERVER_URL + uploaded.url,
+      mediaUrl: uploaded.local ? uploaded.url : MEDIA_SERVER_URL + uploaded.url,
       mediaName: uploaded.originalName,
       mediaIsVideo: false,
       text,
@@ -3640,7 +3646,7 @@ function stepCardHtml(s, idx) {
         <div class="sc-actions">
           <button onclick="${s.type==='mess'?`openMessengerModal(${s.id})`:`openStepModal('${s.type}',${s.id})`}" title="Sửa">✎</button>
           ${isParallelAudio(s)?`<button onclick="detachParallelAudio(${s.id})" title="Tách khỏi step đang phát song song">↳ Tách</button>`:''}
-          ${s.type==='mess'?'':`<button onclick="saveStepAsMemeready(${s.id})" title="Lưu thành Meme sẵn — đóng gói step này (hoặc cả cặp song song nếu có) để dùng lại nhanh lần sau">💾</button>`}
+          ${s.type==='mess'||window.BROWSER_FIRST?'':`<button onclick="saveStepAsMemeready(${s.id})" title="Lưu thành Meme sẵn — đóng gói step này (hoặc cả cặp song song nếu có) để dùng lại nhanh lần sau">💾</button>`}
           <button onclick="deleteStep(${s.id})" title="Xoá">🗑</button>
         </div>
       </div>
@@ -4731,8 +4737,9 @@ async function clearServerCache() {
 // Khởi tạo
 _stepEngineReady = true;
 renderStepList();
-refreshCacheSize();
+// Bản browser-first cập nhật trạng thái lưu trữ sau khi runtime khởi tạo.
 </script>
+<script src="browser_runtime.js?v=20260807-browser-first"></script>
 
 </body>
 </html>
