@@ -5,6 +5,8 @@ contextBridge.exposeInMainWorld('desktopApp', Object.freeze({
   getRuntimeInfo: () => ipcRenderer.invoke('desktop:get-runtime-info'),
   checkAssets: () => ipcRenderer.invoke('desktop:check-assets'),
   getWorkspaceInfo: () => ipcRenderer.invoke('desktop:get-workspace-info'),
+  getBundledMemeready: () => ipcRenderer.invoke('desktop:get-bundled-memeready'),
+  getBundledLibrary: category => ipcRenderer.invoke('desktop:get-bundled-library', category),
   getMediaStats: () => ipcRenderer.invoke('desktop:get-media-stats'),
   clearLocalMedia: () => ipcRenderer.invoke('desktop:clear-local-media'),
   getPathForFile: file => webUtils.getPathForFile(file),

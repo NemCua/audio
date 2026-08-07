@@ -576,6 +576,7 @@ header span { font-size: 12px; color: #4b5563; }
   line-height: 0;
 }
 .meme-overlay img, .meme-overlay video { width: 100%; display: block; }
+.meme-overlay.sticker-overlay { left:27.5cqw;right:27.5cqw;top:32%;border-radius:0;box-shadow:none;overflow:visible; }
 .meme-overlay .meme-ph {
   aspect-ratio: 1/1;
   background: repeating-linear-gradient(45deg,#333,#333 3cqw,#2a2a2a 3cqw,#2a2a2a 6cqw);
@@ -1177,7 +1178,8 @@ header span { font-size: 12px; color: #4b5563; }
       <button onclick="openStepModal('image')">＋ Ảnh</button>
       <button onclick="openStepModal('audio')">＋ Âm thanh</button>
       <button onclick="openMessengerModal()">＋ Messenger</button>
-      <button style="display:none" disabled>🎁 Meme sẵn (server)</button>
+      <button onclick="openMemereadyModal()">🎁 Meme sẵn</button>
+      <button onclick="openStepModal('sticker')">＋ Sticker</button>
     </div>
     <div id="step-list" ondragover="onDragContainerOver(event)" ondrop="dropAtDragPreview(event)">
       <div class="script-empty">Chưa có step nào.<br/>Bấm một nút ＋ ở trên để thêm.</div>
@@ -1896,8 +1898,8 @@ let modalPlatform = 'threads';
 // nếu đang sửa step cũ đã có sẵn nhiều đoạn.
 let modalExtraTts = [];
 
-const TYPE_LABEL = { post:'POST', comment:'COMMENT', reply:'REPLY', audio:'ÂM THANH', image:'ẢNH', mess:'MESS' };
-const DEFAULT_DUR = { post:3, comment:2.5, reply:2.5, audio:1, image:3, mess:2 };
+const TYPE_LABEL = { post:'POST', comment:'COMMENT', reply:'REPLY', audio:'ÂM THANH', image:'ẢNH', sticker:'STICKER', mess:'MESS' };
+const DEFAULT_DUR = { post:3, comment:2.5, reply:2.5, audio:1, image:3, sticker:2, mess:2 };
 let messDrafts = [];
 let messEditingStepId = null;
 let messEditingConversationId = null;
@@ -2464,7 +2466,7 @@ function filePathFieldHtml(label, currentPath, currentMediaUrl, currentMediaName
 // chạy hoạt hình luôn trong ô nhỏ) — thay cho dropdown chỉ có tên file
 // (phải chọn mù, không biết trước nghe/nhìn thế nào).
 function libraryPickerHtml(category) {
-  if (window.BROWSER_FIRST) return '';
+  if (window.BROWSER_FIRST && !window.desktopApp?.isElectron) return '';
   return `<div class="lib-toggle-row">
       <button type="button" class="lib-toggle-btn" onclick="toggleLibraryGrid()">📂 Chọn từ thư viện có sẵn</button>
     </div>
@@ -2498,11 +2500,11 @@ async function loadLibraryOptions(category) {
 // cho AI ngoài app), và có nút sửa/xoá ngay trong lưới — giống hệt cách
 // modal "Meme sẵn" đã làm (mục 5.24), áp dụng luôn cho thư viện gốc.
 function libraryItemHtml(category, item, i) {
-  const url = MEDIA_SERVER_URL + item.url;
+  const url = /^(?:file:|https?:|blob:)/i.test(item.url) ? item.url : MEDIA_SERVER_URL + item.url;
   const itemJson = esc(JSON.stringify({ ...item, category }));
   const displayLabel = item.label || item.filename;
   const tooltip = item.description || displayLabel;
-  const editActions = `<div class="lib-item-edit-actions">
+  const editActions = `<div class="lib-item-edit-actions" ${item.readOnly ? 'style="display:none"' : ''}>
       <button type="button" onclick="event.stopPropagation();editLibraryItem(this)" title="Sửa tên/mô tả">✎</button>
       <button type="button" onclick="event.stopPropagation();deleteLibraryItem(this)" title="Xoá khỏi thư viện">🗑</button>
     </div>`;
@@ -2583,7 +2585,8 @@ function toggleLibraryPreviewAudio(url, btn) {
 
 function selectLibraryItem(el) {
   const item = JSON.parse(el.dataset.item);
-  modalUploadedMedia = { url: MEDIA_SERVER_URL + item.url, filename: item.filename, isVideo: item.isVideo, duration: item.duration };
+  const url = /^(?:file:|https?:|blob:)/i.test(item.url) ? item.url : MEDIA_SERVER_URL + item.url;
+  modalUploadedMedia = { url, filename: item.filename, isVideo: item.isVideo, duration: item.duration, desktopPath: item.desktopPath || null };
   document.getElementById('m-dropzone-text').textContent = '✓ ' + item.filename;
   document.getElementById('m-file-path').value = '';
   document.getElementById('m-upload-status').textContent = '✓ Đã chọn từ thư viện';
@@ -2677,7 +2680,7 @@ function memereadyItemHtml(item) {
   if (mediaStep) {
     thumb = mediaStep.mediaIsVideo
       ? `<div class="lib-thumb lib-thumb-video">🎬</div>`
-      : `<img class="lib-thumb" src="${MEDIA_SERVER_URL + mediaStep.mediaUrl}" loading="lazy" alt=""/>`;
+      : `<img class="lib-thumb" src="${/^(?:file:|https?:|blob:)/i.test(mediaStep.mediaUrl) ? mediaStep.mediaUrl : MEDIA_SERVER_URL + mediaStep.mediaUrl}" loading="lazy" alt=""/>`;
   } else {
     thumb = `<div class="lib-thumb lib-thumb-video">💬</div>`;
   }
@@ -2685,7 +2688,7 @@ function memereadyItemHtml(item) {
   const itemJson = encodeURIComponent(JSON.stringify(item));
   const stepTypes = item.steps.map(s => TYPE_LABEL[s.type] || s.type).join(' + ');
   return `<div class="lib-item lib-item-meme lib-item-memeready" data-item="${itemJson}" onclick="selectMemereadyItem(this)" title="${esc(stepTypes)}">
-    <div class="lib-item-edit-actions">
+    <div class="lib-item-edit-actions" ${item.readOnly ? 'style="display:none"' : ''}>
       <button type="button" onclick="event.stopPropagation();editMemereadyItem(this)" title="Sửa tên">✎</button>
       <button type="button" onclick="event.stopPropagation();deleteMemereadyItem(this)" title="Xoá">🗑</button>
     </div>
@@ -2794,9 +2797,9 @@ function selectMemereadyItem(el) {
   const item = readMemereadyItemFromEl(el);
   for (const snap of item.steps) {
     const s = { ...snap, id: stepIdCounter++ };
-    if (s.mediaUrl) s.mediaUrl = MEDIA_SERVER_URL + s.mediaUrl;
-    if (s.audioUrl) s.audioUrl = MEDIA_SERVER_URL + s.audioUrl;
-    if (s.audio2Url) s.audio2Url = MEDIA_SERVER_URL + s.audio2Url;
+    if (s.mediaUrl && !/^(?:file:|https?:|blob:)/i.test(s.mediaUrl)) s.mediaUrl = MEDIA_SERVER_URL + s.mediaUrl;
+    if (s.audioUrl && !/^(?:file:|https?:|blob:)/i.test(s.audioUrl)) s.audioUrl = MEDIA_SERVER_URL + s.audioUrl;
+    if (s.audio2Url && !/^(?:file:|https?:|blob:)/i.test(s.audio2Url)) s.audio2Url = MEDIA_SERVER_URL + s.audio2Url;
     // BUG ĐÃ GẶP (và đã sửa): trước đây ưu tiên _mediaDuration (đo lại bằng
     // ffprobe LÚC ĐÓNG GÓI) đè lên s.duration — sai hoàn toàn, vì s.duration
     // trong snapshot CHÍNH LÀ con số người dùng đã tự chỉnh tay trước khi
@@ -3152,6 +3155,10 @@ function openStepModal(type, stepId = null, targetGroupId = null) {
              ${echoCheckboxHtml('m-echo', editing ? editing.echo : false)}`;
     html += voiceFieldHtml('m', editing ? editing.voiceIdx : null);
     html += `<div id="m-extra-tts-box"></div>`;
+  } else if (type === 'sticker') {
+    modalUploadedMedia = editing && editing.mediaUrl && !editing.mediaPath ? { url: editing.mediaUrl, filename: editing.mediaName, isVideo: editing.mediaIsVideo, desktopPath: editing.mediaDesktopPath } : null;
+    html += `<div style="font-size:12px;color:#6b7280;margin-bottom:10px">Sticker hiển thị độc lập giữa khung, không có nền card và không tạo TTS.</div>`
+             + filePathFieldHtml('Ảnh sticker', editing ? editing.mediaPath : '', editing ? editing.mediaUrl : null, editing ? editing.mediaName : null, 'meme');
   } else if (type === 'audio') {
     modalUploadedMedia = editing && editing.mediaUrl && !editing.mediaPath ? { url: editing.mediaUrl, filename: editing.mediaName, isVideo: editing.mediaIsVideo } : null;
     html += `<div style="font-size:12px;color:#6b7280;margin-bottom:10px">Âm thanh hiệu ứng (meme sound). Không có hình, chỉ phát tiếng. Tạo xong có thể kéo thả lên card khác để chạy song song với card đó.</div>`
@@ -3164,7 +3171,7 @@ function openStepModal(type, stepId = null, targetGroupId = null) {
     if (type === 'post') bindTtsAutoSync('m', 'm-text');
     if (type === 'post' || type === 'image') renderExtraTtsSegmentsUI();
   }
-  if (type === 'image') loadLibraryOptions('meme');
+  if (type === 'image' || type === 'sticker') loadLibraryOptions('meme');
   if (type === 'audio') loadLibraryOptions('audio');
   document.getElementById('step-modal-tts-status').textContent = '';
   document.getElementById('step-modal-submit-btn').disabled = false;
@@ -3458,7 +3465,7 @@ async function submitStepModal() {
       data.avatarUrl = fake.avatarUrl;
       data.stats.timeLabel = fake.timeLabel;
     }
-  } else if (t === 'audio' || t === 'image') {
+  } else if (t === 'audio' || t === 'image' || t === 'sticker') {
     // Ưu tiên: (1) URL ảnh ngoài nhập tay (chỉ step 'image', mục 5.41
     // CONTEXT.md) > (2) file đã upload qua drag-drop (mục 5.12, dùng được
     // bất kể cách mở app) > (3) đường dẫn file:// local > (4) rỗng.
@@ -3574,7 +3581,7 @@ async function submitStepModal() {
       // hợp meme/ảnh phủ giữa khung nên xoá nội dung Threads phía trước, chỉ
       // BỎ tick lúc nào muốn cố tình cho card cũ + meme/ảnh cùng hiện). Các
       // loại step khác (post/comment/reply/audio) vẫn mặc định false như cũ.
-      clearBefore: (t === 'image'),
+      clearBefore: (t === 'image' || t === 'sticker'),
       hue: Math.floor(Math.random() * 360),
       offsetX: 0, offsetY: 0, rotation: 0, // vị trí/xoay tuỳ chỉnh (mục 5.21) — chỉ post/comment/reply/meme có UI chỉnh, audio bỏ qua không dùng tới
       ...data,
@@ -3614,13 +3621,14 @@ function stepSummary(s) {
     return `@${s.uname}: ${s.text}${replyNote}`;
   }
   if (s.type === 'image') return (s.mediaName ? '🖼️ ' + s.mediaName : '🖼️ (chưa chọn ảnh)') + (s.text ? ' — ' + s.text : '');
+  if (s.type === 'sticker') return s.mediaName ? '🏷️ ' + s.mediaName : '🏷️ (chưa chọn sticker)';
   if (s.type === 'audio') return s.mediaName ? '🔊 ' + s.mediaName : '🔊 (chưa chọn file — test thời gian)';
   return '';
 }
 
 // Điều chỉnh vị trí/xoay (mục 5.21 CONTEXT.md) — chỉ post/comment/reply/
 // meme/image có hình để dịch/xoay, audio bỏ qua (không hiển thị gì trên khung).
-const POSITIONABLE_TYPES = ['post', 'comment', 'reply', 'image', 'mess'];
+const POSITIONABLE_TYPES = ['post', 'comment', 'reply', 'image', 'sticker', 'mess'];
 function stepPositionCtrlsHtml(s) {
   const ox = s.offsetX || 0, oy = s.offsetY || 0, rot = s.rotation || 0;
   const showWarn = s.type === 'image' && isDynamicMeme(s) && rot !== 0;
@@ -3642,7 +3650,7 @@ function stepPositionCtrlsHtml(s) {
 }
 
 function stepCardHtml(s, idx) {
-  const typeCls = s.type === 'image' ? 't-meme' : s.type === 'audio' ? 't-audio' : '';
+  const typeCls = (s.type === 'image' || s.type === 'sticker') ? 't-meme' : s.type === 'audio' ? 't-audio' : '';
   const cardCls = isParallelAudio(s) ? ' t-audio-parallel' : '';
   return `
     <div class="step-card${cardCls}" data-id="${s.id}" draggable="true" ondragstart="onStepDragStart(event,${s.id})" ondragend="onStepDragEnd(event)" ondragover="onStepDragOver(event)" ondragleave="onStepDragLeave(event)" ondrop="onStepDrop(event,${s.id})">
@@ -3776,14 +3784,14 @@ function renderStepList() {
 }
 
 function exportTypeCounts() {
-  const counts = { post:0, comment:0, reply:0, image:0, mess:0, audio:0 };
+  const counts = { post:0, comment:0, reply:0, image:0, sticker:0, mess:0, audio:0 };
   for (const step of steps) if (Object.prototype.hasOwnProperty.call(counts, step.type)) counts[step.type]++;
   return counts;
 }
 
 function localExportCreditTotal() {
   const c = exportTypeCounts();
-  return 100 * (c.post + c.comment + c.reply) + 150 * c.image + 20 * c.mess + 10 * c.audio;
+  return 100 * (c.post + c.comment + c.reply) + 150 * (c.image + c.sticker) + 20 * c.mess + 10 * c.audio;
 }
 
 function updateCreditLabels() {
@@ -4513,9 +4521,11 @@ function renderAtTime(t) {
             : `<img src="${memeStep.mediaUrl}" alt=""/>`)
         : `<div class="meme-ph">🖼 MEME<br/>(chưa chọn file)</div>`;
       memeEl.style.display = 'block';
+      memeEl.classList.toggle('sticker-overlay', memeStep.type === 'sticker');
     } else {
       memeEl.style.display = 'none';
       memeEl.innerHTML = '';
+      memeEl.classList.remove('sticker-overlay');
     }
     _lastMemeKey = memeKey;
   }

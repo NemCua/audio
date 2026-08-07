@@ -34,9 +34,7 @@
           "**/*",
           "!exports/**/*",
           "!media/**/*",
-          "!tts_audio/**/*",
-          "!memeready/**/*",
-          "!audio/**/*"
+          "!tts_audio/**/*"
         ]
       },
       {

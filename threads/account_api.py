@@ -207,7 +207,7 @@ class AdminCreditRequest(BaseModel):
 
 def _export_credit_cost(type_counts: dict[str, int]) -> int:
     """Điểm thay duy nhất khi chốt công thức giá; client không được tự đặt cost."""
-    allowed = {"post", "comment", "reply", "image", "mess", "audio"}
+    allowed = {"post", "comment", "reply", "image", "sticker", "mess", "audio"}
     counts: dict[str, int] = {}
     for kind, raw_count in type_counts.items():
         if kind not in allowed:
@@ -217,7 +217,7 @@ def _export_credit_cost(type_counts: dict[str, int]) -> int:
         counts[kind] = raw_count
     return (
         100 * (counts.get("post", 0) + counts.get("comment", 0) + counts.get("reply", 0))
-        + 150 * counts.get("image", 0)
+        + 150 * (counts.get("image", 0) + counts.get("sticker", 0))
         + 20 * counts.get("mess", 0)
         + 10 * counts.get("audio", 0)
     )

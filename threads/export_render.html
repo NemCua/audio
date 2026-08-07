@@ -544,6 +544,7 @@ header span { font-size: 12px; color: #4b5563; }
   line-height: 0;
 }
 .meme-overlay img, .meme-overlay video { width: 100%; display: block; }
+.meme-overlay.sticker-overlay { left:27.5cqw;right:27.5cqw;top:32%;border-radius:0;box-shadow:none;overflow:visible; }
 .meme-overlay .meme-ph {
   aspect-ratio: 1/1;
   background: repeating-linear-gradient(45deg,#333,#333 3cqw,#2a2a2a 3cqw,#2a2a2a 6cqw);
@@ -928,10 +929,12 @@ async function renderStackAt(t) {
       ? `<video src="${memeStep.mediaUrl}" autoplay muted loop playsinline></video>`
       : `<img src="${memeStep.mediaUrl}" alt=""/>`;
     memeEl.style.display = 'block';
+    memeEl.classList.toggle('sticker-overlay', memeStep.type === 'sticker');
     memeEl.style.transform = memeOverlayTransform(memeStep);
   } else {
     memeEl.style.display = 'none';
     memeEl.innerHTML = '';
+    memeEl.classList.remove('sticker-overlay');
   }
 
   await Promise.all([

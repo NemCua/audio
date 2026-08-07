@@ -438,7 +438,7 @@ function computeSceneAt(t) {
   // không cần thiết chỉ vì đổi ý nghĩa).
   let memeStep = null;
   for (const s of steps) {
-    if (s.type === 'image' && t >= s._start - 1e-6 && t < s._end - 1e-6) { memeStep = s; break; }
+    if ((s.type === 'image' || s.type === 'sticker') && t >= s._start - 1e-6 && t < s._end - 1e-6) { memeStep = s; break; }
   }
 
   return { stack, memeStep };

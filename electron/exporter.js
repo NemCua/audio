@@ -11,7 +11,7 @@ const HEIGHT = 1920;
 function visualBreakpoints(steps, total) {
   const points = new Set([0, total]);
   for (const step of steps) {
-    if (['post', 'comment', 'reply', 'image', 'mess'].includes(step.type)) {
+    if (['post', 'comment', 'reply', 'image', 'sticker', 'mess'].includes(step.type)) {
       points.add(Number(step._start)); points.add(Number(step._end));
     }
   }

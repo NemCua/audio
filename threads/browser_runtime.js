@@ -297,12 +297,19 @@
   window.loadBgVideoLibrary = loadBgVideoLibrary = async () => {};
   window.loadBgAudioLibrary = loadBgAudioLibrary = async () => {};
   window.loadLibraryOptions = loadLibraryOptions = async function () {
-    const grid = document.getElementById('library-grid');
-    if (grid) grid.innerHTML = '<div class="lib-empty">Bản web tĩnh dùng file từ thiết bị.</div>';
+    const category = arguments[0];
+    const grid = document.getElementById('m-library-grid');
+    if (!grid) return;
+    const items = await window.desktopApp?.getBundledLibrary?.(category) || [];
+    const toggle = document.querySelector('.lib-toggle-btn');
+    if (toggle) toggle.textContent = `📂 Chọn từ thư viện có sẵn (${items.length})`;
+    grid.innerHTML = items.length ? items.map((item, i) => libraryItemHtml(category, item, i)).join('') : '<div class="lib-empty">Thư viện đóng sẵn đang trống.</div>';
   };
   window.loadMemereadyOptions = loadMemereadyOptions = async function () {
-    const grid = document.getElementById('memeready-grid');
-    if (grid) grid.innerHTML = '<div class="lib-empty">Meme sẵn trên server không có trong bản web tĩnh.</div>';
+    const grid = document.getElementById('memeready-modal-grid');
+    if (!grid) return;
+    const items = await window.desktopApp?.getBundledMemeready?.() || [];
+    grid.innerHTML = items.length ? items.map(memereadyItemHtml).join('') : '<div class="lib-empty">Chưa có meme đóng sẵn trong app.</div>';
   };
 
   window.addEventListener('beforeunload', () => localUrls.forEach(url => URL.revokeObjectURL(url)));

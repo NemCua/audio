@@ -119,6 +119,56 @@ ipcMain.handle('desktop:check-assets', () => {
 
 ipcMain.handle('desktop:get-workspace-info', () => ({ root: workspaceRoot() }));
 
+ipcMain.handle('desktop:get-bundled-memeready', () => {
+  const root = path.join(threadsRoot(), 'memeready');
+  if (!fs.existsSync(root)) return [];
+  const items = [];
+  for (const entry of fs.readdirSync(root, { withFileTypes: true })) {
+    if (!entry.isDirectory()) continue;
+    const itemRoot = path.join(root, entry.name), metaPath = path.join(itemRoot, 'meta.json');
+    if (!fs.existsSync(metaPath)) continue;
+    try {
+      const item = JSON.parse(fs.readFileSync(metaPath, 'utf8'));
+      item.readOnly = true;
+      item.steps = (item.steps || []).map(step => {
+        const result = { ...step };
+        for (const field of ['mediaUrl', 'audioUrl', 'audio2Url']) {
+          if (!result[field] || /^(?:[a-z]+:|\/)/i.test(result[field])) continue;
+          const assetPath = path.join(itemRoot, result[field]);
+          result[field] = pathToFileURL(assetPath).href;
+          if (field === 'mediaUrl') result.mediaDesktopPath = assetPath;
+        }
+        return result;
+      });
+      items.push(item);
+    } catch (_error) {}
+  }
+  return items;
+});
+
+ipcMain.handle('desktop:get-bundled-library', (_event, category) => {
+  const folders = { audio: 'audio', meme: 'gif' };
+  const folder = folders[category];
+  if (!folder) return [];
+  const root = path.join(threadsRoot(), folder);
+  if (!fs.existsSync(root)) return [];
+  let metadata = {};
+  try { metadata = JSON.parse(fs.readFileSync(path.join(root, '_meta.json'), 'utf8')); } catch (_error) {}
+  return fs.readdirSync(root, { withFileTypes: true }).filter(entry => entry.isFile() && entry.name !== '_meta.json').map(entry => {
+    const filePath = path.join(root, entry.name), meta = metadata[entry.name] || {};
+    return {
+      filename: entry.name,
+      label: meta.label || entry.name,
+      description: meta.description || '',
+      url: pathToFileURL(filePath).href,
+      desktopPath: filePath,
+      isVideo: /\.(mp4|mov|webm|m4v)$/i.test(entry.name),
+      local: true,
+      readOnly: true,
+    };
+  });
+});
+
 ipcMain.handle('desktop:get-media-stats', () => mediaDirectories().reduce((total, dir) => {
   const stats = directoryStats(dir);
   return { files: total.files + stats.files, bytes: total.bytes + stats.bytes };
