@@ -103,6 +103,7 @@ tr.timing-invalid .time-input{border-color:#ef4444;color:#fecaca}
 .dl-btn.on{display:block}
 .dl-video{background:#14532d;border:1px solid #166534;color:#4ade80}
 .dl-srt{background:#1e3a5f;border:1px solid #1d4ed8;color:#60a5fa}
+.dl-json{background:#164e63;border:1px solid #0e7490;color:#67e8f9}
 
 /* empty state */
 .empty{text-align:center;padding:60px 20px;color:#1e2340}
@@ -464,6 +465,17 @@ tr.timing-invalid .time-input{border-color:#ef4444;color:#fecaca}
             <span class="sv" id="origv">0.30</span>
           </div>
         </div>
+        <div id="strip-music-row" style="display:none;margin-top:8px;padding:10px 12px;border:1px solid #1e2340;border-radius:8px;background:#0f172a">
+          <label style="display:flex;align-items:flex-start;gap:8px;cursor:pointer;margin:0">
+            <input type="checkbox" id="strip-background-music"/>
+            <span>
+              <span style="display:block;font-weight:700;color:#e2e8f0">Khử nhạc nền để tránh bản quyền</span>
+              <span style="display:block;font-size:12px;color:#94a3b8;margin-top:2px">
+                Bật: cố giữ lại phần giọng gốc, loại mạnh nhạc nền bằng AI. Tắt: giữ audio gốc như hiện tại.
+              </span>
+            </span>
+          </label>
+        </div>
       </div>
     </div>
 
@@ -487,6 +499,7 @@ tr.timing-invalid .time-input{border-color:#ef4444;color:#fecaca}
       <div class="dl-row">
         <a class="dl-btn dl-video" id="dl-video" download>⬇️ Tải video</a>
         <a class="dl-btn dl-srt"   id="dl-srt"   download>📄 Tải SRT</a>
+        <a class="dl-btn dl-json"  id="dl-json"  download>🧾 Tải JSON</a>
       </div>
 
       <div class="sec" id="titles-box" style="display:none;margin-top:14px;padding:14px;background:#12152a;border:1px solid #1e2340;border-radius:10px">
@@ -1170,6 +1183,7 @@ async function startRender() {
   const keepOrig = document.getElementById('keep-original').checked;
   fd.append('keep_original',   keepOrig ? 'true' : 'false');
   fd.append('original_volume', document.getElementById('orig-vol').value);
+  fd.append('strip_background_music', document.getElementById('strip-background-music').checked ? 'true' : 'false');
 
   await apiFetch(`${API}/api/render/${currentJobId}`, { method: 'POST', body: fd });
 
@@ -1229,6 +1243,7 @@ async function startPreview() {
   fd.append('logo_text',        document.getElementById('logo-text').value);
   fd.append('keep_original',    document.getElementById('keep-original').checked ? 'true' : 'false');
   fd.append('original_volume',  document.getElementById('orig-vol').value);
+  fd.append('strip_background_music', document.getElementById('strip-background-music').checked ? 'true' : 'false');
   fd.append('preview_secs',     document.getElementById('preview-secs').value);
   const thumbFile2 = document.getElementById('thumbnail-input').files[0];
   if (thumbFile2) fd.append('thumbnail', thumbFile2);
@@ -1283,6 +1298,14 @@ async function showVideo(jobId) {
   dls.href = sUrl;
   dls.setAttribute('download', `captions_vi.srt`);
   dls.classList.add('on');
+
+  const jRes  = await apiFetch(`${API}/api/export-json/${jobId}`);
+  const jBlob = await jRes.blob();
+  const jUrl  = URL.createObjectURL(jBlob);
+  const dlj   = document.getElementById('dl-json');
+  dlj.href = jUrl;
+  dlj.setAttribute('download', `vi_cues.json`);
+  dlj.classList.add('on');
 
   document.getElementById('titles-box').style.display = 'block';
 }
@@ -1634,6 +1657,8 @@ function fmtSecs(s) {
 
 document.getElementById('keep-original').addEventListener('change', function() {
   document.getElementById('orig-vol-row').style.display = this.checked ? 'block' : 'none';
+  document.getElementById('strip-music-row').style.display = this.checked ? 'block' : 'none';
+  if (!this.checked) document.getElementById('strip-background-music').checked = false;
 });
 
 // ── CHUNK RENDER ────────────────────────────────────────────────
@@ -1662,6 +1687,7 @@ function chunkAppendSettings(fd) {
   fd.append('logo_text',       document.getElementById('logo-text').value);
   fd.append('keep_original',   document.getElementById('keep-original').checked ? 'true' : 'false');
   fd.append('original_volume', document.getElementById('orig-vol').value);
+  fd.append('strip_background_music', document.getElementById('strip-background-music').checked ? 'true' : 'false');
   fd.append('encode_preset',   document.getElementById('st-preset').value);
   const bgFile = document.getElementById('bg-music-input').files[0];
   if (bgFile) fd.append('bg_music', bgFile);

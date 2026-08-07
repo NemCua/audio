@@ -157,16 +157,22 @@ def extract_audio_for_stt(video_path: Path, audio_path: Path):
         tmp.replace(audio_path)
 
 
-def separate_background(video_path: Path, work_dir: Path) -> Path:
-    """Dùng Demucs tách vocals, giữ lại nhạc nền (no_vocals)."""
-    print("  → Tách audio nền (Demucs)...")
+def _demucs_split_vocals(video_path: Path, work_dir: Path) -> tuple[Path, Path]:
+    """Chạy Demucs 1 lần và cache lại 2 stem vocals/no_vocals để tái dùng."""
+    vocals_path = work_dir / "vocals_only.wav"
+    bg_path = work_dir / "background.wav"
+    if vocals_path.exists() and bg_path.exists():
+        return vocals_path, bg_path
+
+    print("  → Tách stem vocals/background (Demucs)...")
 
     full_audio = work_dir / "full_audio.wav"
-    run([
-        FFMPEG_BIN, "-y", "-i", str(video_path),
-        "-vn", "-acodec", "pcm_s16le", "-ar", "44100", "-ac", "2",
-        str(full_audio),
-    ])
+    if not full_audio.exists():
+        run([
+            FFMPEG_BIN, "-y", "-i", str(video_path),
+            "-vn", "-acodec", "pcm_s16le", "-ar", "44100", "-ac", "2",
+            str(full_audio),
+        ])
 
     import platform, torch
     if torch.cuda.is_available():
@@ -186,13 +192,28 @@ def separate_background(video_path: Path, work_dir: Path) -> Path:
         str(full_audio),
     ], timeout=3600)
 
+    vocals = list(demucs_out.rglob("vocals.wav"))
     no_vocals = list(demucs_out.rglob("no_vocals.wav"))
+    if not vocals:
+        raise RuntimeError("Demucs không tạo ra file vocals.wav")
     if not no_vocals:
         raise RuntimeError("Demucs không tạo ra file no_vocals.wav")
 
-    bg_path = work_dir / "background.wav"
-    no_vocals[0].rename(bg_path)
+    shutil.copy2(vocals[0], vocals_path)
+    shutil.copy2(no_vocals[0], bg_path)
+    return vocals_path, bg_path
+
+
+def separate_background(video_path: Path, work_dir: Path) -> Path:
+    """Dùng Demucs tách vocals, giữ lại nhạc nền (no_vocals)."""
+    _, bg_path = _demucs_split_vocals(video_path, work_dir)
     return bg_path
+
+
+def extract_vocals_for_mix(video_path: Path, work_dir: Path) -> Path:
+    """Lấy phần giọng nói là chính để giữ tiếng gốc nhưng loại phần nhạc nền."""
+    vocals_path, _ = _demucs_split_vocals(video_path, work_dir)
+    return vocals_path
 
 
 # ---------------------------------------------------------------------------
@@ -1050,6 +1071,21 @@ def scale_cues(cues: list[dict], factor: float) -> list[dict]:
     return scaled
 
 
+def build_light_video_enhance_filter(video_label: str) -> str:
+    """Filter tăng chất lượng cảm nhận nhẹ bằng FFmpeg, không dùng AI.
+
+    - hqdn3d rất nhẹ để bớt bệt/mosquito noise từ video nén.
+    - unsharp rất nhẹ để kéo lại độ nét cảm giác mà không gắt viền.
+    - format yuv420p để output ổn định trên nhiều player.
+    """
+    return (
+        f"{video_label}"
+        "hqdn3d=0.8:0.8:4:4,"
+        "unsharp=5:5:0.45:5:5:0.0,"
+        "format=yuv420p"
+    )
+
+
 # ---------------------------------------------------------------------------
 # STEP 6: Render final video
 # ---------------------------------------------------------------------------
@@ -1136,7 +1172,8 @@ def render_video(
 
     base_vf = (
         f"[0:v]crop=iw:ih*0.15:0:ih*0.85,boxblur=10:5[blurred];"
-        f"[0:v][blurred]overlay=0:H*0.85,{vf_chain}"
+        f"[0:v][blurred]overlay=0:H*0.85,{vf_chain}[vsub];"
+        f"{build_light_video_enhance_filter('[vsub]')}[venh]"
     )
 
     _has_img_logo  = logo_tab == "img"  and logo and Path(logo).exists()
@@ -1146,9 +1183,10 @@ def render_video(
         logo_idx = len(inputs) // 2
         inputs += ["-i", str(logo)]
         vf_base = (
-            f"{base_vf}[vbase];"
+            f"{base_vf};"
+            f"[venh]split[vbase][vlogo_base];"
             f"[{logo_idx}:v]scale={logo_size}:-1[logo];"
-            f"[vbase][logo]overlay={px}:{py}[vout]"
+            f"[vlogo_base][logo]overlay={px}:{py}[vout]"
         )
     elif _has_text_logo:
         # hex color #rrggbb → ffmpeg fontcolor
@@ -1156,13 +1194,14 @@ def render_video(
         fc  = logo_color.lstrip("#")
         fc  = f"0x{fc}ff" if len(fc) == 6 else "white"
         vf_base = (
-            f"{base_vf},"
+            f"{base_vf};"
+            f"[venh]"
             f"drawtext=text='{txt}':fontsize={logo_fontsize}:fontcolor={fc}:"
             f"fontfile=/System/Library/Fonts/Helvetica.ttc:"
             f"x={px}:y={py}:box=1:boxcolor=black@0.4:boxborderw=4[vout]"
         )
     else:
-        vf_base = f"{base_vf}[vout]"
+        vf_base = f"{base_vf};[venh]null[vout]"
 
     if len(audio_labels) == 1:
         filter_complex = f"{vf_base};[{tts_idx}:a]volume={tts_volume},apad[aout]"
@@ -1180,7 +1219,8 @@ def render_video(
         "-filter_complex", filter_complex,
         "-map", "[vout]",
         "-map", "[aout]",
-        "-c:v", "libx264", "-preset", encode_preset, "-crf", "23",
+        "-c:v", "libx264", "-preset", encode_preset, "-crf", "21",
+        "-profile:v", "high", "-pix_fmt", "yuv420p",
         "-c:a", "aac", "-b:a", "192k",
         "-movflags", "+faststart",
         "-shortest",
@@ -1213,10 +1253,12 @@ def render_video(
             "-filter_complex",
             f"[0:v]scale={vw}:{vh}:force_original_aspect_ratio=decrease,"
             f"pad={vw}:{vh}:(ow-iw)/2:(oh-ih)/2,setsar=1[thumb];"
-            f"[thumb][1:v]concat=n=2:v=1:a=0[vout];"
+            f"[thumb][1:v]concat=n=2:v=1:a=0[vraw];"
+            f"{build_light_video_enhance_filter('[vraw]')}[vout];"
             f"[1:a]acopy[aout]",
             "-map", "[vout]", "-map", "[aout]",
-            "-c:v", "libx264", "-preset", encode_preset, "-crf", "23",
+            "-c:v", "libx264", "-preset", encode_preset, "-crf", "21",
+            "-profile:v", "high", "-pix_fmt", "yuv420p",
             "-c:a", "aac", "-b:a", "192k",
             "-movflags", "+faststart",
             str(tmp_out)

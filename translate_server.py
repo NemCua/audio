@@ -328,10 +328,12 @@ def _run_render(job_id: str, voice: str, bg_volume: float, tts_volume: float,
                 logo_tab: str = "none", logo_text: str = "",
                 logo_fontsize: int = 28, logo_color: str = "#ffffff",
                 keep_original: bool = False, original_volume: float = 0.3,
+                strip_background_music: bool = False,
                 encode_preset: str = "ultrafast", thumbnail_path: str | None = None):
     """Bước 2: TTS CapCut + render video."""
     from translate_video import (
         build_srt, build_tts_track, render_video, get_audio_duration, CAPCUT_VOICES_VI,
+        build_light_video_enhance_filter,
     )
 
     job = jobs[job_id]
@@ -376,9 +378,15 @@ def _run_render(job_id: str, voice: str, bg_volume: float, tts_volume: float,
         output_path = work_dir / f"{video_path.stem}_vi.mp4"
         orig_audio_path = None
         if keep_original:
-            orig_audio_path = work_dir / "original_audio.wav"
-            from translate_video import extract_audio_for_stt
-            extract_audio_for_stt(video_path, orig_audio_path)
+            if strip_background_music:
+                jobs[job_id]["message"] = "Đang tách giọng để bỏ nhạc nền..."
+                _prog(job_id, 0.82, "Đang tách giọng để bỏ nhạc nền...")
+                from translate_video import extract_vocals_for_mix
+                orig_audio_path = extract_vocals_for_mix(video_path, work_dir)
+            else:
+                orig_audio_path = work_dir / "original_audio.wav"
+                from translate_video import extract_audio_for_stt
+                extract_audio_for_stt(video_path, orig_audio_path)
         render_video(video_path, tts_track, srt_path, output_path,
                      bg_music=Path(bg_music_path) if bg_music_path else None,
                      bg_volume=bg_volume, tts_volume=tts_volume,
@@ -729,6 +737,7 @@ async def render(
     logo_color:       str   = Form("#ffffff"),
     keep_original:    bool  = Form(False),
     original_volume:  float = Form(0.3),
+    strip_background_music: bool = Form(False),
     encode_preset:    str   = Form("ultrafast"),
     bg_music_name:    str   = Form(""),
     bg_music:         Optional[UploadFile] = File(None),
@@ -773,7 +782,8 @@ async def render(
         "1.0", speed_ratio, bg_music_path,
         logo_path, logo_pos, logo_size,
         logo_tab, logo_text.strip(), logo_fontsize, logo_color,
-        keep_original, original_volume, encode_preset, thumbnail_path,
+        keep_original, original_volume, strip_background_music,
+        encode_preset, thumbnail_path,
     )
     return {"ok": True}
 
@@ -818,6 +828,7 @@ async def preview(
     logo_text:        str   = Form(""),
     keep_original:    bool  = Form(False),
     original_volume:  float = Form(0.3),
+    strip_background_music: bool = Form(False),
     preview_secs:     int   = Form(180),
     bg_music_name:    str   = Form(""),
     thumbnail:        Optional[UploadFile] = File(None),
@@ -882,7 +893,8 @@ async def preview(
         "1.0", speed_ratio, bg_music_path,
         None, "topright", 100,
         "text", logo_text.strip(), 28, "#ffffff",
-        keep_original, original_volume, "ultrafast", thumbnail_path,
+        keep_original, original_volume, strip_background_music,
+        "ultrafast", thumbnail_path,
     )
     return {"ok": True, "preview_job_id": prev_job_id}
 
@@ -1229,6 +1241,7 @@ def chunks_plan(job_id: str, request: Request, body: dict):
 def _run_chunk_render(job_id: str, indices: list[int], voice: str,
                       bg_volume: float, tts_volume: float, speed_ratio: float,
                       logo_text: str, keep_original: bool, original_volume: float,
+                      strip_background_music: bool,
                       encode_preset: str, bg_music_path: str | None):
     """Render tuần tự các chunk: cắt video → TTS → FFmpeg render ngay từng chunk."""
     from translate_video import (
@@ -1298,10 +1311,15 @@ def _run_chunk_render(job_id: str, indices: list[int], voice: str,
                 # 3. TTS → 4. render FFmpeg ngay
                 orig_audio = None
                 if keep_original:
-                    from translate_video import extract_audio_for_stt
-                    orig_audio = cwork / "original_audio.wav"
-                    if not orig_audio.exists():
-                        extract_audio_for_stt(src, orig_audio)
+                    if strip_background_music:
+                        job["message"] = f"Chunk {ci+1}: tách giọng bỏ nhạc..."
+                        from translate_video import extract_vocals_for_mix
+                        orig_audio = extract_vocals_for_mix(src, cwork)
+                    else:
+                        from translate_video import extract_audio_for_stt
+                        orig_audio = cwork / "original_audio.wav"
+                        if not orig_audio.exists():
+                            extract_audio_for_stt(src, orig_audio)
 
                 if cues:
                     def _tp(done, total, _ch=ch, _ci=ci):
@@ -1330,7 +1348,9 @@ def _run_chunk_render(job_id: str, indices: list[int], voice: str,
                     job["message"] = f"Chunk {ci+1}: không có phụ đề, encode lại..."
                     r = subprocess.run([
                         FFMPEG_BIN, "-y", "-i", str(src),
-                        "-c:v", "libx264", "-preset", encode_preset, "-crf", "20",
+                        "-vf", build_light_video_enhance_filter(""),
+                        "-c:v", "libx264", "-preset", encode_preset, "-crf", "21",
+                        "-profile:v", "high", "-pix_fmt", "yuv420p",
                         "-c:a", "aac", "-b:a", "192k", str(out),
                     ], capture_output=True)
                     if r.returncode != 0:
@@ -1363,6 +1383,7 @@ async def chunks_render(
     logo_text:        str   = Form(""),
     keep_original:    bool  = Form(False),
     original_volume:  float = Form(0.3),
+    strip_background_music: bool = Form(False),
     encode_preset:    str   = Form("ultrafast"),
     bg_music:         Optional[UploadFile] = File(None),
 ):
@@ -1417,6 +1438,7 @@ async def chunks_render(
         _run_chunk_render, job_id, indices, voice,
         bg_volume, tts_volume, speed_ratio,
         logo_text.strip(), keep_original, original_volume,
+        strip_background_music,
         encode_preset, bg_music_path,
     )
     return {"ok": True, "indices": indices}
