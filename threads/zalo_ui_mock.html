@@ -1,0 +1,148 @@
+<!doctype html>
+<html lang="vi">
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width,initial-scale=1"/>
+  <title>Zalo Chat UI Mock</title>
+  <style>
+    *{box-sizing:border-box}
+    :root{
+      --zalo:#0b98f6;
+      --zalo-2:#04a8ec;
+      --chat-bg:#e7eef6;
+      --text:#111827;
+      --muted:#7b8794;
+      --pink:#ef4b87;
+    }
+    html,body{height:100%;margin:0}
+    body{
+      display:grid;place-items:center;background:#101522;
+      font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial,sans-serif;
+      color:var(--text);
+    }
+    .phone{
+      width:min(100vw,460px);height:min(100vh,920px);min-height:640px;
+      display:flex;flex-direction:column;overflow:hidden;background:var(--chat-bg);
+      box-shadow:0 24px 80px #0008;
+    }
+    .header{
+      flex:0 0 auto;height:94px;padding:19px 16px 14px;
+      display:flex;align-items:center;gap:14px;color:#fff;
+      background:linear-gradient(110deg,var(--zalo),var(--zalo-2));
+    }
+    .back{font-size:42px;font-weight:200;line-height:1;transform:translateY(-2px)}
+    .heading{min-width:0;flex:1}
+    .title{font-size:21px;font-weight:750;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+    .members{font-size:14px;margin-top:3px;color:#e5f5ff}
+    .actions{display:flex;align-items:center;gap:20px}
+    .icon{width:29px;height:29px;display:block;stroke:#fff;fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+    .chat{
+      flex:1;overflow:hidden;padding:22px 15px 34px;
+      display:flex;flex-direction:column;justify-content:flex-end;gap:13px;
+      background:
+        radial-gradient(circle at 14% 14%,#fff5 0 1px,transparent 2px),
+        linear-gradient(#e7eef6,#e2eaf3);
+      background-size:26px 26px,auto;
+    }
+    .row{display:flex;align-items:flex-end;gap:9px;max-width:92%}
+    .row.mine{align-self:flex-end;flex-direction:row-reverse}
+    .avatar{
+      width:36px;height:36px;flex:0 0 36px;border-radius:50%;overflow:hidden;
+      border:1px solid #ffffffcc;background:#9dc4dc;
+    }
+    .avatar img{width:100%;height:100%;object-fit:cover}
+    .message{min-width:0}
+    .bubble{
+      position:relative;background:#fff;border:1.6px solid var(--zalo);
+      border-radius:13px;padding:13px 14px;font-size:18px;line-height:1.32;
+      box-shadow:0 1px 1px #8193a51c;
+    }
+    .mine .bubble{background:#d9f2ff;border-color:#87cef7}
+    .sender{font-size:14px;color:var(--pink);margin-bottom:6px;font-weight:550}
+    .mention{color:#0797f4;font-weight:600}
+    .reply{
+      margin:11px -14px -13px;padding:10px 14px;text-align:center;
+      border-top:1px solid #d8dde4;color:var(--zalo);font-size:16px;font-weight:600;
+    }
+    .reaction{
+      position:absolute;right:12px;bottom:-17px;height:28px;min-width:43px;padding:3px 9px;
+      display:flex;align-items:center;justify-content:center;border-radius:14px;
+      background:#fff;box-shadow:0 2px 7px #64748b33;font-size:16px;
+    }
+    .row.with-reaction{margin-bottom:13px}
+    .image-bubble{padding:0;overflow:hidden;background:#fff}
+    .image-bubble img{display:block;width:100%;max-height:210px;object-fit:cover}
+    .schedule{
+      width:100%;aspect-ratio:2.8/1;padding:12px 10px;background:#f8fafc;
+      display:grid;grid-template-columns:repeat(4,1fr);gap:2px;
+    }
+    .schedule div{background:#d8edf8;border:1px solid #88b8ce;border-radius:2px}
+    .schedule div:nth-child(4n+1){background:#a7d8ee}
+    @media(max-width:480px){
+      .phone{width:100vw;height:100vh;min-height:0}.header{height:88px}
+      .title{font-size:20px}.bubble{font-size:17px}.chat{padding-inline:12px}
+    }
+  </style>
+</head>
+<body>
+  <main class="phone">
+    <header class="header">
+      <div class="back">‹</div>
+      <div class="heading">
+        <div class="title">Thảo Mộc Coffee_Group</div>
+        <div class="members">9 thành viên</div>
+      </div>
+      <div class="actions" aria-hidden="true">
+        <svg class="icon" viewBox="0 0 24 24"><path d="M15 9l5-3v12l-5-3v3a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2z"/></svg>
+        <svg class="icon" viewBox="0 0 24 24"><circle cx="10.5" cy="10.5" r="7.5"/><path d="M16 16l6 6"/></svg>
+        <svg class="icon" viewBox="0 0 24 24"><path d="M8 6h13M8 12h13M8 18h13"/><circle cx="3" cy="6" r="1" fill="#fff"/><circle cx="3" cy="12" r="1" fill="#fff"/><circle cx="3" cy="18" r="1" fill="#fff"/></svg>
+      </div>
+    </header>
+
+    <section class="chat">
+      <div class="row">
+        <div class="avatar"><img src="avatarthreads/691776211_18092243654076179_1348958173927704985_n.jpg" alt=""/></div>
+        <div class="message">
+          <div class="bubble image-bubble">
+            <div class="schedule">
+              <div></div><div></div><div></div><div></div>
+              <div></div><div></div><div></div><div></div>
+              <div></div><div></div><div></div><div></div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="row">
+        <div class="avatar"><img src="avatarthreads/691776211_18092243654076179_1348958173927704985_n.jpg" alt=""/></div>
+        <div class="message">
+          <div class="bubble">Lịch làm của các em nhé.</div>
+        </div>
+      </div>
+
+      <div class="row with-reaction">
+        <div class="avatar"><img src="avatarthreads/573323465_1219825463302212_7278921664109726296_n.jpeg" alt=""/></div>
+        <div class="message">
+          <div class="bubble">
+            <div class="sender">Thái Phương Thảo</div>
+            Các em gửi lịch học tuần sau qua chị nhé <span class="mention">@All</span>
+            <div class="reply">Trả lời</div>
+            <div class="reaction">♡</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="row mine with-reaction">
+        <div class="avatar"><img src="avatarthreads/742208514_17941413951252799_2376814528070332172_n.jpg" alt=""/></div>
+        <div class="message">
+          <div class="bubble">
+            <div class="sender">Thảo Mộc Coffee</div>
+            Dạ em chốt lịch của chị Kiều 19h chủ nhật ngày 9/8, chị đã cọc 200k ạ.
+            <div class="reaction">❤️ 1</div>
+          </div>
+        </div>
+      </div>
+    </section>
+  </main>
+</body>
+</html>
