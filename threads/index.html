@@ -4919,8 +4919,6 @@ async function exportVideo() {
   // bgVideoFile, nên chọn từ thư viện vẫn báo "Cần chọn video nền" dù đã
   // apply xong — phải mở lại tab "Từ máy" chọn tay mới pass được.
   if (!bgVideoFile && !bgVideoLibraryItem) { alert('Cần chọn video nền trước (mục 1 sidebar).'); return; }
-  if(!await prepareProjectTts('export'))return;
-
   const btn = document.getElementById('export-btn');
   const resultEl = document.getElementById('export-result');
   resultEl.innerHTML = '';
