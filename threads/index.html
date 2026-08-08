@@ -833,6 +833,20 @@ header span { font-size: 12px; color: #4b5563; }
 }
 .lib-grid:has(.lib-item-audio) { grid-template-columns: 1fr; }
 .lib-grid:has(.lib-item-meme) { grid-template-columns: repeat(3, 1fr); }
+.sticker-library-modal { width:min(1040px,96vw);padding:24px; }
+.sticker-modal-head { display:flex;align-items:center;gap:12px;margin-bottom:16px; }
+.sticker-modal-head h3 { margin:0;flex:1; }
+.sticker-pack-grid { display:grid;grid-template-columns:repeat(auto-fill,minmax(210px,1fr));gap:16px;max-height:68vh;overflow:auto;padding:4px; }
+.sticker-pack-card { border:1px solid #292e50;border-radius:14px;background:#0a0c14;padding:12px;color:#e2e8f0;cursor:pointer;text-align:left;transition:.15s; }
+.sticker-pack-card:hover { border-color:#7c3aed;transform:translateY(-2px);box-shadow:0 10px 28px #0005; }
+.sticker-pack-cover { display:grid;grid-template-columns:repeat(3,1fr);grid-template-rows:repeat(2,1fr);height:170px;gap:5px;padding:7px;border-radius:10px;background:linear-gradient(145deg,#f8fafc,#e2e8f0);overflow:hidden; }
+.sticker-pack-cover img { width:100%;height:100%;object-fit:contain;min-width:0; }
+.sticker-pack-empty { grid-column:1/-1;display:grid;place-items:center;color:#64748b;font-size:13px; }
+.sticker-pack-name { display:flex;align-items:center;justify-content:space-between;gap:8px;margin-top:10px;font-size:14px;font-weight:800; }
+.sticker-detail-grid { display:grid;grid-template-columns:repeat(auto-fill,minmax(120px,1fr));gap:10px;max-height:62vh;overflow:auto;padding:12px;border:1px solid #1e2340;border-radius:12px;background:#0a0c14; }
+.sticker-detail-item { position:relative;display:grid;place-items:center;aspect-ratio:1;border:1px solid #252a48;border-radius:10px;background:#f8fafc;cursor:pointer;padding:8px;overflow:hidden; }
+.sticker-detail-item:hover { border-color:#7c3aed;box-shadow:0 0 0 2px #7c3aed55; }
+.sticker-detail-item img { width:100%;height:100%;object-fit:contain; }
 .lib-empty { font-size: 13px; color: #6b7280; padding: 10px; grid-column: 1/-1; }
 
 /* Thư viện Video nền/Âm thanh nền (sidebar mục 1/2) — video 2 cột (thumbnail
@@ -1179,7 +1193,7 @@ header span { font-size: 12px; color: #4b5563; }
       <button onclick="openStepModal('audio')">＋ Âm thanh</button>
       <button onclick="openMessengerModal()">＋ Messenger</button>
       <button onclick="openMemereadyModal()">🎁 Meme sẵn</button>
-      <button onclick="openStepModal('sticker')">＋ Sticker</button>
+      <button onclick="openStickerLibraryModal()">＋ Sticker</button>
     </div>
     <div id="step-list" ondragover="onDragContainerOver(event)" ondrop="dropAtDragPreview(event)">
       <div class="script-empty">Chưa có step nào.<br/>Bấm một nút ＋ ở trên để thêm.</div>
@@ -1282,6 +1296,21 @@ header span { font-size: 12px; color: #4b5563; }
       <button type="button" class="btn-cancel" style="flex:1;padding:10px;border:0;border-radius:8px;cursor:pointer" onclick="closeMessengerQuickAudio()">Huỷ</button>
       <button type="button" class="btn-ok" style="flex:1;padding:10px;border:0;border-radius:8px;cursor:pointer" onclick="confirmMessengerQuickAudio()">Thêm song song</button>
     </div>
+  </div>
+</div>
+
+<div class="step-modal-overlay" id="sticker-library-modal-overlay" onclick="if(event.target===this) closeStickerLibraryModal()">
+  <div class="step-modal sticker-library-modal">
+    <div class="sticker-modal-head">
+      <button type="button" class="btn-cancel" id="sticker-library-back" style="display:none;padding:8px 12px;border:0;border-radius:8px;cursor:pointer" onclick="showStickerPackList()">← Các bộ</button>
+      <h3 id="sticker-library-title">Chọn bộ sticker</h3>
+      <button type="button" class="btn-cancel" id="sticker-library-rename" style="display:none;padding:8px 12px;border:0;border-radius:8px;cursor:pointer" onclick="renameCurrentStickerPack()">✎ Đổi tên</button>
+      <button type="button" class="btn-ok" id="sticker-library-add" style="display:none;padding:8px 12px;border:0;border-radius:8px;cursor:pointer" onclick="document.getElementById('sticker-library-add-input').click()">＋ Thêm sticker</button>
+      <input id="sticker-library-add-input" type="file" accept="image/png,image/jpeg,image/webp,image/gif" style="display:none" onchange="addStickerToCurrentPack(this.files[0]);this.value=''"/>
+      <button type="button" class="btn-cancel" style="padding:8px 12px;border:0;border-radius:8px;cursor:pointer" onclick="closeStickerLibraryModal()">Đóng</button>
+    </div>
+    <div id="sticker-library-status" style="font-size:11px;color:#94a3b8;min-height:16px;margin-bottom:8px"></div>
+    <div id="sticker-library-content"></div>
   </div>
 </div>
 
@@ -3157,16 +3186,7 @@ function openStepModal(type, stepId = null, targetGroupId = null) {
     html += `<div id="m-extra-tts-box"></div>`;
   } else if (type === 'sticker') {
     modalUploadedMedia = editing && editing.mediaUrl && !editing.mediaPath ? { url: editing.mediaUrl, filename: editing.mediaName, isVideo: editing.mediaIsVideo, desktopPath: editing.mediaDesktopPath } : null;
-    html += `<div style="font-size:12px;color:#6b7280;margin-bottom:10px">Sticker hiển thị độc lập giữa khung, không có nền card và không tạo TTS.</div>
-             <div id="sticker-pack-tabs" style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:8px"></div>
-             <div style="display:flex;gap:7px;margin-bottom:9px">
-               <button type="button" class="btn-cancel" style="flex:1;padding:8px;border:0;border-radius:7px;cursor:pointer" onclick="renameCurrentStickerPack()">✎ Đổi tên bộ</button>
-               <button type="button" class="btn-cancel" style="flex:1;padding:8px;border:0;border-radius:7px;cursor:pointer" onclick="document.getElementById('sticker-library-add-input').click()">＋ Thêm vào bộ</button>
-               <input id="sticker-library-add-input" type="file" accept="image/png,image/jpeg,image/webp,image/gif" style="display:none" onchange="addStickerToCurrentPack(this.files[0]);this.value=''"/>
-             </div>
-             <div id="sticker-library-grid" class="lib-grid" style="display:grid;margin-bottom:14px"></div>
-             <div id="sticker-library-status" style="font-size:11px;color:#94a3b8;margin-bottom:8px"></div>
-             <div style="font-size:11px;color:#6b7280;margin-bottom:8px">Hoặc chọn một file ngoài thư viện:</div>`
+    html += `<div style="font-size:12px;color:#6b7280;margin-bottom:10px">Sửa sticker hiện tại hoặc chọn một file khác từ máy. Muốn chọn từ các bộ sticker, đóng form này và bấm nút ＋ Sticker.</div>`
              + filePathFieldHtml('Ảnh sticker', editing ? editing.mediaPath : '', editing ? editing.mediaUrl : null, editing ? editing.mediaName : null, 'meme');
   } else if (type === 'audio') {
     modalUploadedMedia = editing && editing.mediaUrl && !editing.mediaPath ? { url: editing.mediaUrl, filename: editing.mediaName, isVideo: editing.mediaIsVideo } : null;
@@ -3185,50 +3205,77 @@ function openStepModal(type, stepId = null, targetGroupId = null) {
   document.getElementById('step-modal-tts-status').textContent = '';
   document.getElementById('step-modal-submit-btn').disabled = false;
   document.getElementById('step-modal-overlay').classList.add('open');
-  if (type === 'sticker') loadStickerLibrary();
 }
 
 let stickerPacks = [];
 let activeStickerPackId = null;
 
+function openStickerLibraryModal() {
+  document.getElementById('sticker-library-modal-overlay').classList.add('open');
+  activeStickerPackId = null;
+  loadStickerLibrary();
+}
+
+function closeStickerLibraryModal() { document.getElementById('sticker-library-modal-overlay').classList.remove('open'); }
+
 async function loadStickerLibrary(preferredPackId = null) {
-  const grid = document.getElementById('sticker-library-grid');
-  if (!grid || !window.desktopApp?.getStickerLibrary) return;
-  grid.innerHTML = '<div class="lib-empty">Đang mở thư viện sticker...</div>';
+  const content = document.getElementById('sticker-library-content');
+  if (!content || !window.desktopApp?.getStickerLibrary) return;
+  content.innerHTML = '<div class="lib-empty">Đang mở thư viện sticker...</div>';
   try {
     stickerPacks = await window.desktopApp.getStickerLibrary();
-    activeStickerPackId = preferredPackId && stickerPacks.some(pack => pack.id === preferredPackId)
-      ? preferredPackId : (activeStickerPackId && stickerPacks.some(pack => pack.id === activeStickerPackId) ? activeStickerPackId : stickerPacks[0]?.id || null);
-    renderStickerLibrary();
+    activeStickerPackId = preferredPackId && stickerPacks.some(pack => pack.id === preferredPackId) ? preferredPackId : null;
+    activeStickerPackId ? renderStickerPackDetail() : showStickerPackList();
   } catch (error) {
-    grid.innerHTML = `<div class="lib-empty" style="color:#ef4444">Không mở được thư viện: ${esc(error.message)}</div>`;
+    content.innerHTML = `<div class="lib-empty" style="color:#ef4444">Không mở được thư viện: ${esc(error.message)}</div>`;
   }
 }
 
-function renderStickerLibrary() {
-  const tabs = document.getElementById('sticker-pack-tabs'), grid = document.getElementById('sticker-library-grid');
-  if (!tabs || !grid) return;
-  tabs.innerHTML = stickerPacks.map(pack => `<button type="button" class="lib-toggle-btn" style="${pack.id === activeStickerPackId ? 'border-color:#7c3aed;color:#ddd6fe' : ''}" onclick="selectStickerPack(decodeURIComponent('${encodeURIComponent(pack.id)}'))">${esc(pack.name)} (${pack.stickers.length})</button>`).join('');
+function setStickerModalDetailControls(show) {
+  document.getElementById('sticker-library-back').style.display = show ? '' : 'none';
+  document.getElementById('sticker-library-rename').style.display = show ? '' : 'none';
+  document.getElementById('sticker-library-add').style.display = show ? '' : 'none';
+}
+
+function showStickerPackList() {
+  activeStickerPackId = null;
+  setStickerModalDetailControls(false);
+  document.getElementById('sticker-library-title').textContent = 'Chọn bộ sticker';
+  document.getElementById('sticker-library-status').textContent = 'Xem trước từng bộ rồi bấm để mở danh sách sticker.';
+  const content = document.getElementById('sticker-library-content');
+  content.innerHTML = `<div class="sticker-pack-grid">${stickerPacks.map(pack => {
+    const previews = pack.stickers.slice(0, 6).map(sticker => `<img src="${sticker.url}" alt="" loading="lazy"/>`).join('');
+    return `<button type="button" class="sticker-pack-card" onclick="showStickerPack(decodeURIComponent('${encodeURIComponent(pack.id)}'))"><div class="sticker-pack-cover">${previews || '<div class="sticker-pack-empty">Bộ trống</div>'}</div><div class="sticker-pack-name"><span>${esc(pack.name)}</span><span style="color:#94a3b8;font-size:11px">${pack.stickers.length} sticker ›</span></div></button>`;
+  }).join('')}</div>`;
+}
+
+function showStickerPack(packId) {
+  activeStickerPackId = packId;
+  renderStickerPackDetail();
+}
+
+function renderStickerPackDetail() {
+  setStickerModalDetailControls(true);
   const pack = stickerPacks.find(item => item.id === activeStickerPackId);
+  document.getElementById('sticker-library-title').textContent = pack ? pack.name : 'Sticker';
+  document.getElementById('sticker-library-status').textContent = pack ? `${pack.stickers.length} sticker — bấm một hình để thêm vào timeline.` : '';
+  const content = document.getElementById('sticker-library-content');
   if (!pack || !pack.stickers.length) {
-    grid.innerHTML = '<div class="lib-empty">Bộ này chưa có sticker. Bạn có thể thả file vào thư mục trước khi build hoặc bấm “Thêm vào bộ”.</div>';
+    content.innerHTML = '<div class="lib-empty">Bộ này chưa có sticker. Bấm “Thêm sticker” để thêm ảnh từ máy.</div>';
     return;
   }
-  grid.innerHTML = pack.stickers.map(sticker => {
+  content.innerHTML = `<div class="sticker-detail-grid">${pack.stickers.map(sticker => {
     const payload = encodeURIComponent(JSON.stringify(sticker));
-    return `<div class="lib-item lib-item-meme" data-sticker="${payload}" onclick="selectStickerFromLibrary(this)" title="${esc(sticker.filename)}"><img class="lib-thumb" src="${sticker.url}" loading="lazy" alt=""/><span class="lib-item-name">${esc(sticker.filename)}</span></div>`;
-  }).join('');
+    return `<button type="button" class="sticker-detail-item" data-sticker="${payload}" onclick="selectStickerFromLibrary(this)" title="${esc(sticker.filename)}"><img src="${sticker.url}" loading="lazy" alt=""/></button>`;
+  }).join('')}</div>`;
 }
-
-function selectStickerPack(packId) { activeStickerPackId = packId; renderStickerLibrary(); }
 
 function selectStickerFromLibrary(el) {
   const sticker = JSON.parse(decodeURIComponent(el.dataset.sticker));
-  modalUploadedMedia = { url: sticker.url, filename: sticker.filename, isVideo: false, desktopPath: sticker.desktopPath };
-  document.querySelectorAll('#sticker-library-grid .lib-item.selected').forEach(item => item.classList.remove('selected'));
-  el.classList.add('selected');
-  document.getElementById('m-dropzone-text').textContent = '✓ ' + sticker.filename;
-  document.getElementById('sticker-library-status').textContent = '✓ Đã chọn từ thư viện sticker';
+  steps.push({ id:stepIdCounter++,type:'sticker',mediaPath:null,mediaUrl:sticker.url,mediaDesktopPath:sticker.desktopPath,mediaName:sticker.filename,mediaIsVideo:false,duration:DEFAULT_DUR.sticker,gap:0,clearBefore:true,hue:Math.floor(Math.random()*360),offsetX:0,offsetY:0,rotation:0 });
+  renderStepList();
+  renderIdleScene();
+  closeStickerLibraryModal();
 }
 
 async function renameCurrentStickerPack() {
@@ -3237,7 +3284,7 @@ async function renameCurrentStickerPack() {
   const name = prompt('Tên mới của bộ sticker:', pack.name);
   if (!name || name.trim() === pack.name) return;
   stickerPacks = await window.desktopApp.renameStickerPack(pack.id, name.trim());
-  renderStickerLibrary();
+  renderStickerPackDetail();
 }
 
 async function addStickerToCurrentPack(file) {
@@ -3246,7 +3293,7 @@ async function addStickerToCurrentPack(file) {
   status.textContent = 'Đang thêm sticker vào thư viện...';
   try {
     stickerPacks = await window.desktopApp.addSticker(activeStickerPackId, new Uint8Array(await file.arrayBuffer()), file.name);
-    renderStickerLibrary();
+    renderStickerPackDetail();
     status.textContent = '✓ Đã thêm sticker vào bộ hiện tại';
   } catch (error) {
     status.textContent = '✗ ' + error.message;
