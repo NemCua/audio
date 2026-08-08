@@ -335,7 +335,7 @@ function buildZaloHtml(s) {
     ? `<input class="zalo-name-input" value="${partnerNameAttr}" size="${partnerNameSize}" aria-label="Tên cuộc trò chuyện" oninput="messPartnerName=this.value;this.size=Math.max(1,Math.min(24,Array.from(this.value).length))" onblur="commitMessengerPartnerName(this)" onkeydown="if(event.key==='Enter'){event.preventDefault();this.blur()}"/>`
     : `<span>${esc(partnerName)}</span>`;
   return `<div class="zalo-card">
-    <div class="zalo-head"><span class="zalo-back">‹</span><div class="zalo-title"><div>${nameHtml}</div><small>9 thành viên</small></div>
+    <div class="zalo-head"><span class="zalo-back">‹</span><div class="zalo-title"><div>${nameHtml}</div></div>
       <div class="zalo-head-icons" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M15 9l5-3v12l-5-3v3a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2z"/></svg><svg viewBox="0 0 24 24"><circle cx="10" cy="10" r="7"/><path d="m15 15 6 6"/></svg><svg viewBox="0 0 24 24"><path d="M8 6h13M8 12h13M8 18h13"/></svg></div>
     </div><div class="zalo-body">${rows}${appendControl}</div>
     ${identityEditable ? `<div class="zalo-avatar-editor"${avatarEditAttr}><img src="${esc(partnerAvatar)}" alt=""/></div>` : ''}
