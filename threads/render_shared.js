@@ -260,6 +260,7 @@ function buildCardHtml(s) {
 
 const MESS_DEFAULT_AVATAR = 'https://scontent.fsgn2-6.fna.fbcdn.net/v/t1.30497-1/453178253_471506465671661_2781666950760530985_n.png?stp=dst-png_s200x200&_nc_cat=110&ccb=1-7&_nc_sid=b224c7&_nc_ohc=37S9MJzUa4AQ7kNvwFpaTtl&_nc_oc=AdoHkBq6RhqdatGu3Nr_2oC2jy4r8U1V6UOn5fGIQOiMaoLOpewLVlpXS3s5T6Bx-RSoWHQ39WJv5VinMwSkBfTJ&_nc_ad=z-m&_nc_cid=0&_nc_zt=24&_nc_ht=scontent.fsgn2-6.fna&_nc_ss=7a22e&oh=00_AQHnmeH6FCOqTPiPzWVETrLxP3ReV40dXBTzcNYByY2Hpw&oe=6A981C7A';
 function buildMessengerHtml(s) {
+  if (s.messPlatform === 'zalo') return buildZaloHtml(s);
   const history = s.messHistory || [];
   const editable = !!s.messEditable;
   const identityEditable = !!s.messIdentityEditable;
@@ -300,6 +301,46 @@ function buildMessengerHtml(s) {
         <svg viewBox="0 0 16 16"><path d="M3 8a1 1 0 0 1 1-1h8a1 1 0 1 1 0 2H4a1 1 0 0 1-1-1z"/></svg>
         <svg viewBox="0 0 16 16"><path d="M13.457 3.957a1 1 0 0 0-1.414-1.414L8 6.586 3.957 2.543a1 1 0 0 0-1.414 1.414L6.586 8l-4.043 4.043a1 1 0 1 0 1.414 1.414L8 9.414l4.043 4.043a1 1 0 0 0 1.414-1.414L9.414 8l4.043-4.043z"/></svg>
       </div></div><div class="mess-body">${rows}${appendControl}</div></div>`;
+}
+
+function buildZaloHtml(s) {
+  const history = s.messHistory || [];
+  const editable = !!s.messEditable;
+  const identityEditable = !!s.messIdentityEditable;
+  const audioIndexes = new Set(s.messAudioIndexes || []);
+  const partnerName = s.messPartnerName || 'Thảo Mộc Coffee_Group';
+  const partnerAvatar = s.messPartnerAvatar || MESS_DEFAULT_AVATAR;
+  const partnerNameAttr = esc(partnerName).replace(/"/g,'&quot;').replace(/'/g,'&#39;');
+  const partnerNameSize = Math.max(1, Math.min(24, Array.from(partnerName).length));
+  const rows = history.map((m,i) => {
+    const avatarEdit = identityEditable ? ` role="button" tabindex="0" title="Đổi ảnh đại diện" onclick="event.stopPropagation();document.getElementById('mess-avatar-file').click()"` : '';
+    const avatar = m.side === 'theirs' ? `<div class="zalo-mini-avatar${identityEditable?' is-editable':''}"${avatarEdit}><img src="${esc(partnerAvatar)}" alt="" referrerpolicy="no-referrer"/></div>` : '';
+    const sender = m.side === 'theirs' ? `<div class="zalo-sender">${esc(partnerName)}</div>` : '';
+    const textHtml = m.text ? `<div class="zalo-bubble">${sender}<div>${esc(m.text)}</div></div>` : '';
+    const imageHtml = m.imageUrl ? `<img class="zalo-chat-image" src="${esc(m.imageUrl)}" alt="" referrerpolicy="no-referrer"/>` : '';
+    const audioBadge = editable && (audioIndexes.has(i) || (m.parallelAudios && m.parallelAudios.length)) ? `<span class="mess-audio-badge">🔊 ${m.parallelAudios?.length || 1}<button type="button" onclick="event.stopPropagation();removeMessengerQuickAudio(${i})" title="Xóa âm thanh song song" aria-label="Xóa âm thanh song song">×</button></span>` : '';
+    const insert = editable ? `<div class="mess-insert-slot" onclick="event.stopPropagation();beginMessengerInsert(${i})" title="Chèn tin nhắn trước tin này"><span>＋ Chèn tin tại đây</span></div>` : '';
+    const menuDirection = i < 4 ? '' : ' menu-up';
+    const actions = editable ? `<div class="mess-draft-actions${menuDirection}">
+      <button type="button" class="mess-more-btn" onclick="event.stopPropagation();toggleMessengerDraftMenu(${i})" title="Tùy chọn tin nhắn" aria-label="Tùy chọn tin nhắn">•••</button>
+      <div class="mess-draft-menu" id="mess-draft-menu-${i}">
+        <button type="button" onclick="event.stopPropagation();editMessengerDraft(${i})">Chỉnh sửa</button>
+        <button type="button" onclick="event.stopPropagation();openMessengerQuickAudio(${i})">Thêm âm thanh</button>
+        <button type="button" class="danger" onclick="event.stopPropagation();deleteMessengerDraft(${i})">Xóa</button>
+      </div></div>` : '';
+    return `<div class="mess-row zalo-row ${m.side}" data-mess-index="${i}">${insert}${avatar}<div class="zalo-content">${textHtml}${imageHtml}</div>${audioBadge}${actions}</div>`;
+  }).join('');
+  const appendControl = editable ? `<button type="button" class="mess-append-btn" onclick="event.stopPropagation();beginMessengerInsert(${history.length})">＋ Thêm tin ở cuối</button>` : '';
+  const avatarEditAttr = identityEditable ? ` role="button" tabindex="0" title="Đổi ảnh đại diện" onclick="event.stopPropagation();document.getElementById('mess-avatar-file').click()"` : '';
+  const nameHtml = identityEditable
+    ? `<input class="zalo-name-input" value="${partnerNameAttr}" size="${partnerNameSize}" aria-label="Tên cuộc trò chuyện" oninput="messPartnerName=this.value;this.size=Math.max(1,Math.min(24,Array.from(this.value).length))" onblur="commitMessengerPartnerName(this)" onkeydown="if(event.key==='Enter'){event.preventDefault();this.blur()}"/>`
+    : `<span>${esc(partnerName)}</span>`;
+  return `<div class="zalo-card">
+    <div class="zalo-head"><span class="zalo-back">‹</span><div class="zalo-title"><div>${nameHtml}</div><small>9 thành viên</small></div>
+      <div class="zalo-head-icons" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M15 9l5-3v12l-5-3v3a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2z"/></svg><svg viewBox="0 0 24 24"><circle cx="10" cy="10" r="7"/><path d="m15 15 6 6"/></svg><svg viewBox="0 0 24 24"><path d="M8 6h13M8 12h13M8 18h13"/></svg></div>
+    </div><div class="zalo-body">${rows}${appendControl}</div>
+    ${identityEditable ? `<div class="zalo-avatar-editor"${avatarEditAttr}><img src="${esc(partnerAvatar)}" alt=""/></div>` : ''}
+  </div>`;
 }
 
 // TikTok comment/reply — copy nguyên cấu trúc từ threads/tiktok_ui_mock.html
@@ -455,7 +496,7 @@ function autoScrollStack() {
 }
 
 function autoScrollMessenger(root = document) {
-  root.querySelectorAll('.mess-body').forEach(body => {
+  root.querySelectorAll('.mess-body,.zalo-body').forEach(body => {
     body.scrollTop = body.scrollHeight;
   });
 }
