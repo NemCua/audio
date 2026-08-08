@@ -577,6 +577,9 @@ header span { font-size: 12px; color: #4b5563; }
 }
 .meme-overlay img, .meme-overlay video { width: 100%; display: block; }
 .meme-overlay.sticker-overlay { left:27.5cqw;right:27.5cqw;top:32%;border-radius:0;box-shadow:none;overflow:visible; }
+.meme-overlay.drag-positionable { cursor:grab;touch-action:none;user-select:none; }
+.meme-overlay.drag-positionable:active { cursor:grabbing; }
+.meme-overlay.drag-positionable img,.meme-overlay.drag-positionable video { pointer-events:none;user-select:none;-webkit-user-drag:none; }
 .meme-overlay .meme-ph {
   aspect-ratio: 1/1;
   background: repeating-linear-gradient(45deg,#333,#333 3cqw,#2a2a2a 3cqw,#2a2a2a 6cqw);
@@ -3750,7 +3753,8 @@ function stepSummary(s) {
 
 // Điều chỉnh vị trí/xoay (mục 5.21 CONTEXT.md) — chỉ post/comment/reply/
 // meme/image có hình để dịch/xoay, audio bỏ qua (không hiển thị gì trên khung).
-const POSITIONABLE_TYPES = ['post', 'comment', 'reply', 'image', 'sticker', 'mess'];
+const POSITIONABLE_TYPES = ['post', 'comment', 'reply', 'mess'];
+const DRAGGABLE_OVERLAY_TYPES = ['image', 'sticker'];
 function stepPositionCtrlsHtml(s) {
   const ox = s.offsetX || 0, oy = s.offsetY || 0, rot = s.rotation || 0;
   const showWarn = s.type === 'image' && isDynamicMeme(s) && rot !== 0;
@@ -3783,7 +3787,7 @@ function stepCardHtml(s, idx) {
       </div>
       <div class="sc-summary" onclick="jumpToStep(${s.id})" title="Xem lúc step này hiển thị trên preview">${esc(stepSummary(s))}</div>
       ${voiceLabelHtml(s)}
-      ${POSITIONABLE_TYPES.includes(s.type) ? stepPositionCtrlsHtml(s) : ''}
+      ${POSITIONABLE_TYPES.includes(s.type) ? stepPositionCtrlsHtml(s) : DRAGGABLE_OVERLAY_TYPES.includes(s.type) ? '<div class="sc-position" style="color:#a78bfa;font-size:10px">🖱 Kéo trực tiếp hình trong khung preview để đổi vị trí</div>' : ''}
       <div class="sc-ctrls">
         <label>Thời lượng${s.audioUrl?' 🔊':''}
           <input type="number" min="0" step="0.1" value="${s.duration.toFixed(2)}" ${s.audioUrl?'disabled title="Tự tính từ độ dài giọng đọc TTS — sửa nội dung để tạo lại"':''} onchange="updateStepField(${s.id},'duration',this.value)"/>
@@ -4644,10 +4648,12 @@ function renderAtTime(t) {
         : `<div class="meme-ph">🖼 MEME<br/>(chưa chọn file)</div>`;
       memeEl.style.display = 'block';
       memeEl.classList.toggle('sticker-overlay', memeStep.type === 'sticker');
+      memeEl.classList.toggle('drag-positionable', DRAGGABLE_OVERLAY_TYPES.includes(memeStep.type));
     } else {
       memeEl.style.display = 'none';
       memeEl.innerHTML = '';
       memeEl.classList.remove('sticker-overlay');
+      memeEl.classList.remove('drag-positionable');
     }
     _lastMemeKey = memeKey;
   }
@@ -4668,6 +4674,48 @@ function renderAtTime(t) {
     const groupKey=el.dataset.groupId;el.classList.toggle('active-now',steps.some(s=>encodeURIComponent(stepGroupId(s)||'')===groupKey&&activeIds.has(s.id)));
   });
 }
+
+let overlayPositionDrag = null;
+const overlayPositionEl = document.getElementById('meme-overlay');
+overlayPositionEl.addEventListener('pointerdown', event => {
+  if (playing) return;
+  const { memeStep } = computeSceneAt(playheadT);
+  if (!memeStep || !DRAGGABLE_OVERLAY_TYPES.includes(memeStep.type)) return;
+  const frame = document.getElementById('preview-frame');
+  overlayPositionDrag = {
+    id:memeStep.id,
+    startX:event.clientX,
+    startY:event.clientY,
+    offsetX:memeStep.offsetX || 0,
+    offsetY:memeStep.offsetY || 0,
+    frameWidth:Math.max(1, frame.getBoundingClientRect().width),
+  };
+  overlayPositionEl.setPointerCapture(event.pointerId);
+  event.preventDefault();
+});
+overlayPositionEl.addEventListener('pointermove', event => {
+  if (!overlayPositionDrag) return;
+  const step = steps.find(item => item.id === overlayPositionDrag.id);
+  if (!step) return;
+  const toCqw = 100 / overlayPositionDrag.frameWidth;
+  step.offsetX = clampPos(overlayPositionDrag.offsetX + (event.clientX - overlayPositionDrag.startX) * toCqw, -OFFSET_X_RANGE, OFFSET_X_RANGE);
+  step.offsetY = clampPos(overlayPositionDrag.offsetY + (event.clientY - overlayPositionDrag.startY) * toCqw, -OFFSET_Y_RANGE, OFFSET_Y_RANGE);
+  overlayPositionEl.style.transform = memeOverlayTransform(step);
+  event.preventDefault();
+});
+function finishOverlayPositionDrag(event) {
+  if (!overlayPositionDrag) return;
+  const step = steps.find(item => item.id === overlayPositionDrag.id);
+  overlayPositionDrag = null;
+  try { overlayPositionEl.releasePointerCapture(event.pointerId); } catch (_) {}
+  if (step) {
+    bumpStepRevision(step.id);
+    renderStepList();
+    renderAtTime(playheadT);
+  }
+}
+overlayPositionEl.addEventListener('pointerup', finishOverlayPositionDrag);
+overlayPositionEl.addEventListener('pointercancel', finishOverlayPositionDrag);
 
 
 // Render cảnh "cuối cùng" khi không phát (để user thấy tổng thể sau khi sửa step)
