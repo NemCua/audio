@@ -579,7 +579,7 @@ header span { font-size: 12px; color: #4b5563; }
 .meme-overlay.sticker-overlay { left:27.5cqw;right:27.5cqw;top:32%;border-radius:0;box-shadow:none;overflow:visible; }
 .meme-overlay.drag-positionable { cursor:grab;touch-action:none;user-select:none; }
 .meme-overlay.drag-positionable:active { cursor:grabbing; }
-.meme-overlay.drag-positionable.snap-soft { transition:transform 90ms ease-out; }
+.meme-overlay.drag-positionable.snap-soft { transition:transform 120ms cubic-bezier(.2,.75,.35,1); }
 .meme-overlay.drag-positionable img,.meme-overlay.drag-positionable video { pointer-events:none;user-select:none;-webkit-user-drag:none; }
 .position-guides{position:absolute;inset:0;z-index:12;pointer-events:none;opacity:0;transition:opacity 140ms ease}.position-guides.open{opacity:1}.position-guide{position:absolute;background:rgba(125,211,252,.24);transition:background 100ms ease,box-shadow 100ms ease}.position-guide.x{top:0;bottom:0;width:1px}.position-guide.y{left:0;right:0;height:1px}.position-guide.x.g25{left:25%}.position-guide.x.g50{left:50%}.position-guide.x.g75{left:75%}.position-guide.y.g25{top:25%}.position-guide.y.g50{top:50%}.position-guide.y.g75{top:75%}.position-guide.g50{background:rgba(167,139,250,.42)}.position-guide.snapped{background:#7dd3fc;box-shadow:0 0 7px #38bdf8}
 .meme-overlay .meme-ph {
@@ -4712,15 +4712,27 @@ function clearOverlaySnap(){
   overlayPositionEl.classList.remove('snap-soft');
 }
 function snapOverlayToGuides(step,frame,toCqw){
-  clearOverlaySnap();
+  positionGuidesEl.querySelectorAll('.snapped').forEach(line=>line.classList.remove('snapped'));
   const frameRect=frame.getBoundingClientRect(),overlayRect=overlayPositionEl.getBoundingClientRect();
-  const centers={x:overlayRect.left+overlayRect.width/2,y:overlayRect.top+overlayRect.height/2};
   let snapped=false;
   for(const axis of ['x','y']){
     const start=axis==='x'?frameRect.left:frameRect.top,size=axis==='x'?frameRect.width:frameRect.height;
-    let best=null;
-    for(const ratio of [.25,.5,.75]){const delta=start+size*ratio-centers[axis];if(!best||Math.abs(delta)<Math.abs(best.delta))best={ratio,delta};}
-    if(best&&Math.abs(best.delta)<=8){
+    const overlayStart=axis==='x'?overlayRect.left:overlayRect.top,overlaySize=axis==='x'?overlayRect.width:overlayRect.height;
+    const anchors=[overlayStart,overlayStart+overlaySize/2,overlayStart+overlaySize];
+    let best=null,current=overlayPositionDrag.snap[axis];
+    if(current){
+      const delta=start+size*current.ratio-anchors[current.anchor];
+      if(Math.abs(delta)<=26)best={...current,delta};else overlayPositionDrag.snap[axis]=null;
+    }
+    if(!best){
+      for(const ratio of [.25,.5,.75])for(let anchor=0;anchor<anchors.length;anchor++){
+        const delta=start+size*ratio-anchors[anchor];
+        if(!best||Math.abs(delta)<Math.abs(best.delta))best={ratio,anchor,delta};
+      }
+      if(!best||Math.abs(best.delta)>16)best=null;
+      else overlayPositionDrag.snap[axis]={ratio:best.ratio,anchor:best.anchor};
+    }
+    if(best){
       if(axis==='x')step.offsetX=clampPos(step.offsetX+best.delta*toCqw,-OFFSET_X_RANGE,OFFSET_X_RANGE);
       else step.offsetY=clampPos(step.offsetY+best.delta*toCqw,-OFFSET_Y_RANGE,OFFSET_Y_RANGE);
       positionGuidesEl.querySelector(`[data-axis="${axis}"][data-ratio="${best.ratio}"]`)?.classList.add('snapped');snapped=true;
@@ -4740,6 +4752,7 @@ overlayPositionEl.addEventListener('pointerdown', event => {
     offsetX:memeStep.offsetX || 0,
     offsetY:memeStep.offsetY || 0,
     frameWidth:Math.max(1, frame.getBoundingClientRect().width),
+    snap:{x:null,y:null},
   };
   positionGuidesEl.classList.add('open');
   overlayPositionEl.setPointerCapture(event.pointerId);
