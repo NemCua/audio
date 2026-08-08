@@ -1786,6 +1786,25 @@ async function fetchTtsBatch(texts, voiceIdx, speed = 1) {
   }));
 }
 
+async function fetchProjectTtsBatch(items) {
+  if (!items.length) return [];
+  const payload = items.map(item => {
+    const voice = selectedVoice(item.voiceIdx);
+    return {text:item.text,voice_type:voice?.voice_type,resource_id:voice?.resource_id,speed:item.speed||1,echo:!!item.echo};
+  });
+  const res = await fetch(ttsServerUrl() + '/tts-project-batch', {
+    method:'POST',headers:{'Content-Type':'application/json',...(window.authHeaders?window.authHeaders():{})},body:JSON.stringify({items:payload}),
+  });
+  if(!res.ok){const body=await res.json().catch(()=>({}));throw new Error(body.detail||('HTTP '+res.status));}
+  const data=await res.json();
+  if(!Array.isArray(data.items)||data.items.length!==items.length)throw new Error('TTS project batch trả về thiếu đoạn');
+  return Promise.all(data.items.map(async item=>{
+    const remoteUrl=ttsServerUrl()+item.audio_url;
+    if(window.desktopApp?.downloadAsset){const saved=await window.desktopApp.downloadAsset(remoteUrl,'tts','tts.mp3',window.authHeaders?window.authHeaders():{});return {audioUrl:saved.url,audioDesktopPath:saved.path,duration:item.duration};}
+    return {audioUrl:remoteUrl,duration:item.duration};
+  }));
+}
+
 const waitMs = ms => new Promise(resolve => setTimeout(resolve, ms));
 function isEdgeVoiceIdx(voiceIdx) {
   return selectedVoice(voiceIdx)?.engine === 'edge';
@@ -1807,7 +1826,7 @@ async function fetchEdgeTtsReliable(text, voiceIdx, speed = 1) {
 // tồn tại tạm trên tts_server.py) hoặc khi step được tạo lúc tick "Tắt TTS".
 // Dùng lại đúng ttsText/voiceIdx đã lưu trong step (fallback về text hiển
 // thị nếu ttsText trống, giống hành vi readTtsText lúc soạn).
-async function generateAllTts() {
+async function generateAllTtsLegacy() {
   const statusEl = document.getElementById('gen-all-tts-status');
   const btn = document.getElementById('gen-all-tts-btn');
   // Bug đã gặp: từ khi cho phép nội dung rỗng (mục 5.44 CONTEXT.md), step
@@ -1909,6 +1928,36 @@ async function generateAllTts() {
   statusEl.textContent = `✓ Đã tạo ${ok}/${totalTargetCount} giọng đọc.`;
   renderStepList();
   renderIdleScene();
+}
+
+async function generateAllTts() {
+  const statusEl=document.getElementById('gen-all-tts-status');
+  const btn=document.getElementById('gen-all-tts-btn');
+  const jobs=[];
+  const supported=new Set(['post','comment','reply','image','mess']);
+  for(const step of steps){
+    if(!supported.has(step.type))continue;
+    const mainText=((step.ttsText&&step.ttsText.trim())||(step.text&&step.text.trim())||'');
+    if(!step.audioUrl&&mainText)jobs.push({step,segment:null,text:mainText,voiceIdx:step.voiceIdx!=null?step.voiceIdx:(step.type==='mess'?messengerDefaultVoice(step.messHistory?.[step.messHistory.length-1]?.side||'theirs'):null),speed:step.type==='mess'?Number(step.messTtsSpeed||1):1,echo:!!step.echo});
+    for(const segment of (step.extraTtsSegments||[])){
+      const text=(segment.text||'').trim();
+      if(!segment.audioUrl&&text)jobs.push({step,segment,text,voiceIdx:segment.voiceIdx!=null?segment.voiceIdx:null,speed:1,echo:!!segment.echo});
+    }
+  }
+  if(!jobs.length){statusEl.textContent='✓ Tất cả step đã có giọng đọc.';return true;}
+  btn.disabled=true;statusEl.textContent=`🔊 Đang gửi ${jobs.length} đoạn TTS lên server trong một lượt...`;
+  try{
+    const results=await fetchProjectTtsBatch(jobs);
+    const touched=new Set();
+    jobs.forEach((job,index)=>{
+      const result=results[index];touched.add(job.step);
+      if(job.segment){job.segment.audioUrl=result.audioUrl;job.segment.audioDesktopPath=result.audioDesktopPath||null;job.segment.duration=result.duration;}
+      else{job.step.audioUrl=result.audioUrl;job.step.audioDesktopPath=result.audioDesktopPath||null;job.step.ttsDuration=result.duration;}
+    });
+    for(const step of touched){step.duration=stepTtsClips(step).reduce((sum,clip)=>sum+(Number(clip.duration)||0),0)||step.duration;bumpStepRevision(step.id);}
+    statusEl.textContent=`✓ Đã tạo ${jobs.length} đoạn TTS.`;renderStepList();renderIdleScene();return true;
+  }catch(error){statusEl.textContent='✗ Không tạo được TTS: '+error.message;renderStepList();renderIdleScene();return false;}
+  finally{btn.disabled=false;}
 }
 
 /* ============================================================
@@ -2303,26 +2352,14 @@ function commitPendingMessengerDraft(){
 }
 async function generateMessengerTtsResults(messages,status,reuseSteps=[]){
   const results=new Map();
-  if(document.getElementById('tts-disabled-toggle').checked)return results;
-  const byVoice=new Map();
   messages.forEach((msg,index)=>{
     if(!msg.ttsText)return;
     const old=reuseSteps.find(s=>(s.messIndex??((s.messHistory||[]).length-1))===index);
     if(old&&old.audioUrl&&old.ttsText===msg.ttsText&&old.voiceIdx===msg.voiceIdx&&Number(old.messTtsSpeed||1)===Number(messTtsSpeed)){
       results.set(index,{audioUrl:old.audioUrl,duration:old.ttsDuration||old.duration});return;
     }
-    const key=msg.voiceIdx??messengerDefaultVoice(msg.side);if(!byVoice.has(key))byVoice.set(key,[]);byVoice.get(key).push({index,text:msg.ttsText});
   });
-  const chunks=[];
-  for(const [voiceIdx,items] of byVoice){
-    if(isEdgeVoiceIdx(voiceIdx)){
-      for(let i=0;i<items.length;i++){status.textContent=`🔊 Edge TTS ${i+1}/${items.length} (từng tin nhắn)...`;results.set(items[i].index,await fetchEdgeTtsReliable(items[i].text,voiceIdx,messTtsSpeed));await waitMs(700);}
-    }else for(let start=0;start<items.length;start+=50)chunks.push({voiceIdx,items:items.slice(start,start+50)});
-  }
-  for(let ci=0;ci<chunks.length;ci++){
-    const chunk=chunks[ci];status.textContent=`🔊 Đang tạo TTS batch ${ci+1}/${chunks.length} (${chunk.items.length} đoạn)...`;
-    const batch=await fetchTtsBatch(chunk.items.map(x=>x.text),chunk.voiceIdx,messTtsSpeed);if(batch.length!==chunk.items.length)throw new Error('TTS batch trả về thiếu đoạn');chunk.items.forEach((item,j)=>results.set(item.index,batch[j]));
-  }
+  status.textContent='✓ Đã lưu card; TTS sẽ tạo khi nhấn Play.';
   return results;
 }
 function makeMessengerStep(msg,index,history,conversationId,ttsResult,oldStep=null){
@@ -2358,13 +2395,12 @@ async function submitMessengerConversation() {
     if (!s || !msg) { alert('Tin nhắn không được để trống.'); return; }
     finish.disabled=true;
     try {
-      let r=null; if (!document.getElementById('tts-disabled-toggle').checked && msg.ttsText) { status.textContent='🔊 Đang tạo lại giọng đọc...'; r=await fetchTts(msg.ttsText,msg.voiceIdx,false,messTtsSpeed); }
       const idx=(s.messHistory||[]).length-1; const conv=s.conversationId;
       messSideVoiceIdx={theirs:parseInt(document.getElementById('mess-theirs-voice').value,10),mine:parseInt(document.getElementById('mess-mine-voice').value,10)};
       messPartnerName=messPartnerName.trim()||'Cô nàng nổi loạn 🦄';
       for(const related of steps.filter(x=>x.type==='mess'&&x.conversationId===conv)){related.messPlatform=messPlatform;related.messPartnerName=messPartnerName;related.messPartnerAvatar=messPartnerAvatar;related.messSideVoices={...messSideVoiceIdx};related.messTtsSpeed=messTtsSpeed;}
       for (const later of steps.filter(x=>x.type==='mess'&&x.conversationId===conv&&((x.messIndex??0)>=idx))) if(later.messHistory&&later.messHistory[idx]) later.messHistory[idx]={...msg};
-      s.text=msg.text;s.ttsText=msg.ttsText;s.voiceIdx=msg.voiceIdx;s.audioUrl=r?r.audioUrl:null;s.ttsDuration=r?r.duration:null;if(r)s.duration=r.duration;
+      s.text=msg.text;s.ttsText=msg.ttsText;s.voiceIdx=msg.voiceIdx;s.audioUrl=null;s.audioDesktopPath=null;s.ttsDuration=null;s.duration=DEFAULT_DUR.mess;
       for (const x of steps.filter(x=>x.type==='mess'&&x.conversationId===conv)) bumpStepRevision(x.id);
     } catch(e){alert('Không tạo được giọng đọc: '+e.message);finish.disabled=false;return}
     finish.disabled=false;closeMessengerModal();renderStepList();renderIdleScene();return;
@@ -3495,16 +3531,12 @@ async function addImageCropStep() {
       mediaIsVideo: false,
       text,
     };
-    const ttsDisabled = document.getElementById('tts-disabled-toggle').checked;
     let ttsDuration = null;
-    if (!ttsDisabled && text) {
-      statusEl.textContent = '🔊 Đang tạo giọng đọc...';
+    if (text) {
       data.ttsText = readTtsText('m', 'm-text');
       data.voiceIdx = readVoiceIdx('m');
       data.echo = document.getElementById('m-echo')?.checked || false;
-      const r = await fetchTts(data.ttsText, data.voiceIdx, data.echo);
-      data.audioUrl = r.audioUrl; data.ttsDuration = r.duration;
-      ttsDuration = r.duration;
+      data.audioUrl = null; data.ttsDuration = null;
     }
 
     // 5. editingStepId != null: CẬP NHẬT step đang sửa (mục 5.36 CONTEXT.md)
@@ -3660,13 +3692,10 @@ async function submitStepModal() {
     // card đích trong danh sách kịch bản; onStepDrop() sẽ gắn nó sau card đó.
   }
 
-  // TTS thật cho post/comment/reply/image — tự động gọi threads/tts_server.py,
-  // tính duration = độ dài audio thật. Checkbox "Tắt TTS" (mục debug) bỏ qua
-  // hoàn toàn khối này — dùng để cô lập xem lỗi có phải do TTS gây ra không,
-  // không gọi server, dùng DEFAULT_DUR.
+  // Chỉ lưu cấu hình TTS vào card. Toàn bộ audio còn thiếu được gom lại và
+  // gửi server một lượt khi người dùng nhấn Play; lúc đó duration mới cập
+  // nhật theo độ dài MP3 thật.
   const statusEl = document.getElementById('step-modal-tts-status');
-  const submitBtn = document.getElementById('step-modal-submit-btn');
-  const ttsDisabled = document.getElementById('tts-disabled-toggle').checked;
   let ttsDuration = null;
   if (t === 'image') data.text = document.getElementById('m-text').value.trim();
   // Nội dung rỗng (post/comment/reply/image đều cho phép bỏ trống — theo
@@ -3674,42 +3703,15 @@ async function submitStepModal() {
   // thời lượng mặc định, tránh gọi /tts với text rỗng (tts_server.py trả
   // lỗi 400 "text rỗng" — xem generate_tts()).
   const skipTts = !data.text;
-  if (!ttsDisabled && !skipTts && (t === 'post' || t === 'comment' || t === 'reply' || t === 'image')) {
+  if (!skipTts && (t === 'post' || t === 'comment' || t === 'reply' || t === 'image')) {
     data.ttsText = readTtsText('m', 'm-text');
     data.voiceIdx = readVoiceIdx('m');
     data.echo = document.getElementById('m-echo')?.checked || false;
-    submitBtn.disabled = true;
-    try {
-      statusEl.textContent = '🔊 Đang tạo giọng đọc...';
-      const r = await fetchTts(data.ttsText, data.voiceIdx, data.echo);
-      data.audioUrl = r.audioUrl; data.ttsDuration = r.duration;
-      ttsDuration = r.duration;
-      // Nhiều đoạn giọng đọc nối tiếp (mục "nhiều đoạn TTS") — gọi TUẦN TỰ
-      // từng đoạn trong modalExtraTts (không phải Promise.all song song, vì
-      // cần biết TỔNG thời lượng để hiện tiến trình đúng thứ tự, và tránh
-      // dội cùng lúc nhiều request lên tts_server.py — server đó vốn xử lý
-      // 1 request CapCut TTS tại 1 thời điểm, chưa test song song nhiều
-      // request). Bỏ qua đoạn nào có text rỗng (không gọi TTS, không tính
-      // vào ttsDuration) — cho phép người dùng để trống 1 đoạn giữa chừng
-      // mà không lỗi.
-      data.extraTtsSegments = [];
-      for (let i = 0; i < modalExtraTts.length; i++) {
-        const seg = modalExtraTts[i];
-        const segText = (seg.text || '').trim();
-        if (!segText) { data.extraTtsSegments.push({ ...seg, text: segText, audioUrl: null, duration: 0 }); continue; }
-        statusEl.textContent = `🔊 Đang tạo giọng đọc — đoạn ${i + 2}/${modalExtraTts.length + 1}...`;
-        const rSeg = await fetchTts(segText, seg.voiceIdx, seg.echo || false);
-        data.extraTtsSegments.push({ text: segText, voiceIdx: seg.voiceIdx, echo: seg.echo || false, audioUrl: rSeg.audioUrl, duration: rSeg.duration });
-        ttsDuration += rSeg.duration;
-      }
-      statusEl.textContent = `✓ Đã tạo giọng đọc (${ttsDuration.toFixed(1)}s${modalExtraTts.length ? ', ' + (modalExtraTts.length + 1) + ' đoạn' : ''})`;
-    } catch (e) {
-      statusEl.textContent = '';
-      submitBtn.disabled = false;
-      alert('Không tạo được giọng đọc: ' + e.message + '\n\nKiểm tra TTS server đang chạy (mục 3 "Giọng đọc TTS" ở sidebar trái) rồi thử lại.');
-      return;
-    }
-    submitBtn.disabled = false;
+    data.audioUrl = null; data.audioDesktopPath = null; data.ttsDuration = null;
+    data.extraTtsSegments = modalExtraTts.map(seg=>({text:(seg.text||'').trim(),voiceIdx:seg.voiceIdx,echo:!!seg.echo,audioUrl:null,audioDesktopPath:null,duration:0}));
+    statusEl.textContent='✓ Đã lưu card; TTS sẽ tạo khi nhấn Play.';
+  } else if (t === 'post' || t === 'comment' || t === 'reply' || t === 'image') {
+    data.audioUrl=null;data.audioDesktopPath=null;data.ttsDuration=null;data.extraTtsSegments=[];
   }
 
   if (editingStepId != null) {
@@ -4769,6 +4771,7 @@ function renderIdleScene() {
 
 // ---------- Play / timeline ----------
 let playing = false;
+let ttsPreparing = false;
 let playRAF = null;
 let playheadT = 0;
 let playStartWall = 0;
@@ -4780,9 +4783,16 @@ function setPreviewMediaTime(el, t) {
   try { el.currentTime = Math.max(0, target); } catch (_) {}
 }
 
-function togglePlay() {
+async function togglePlay() {
   if (playing) { stopPlay(); return; }
+  if(ttsPreparing)return;
   if (!steps.length) { alert('Chưa có step nào để phát.'); return; }
+  if(!document.getElementById('tts-disabled-toggle').checked){
+    ttsPreparing=true;const playBtn=document.getElementById('play-btn');playBtn.disabled=true;playBtn.textContent='🔊 Đang tạo TTS...';
+    const ready=await generateAllTts();
+    ttsPreparing=false;playBtn.disabled=false;playBtn.textContent='▶ Play';
+    if(!ready)return;
+  }
   const total = totalDuration();
   if (total <= 0) return;
 

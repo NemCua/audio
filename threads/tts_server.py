@@ -95,6 +95,18 @@ class TTSBatchRequest(BaseModel):
     echo: bool = False
 
 
+class ProjectTTSItem(BaseModel):
+    text: str
+    voice_type: str | None = None
+    resource_id: str | None = None
+    speed: float = 1.0
+    echo: bool = False
+
+
+class ProjectTTSBatchRequest(BaseModel):
+    items: list[ProjectTTSItem]
+
+
 class MixedTTSItem(BaseModel):
     text: str
     englishPhrases: list[str] = []
@@ -386,6 +398,45 @@ def generate_tts_batch(req: TTSBatchRequest, _identity: dict = Depends(tts_ident
     for path in paths:
         path.unlink(missing_ok=True)
     raise HTTPException(502, f"CapCut TTS batch lỗi sau 5 lần đổi device_id: {last_err}")
+
+
+@app.post("/tts-project-batch")
+def generate_project_tts_batch(req: ProjectTTSBatchRequest, identity: dict = Depends(tts_identity)):
+    """Nhận toàn bộ TTS còn thiếu của project trong một HTTP request.
+
+    Server tự gom các đoạn cùng giọng/tốc độ/echo rồi chia task CapCut tối đa
+    50 đoạn. Kết quả luôn trả theo đúng thứ tự items mà desktop đã gửi.
+    """
+    _cleanup_expired_tts_files()
+    if not req.items or len(req.items) > 2000:
+        raise HTTPException(400, "items phải có từ 1 đến 2000 đoạn")
+    if any(not item.text.strip() for item in req.items):
+        raise HTTPException(400, "Mọi item TTS phải có text không rỗng")
+    if sum(len(item.text) for item in req.items) > int(os.getenv("TTS_PROJECT_MAX_CHARS", "200000")):
+        raise HTTPException(400, "Tổng nội dung TTS project quá dài")
+
+    grouped: dict[tuple, list[tuple[int, ProjectTTSItem]]] = {}
+    for index, item in enumerate(req.items):
+        key = (item.voice_type, item.resource_id, round(item.speed, 4), item.echo)
+        grouped.setdefault(key, []).append((index, item))
+
+    ordered_results: list[dict | None] = [None] * len(req.items)
+    for (voice_type, resource_id, speed, echo), indexed_items in grouped.items():
+        for start in range(0, len(indexed_items), 50):
+            chunk = indexed_items[start:start + 50]
+            result = generate_tts_batch(TTSBatchRequest(
+                texts=[item.text.strip() for _, item in chunk],
+                voice_type=voice_type,
+                resource_id=resource_id,
+                speed=speed,
+                echo=echo,
+            ), identity)
+            for (original_index, _), generated in zip(chunk, result["items"]):
+                ordered_results[original_index] = generated
+
+    if any(item is None for item in ordered_results):
+        raise HTTPException(500, "TTS project batch trả về thiếu kết quả")
+    return {"items": ordered_results}
 
 
 @app.post("/tts-mixed-batch")
