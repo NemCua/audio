@@ -46,22 +46,27 @@ function effectiveDuration(s) { return s.duration || 0; } // duration = độ d�
 // modal soạn. Mặc định tắt vì hầu hết trường hợp âm thanh vẫn nên có
 // khoảng thời gian riêng trong kịch bản, song song chỉ dùng khi cố ý.
 function isParallelAudio(s) { return s.type === 'audio' && s.parallel; }
+function isParallelVisual(s) { return (s.type === 'image' || s.type === 'sticker') && s.parallel; }
+function isParallelMedia(s) { return isParallelAudio(s) || isParallelVisual(s); }
 
 function computeTimeline() {
   let t = 0;
   let mainEnd = 0; // mốc cuối cùng của track chính (_end + gap của step chính cuối)
   for (const s of steps) {
-    if (isParallelAudio(s)) continue; // xử lý ở lượt 2 bên dưới
+    if (isParallelMedia(s)) continue; // xử lý ở lượt 2 bên dưới
     s._start = t;
     s._end = t + effectiveDuration(s);
     t = s._end + (s.gap || 0);
     mainEnd = t;
   }
 
-  let lastMainStart = 0;
+  let lastMainStep = null;
   for (const s of steps) {
-    if (!isParallelAudio(s)) { lastMainStart = s._start; continue; }
-    s._start = lastMainStart;
+    if (!isParallelMedia(s)) { lastMainStep = s; continue; }
+    s._start = lastMainStep ? lastMainStep._start : 0;
+    // Ảnh/sticker song song luôn phủ trọn card neo, kể cả sau khi TTS làm
+    // duration của card neo thay đổi. Audio giữ duration riêng như cũ.
+    if (isParallelVisual(s) && lastMainStep) s.duration = effectiveDuration(lastMainStep);
     s._end = s._start + effectiveDuration(s);
   }
 
@@ -448,7 +453,7 @@ function computeSceneAt(t) {
   // Tìm step track-chính (post/comment/reply/image + audio TUẦN TỰ) đang
   // "sống" tại t — chỉ audio SONG SONG (isParallelAudio) mới bị loại khỏi
   // track chính (xem syncSfxAudio cho phần phát tiếng của track song song).
-  const mainSteps = steps.filter(s => !isParallelAudio(s));
+  const mainSteps = steps.filter(s => !isParallelMedia(s));
   let curIdx = -1;
   for (let i = 0; i < mainSteps.length; i++) {
     if (t >= mainSteps[i]._start - 1e-6 && t < mainSteps[i]._end - 1e-6) { curIdx = i; break; }

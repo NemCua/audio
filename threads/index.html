@@ -579,7 +579,9 @@ header span { font-size: 12px; color: #4b5563; }
 .meme-overlay.sticker-overlay { left:27.5cqw;right:27.5cqw;top:32%;border-radius:0;box-shadow:none;overflow:visible; }
 .meme-overlay.drag-positionable { cursor:grab;touch-action:none;user-select:none; }
 .meme-overlay.drag-positionable:active { cursor:grabbing; }
+.meme-overlay.drag-positionable.snap-soft { transition:transform 90ms ease-out; }
 .meme-overlay.drag-positionable img,.meme-overlay.drag-positionable video { pointer-events:none;user-select:none;-webkit-user-drag:none; }
+.position-guides{position:absolute;inset:0;z-index:12;pointer-events:none;opacity:0;transition:opacity 140ms ease}.position-guides.open{opacity:1}.position-guide{position:absolute;background:rgba(125,211,252,.24);transition:background 100ms ease,box-shadow 100ms ease}.position-guide.x{top:0;bottom:0;width:1px}.position-guide.y{left:0;right:0;height:1px}.position-guide.x.g25{left:25%}.position-guide.x.g50{left:50%}.position-guide.x.g75{left:75%}.position-guide.y.g25{top:25%}.position-guide.y.g50{top:50%}.position-guide.y.g75{top:75%}.position-guide.g50{background:rgba(167,139,250,.42)}.position-guide.snapped{background:#7dd3fc;box-shadow:0 0 7px #38bdf8}
 .meme-overlay .meme-ph {
   aspect-ratio: 1/1;
   background: repeating-linear-gradient(45deg,#333,#333 3cqw,#2a2a2a 3cqw,#2a2a2a 6cqw);
@@ -1169,6 +1171,7 @@ header span { font-size: 12px; color: #4b5563; }
       <audio id="tts-audio"></audio>
       <!-- Stack các thẻ post/comment (JS đổ vào), tự cuộn lên khi tràn -->
       <div class="thr-stack" id="thr-stack"></div>
+      <div class="position-guides" id="position-guides" aria-hidden="true"><i class="position-guide x g25" data-axis="x" data-ratio="0.25"></i><i class="position-guide x g50" data-axis="x" data-ratio="0.5"></i><i class="position-guide x g75" data-axis="x" data-ratio="0.75"></i><i class="position-guide y g25" data-axis="y" data-ratio="0.25"></i><i class="position-guide y g50" data-axis="y" data-ratio="0.5"></i><i class="position-guide y g75" data-axis="y" data-ratio="0.75"></i></div>
       <!-- Overlay meme (JS đổ vào khi step meme chạy) -->
       <div class="meme-overlay" id="meme-overlay" style="display:none"></div>
     </div>
@@ -2176,7 +2179,7 @@ function messengerStepForDraftIndex(index){
 }
 function parallelAudioAnchor(audio){
   let idx=steps.indexOf(audio)-1;
-  while(idx>=0&&isParallelAudio(steps[idx]))idx--;
+  while(idx>=0&&isParallelMedia(steps[idx]))idx--;
   return idx>=0?steps[idx]:null;
 }
 function makeParallelAudioStepFromMedia(media,targetStep){
@@ -2197,12 +2200,12 @@ function makeParallelAudioStepFromMedia(media,targetStep){
   };
 }
 function insertParallelAudioAfterStep(audioStep,targetStep){
-  attachAudioToStep(audioStep,targetStep,stepGroupId(targetStep));
+  attachMediaToStep(audioStep,targetStep,stepGroupId(targetStep));
   audioStep.mediaIsVideo=false;
   let idx=steps.findIndex(s=>s.id===targetStep.id);
   if(idx<0){steps.push(audioStep);return;}
   idx++;
-  while(idx<steps.length&&steps[idx].type==='audio'&&steps[idx].parallel&&stepGroupId(steps[idx])===stepGroupId(targetStep))idx++;
+  while(idx<steps.length&&isParallelMedia(steps[idx])&&stepGroupId(steps[idx])===stepGroupId(targetStep))idx++;
   steps.splice(idx,0,audioStep);
 }
 function addQuickAudioToDraft(index,media){
@@ -2707,15 +2710,13 @@ function selectLibraryItem(el) {
 // audio parallel thì cặp với step NGAY TRƯỚC nó.
 function findMemereadyPair(id) {
   const idx = steps.findIndex(s => s.id === id);
-  if (idx < 0) return [steps[idx]];
+  if (idx < 0) return [];
   const s = steps[idx];
-  if (isParallelAudio(s)) {
-    const prev = steps[idx - 1];
-    return prev ? [prev, s] : [s];
-  }
-  const next = steps[idx + 1];
-  if (next && isParallelAudio(next)) return [s, next];
-  return [s];
+  let anchorIdx=idx;
+  while(anchorIdx>0&&isParallelMedia(steps[anchorIdx]))anchorIdx--;
+  const bundle=[steps[anchorIdx]];
+  for(let i=anchorIdx+1;i<steps.length&&isParallelMedia(steps[i]);i++)bundle.push(steps[i]);
+  return bundle;
 }
 
 async function saveStepAsMemeready(id) {
@@ -2832,7 +2833,7 @@ function memereadyEditFieldsHtml(s, idx) {
     <label style="margin-top:8px">Nội dung</label>
     <textarea data-mr-field="text" data-mr-idx="${idx}">${esc(s.text)}</textarea>` : '';
   return `<div style="border-top:1px solid #1e2340;margin-top:14px;padding-top:10px">
-    <div style="font-size:11px;font-weight:700;color:#a78bfa">${TYPE_LABEL[s.type] || s.type}${isParallelAudio(s) ? ' ⏱ song song' : ''}${s.mediaName ? ' — ' + esc(s.mediaName) : ''}</div>
+    <div style="font-size:11px;font-weight:700;color:#a78bfa">${TYPE_LABEL[s.type] || s.type}${isParallelMedia(s) ? ' ⏱ song song' : ''}${s.mediaName ? ' — ' + esc(s.mediaName) : ''}</div>
     <label style="margin-top:8px">Thời lượng (giây)</label>
     <input type="number" min="0" step="0.1" data-mr-field="duration" data-mr-idx="${idx}" value="${s.duration.toFixed(2)}"/>
     ${refLine}
@@ -3805,12 +3806,12 @@ function stepPositionCtrlsHtml(s) {
 
 function stepCardHtml(s, idx) {
   const typeCls = (s.type === 'image' || s.type === 'sticker') ? 't-meme' : s.type === 'audio' ? 't-audio' : '';
-  const cardCls = isParallelAudio(s) ? ' t-audio-parallel' : '';
+  const cardCls = isParallelMedia(s) ? ' t-audio-parallel' : '';
   return `
     <div class="step-card${cardCls}" data-id="${s.id}" draggable="true" ondragstart="onStepDragStart(event,${s.id})" ondragend="onStepDragEnd(event)" ondragover="onStepDragOver(event)" ondragleave="onStepDragLeave(event)" ondrop="onStepDrop(event,${s.id})">
       <div class="sc-head" onclick="jumpToStep(${s.id})" title="Xem lúc step này hiển thị trên preview">
         <span class="sc-idx">${idx + 1}</span>
-        <span class="sc-type ${typeCls}">${TYPE_LABEL[s.type]}${platformBadge(s)}${isParallelAudio(s)?' ⏱':''}</span>
+        <span class="sc-type ${typeCls}">${TYPE_LABEL[s.type]}${platformBadge(s)}${isParallelMedia(s)?' ⏱':''}</span>
         <span class="sc-time">${fmt(s._start)} → ${fmt(s._end)}</span>
       </div>
       <div class="sc-summary" onclick="jumpToStep(${s.id})" title="Xem lúc step này hiển thị trên preview">${esc(stepSummary(s))}</div>
@@ -3818,7 +3819,7 @@ function stepCardHtml(s, idx) {
       ${POSITIONABLE_TYPES.includes(s.type) ? stepPositionCtrlsHtml(s) : DRAGGABLE_OVERLAY_TYPES.includes(s.type) ? '<div class="sc-position" style="color:#a78bfa;font-size:10px">🖱 Kéo trực tiếp hình trong khung preview để đổi vị trí</div>' : ''}
       <div class="sc-ctrls">
         <label>Thời lượng${s.audioUrl?' 🔊':''}
-          <input type="number" min="0" step="0.1" value="${s.duration.toFixed(2)}" ${s.audioUrl?'disabled title="Tự tính từ độ dài giọng đọc TTS — sửa nội dung để tạo lại"':''} onchange="updateStepField(${s.id},'duration',this.value)"/>
+          <input type="number" min="0" step="0.1" value="${s.duration.toFixed(2)}" ${s.audioUrl?'disabled title="Tự tính từ độ dài giọng đọc TTS — sửa nội dung để tạo lại"':isParallelVisual(s)?'disabled title="Ảnh/sticker song song luôn bằng thời lượng card đích"':''} onchange="updateStepField(${s.id},'duration',this.value)"/>
         </label>
         <label>Gap sau
           <input type="number" min="0" step="0.1" value="${s.gap}" onchange="updateStepField(${s.id},'gap',this.value)"/>
@@ -3828,7 +3829,7 @@ function stepCardHtml(s, idx) {
         </label>
         <div class="sc-actions">
           <button onclick="${s.type==='mess'?`openMessengerModal(${s.id})`:`openStepModal('${s.type}',${s.id})`}" title="Sửa">✎</button>
-          ${isParallelAudio(s)?`<button onclick="detachParallelAudio(${s.id})" title="Tách khỏi step đang phát song song">↳ Tách</button>`:''}
+          ${isParallelMedia(s)?`<button onclick="detachParallelMedia(${s.id})" title="Tách khỏi step đang phát song song">↳ Tách</button>`:''}
           ${s.type==='mess'||window.BROWSER_FIRST?'':`<button onclick="saveStepAsMemeready(${s.id})" title="Lưu thành Meme sẵn — đóng gói step này (hoặc cả cặp song song nếu có) để dùng lại nhanh lần sau">💾</button>`}
           <button onclick="deleteStep(${s.id})" title="Xoá">🗑</button>
         </div>
@@ -3838,7 +3839,7 @@ function stepCardHtml(s, idx) {
 function stepRowsForOrdered(ordered){
   const rows=[];
   for(const s of ordered){
-    if(isParallelAudio(s)&&rows.length)rows[rows.length-1].push(s);
+    if(isParallelMedia(s)&&rows.length)rows[rows.length-1].push(s);
     else rows.push([s]);
   }
   return rows;
@@ -3988,8 +3989,8 @@ function updateDragPreview(ev,fallbackId=null,forcedUnit=null){
 }
 function onDragContainerOver(ev){
   if(!_dragStepIds)return;
-  const dragged=draggedParallelAudio()||(_dragStepIds.length===1?steps.find(s=>s.id===_dragStepIds[0]):null);
-  if(ev.currentTarget!==_dragVisualContainer&&!(dragged&&dragged.type==='audio'&&dragged.parallel))return;
+  const dragged=draggedParallelMedia()||(_dragStepIds.length===1?steps.find(s=>s.id===_dragStepIds[0]):null);
+  if(ev.currentTarget!==_dragVisualContainer&&!(dragged&&isParallelMedia(dragged)))return;
   ev.preventDefault();ev.stopPropagation();ev.dataTransfer.dropEffect='move';
   if(ev.currentTarget!==_dragVisualContainer){resetDragShifts();return;}
   const units=[..._dragVisualContainer.children].filter(el=>el!==_dragVisualOrigin&&(el.classList.contains('step-card')||el.classList.contains('mess-box')||el.classList.contains('step-row-wrap')));if(!units.length)return;
@@ -4000,59 +4001,59 @@ function onDragContainerOver(ev){
 function dropAtDragPreview(ev){
   if(!_dragStepIds)return;
   ev.preventDefault();ev.stopPropagation();
-  if(draggedParallelAudio()&&ev.currentTarget!==_dragVisualContainer){detachDraggedParallelAudioToContainer(ev.currentTarget);return;}
+  if(draggedParallelMedia()&&ev.currentTarget!==_dragVisualContainer){detachDraggedParallelMediaToContainer(ev.currentTarget);return;}
   if(_dragPreviewTargetId!=null){onStepDrop(ev,_dragPreviewTargetId);return;}
-  detachDraggedParallelAudioToContainer(ev.currentTarget);
+  detachDraggedParallelMediaToContainer(ev.currentTarget);
 }
-function draggedParallelAudio(){
+function draggedParallelMedia(){
   if(!_dragStepIds||_dragStepIds.length!==1)return null;
   const step=steps.find(s=>s.id===_dragStepIds[0]);
-  return step&&step.type==='audio'&&step.parallel?step:null;
+  return step&&isParallelMedia(step)?step:null;
 }
 function onParallelDetachOver(ev){
-  if(!draggedParallelAudio())return;
+  if(!draggedParallelMedia())return;
   if(ev.target.closest('.step-card'))return;
   ev.preventDefault();ev.stopPropagation();ev.dataTransfer.dropEffect='move';
   resetDragShifts();
 }
 function dropParallelAudioOut(ev){
-  if(!draggedParallelAudio())return;
+  if(!draggedParallelMedia())return;
   if(ev.target.closest('.step-card'))return;
   ev.preventDefault();ev.stopPropagation();
-  detachDraggedParallelAudioToContainer(ev.currentTarget);
+  detachDraggedParallelMediaToContainer(ev.currentTarget);
 }
-function canAttachAudioToStep(audioStep,targetStep){
-  return !!audioStep&&!!targetStep&&audioStep.type==='audio'&&audioStep.id!==targetStep.id&&targetStep.type!=='audio';
+function canAttachMediaToStep(mediaStep,targetStep){
+  return !!mediaStep&&!!targetStep&&['audio','image','sticker'].includes(mediaStep.type)&&mediaStep.id!==targetStep.id&&!isParallelMedia(targetStep)&&['post','comment','reply','mess'].includes(targetStep.type);
 }
-function attachAudioToStep(audioStep,targetStep,destinationGroupId=null){
-  audioStep.parallel=true;
-  audioStep.groupId=destinationGroupId||stepGroupId(targetStep)||false;
-  audioStep.duration=targetStep.duration;
+function attachMediaToStep(mediaStep,targetStep,destinationGroupId=null){
+  mediaStep.parallel=true;
+  mediaStep.groupId=destinationGroupId||stepGroupId(targetStep)||false;
+  mediaStep.duration=targetStep.duration;
 }
-function detachDraggedParallelAudioToContainer(container){
-  const audio=draggedParallelAudio();if(!audio)return;
-  const idx=steps.findIndex(s=>s.id===audio.id);
+function detachDraggedParallelMediaToContainer(container){
+  const media=draggedParallelMedia();if(!media)return;
+  const idx=steps.findIndex(s=>s.id===media.id);
   if(idx<0)return;
   const oldPositions=flipCapturePositions();
   steps.splice(idx,1);
-  audio.parallel=false;
+  media.parallel=false;
   const destinationBox=container.closest?.('.mess-box');
-  audio.groupId=destinationBox?decodeURIComponent(destinationBox.dataset.groupId||''):false;
+  media.groupId=destinationBox?decodeURIComponent(destinationBox.dataset.groupId||''):false;
   let insertAt=steps.length;
   if(destinationBox){
-    const groupId=audio.groupId;
+    const groupId=media.groupId;
     for(let i=0;i<steps.length;i++)if(stepGroupId(steps[i])===groupId)insertAt=i+1;
   }
-  steps.splice(insertAt,0,audio);
+  steps.splice(insertAt,0,media);
   normalizeMessengerConversationOrder();
   clearDragPreview();
   renderStepList();renderIdleScene();flipPlay(oldPositions);
 }
-function detachParallelAudio(id){
-  const audio=steps.find(s=>s.id===id);
-  if(!audio||audio.type!=='audio'||!audio.parallel)return;
+function detachParallelMedia(id){
+  const media=steps.find(s=>s.id===id);
+  if(!media||!isParallelMedia(media))return;
   const oldPositions=flipCapturePositions();
-  audio.parallel=false;
+  media.parallel=false;
   normalizeMessengerConversationOrder();
   renderStepList();renderIdleScene();flipPlay(oldPositions);
 }
@@ -4146,9 +4147,9 @@ function onStepDrop(ev, targetId) {
     if (idx >= 0) moved.push(...steps.splice(idx, 1));
   }
   const directTarget=Number.isFinite(directTargetId)?steps.find(s=>s.id===directTargetId):null;
-  const attachAsParallel=moved.length===1&&canAttachAudioToStep(moved[0],directTarget);
+  const attachAsParallel=moved.length===1&&canAttachMediaToStep(moved[0],directTarget);
   if(attachAsParallel){
-    attachAudioToStep(moved[0],directTarget,destinationGroupId);
+    attachMediaToStep(moved[0],directTarget,destinationGroupId);
     const anchorIdx=steps.findIndex(s=>s.id===directTarget.id);
     steps.splice(anchorIdx < 0 ? steps.length : anchorIdx + 1,0,...moved);
     normalizeMessengerConversationOrder();
@@ -4162,9 +4163,9 @@ function onStepDrop(ev, targetId) {
   // sách ngoài: bỏ nhóm. Riêng khi kéo nguyên cả Box thì giữ nguyên groupId.
   const movedGroupIds=new Set(moved.map(stepGroupId).filter(Boolean));
   const movedWholeGroup=movedGroupIds.size===1&&steps.filter(s=>stepGroupId(s)===[...movedGroupIds][0]).length===0;
-  if(destinationGroupId){for(const step of moved){step.groupId=destinationGroupId;if(step.type==='audio')step.parallel=false;}}
-  else if(!movedWholeGroup){for(const step of moved){step.groupId=false;if(step.type==='audio')step.parallel=false;}}
-  else {for(const step of moved){if(step.type==='audio')step.parallel=false;}}
+  if(destinationGroupId){for(const step of moved){step.groupId=destinationGroupId;if(['audio','image','sticker'].includes(step.type))step.parallel=false;}}
+  else if(!movedWholeGroup){for(const step of moved){step.groupId=false;if(['audio','image','sticker'].includes(step.type))step.parallel=false;}}
+  else {for(const step of moved){if(['audio','image','sticker'].includes(step.type))step.parallel=false;}}
   const newToIdx = steps.findIndex(s => s.id === targetId);
   steps.splice(newToIdx < 0 ? steps.length : newToIdx+(insertAfter?1:0), 0, ...moved);
   normalizeMessengerConversationOrder();
@@ -4705,6 +4706,28 @@ function renderAtTime(t) {
 
 let overlayPositionDrag = null;
 const overlayPositionEl = document.getElementById('meme-overlay');
+const positionGuidesEl = document.getElementById('position-guides');
+function clearOverlaySnap(){
+  positionGuidesEl.querySelectorAll('.snapped').forEach(line=>line.classList.remove('snapped'));
+  overlayPositionEl.classList.remove('snap-soft');
+}
+function snapOverlayToGuides(step,frame,toCqw){
+  clearOverlaySnap();
+  const frameRect=frame.getBoundingClientRect(),overlayRect=overlayPositionEl.getBoundingClientRect();
+  const centers={x:overlayRect.left+overlayRect.width/2,y:overlayRect.top+overlayRect.height/2};
+  let snapped=false;
+  for(const axis of ['x','y']){
+    const start=axis==='x'?frameRect.left:frameRect.top,size=axis==='x'?frameRect.width:frameRect.height;
+    let best=null;
+    for(const ratio of [.25,.5,.75]){const delta=start+size*ratio-centers[axis];if(!best||Math.abs(delta)<Math.abs(best.delta))best={ratio,delta};}
+    if(best&&Math.abs(best.delta)<=8){
+      if(axis==='x')step.offsetX=clampPos(step.offsetX+best.delta*toCqw,-OFFSET_X_RANGE,OFFSET_X_RANGE);
+      else step.offsetY=clampPos(step.offsetY+best.delta*toCqw,-OFFSET_Y_RANGE,OFFSET_Y_RANGE);
+      positionGuidesEl.querySelector(`[data-axis="${axis}"][data-ratio="${best.ratio}"]`)?.classList.add('snapped');snapped=true;
+    }
+  }
+  overlayPositionEl.classList.toggle('snap-soft',snapped);
+}
 overlayPositionEl.addEventListener('pointerdown', event => {
   if (playing) return;
   const { memeStep } = computeSceneAt(playheadT);
@@ -4718,6 +4741,7 @@ overlayPositionEl.addEventListener('pointerdown', event => {
     offsetY:memeStep.offsetY || 0,
     frameWidth:Math.max(1, frame.getBoundingClientRect().width),
   };
+  positionGuidesEl.classList.add('open');
   overlayPositionEl.setPointerCapture(event.pointerId);
   event.preventDefault();
 });
@@ -4729,12 +4753,15 @@ overlayPositionEl.addEventListener('pointermove', event => {
   step.offsetX = clampPos(overlayPositionDrag.offsetX + (event.clientX - overlayPositionDrag.startX) * toCqw, -OFFSET_X_RANGE, OFFSET_X_RANGE);
   step.offsetY = clampPos(overlayPositionDrag.offsetY + (event.clientY - overlayPositionDrag.startY) * toCqw, -OFFSET_Y_RANGE, OFFSET_Y_RANGE);
   overlayPositionEl.style.transform = memeOverlayTransform(step);
+  snapOverlayToGuides(step,frame,toCqw);
+  overlayPositionEl.style.transform = memeOverlayTransform(step);
   event.preventDefault();
 });
 function finishOverlayPositionDrag(event) {
   if (!overlayPositionDrag) return;
   const step = steps.find(item => item.id === overlayPositionDrag.id);
   overlayPositionDrag = null;
+  positionGuidesEl.classList.remove('open');clearOverlaySnap();
   try { overlayPositionEl.releasePointerCapture(event.pointerId); } catch (_) {}
   if (step) {
     bumpStepRevision(step.id);
@@ -4768,7 +4795,7 @@ function renderIdleScene() {
   // cửa sổ sống của step track-chính cuối cùng (bỏ qua audio SONG SONG — nó
   // không đại diện cho "toàn cảnh cuối" của track chính; audio tuần tự vẫn
   // tính vào track chính bình thường).
-  const mainSteps = steps.filter(s => !isParallelAudio(s));
+  const mainSteps = steps.filter(s => !isParallelMedia(s));
   const last = mainSteps.length ? mainSteps[mainSteps.length - 1] : steps[steps.length - 1];
   const previewT = (last._start + last._end) / 2;
   renderAtTime(previewT);
