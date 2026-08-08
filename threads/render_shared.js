@@ -315,8 +315,7 @@ function buildZaloHtml(s) {
   const rows = history.map((m,i) => {
     const avatarEdit = identityEditable ? ` role="button" tabindex="0" title="Đổi ảnh đại diện" onclick="event.stopPropagation();document.getElementById('mess-avatar-file').click()"` : '';
     const avatar = m.side === 'theirs' ? `<div class="zalo-mini-avatar${identityEditable?' is-editable':''}"${avatarEdit}><img src="${esc(partnerAvatar)}" alt="" referrerpolicy="no-referrer"/></div>` : '';
-    const sender = m.side === 'theirs' ? `<div class="zalo-sender">${esc(partnerName)}</div>` : '';
-    const textHtml = m.text ? `<div class="zalo-bubble">${sender}<div>${esc(m.text)}</div></div>` : '';
+    const textHtml = m.text ? `<div class="zalo-bubble">${esc(m.text)}</div>` : '';
     const imageHtml = m.imageUrl ? `<img class="zalo-chat-image" src="${esc(m.imageUrl)}" alt="" referrerpolicy="no-referrer"/>` : '';
     const audioBadge = editable && (audioIndexes.has(i) || (m.parallelAudios && m.parallelAudios.length)) ? `<span class="mess-audio-badge">🔊 ${m.parallelAudios?.length || 1}<button type="button" onclick="event.stopPropagation();removeMessengerQuickAudio(${i})" title="Xóa âm thanh song song" aria-label="Xóa âm thanh song song">×</button></span>` : '';
     const insert = editable ? `<div class="mess-insert-slot" onclick="event.stopPropagation();beginMessengerInsert(${i})" title="Chèn tin nhắn trước tin này"><span>＋ Chèn tin tại đây</span></div>` : '';
