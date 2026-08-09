@@ -3982,6 +3982,7 @@ function startDragPreview(origin){clearDragPreview();_dragVisualOrigin=origin;_d
 function dragUnitForTarget(target){let unit=target;while(unit&&unit.parentElement!==_dragVisualContainer)unit=unit.parentElement;return unit&&unit!==_dragVisualContainer?unit:null;}
 function resolveDragTargetId(unit,fallbackId,after){
   if(unit?.classList.contains('mess-box')){const groupId=decodeURIComponent(unit.dataset.groupId||''),ids=steps.filter(s=>stepGroupId(s)===groupId).map(s=>s.id);if(ids.length)return after?ids[ids.length-1]:ids[0];}
+  if(unit?.classList.contains('step-row-wrap')){const ids=[...unit.querySelectorAll('.step-card[data-id]')].map(el=>Number(el.dataset.id)).filter(Number.isFinite);if(ids.length)return after?ids[ids.length-1]:ids[0];}
   const id=Number(fallbackId??unit?.dataset.id);return Number.isFinite(id)?id:null;
 }
 function untransformedDragRect(el){
@@ -4185,9 +4186,12 @@ function onStepDrop(ev, targetId) {
   // sách ngoài: bỏ nhóm. Riêng khi kéo nguyên cả Box thì giữ nguyên groupId.
   const movedGroupIds=new Set(moved.map(stepGroupId).filter(Boolean));
   const movedWholeGroup=movedGroupIds.size===1&&steps.filter(s=>stepGroupId(s)===[...movedGroupIds][0]).length===0;
-  if(destinationGroupId){for(const step of moved){step.groupId=destinationGroupId;if(['audio','image','sticker'].includes(step.type))step.parallel=false;}}
-  else if(!movedWholeGroup){for(const step of moved){step.groupId=false;if(['audio','image','sticker'].includes(step.type))step.parallel=false;}}
-  else {for(const step of moved){if(['audio','image','sticker'].includes(step.type))step.parallel=false;}}
+  // Kéo cả hàng/cả Box phải giữ nguyên quan hệ song song bên trong. Chỉ khi
+  // kéo riêng đúng một media ra vị trí khác mới tách cờ parallel của nó.
+  const detachSingleMedia=moved.length===1&&['audio','image','sticker'].includes(moved[0].type);
+  if(destinationGroupId){for(const step of moved){step.groupId=destinationGroupId;if(detachSingleMedia)step.parallel=false;}}
+  else if(!movedWholeGroup){for(const step of moved){step.groupId=false;if(detachSingleMedia)step.parallel=false;}}
+  else if(detachSingleMedia)moved[0].parallel=false;
   const newToIdx = steps.findIndex(s => s.id === targetId);
   steps.splice(newToIdx < 0 ? steps.length : newToIdx+(insertAfter?1:0), 0, ...moved);
   normalizeMessengerConversationOrder();
