@@ -252,11 +252,11 @@ function buildCardHtml(s) {
     if (platform === 'tiktok') {
       return buildTiktokCommentHtml(s, id1, posAttr);
     }
-    // Threads: reply độc lập dùng cùng căn lề với comment thường. Không thụt
-    // cả hàng hoặc riêng content; kiểu reply lệch phải chỉ thuộc TikTok.
-    // Cũng không vẽ connector vì step này không chứa comment cha.
+    // Threads reply thụt TOÀN BỘ card giống TikTok reply; không gắn margin
+    // vào .thr-row vì làm vậy chỉ đẩy avatar/content bên trong nền trắng.
+    // Không vẽ connector vì step này không chứa comment cha.
     const commentHtml = buildCommentRow(id1.uname, s.text, s.hue, s.isAuthor, id1.timeLabel, s.imgUrl, statsRow(s.stats), null, id1.avatarUrl);
-    return `<div class="tcard-pos"${posAttr}><div class="tcard">${commentHtml}</div></div>`;
+    return `<div class="tcard-pos"${posAttr}><div class="tcard${s.type==='reply'?' thr-reply-card':''}">${commentHtml}</div></div>`;
   }
   return '';
 }

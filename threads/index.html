@@ -550,6 +550,10 @@ header span { font-size: 12px; color: #4b5563; }
 }
 .tk-view-replies svg { width: 2.037cqw; height: 2.037cqw; }
 
+/* Reply Threads: thụt cả nền card, không thụt riêng hàng content. Dùng cùng
+   tỷ lệ 87.2% đã chốt cho reply TikTok để hai platform có hành vi nhất quán. */
+.tcard.thr-reply-card{max-width:87.2%;margin-left:auto}
+
 /* Overlay ảnh/video (step 'image') — phủ giữa khung, tạm thời trong lúc step
    chạy. Tên class/id giữ "meme" vì lịch sử (từng dùng cho step 'meme' đã bỏ,
    xem CONTEXT.md) — không rename tràn lan qua nhiều file chỉ vì đổi ý nghĩa. */
