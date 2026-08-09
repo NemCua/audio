@@ -958,7 +958,8 @@ async function renderStackAt(t) {
   // sai lệch vị trí/kích thước thật khi overlay.
   if (memeStep && dynamicMeme) {
     const ox = memeStep.offsetX || 0, oy = memeStep.offsetY || 0;
-    memeEl.style.transform = `translate(${ox}cqw, ${oy}cqw)`;
+    const scale=Math.max(.35,Math.min(2.5,Number(memeStep.overlayScale||1)));
+    memeEl.style.transform = `translate(${ox}cqw, ${oy}cqw) scale(${scale})`;
     memeBox = measureMemeBox();
     memeEl.style.display = 'none';
   }

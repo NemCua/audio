@@ -581,6 +581,7 @@ header span { font-size: 12px; color: #4b5563; }
 .meme-overlay.drag-positionable:active { cursor:grabbing; }
 .meme-overlay.drag-positionable.snap-soft { transition:transform 180ms cubic-bezier(.2,.75,.35,1); }
 .meme-overlay.drag-positionable img,.meme-overlay.drag-positionable video { pointer-events:none;user-select:none;-webkit-user-drag:none; }
+.meme-overlay.resize-selected{outline:.35cqw solid #8b5cf6;outline-offset:.5cqw;overflow:visible}.meme-overlay.resize-selected>img,.meme-overlay.resize-selected>video{border-radius:inherit}.overlay-resize-handle{display:none;position:absolute;width:3.2cqw;height:3.2cqw;border:.35cqw solid #7c3aed;border-radius:.7cqw;background:#fff;box-shadow:0 .5cqw 1.5cqw #0008;pointer-events:auto;cursor:nwse-resize;z-index:4}.meme-overlay.resize-selected .overlay-resize-handle{display:block}.overlay-resize-handle.nw{left:-2.1cqw;top:-2.1cqw}.overlay-resize-handle.ne{right:-2.1cqw;top:-2.1cqw;cursor:nesw-resize}.overlay-resize-handle.sw{left:-2.1cqw;bottom:-2.1cqw;cursor:nesw-resize}.overlay-resize-handle.se{right:-2.1cqw;bottom:-2.1cqw}
 .position-guides{position:absolute;inset:0;z-index:12;pointer-events:none;opacity:0;transition:opacity 140ms ease}.position-guides.open{opacity:1}.position-guide{position:absolute;background:rgba(125,211,252,.24);transition:background 100ms ease,box-shadow 100ms ease}.position-guide.x{top:0;bottom:0;width:1px}.position-guide.y{left:0;right:0;height:1px}.position-guide.x.g25{left:25%}.position-guide.x.g50{left:50%}.position-guide.x.g75{left:75%}.position-guide.y.g25{top:25%}.position-guide.y.g50{top:50%}.position-guide.y.g75{top:75%}.position-guide.g50{background:rgba(167,139,250,.42)}.position-guide.snapped{background:#7dd3fc;box-shadow:0 0 7px #38bdf8}
 .meme-overlay .meme-ph {
   aspect-ratio: 1/1;
@@ -686,6 +687,7 @@ header span { font-size: 12px; color: #4b5563; }
 .step-card.dragging { opacity: .4; }
 .step-card.drag-over { border-color: #4ade80; box-shadow: 0 0 0 1px #4ade80; }
 .drag-preview-origin{opacity:.12!important;transition:opacity 140ms ease}.drag-preview-shift{transition:transform 190ms ease!important}.drag-preview-target{box-shadow:0 0 0 1px #7c3aed!important}
+.step-card.selected-overlay-card{box-shadow:0 0 0 2px #8b5cf6,0 8px 24px #7c3aed33}
 /* Hàng chứa step chính + audio SONG SONG bám theo nó — 2 cột kề nhau để
    biểu thị trực quan "cùng lúc" (mục 5.13 CONTEXT.md), thay vì xếp dọc.
    .step-row-wrap bọc khung viền NGOÀI cả cặp + 1 tay cầm kéo riêng
@@ -3801,6 +3803,7 @@ function stepSummary(s) {
 // meme/image có hình để dịch/xoay, audio bỏ qua (không hiển thị gì trên khung).
 const POSITIONABLE_TYPES = ['post', 'comment', 'reply', 'mess'];
 const DRAGGABLE_OVERLAY_TYPES = ['image', 'sticker'];
+let selectedOverlayStepId = null;
 function stepPositionCtrlsHtml(s) {
   const ox = s.offsetX || 0, oy = s.offsetY || 0, rot = s.rotation || 0;
   const showWarn = s.type === 'image' && isDynamicMeme(s) && rot !== 0;
@@ -3823,7 +3826,7 @@ function stepPositionCtrlsHtml(s) {
 
 function stepCardHtml(s, idx) {
   const typeCls = (s.type === 'image' || s.type === 'sticker') ? 't-meme' : s.type === 'audio' ? 't-audio' : '';
-  const cardCls = isParallelMedia(s) ? ' t-audio-parallel' : '';
+  const cardCls = (isParallelMedia(s) ? ' t-audio-parallel' : '') + (s.id===selectedOverlayStepId ? ' selected-overlay-card' : '');
   return `
     <div class="step-card${cardCls}" data-id="${s.id}" draggable="true" ondragstart="onStepDragStart(event,${s.id})" ondragend="onStepDragEnd(event)" ondragover="onStepDragOver(event)" ondragleave="onStepDragLeave(event)" ondrop="onStepDrop(event,${s.id})">
       <div class="sc-head" onclick="jumpToStep(${s.id})" title="Xem lúc step này hiển thị trên preview">
@@ -4262,6 +4265,8 @@ function previewStepPosition(s) {
 function jumpToStep(id) {
   const s = steps.find(x => x.id === id);
   if (!s) return;
+  selectedOverlayStepId = DRAGGABLE_OVERLAY_TYPES.includes(s.type) ? s.id : null;
+  document.querySelectorAll('.step-card[data-id]').forEach(card=>card.classList.toggle('selected-overlay-card',Number(card.dataset.id)===selectedOverlayStepId));
   previewStepPosition(s);
 }
 
@@ -4621,7 +4626,8 @@ function stopAllSfxAudio() {
 }
 
 function renderAtTime(t) {
-  const { stack, memeStep } = computeSceneAt(t);
+  let { stack, memeStep } = computeSceneAt(t);
+  if(!playing&&selectedOverlayStepId!=null){const selected=steps.find(s=>s.id===selectedOverlayStepId&&DRAGGABLE_OVERLAY_TYPES.includes(s.type)&&t>=s._start-1e-6&&t<s._end-1e-6);if(selected)memeStep=selected;}
   if (playing) { syncTtsAudio(t); syncSfxAudio(t); }
 
   const ids = stack.map(s => s.id);
@@ -4696,11 +4702,12 @@ function renderAtTime(t) {
       // export (đã phát đúng tiếng, mục 5.27) khiến preview/export lệch
       // nhau. loop vẫn giữ — nếu video ngắn hơn duration step, lặp lại
       // đúng ý preview cũ.
-      memeEl.innerHTML = memeStep.mediaUrl
+      const resizeHandles='<span class="overlay-resize-handle nw" data-corner="nw"></span><span class="overlay-resize-handle ne" data-corner="ne"></span><span class="overlay-resize-handle sw" data-corner="sw"></span><span class="overlay-resize-handle se" data-corner="se"></span>';
+      memeEl.innerHTML = (memeStep.mediaUrl
         ? (memeStep.mediaIsVideo
             ? `<video src="${memeStep.mediaUrl}" autoplay loop playsinline></video>`
             : `<img src="${memeStep.mediaUrl}" alt=""/>`)
-        : `<div class="meme-ph">🖼 MEME<br/>(chưa chọn file)</div>`;
+        : `<div class="meme-ph">🖼 MEME<br/>(chưa chọn file)</div>`) + resizeHandles;
       memeEl.style.display = 'block';
       memeEl.classList.toggle('sticker-overlay', memeStep.type === 'sticker');
       memeEl.classList.toggle('drag-positionable', DRAGGABLE_OVERLAY_TYPES.includes(memeStep.type));
@@ -4709,6 +4716,7 @@ function renderAtTime(t) {
       memeEl.innerHTML = '';
       memeEl.classList.remove('sticker-overlay');
       memeEl.classList.remove('drag-positionable');
+      memeEl.classList.remove('resize-selected');
     }
     _lastMemeKey = memeKey;
   }
@@ -4717,6 +4725,7 @@ function renderAtTime(t) {
   // memeKey!==_lastMemeKey bị bỏ qua, style transform sẽ không được cập nhật
   // nếu chỉ đặt trong đó — bug tiềm ẩn đã xác nhận trước khi code.
   if (memeStep) memeEl.style.transform = memeOverlayTransform(memeStep);
+  memeEl.classList.toggle('resize-selected',!!memeStep&&memeStep.id===selectedOverlayStepId&&!playing);
 
   // highlight step đang chạy trong panel — có thể nhiều step cùng lúc
   // (1 step track chính + 0..n step audio song song chồng lên nó)
@@ -4730,7 +4739,7 @@ function renderAtTime(t) {
   });
 }
 
-let overlayPositionDrag = null;
+let overlayPositionDrag = null, overlayResizeDrag = null;
 const overlayPositionEl = document.getElementById('meme-overlay');
 const positionGuidesEl = document.getElementById('position-guides');
 function clearOverlaySnap(){
@@ -4769,10 +4778,19 @@ function snapOverlayToGuides(step,frame,toCqw,enterRadius=16,releaseRadius=26){
 overlayPositionEl.addEventListener('pointerdown', event => {
   if (playing) return;
   const { memeStep } = computeSceneAt(playheadT);
-  if (!memeStep || !DRAGGABLE_OVERLAY_TYPES.includes(memeStep.type)) return;
+  const selected=steps.find(s=>s.id===selectedOverlayStepId&&DRAGGABLE_OVERLAY_TYPES.includes(s.type)&&playheadT>=s._start-1e-6&&playheadT<s._end-1e-6);
+  const activeStep=selected||memeStep;
+  if (!activeStep || !DRAGGABLE_OVERLAY_TYPES.includes(activeStep.type)) return;
   const frame = document.getElementById('preview-frame');
+  const handle=event.target.closest('.overlay-resize-handle');
+  if(handle){
+    const rect=overlayPositionEl.getBoundingClientRect(),centerX=rect.left+rect.width/2,centerY=rect.top+rect.height/2;
+    overlayResizeDrag={id:activeStep.id,centerX,centerY,startDistance:Math.max(1,Math.hypot(event.clientX-centerX,event.clientY-centerY)),scale:Number(activeStep.overlayScale||1)};
+    overlayPositionEl.setPointerCapture(event.pointerId);
+    event.preventDefault();event.stopPropagation();return;
+  }
   overlayPositionDrag = {
-    id:memeStep.id,
+    id:activeStep.id,
     startX:event.clientX,
     startY:event.clientY,
     offsetX:memeStep.offsetX || 0,
@@ -4785,6 +4803,12 @@ overlayPositionEl.addEventListener('pointerdown', event => {
   event.preventDefault();
 });
 overlayPositionEl.addEventListener('pointermove', event => {
+  if(overlayResizeDrag){
+    const step=steps.find(item=>item.id===overlayResizeDrag.id);if(!step)return;
+    const distance=Math.hypot(event.clientX-overlayResizeDrag.centerX,event.clientY-overlayResizeDrag.centerY);
+    step.overlayScale=clampPos(overlayResizeDrag.scale*distance/overlayResizeDrag.startDistance,.35,2.5);
+    overlayPositionEl.style.transform=memeOverlayTransform(step);event.preventDefault();return;
+  }
   if (!overlayPositionDrag) return;
   const step = steps.find(item => item.id === overlayPositionDrag.id);
   if (!step) return;
@@ -4792,11 +4816,16 @@ overlayPositionEl.addEventListener('pointermove', event => {
   step.offsetX = clampPos(overlayPositionDrag.offsetX + (event.clientX - overlayPositionDrag.startX) * toCqw, -OFFSET_X_RANGE, OFFSET_X_RANGE);
   step.offsetY = clampPos(overlayPositionDrag.offsetY + (event.clientY - overlayPositionDrag.startY) * toCqw, -OFFSET_Y_RANGE, OFFSET_Y_RANGE);
   overlayPositionEl.style.transform = memeOverlayTransform(step);
-  snapOverlayToGuides(step,frame,toCqw);
+  snapOverlayToGuides(step,document.getElementById('preview-frame'),toCqw);
   overlayPositionEl.style.transform = memeOverlayTransform(step);
   event.preventDefault();
 });
 function finishOverlayPositionDrag(event) {
+  if(overlayResizeDrag){
+    const step=steps.find(item=>item.id===overlayResizeDrag.id);overlayResizeDrag=null;
+    try{overlayPositionEl.releasePointerCapture(event.pointerId);}catch(_){}
+    if(step){bumpStepRevision(step.id);renderStepList();renderAtTime(playheadT);}return;
+  }
   if (!overlayPositionDrag) return;
   const step = steps.find(item => item.id === overlayPositionDrag.id);
   if(step){

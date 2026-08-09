@@ -426,7 +426,8 @@ function memeOverlayTransform(memeStep) {
   const ox = (memeStep && memeStep.offsetX) || 0;
   const oy = (memeStep && memeStep.offsetY) || 0;
   const rot = (memeStep && memeStep.rotation) || 0;
-  return `translate(${ox}cqw, ${oy}cqw) rotate(${rot}deg)`;
+  const scale = Math.max(.35, Math.min(2.5, Number((memeStep && memeStep.overlayScale) || 1)));
+  return `translate(${ox}cqw, ${oy}cqw) rotate(${rot}deg) scale(${scale})`;
 }
 
 // Meme dạng video/gif ĐỘNG (khác ảnh tĩnh) — dùng chung export_render.html
