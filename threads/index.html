@@ -579,7 +579,7 @@ header span { font-size: 12px; color: #4b5563; }
 .meme-overlay.sticker-overlay { left:27.5cqw;right:27.5cqw;top:32%;border-radius:0;box-shadow:none;overflow:visible; }
 .meme-overlay.drag-positionable { cursor:grab;touch-action:none;user-select:none; }
 .meme-overlay.drag-positionable:active { cursor:grabbing; }
-.meme-overlay.drag-positionable.snap-soft { transition:transform 120ms cubic-bezier(.2,.75,.35,1); }
+.meme-overlay.drag-positionable.snap-soft { transition:transform 180ms cubic-bezier(.2,.75,.35,1); }
 .meme-overlay.drag-positionable img,.meme-overlay.drag-positionable video { pointer-events:none;user-select:none;-webkit-user-drag:none; }
 .position-guides{position:absolute;inset:0;z-index:12;pointer-events:none;opacity:0;transition:opacity 140ms ease}.position-guides.open{opacity:1}.position-guide{position:absolute;background:rgba(125,211,252,.24);transition:background 100ms ease,box-shadow 100ms ease}.position-guide.x{top:0;bottom:0;width:1px}.position-guide.y{left:0;right:0;height:1px}.position-guide.x.g25{left:25%}.position-guide.x.g50{left:50%}.position-guide.x.g75{left:75%}.position-guide.y.g25{top:25%}.position-guide.y.g50{top:50%}.position-guide.y.g75{top:75%}.position-guide.g50{background:rgba(167,139,250,.42)}.position-guide.snapped{background:#7dd3fc;box-shadow:0 0 7px #38bdf8}
 .meme-overlay .meme-ph {
@@ -4711,7 +4711,7 @@ function clearOverlaySnap(){
   positionGuidesEl.querySelectorAll('.snapped').forEach(line=>line.classList.remove('snapped'));
   overlayPositionEl.classList.remove('snap-soft');
 }
-function snapOverlayToGuides(step,frame,toCqw){
+function snapOverlayToGuides(step,frame,toCqw,enterRadius=16,releaseRadius=26){
   positionGuidesEl.querySelectorAll('.snapped').forEach(line=>line.classList.remove('snapped'));
   const frameRect=frame.getBoundingClientRect(),overlayRect=overlayPositionEl.getBoundingClientRect();
   let snapped=false;
@@ -4722,14 +4722,14 @@ function snapOverlayToGuides(step,frame,toCqw){
     let best=null,current=overlayPositionDrag.snap[axis];
     if(current){
       const delta=start+size*current.ratio-anchors[current.anchor];
-      if(Math.abs(delta)<=26)best={...current,delta};else overlayPositionDrag.snap[axis]=null;
+      if(Math.abs(delta)<=releaseRadius)best={...current,delta};else overlayPositionDrag.snap[axis]=null;
     }
     if(!best){
       for(const ratio of [.25,.5,.75])for(let anchor=0;anchor<anchors.length;anchor++){
         const delta=start+size*ratio-anchors[anchor];
         if(!best||Math.abs(delta)<Math.abs(best.delta))best={ratio,anchor,delta};
       }
-      if(!best||Math.abs(best.delta)>16)best=null;
+      if(!best||Math.abs(best.delta)>enterRadius)best=null;
       else overlayPositionDrag.snap[axis]={ratio:best.ratio,anchor:best.anchor};
     }
     if(best){
@@ -4773,14 +4773,22 @@ overlayPositionEl.addEventListener('pointermove', event => {
 function finishOverlayPositionDrag(event) {
   if (!overlayPositionDrag) return;
   const step = steps.find(item => item.id === overlayPositionDrag.id);
+  if(step){
+    const frame=document.getElementById('preview-frame'),toCqw=100/Math.max(1,frame.getBoundingClientRect().width);
+    // Khi THẢ hình, chạy một lượt bắt dính rộng hơn để người dùng nhìn rõ
+    // chuyển động hút vào đường; giữ transition lại 220ms rồi mới dọn class.
+    snapOverlayToGuides(step,frame,toCqw,32,42);
+    overlayPositionEl.style.transform=memeOverlayTransform(step);
+  }
   overlayPositionDrag = null;
-  positionGuidesEl.classList.remove('open');clearOverlaySnap();
+  positionGuidesEl.classList.remove('open');
   try { overlayPositionEl.releasePointerCapture(event.pointerId); } catch (_) {}
   if (step) {
     bumpStepRevision(step.id);
     renderStepList();
     renderAtTime(playheadT);
   }
+  setTimeout(clearOverlaySnap,240);
 }
 overlayPositionEl.addEventListener('pointerup', finishOverlayPositionDrag);
 overlayPositionEl.addEventListener('pointercancel', finishOverlayPositionDrag);
