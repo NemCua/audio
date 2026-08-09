@@ -4040,7 +4040,12 @@ function dropParallelAudioOut(ev){
   detachDraggedParallelMediaToContainer(ev.currentTarget);
 }
 function canAttachMediaToStep(mediaStep,targetStep){
-  return !!mediaStep&&!!targetStep&&['audio','image','sticker'].includes(mediaStep.type)&&mediaStep.id!==targetStep.id&&!isParallelMedia(targetStep)&&['post','comment','reply','mess'].includes(targetStep.type);
+  if(!mediaStep||!targetStep||mediaStep.id===targetStep.id||isParallelMedia(targetStep))return false;
+  if(!['audio','image','sticker'].includes(mediaStep.type))return false;
+  if(['post','comment','reply','mess'].includes(targetStep.type))return true;
+  // Ảnh/sticker độc lập cũng là card neo hợp lệ cho âm thanh. Chỉ audio
+  // được ghép vào visual để tránh vô tình chồng thêm một visual lên visual.
+  return mediaStep.type==='audio'&&['image','sticker'].includes(targetStep.type);
 }
 function attachMediaToStep(mediaStep,targetStep,destinationGroupId=null){
   mediaStep.parallel=true;
