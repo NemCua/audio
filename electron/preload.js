@@ -8,6 +8,8 @@ contextBridge.exposeInMainWorld('desktopApp', Object.freeze({
   getBundledMemeready: () => ipcRenderer.invoke('desktop:get-bundled-memeready'),
   getBundledLibrary: category => ipcRenderer.invoke('desktop:get-bundled-library', category),
   getStickerLibrary: () => ipcRenderer.invoke('desktop:get-sticker-library'),
+  createStickerPack: name => ipcRenderer.invoke('desktop:create-sticker-pack', name),
+  deleteStickerPack: packId => ipcRenderer.invoke('desktop:delete-sticker-pack', packId),
   renameStickerPack: (packId, name) => ipcRenderer.invoke('desktop:rename-sticker-pack', packId, name),
   addSticker: (packId, bytes, originalName) => ipcRenderer.invoke('desktop:add-sticker', packId, bytes, originalName),
   getMediaStats: () => ipcRenderer.invoke('desktop:get-media-stats'),

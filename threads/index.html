@@ -685,6 +685,7 @@ header span { font-size: 12px; color: #4b5563; }
 .step-card.drag-over { border-color: #4ade80; box-shadow: 0 0 0 1px #4ade80; }
 .drag-preview-origin{opacity:.12!important;transition:opacity 140ms ease}.drag-preview-shift{transition:transform 190ms ease!important}.drag-preview-target{box-shadow:0 0 0 1px #7c3aed!important}
 .step-card.selected-overlay-card{box-shadow:0 0 0 2px #8b5cf6,0 8px 24px #7c3aed33}
+.crop-feature-locked>:not(summary){display:none!important}
 /* Hàng chứa step chính + audio SONG SONG bám theo nó — 2 cột kề nhau để
    biểu thị trực quan "cùng lúc" (mục 5.13 CONTEXT.md), thay vì xếp dọc.
    .step-row-wrap bọc khung viền NGOÀI cả cặp + 1 tay cầm kéo riêng
@@ -1088,26 +1089,18 @@ header span { font-size: 12px; color: #4b5563; }
     </div>
 
     <div class="feature-item" id="feat-tts">
-      <div class="feature-head" onclick="toggleFeature('feat-tts')">
+      <div class="feature-head" style="cursor:default">
         <span class="num">3</span>
-        <span class="label">Giọng đọc TTS</span>
+        <span class="label">Kết nối TTS</span>
         <span class="status-dot" id="tts-status-dot"></span>
-        <span class="chevron">▶</span>
       </div>
-      <div class="feature-body">
-        <div class="hint">Giọng đọc CapCut được tạo qua API TTS nhỏ trên server. Media, timeline và xuất video vẫn xử lý trên thiết bị người dùng.</div>
-        <label style="display:flex;align-items:center;gap:6px;cursor:pointer;margin-bottom:10px">
-          <input type="checkbox" id="tts-disabled-toggle" style="width:auto"/>
-          <span>Tắt TTS (dùng thời lượng giả) — để debug/test</span>
-        </label>
-        <label>Giọng đọc</label>
+      <div style="display:none">
+        <input type="checkbox" id="tts-disabled-toggle"/>
         <select id="tts-voice"></select>
-        <label>Địa chỉ CapCut TTS API</label>
         <input type="text" id="tts-server-url" value="http://localhost:8007" onchange="loadTtsVoices()"/>
-        <div class="fname" id="tts-server-status" style="margin-top:6px">Đang kiểm tra kết nối…</div>
-        <button class="btn" id="gen-all-tts-btn" style="margin-top:10px" onclick="generateAllTts()">🔊 Tải tất cả TTS còn thiếu</button>
-        <div class="hint" id="gen-all-tts-status" style="margin-top:6px"></div>
-        <div class="hint" style="margin-top:10px">Chỉ TTS gọi server. Meme, ảnh và âm thanh hiệu ứng dùng trực tiếp trên thiết bị.</div>
+        <div id="tts-server-status">Đang kiểm tra kết nối…</div>
+        <button id="gen-all-tts-btn" onclick="generateAllTts()"></button>
+        <div id="gen-all-tts-status"></div>
       </div>
     </div>
 
@@ -1127,10 +1120,8 @@ header span { font-size: 12px; color: #4b5563; }
         <span class="chevron">▶</span>
       </div>
       <div class="feature-body">
-        <div class="hint">Ghi bản xem trước ngay trên máy bằng trình duyệt. Khi được hỏi, hãy chia sẻ <b>tab hiện tại</b> và bật <b>Chia sẻ âm thanh tab</b>. Chrome/Edge mới có thể cắt đúng riêng khung 9:16.</div>
-        <button class="btn btn-primary" id="export-btn" onclick="exportVideo()">🎬 Ghi &amp; xuất WebM</button>
+        <button class="btn btn-primary" id="export-btn" onclick="exportVideo()">🎬 Xuất MP4</button>
         <div id="export-credit-info" style="font-size:11px;color:#94a3b8;margin-top:7px">Giá xuất video sẽ được tính trên server.</div>
-        <button class="btn btn-ghost" onclick="window.open('webcodecs_test.html','_blank')">🧪 Thử Canvas + WebCodecs (không quay màn hình)</button>
         <div id="export-progress-wrap" style="display:none;margin-top:10px">
           <div class="progress"><div class="bar" id="export-progress-bar" style="width:0%"></div></div>
           <div id="export-progress-text" style="font-size:11px;color:#a78bfa;margin-top:6px"></div>
@@ -1208,7 +1199,6 @@ header span { font-size: 12px; color: #4b5563; }
       <button onclick="openStepModal('image')">＋ Ảnh</button>
       <button onclick="openStepModal('audio')">＋ Âm thanh</button>
       <button onclick="openMessengerModal()">＋ Tin nhắn</button>
-      <button onclick="openMemereadyModal()">🎁 Meme sẵn</button>
       <button onclick="openStickerLibraryModal()">＋ Sticker</button>
     </div>
     <div id="step-list" ondragover="onDragContainerOver(event)" ondrop="dropAtDragPreview(event)">
@@ -1255,15 +1245,14 @@ header span { font-size: 12px; color: #4b5563; }
           <div><label>Giọng mặc định — Tôi</label><select id="mess-mine-voice" onchange="setMessengerSideVoice('mine',this.value)"></select></div>
         </div>
         <label>Tốc độ đọc toàn bộ hội thoại: <b id="mess-tts-speed-label">1.00×</b></label>
-        <input type="range" id="mess-tts-speed" min="1" max="2" step="0.05" value="1" oninput="messTtsSpeed=parseFloat(this.value);document.getElementById('mess-tts-speed-label').textContent=messTtsSpeed.toFixed(2)+'×'"/>
+        <input type="range" id="mess-tts-speed" min="0.5" max="1.5" step="0.05" value="1" oninput="messTtsSpeed=parseFloat(this.value);document.getElementById('mess-tts-speed-label').textContent=messTtsSpeed.toFixed(2)+'×'"/>
         <div class="mess-side-inputs">
           <div><label>Đối phương</label><div class="mess-input-shell"><textarea id="mess-theirs" placeholder="Nhập tin bên trái..." oninput="onMessSideInput('theirs')"></textarea><button type="button" class="mess-media-trigger" title="Thêm ảnh hoặc sticker" onclick="event.stopPropagation();toggleMessengerMediaMenu('theirs')">🖼️</button><div class="mess-media-popover" id="mess-media-menu-theirs" onclick="event.stopPropagation()"><button type="button" onclick="chooseMessengerImageFile('theirs')">Tải ảnh từ máy</button><button type="button" onclick="showMessengerUrlInput('theirs')">Dán URL ảnh</button><button type="button" onclick="chooseMessengerSticker('theirs')">Chọn sticker từ thư viện</button><div class="mess-media-url-row" id="mess-media-url-row-theirs"><input id="mess-inline-url-theirs" type="text" placeholder="https://..."/><button type="button" onclick="applyMessengerInlineUrl('theirs')">Thêm</button></div></div><div class="mess-inline-image-preview" id="mess-inline-preview-theirs"></div></div></div>
           <div><label>Tôi</label><div class="mess-input-shell"><textarea id="mess-mine" placeholder="Nhập tin bên phải..." oninput="onMessSideInput('mine')"></textarea><button type="button" class="mess-media-trigger" title="Thêm ảnh hoặc sticker" onclick="event.stopPropagation();toggleMessengerMediaMenu('mine')">🖼️</button><div class="mess-media-popover" id="mess-media-menu-mine" onclick="event.stopPropagation()"><button type="button" onclick="chooseMessengerImageFile('mine')">Tải ảnh từ máy</button><button type="button" onclick="showMessengerUrlInput('mine')">Dán URL ảnh</button><button type="button" onclick="chooseMessengerSticker('mine')">Chọn sticker từ thư viện</button><div class="mess-media-url-row" id="mess-media-url-row-mine"><input id="mess-inline-url-mine" type="text" placeholder="https://..."/><button type="button" onclick="applyMessengerInlineUrl('mine')">Thêm</button></div></div><div class="mess-inline-image-preview" id="mess-inline-preview-mine"></div></div></div>
         </div>
         <label>Nội dung đọc TTS</label>
         <textarea id="mess-tts" placeholder="Tự đồng bộ theo tin nhắn..." oninput="messTtsDirty=true"></textarea>
-        <label>Giọng riêng cho tin này <span style="font-weight:400;color:#6b7280">(không bắt buộc)</span></label>
-        <select id="mess-voice" onchange="messVoiceTouched=!!this.value"><option value="">Theo giọng mặc định của bên gửi</option></select>
+        <div style="display:none"><label>Giọng riêng cho tin này</label><select id="mess-voice" onchange="messVoiceTouched=!!this.value"><option value="">Theo giọng mặc định của bên gửi</option></select></div>
         <div id="mess-legacy-image-controls" style="display:none">
         <label>Ảnh trong tin nhắn (tuỳ chọn)</label>
         <div class="row2">
@@ -1320,7 +1309,9 @@ header span { font-size: 12px; color: #4b5563; }
     <div class="sticker-modal-head">
       <button type="button" class="btn-cancel" id="sticker-library-back" style="display:none;padding:8px 12px;border:0;border-radius:8px;cursor:pointer" onclick="showStickerPackList()">← Các bộ</button>
       <h3 id="sticker-library-title">Chọn bộ sticker</h3>
+      <button type="button" class="btn-ok" id="sticker-library-create" style="padding:8px 12px;border:0;border-radius:8px;cursor:pointer" onclick="createStickerPack()">＋ Bộ mới</button>
       <button type="button" class="btn-cancel" id="sticker-library-rename" style="display:none;padding:8px 12px;border:0;border-radius:8px;cursor:pointer" onclick="renameCurrentStickerPack()">✎ Đổi tên</button>
+      <button type="button" class="btn-cancel" id="sticker-library-delete" style="display:none;padding:8px 12px;border:0;border-radius:8px;cursor:pointer;color:#f87171" onclick="deleteCurrentStickerPack()">🗑 Xóa bộ</button>
       <button type="button" class="btn-ok" id="sticker-library-add" style="display:none;padding:8px 12px;border:0;border-radius:8px;cursor:pointer" onclick="document.getElementById('sticker-library-add-input').click()">＋ Thêm sticker</button>
       <input id="sticker-library-add-input" type="file" accept="image/png,image/jpeg,image/webp,image/gif" style="display:none" onchange="addStickerToCurrentPack(this.files[0]);this.value=''"/>
       <button type="button" class="btn-cancel" style="padding:8px 12px;border:0;border-radius:8px;cursor:pointer" onclick="closeStickerLibraryModal()">Đóng</button>
@@ -1867,7 +1858,7 @@ async function generateAllTtsLegacy() {
     const byVoice = new Map();
     messTargets.forEach(s => {
       const voiceIdx = s.voiceIdx ?? messengerDefaultVoice(s.messHistory?.[s.messHistory.length-1]?.side || 'theirs');
-      const speed = Number(s.messTtsSpeed || 1);
+      const speed = messengerServerSpeed(s.messTtsSpeed);
       const key = `${voiceIdx}|${speed}`;
       if (!byVoice.has(key)) byVoice.set(key, {voiceIdx,speed,items:[]});
       byVoice.get(key).items.push(s);
@@ -1947,7 +1938,7 @@ async function generateAllTts() {
   for(const step of steps){
     if(!supported.has(step.type))continue;
     const mainText=((step.ttsText&&step.ttsText.trim())||(step.text&&step.text.trim())||'');
-    if(!step.audioUrl&&mainText)jobs.push({step,segment:null,text:mainText,voiceIdx:step.voiceIdx!=null?step.voiceIdx:(step.type==='mess'?messengerDefaultVoice(step.messHistory?.[step.messHistory.length-1]?.side||'theirs'):null),speed:step.type==='mess'?Number(step.messTtsSpeed||1):1,echo:!!step.echo});
+    if(!step.audioUrl&&mainText)jobs.push({step,segment:null,text:mainText,voiceIdx:step.voiceIdx!=null?step.voiceIdx:(step.type==='mess'?messengerDefaultVoice(step.messHistory?.[step.messHistory.length-1]?.side||'theirs'):null),speed:step.type==='mess'?messengerServerSpeed(step.messTtsSpeed):1,echo:!!step.echo});
     for(const segment of (step.extraTtsSegments||[])){
       const text=(segment.text||'').trim();
       if(!segment.audioUrl&&text)jobs.push({step,segment,text,voiceIdx:segment.voiceIdx!=null?segment.voiceIdx:null,speed:1,echo:!!segment.echo});
@@ -1999,7 +1990,7 @@ let messEditingStepId = null;
 let messEditingConversationId = null;
 let messTtsDirty = false;
 let messVoiceTouched = false;
-let messPartnerName = 'Cô nàng nổi loạn 🦄';
+let messPartnerName = 'Tùng';
 let messPartnerAvatar = MESS_DEFAULT_AVATAR;
 let messPlatform = 'messenger';
 let messShowFooter = false;
@@ -2037,12 +2028,12 @@ function openMessengerModal(stepId = null, conversationMode = false) {
   messInsertAt = null;
   const s = stepId != null ? steps.find(x => x.id === stepId) : null;
   if(conversationMode&&s)messEditingConversationId=s.conversationId;
-  messPartnerName = (s && s.messPartnerName) || 'Cô nàng nổi loạn 🦄';
+  messPartnerName = (s && s.messPartnerName) || 'Tùng';
   messPartnerAvatar = (s && s.messPartnerAvatar) || MESS_DEFAULT_AVATAR;
   messPlatform = s?.messPlatform === 'zalo' ? 'zalo' : 'messenger';
   messShowFooter = !!s?.messShowFooter;
   messSideVoiceIdx = s && s.messSideVoices ? { ...s.messSideVoices } : { theirs: messengerVoiceIndexByLabel('Nhỏ Ngọt Ngào',0), mine: messengerVoiceIndexByLabel('Nam Minh',5) };
-  messTtsSpeed = Math.max(1, Math.min(2, Number(s?.messTtsSpeed || 1)));
+  messTtsSpeed = Math.max(.5, Math.min(1.5, Number(s?.messTtsSpeed || 1)));
   messPendingImage = null;
   messDrafts = s ? (s.messHistory || []).map(x => ({...x, voiceOverride:x.voiceOverride ?? true})) : [];
   document.getElementById('mess-modal-title').textContent = conversationMode ? 'Chi tiết Box tin nhắn' : s ? 'Sửa tin nhắn' : 'Thêm đoạn chat';
@@ -2081,6 +2072,7 @@ function onMessSideInput(side) {
 function messengerDefaultVoice(side) {
   return messSideVoiceIdx[side] ?? (side === 'mine' ? 8 : 0);
 }
+function messengerServerSpeed(displaySpeed){return Math.max(.65,Math.min(1.95,Number(displaySpeed||1)*1.3));}
 function setMessengerSideVoice(side, value) {
   const voiceIdx=parseInt(value,10);
   if(Number.isNaN(voiceIdx))return;
@@ -2134,7 +2126,7 @@ async function uploadMessengerAvatar(file) {
   }catch(e){status.textContent='';alert('Không đổi được avatar: '+e.message+'\nKiểm tra media_server.py đang chạy.');}
 }
 function commitMessengerPartnerName(input){
-  messPartnerName=input.value.trim()||'Cô nàng nổi loạn 🦄';
+  messPartnerName=input.value.trim()||'Tùng';
   input.value=messPartnerName;
 }
 function applyMessengerImageUrl(){const url=document.getElementById('mess-image-url').value.trim();if(!url)return alert('Hãy dán URL ảnh.');messPendingImage={url,name:url.split('/').pop().split('?')[0]||'ảnh từ URL'};renderMessengerImagePreview();}
@@ -2308,7 +2300,7 @@ function applyMessengerJson(raw) {
     if (Number.isInteger(Number(mineVoice))) messSideVoiceIdx.mine = Number(mineVoice);
     document.getElementById('mess-theirs-voice').value = String(messSideVoiceIdx.theirs);
     document.getElementById('mess-mine-voice').value = String(messSideVoiceIdx.mine);
-    messTtsSpeed=Math.max(1,Math.min(2,Number(raw.ttsSpeed || 1)));
+    messTtsSpeed=Math.max(.5,Math.min(1.5,Number(raw.ttsSpeed || 1)));
     document.getElementById('mess-tts-speed').value=String(messTtsSpeed);
     document.getElementById('mess-tts-speed-label').textContent=messTtsSpeed.toFixed(2)+'×';
   }
@@ -2325,7 +2317,7 @@ function applyMessengerJson(raw) {
     const hasVoiceOverride=item.voiceIdx!==undefined && Number.isInteger(importedVoiceIdx);
     return { side, text, ttsText: String(item.ttsText ?? text).trim() || text, voiceIdx: hasVoiceOverride?importedVoiceIdx:messengerDefaultVoice(side), voiceOverride:hasVoiceOverride, imageUrl: imageUrl || null, imageName: item.imageName || null, imageType:item.imageType==='sticker'?'sticker':'image', imageDesktopPath:item.imageDesktopPath||null };
   });
-  messPartnerName = Array.isArray(raw) ? 'Cô nàng nổi loạn 🦄' : String(raw.partnerName || raw.name || 'Cô nàng nổi loạn 🦄').trim();
+  messPartnerName = Array.isArray(raw) ? 'Tùng' : String(raw.partnerName || raw.name || 'Tùng').trim();
   messPartnerAvatar = Array.isArray(raw) ? MESS_DEFAULT_AVATAR : String(raw.partnerAvatar || raw.avatarUrl || MESS_DEFAULT_AVATAR).trim();
   updateMessengerPlatformPicker();
   updateMessengerFooterToggle();
@@ -2380,7 +2372,7 @@ async function generateMessengerTtsResults(messages,status,reuseSteps=[]){
   return results;
 }
 function makeMessengerStep(msg,index,history,conversationId,ttsResult,oldStep=null){
-  return {id:oldStep?.id??stepIdCounter++,type:'mess',conversationId,groupId:oldStep?.groupId===false?false:(oldStep?.groupId||conversationId),messIndex:index,messPlatform,messShowFooter,messPartnerName:messPartnerName.trim()||'Cô nàng nổi loạn 🦄',messPartnerAvatar,messSideVoices:{...messSideVoiceIdx},messTtsSpeed,messHistory:history.map(x=>({...x})),text:msg.text,ttsText:msg.ttsText,voiceIdx:msg.voiceIdx,audioUrl:ttsResult?.audioUrl||null,ttsDuration:ttsResult?.duration||null,duration:ttsResult?.duration||DEFAULT_DUR.mess,gap:oldStep?.gap??0,clearBefore:oldStep?.clearBefore??true,hue:oldStep?.hue??0,offsetX:oldStep?.offsetX??0,offsetY:oldStep?.offsetY??0,rotation:oldStep?.rotation??0};
+  return {id:oldStep?.id??stepIdCounter++,type:'mess',conversationId,groupId:oldStep?.groupId===false?false:(oldStep?.groupId||conversationId),messIndex:index,messPlatform,messShowFooter,messPartnerName:messPartnerName.trim()||'Tùng',messPartnerAvatar,messSideVoices:{...messSideVoiceIdx},messTtsSpeed,messHistory:history.map(x=>({...x})),text:msg.text,ttsText:msg.ttsText,voiceIdx:msg.voiceIdx,audioUrl:ttsResult?.audioUrl||null,ttsDuration:ttsResult?.duration||null,duration:ttsResult?.duration||DEFAULT_DUR.mess,gap:oldStep?.gap??0,clearBefore:oldStep?.clearBefore??true,hue:oldStep?.hue??0,offsetX:oldStep?.offsetX??0,offsetY:oldStep?.offsetY??0,rotation:oldStep?.rotation??0};
 }
 function insertPendingMessengerAudios(drafts,messSteps){
   drafts.forEach((msg,i)=>{
@@ -2397,7 +2389,7 @@ async function submitMessengerConversation() {
     const conv=messEditingConversationId,oldSteps=steps.filter(s=>s.type==='mess'&&s.conversationId===conv).sort((a,b)=>(a.messIndex??0)-(b.messIndex??0));
     finish.disabled=true;
     try{
-      messSideVoiceIdx={theirs:parseInt(document.getElementById('mess-theirs-voice').value,10),mine:parseInt(document.getElementById('mess-mine-voice').value,10)};messPartnerName=messPartnerName.trim()||'Cô nàng nổi loạn 🦄';
+      messSideVoiceIdx={theirs:parseInt(document.getElementById('mess-theirs-voice').value,10),mine:parseInt(document.getElementById('mess-mine-voice').value,10)};messPartnerName=messPartnerName.trim()||'Tùng';
       const ttsResults=await generateMessengerTtsResults(messDrafts,status,oldSteps),history=[],replacements=[];
       messDrafts.forEach((msg,i)=>{history.push(messengerHistoryMessage(msg));replacements.push(makeMessengerStep(msg,i,history,conv,ttsResults.get(i)||null,oldSteps[i]||null));});
       const rebuilt=[];let replacementIndex=0,lastConversationPosition=-1;
@@ -2414,7 +2406,7 @@ async function submitMessengerConversation() {
     try {
       const idx=(s.messHistory||[]).length-1; const conv=s.conversationId;
       messSideVoiceIdx={theirs:parseInt(document.getElementById('mess-theirs-voice').value,10),mine:parseInt(document.getElementById('mess-mine-voice').value,10)};
-      messPartnerName=messPartnerName.trim()||'Cô nàng nổi loạn 🦄';
+      messPartnerName=messPartnerName.trim()||'Tùng';
       for(const related of steps.filter(x=>x.type==='mess'&&x.conversationId===conv)){related.messPlatform=messPlatform;related.messShowFooter=messShowFooter;related.messPartnerName=messPartnerName;related.messPartnerAvatar=messPartnerAvatar;related.messSideVoices={...messSideVoiceIdx};related.messTtsSpeed=messTtsSpeed;}
       for (const later of steps.filter(x=>x.type==='mess'&&x.conversationId===conv&&((x.messIndex??0)>=idx))) if(later.messHistory&&later.messHistory[idx]) later.messHistory[idx]={...msg};
       s.text=msg.text;s.ttsText=msg.ttsText;s.voiceIdx=msg.voiceIdx;s.audioUrl=null;s.audioDesktopPath=null;s.ttsDuration=null;s.duration=DEFAULT_DUR.mess;
@@ -2523,8 +2515,10 @@ function statsFieldsHtml(prefix, v, kind) {
 // từ URL có sẵn, và URL là text nên serialize thẳng vào JSON export/import
 // được (mục 8), không vướng vấn đề File/blob: chỉ sống trong session.
 function imgFieldHtml(prefix, currentUrl) {
-  return `<label>🖼 Ảnh đính kèm (URL, tuỳ chọn)</label>
-    <input type="text" id="${prefix}-img" placeholder="https://..." value="${esc(currentUrl||'')}" oninput="onModalImgUrlChange('${prefix}')"/>
+  return `<label>🖼 Ảnh đính kèm (tuỳ chọn)</label>
+    <div style="display:flex;gap:6px"><input type="text" id="${prefix}-img" placeholder="Dán URL ảnh..." value="${esc(currentUrl||'')}" oninput="onModalImgUrlChange('${prefix}')"/><button type="button" class="btn-cancel" style="flex:0 0 auto;padding:7px 10px;border:0;border-radius:7px;cursor:pointer" onclick="document.getElementById('${prefix}-img-file').click()">Chọn file</button></div>
+    <input type="file" id="${prefix}-img-file" accept="image/*" style="display:none" onchange="uploadModalAttachedImage('${prefix}',this.files[0]);this.value=''"/>
+    <div id="${prefix}-img-status" style="min-height:14px;margin-top:3px;color:#a78bfa;font-size:11px"></div>
     <div id="${prefix}-img-preview" style="margin-bottom:8px">${currentUrl?`<img src="${currentUrl}" referrerpolicy="no-referrer" style="max-width:100%;max-height:80px;border-radius:6px;display:block"/>`:''}</div>`;
 }
 
@@ -2556,10 +2550,7 @@ function filePathFieldHtml(label, currentPath, currentMediaUrl, currentMediaName
     </div>
     <input type="file" id="m-file-input" style="display:none" onchange="onMediaFileChosen(this.files[0])"/>
     <div id="m-upload-status" style="font-size:11px;color:#a78bfa;margin-top:4px;min-height:14px"></div>
-    <details style="margin-top:8px">
-      <summary style="font-size:11px;color:#6b7280;cursor:pointer">Hoặc dùng đường dẫn file:// (chỉ hoạt động khi mở index.html trực tiếp, không qua server)</summary>
-      <input type="text" id="m-file-path" placeholder="/Users/ten-ban/videos/meme1.mp4" value="${esc(currentPath||'')}" style="margin-top:6px" oninput="onFilePathTyped()"/>
-    </details>`;
+    <input type="hidden" id="m-file-path" value="${esc(currentPath||'')}"/>`;
 }
 
 // Thư viện file có sẵn (mục 5.14 CONTEXT.md) — người dùng tự copy file vào
@@ -3051,6 +3042,10 @@ function stepTtsClips(s) {
 function renderExtraTtsSegmentsUI() {
   const box = document.getElementById('m-extra-tts-box');
   if (!box) return;
+  box.style.display='none';
+  box.innerHTML='';
+  return;
+  /* UI nâng cao tạm ẩn trước khi phát hành; dữ liệu/engine vẫn được giữ. */
   box.innerHTML = modalExtraTts.map((seg, i) => {
     const opts = ttsVoices.length
       ? voiceOptionsHtml(seg.voiceIdx ?? '')
@@ -3088,6 +3083,15 @@ function onModalImgUrlChange(prefix) {
   const url = document.getElementById(prefix + '-img').value.trim();
   const preview = document.getElementById(prefix + '-img-preview');
   preview.innerHTML = url ? `<img src="${esc(url)}" referrerpolicy="no-referrer" style="max-width:100%;max-height:80px;border-radius:6px;display:block" onerror="this.replaceWith(Object.assign(document.createElement('div'),{textContent:'⚠ Không tải được ảnh từ URL này',style:'font-size:11px;color:#ef4444'}))"/>` : '';
+}
+async function uploadModalAttachedImage(prefix,file){
+  if(!file)return;const status=document.getElementById(prefix+'-img-status');status.textContent='Đang nạp ảnh...';
+  try{
+    let url;
+    if(window.desktopApp?.saveLocalAsset){const saved=await window.desktopApp.saveLocalAsset(new Uint8Array(await file.arrayBuffer()),'image',file.name);url=saved.url;}
+    else{const form=new FormData();form.append('file',file);const res=await fetch(MEDIA_SERVER_URL+'/upload',{method:'POST',body:form});if(!res.ok)throw new Error('HTTP '+res.status);const data=await res.json();url=MEDIA_SERVER_URL+data.url;}
+    document.getElementById(prefix+'-img').value=url;onModalImgUrlChange(prefix);status.textContent='✓ '+file.name;
+  }catch(error){status.textContent='✗ Không nạp được ảnh: '+error.message;}
 }
 function readImgUrl(prefix) {
   const el = document.getElementById(prefix + '-img');
@@ -3224,16 +3228,16 @@ function openStepModal(type, stepId = null, targetGroupId = null) {
       <label>🔗 Ảnh từ URL (dán link ảnh có sẵn, tuỳ chọn)</label>
       <input type="text" id="m-image-url" placeholder="https://..." value="${isExternalUrl ? esc(editing.mediaUrl) : ''}" oninput="onImageUrlTyped()"/>
       <div id="m-image-url-preview" style="margin:6px 0">${isExternalUrl ? `<img src="${esc(editing.mediaUrl)}" referrerpolicy="no-referrer" style="max-width:100%;max-height:100px;border-radius:6px;display:block" onerror="this.replaceWith(Object.assign(document.createElement('div'),{textContent:'⚠ Không tải được ảnh từ URL này',style:'font-size:11px;color:#ef4444'}))"/>` : ''}</div>
-      <div style="font-size:11px;color:#6b7280;margin-bottom:10px">— hoặc chọn ảnh từ máy/thư viện bên dưới —</div>`
-             + filePathFieldHtml('Ảnh', editing ? editing.mediaPath : '', editing ? editing.mediaUrl : null, editing ? editing.mediaName : null, 'meme');
+      <div style="font-size:11px;color:#6b7280;margin-bottom:10px">— hoặc chọn ảnh từ máy bên dưới —</div>`
+             + filePathFieldHtml('Ảnh', editing ? editing.mediaPath : '', editing ? editing.mediaUrl : null, editing ? editing.mediaName : null, null);
     // Cắt nhiều vùng từ 1 ảnh gốc (mục 5.31/5.36 CONTEXT.md) — hiện ở CẢ 2 chế
     // độ tạo mới lẫn sửa step cũ. Khi sửa (stepId != null), addImageCropStep()
     // CẬP NHẬT ảnh của chính step đang sửa thay vì luôn tạo step mới (xem hàm
     // đó) — nút đổi nhãn cho khớp hành vi thật sự sẽ xảy ra khi bấm.
     {
       const addBtnLabel = stepId == null ? '💾 Tạo step từ vùng này' : '💾 Cập nhật ảnh cho step này';
-      html += `<details style="margin-top:14px;border-top:1px solid #1e2340;padding-top:12px">
-        <summary style="font-size:12px;color:#a78bfa;cursor:pointer;font-weight:600">✂️ Cắt nhiều vùng từ 1 ảnh gốc (vd: chụp màn hình chat, hiện dần từng dòng)</summary>
+      html += `<details class="crop-feature-locked" onclick="event.preventDefault()" style="margin-top:14px;border-top:1px solid #1e2340;padding-top:12px;opacity:.65">
+        <summary style="font-size:12px;color:#94a3b8;cursor:not-allowed;font-weight:600">🔒 Cắt nhiều vùng từ một ảnh gốc — tạm khóa</summary>
         <div style="font-size:11px;color:#6b7280;margin:8px 0">Tải ảnh gốc 1 lần, kéo khung vàng chọn vùng muốn hiện → gõ đúng câu chữ MỚI trong vùng đó → bấm "Tạo step". Khung crop giữ nguyên vị trí sau mỗi lần tạo — kéo rộng thêm rồi tạo tiếp cho vùng kế.</div>
         <input type="file" id="m-crop-src-input" accept="image/*" style="display:none" onchange="onImageCropSrcChosen(this.files[0])"/>
         <button type="button" class="btn-cancel" style="width:100%;padding:10px;border-radius:8px;border:none;cursor:pointer" onclick="document.getElementById('m-crop-src-input').click()">📁 Chọn ảnh gốc...</button>
@@ -3295,6 +3299,13 @@ function openStickerLibraryModal(messengerSide = null) {
 
 function closeStickerLibraryModal() { document.getElementById('sticker-library-modal-overlay').classList.remove('open');stickerLibraryMessengerSide=null; }
 
+document.addEventListener('keydown',event=>{
+  if(event.key!=='Escape')return;
+  const openOverlays=[...document.querySelectorAll('.step-modal-overlay.open')];
+  const top=openOverlays[openOverlays.length-1];
+  if(top){event.preventDefault();top.click();}
+});
+
 async function loadStickerLibrary(preferredPackId = null) {
   const content = document.getElementById('sticker-library-content');
   if (!content || !window.desktopApp?.getStickerLibrary) return;
@@ -3310,7 +3321,9 @@ async function loadStickerLibrary(preferredPackId = null) {
 
 function setStickerModalDetailControls(show) {
   document.getElementById('sticker-library-back').style.display = show ? '' : 'none';
+  document.getElementById('sticker-library-create').style.display = show ? 'none' : '';
   document.getElementById('sticker-library-rename').style.display = show ? '' : 'none';
+  document.getElementById('sticker-library-delete').style.display = show ? '' : 'none';
   document.getElementById('sticker-library-add').style.display = show ? '' : 'none';
 }
 
@@ -3334,6 +3347,7 @@ function showStickerPack(packId) {
 function renderStickerPackDetail() {
   setStickerModalDetailControls(true);
   const pack = stickerPacks.find(item => item.id === activeStickerPackId);
+  document.getElementById('sticker-library-delete').style.display=pack?'':'none';
   document.getElementById('sticker-library-title').textContent = pack ? pack.name : 'Sticker';
   document.getElementById('sticker-library-status').textContent = pack ? `${pack.stickers.length} sticker — bấm một hình để ${stickerLibraryMessengerSide?'gắn vào tin nhắn':'thêm vào timeline'}.` : '';
   const content = document.getElementById('sticker-library-content');
@@ -3367,6 +3381,20 @@ async function renameCurrentStickerPack() {
   if (!name || name.trim() === pack.name) return;
   stickerPacks = await window.desktopApp.renameStickerPack(pack.id, name.trim());
   renderStickerPackDetail();
+}
+
+async function createStickerPack(){
+  const name=prompt('Tên bộ sticker mới:');if(!name||!name.trim())return;
+  const status=document.getElementById('sticker-library-status');
+  try{stickerPacks=await window.desktopApp.createStickerPack(name.trim());const created=stickerPacks.find(pack=>pack.name===name.trim());created?showStickerPack(created.id):showStickerPackList();}
+  catch(error){status.textContent='✗ '+error.message;}
+}
+
+async function deleteCurrentStickerPack(){
+  const pack=stickerPacks.find(item=>item.id===activeStickerPackId);if(!pack||!confirm(`Xóa bộ sticker "${pack.name}" và toàn bộ sticker bên trong?`))return;
+  const status=document.getElementById('sticker-library-status');
+  try{stickerPacks=await window.desktopApp.deleteStickerPack(pack.id);showStickerPackList();status.textContent='✓ Đã xóa bộ sticker';}
+  catch(error){status.textContent='✗ '+error.message;}
 }
 
 async function addStickerToCurrentPack(file) {
@@ -3847,7 +3875,6 @@ function stepCardHtml(s, idx) {
         <div class="sc-actions">
           <button onclick="${s.type==='mess'?`openMessengerModal(${s.id})`:`openStepModal('${s.type}',${s.id})`}" title="Sửa">✎</button>
           ${isParallelMedia(s)?`<button onclick="detachParallelMedia(${s.id})" title="Tách khỏi step đang phát song song">↳ Tách</button>`:''}
-          ${s.type==='mess'||window.BROWSER_FIRST?'':`<button onclick="saveStepAsMemeready(${s.id})" title="Lưu thành Meme sẵn — đóng gói step này (hoặc cả cặp song song nếu có) để dùng lại nhanh lần sau">💾</button>`}
           <button onclick="deleteStep(${s.id})" title="Xoá">🗑</button>
         </div>
       </div>

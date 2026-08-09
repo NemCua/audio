@@ -280,7 +280,7 @@ function buildMessengerHtml(s) {
   const editable = !!s.messEditable;
   const identityEditable = !!s.messIdentityEditable;
   const audioIndexes = new Set(s.messAudioIndexes || []);
-  const partnerName = s.messPartnerName || 'Cô nàng nổi loạn 🦄';
+  const partnerName = s.messPartnerName || 'Tùng';
   const partnerAvatar = s.messPartnerAvatar || MESS_DEFAULT_AVATAR;
   const partnerNameAttr = esc(partnerName).replace(/"/g,'&quot;').replace(/'/g,'&#39;');
   const partnerNameSize = Math.max(1, Math.min(24, Array.from(partnerName).length));

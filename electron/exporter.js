@@ -171,7 +171,7 @@ async function exportProject({ payload, outputPath, threadsRoot, ffmpegPath, sen
     const audioTracks = await collectAudio(steps, workDir);
     const args = ffmpegArgs({ bgVideoPath: payload.bgVideoPath, bgAudioPath: payload.bgAudioPath, bgAudioVolume: payload.bgAudioVolume, segments, total, audioTracks, outputPath });
     await runFfmpeg(ffmpegPath, args, total, sendProgress);
-    sendProgress({ percent: 100, text: '✓ Đã xuất MP4, không quay màn hình.' });
+    sendProgress({ percent: 100, text: '✓ Đã xuất MP4.' });
   } finally {
     fs.rmSync(workDir, { recursive: true, force: true });
   }
