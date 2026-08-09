@@ -264,6 +264,12 @@ function buildCardHtml(s) {
 }
 
 const MESS_DEFAULT_AVATAR = 'https://scontent.fsgn2-6.fna.fbcdn.net/v/t1.30497-1/453178253_471506465671661_2781666950760530985_n.png?stp=dst-png_s200x200&_nc_cat=110&ccb=1-7&_nc_sid=b224c7&_nc_ohc=37S9MJzUa4AQ7kNvwFpaTtl&_nc_oc=AdoHkBq6RhqdatGu3Nr_2oC2jy4r8U1V6UOn5fGIQOiMaoLOpewLVlpXS3s5T6Bx-RSoWHQ39WJv5VinMwSkBfTJ&_nc_ad=z-m&_nc_cid=0&_nc_zt=24&_nc_ht=scontent.fsgn2-6.fna&_nc_ss=7a22e&oh=00_AQHnmeH6FCOqTPiPzWVETrLxP3ReV40dXBTzcNYByY2Hpw&oe=6A981C7A';
+function buildMessengerFooterHtml() {
+  return `<div class="mess-composer" aria-hidden="true"><span class="mess-compose-icon">•••</span><span class="mess-compose-icon">▧</span><span class="mess-compose-icon">☺</span><div class="mess-compose-input"><span>Aa</span><b>☺</b></div><span class="mess-compose-like">♥</span></div>`;
+}
+function buildZaloFooterHtml() {
+  return `<div class="zalo-composer" aria-hidden="true"><span class="zalo-compose-more">•••</span><div class="zalo-compose-input">Tin nhắn</div><span>♩</span><span>▧</span></div>`;
+}
 function buildMessengerHtml(s) {
   if (s.messPlatform === 'zalo') return buildZaloHtml(s);
   const history = s.messHistory || [];
@@ -305,7 +311,7 @@ function buildMessengerHtml(s) {
         <svg viewBox="0 0 16 16"><path d="M6.304 2h-.108c-1.133 0-2.058 0-2.79.098-.763.103-1.425.325-1.954.854C.923 3.48.7 4.142.598 4.907.5 5.637.5 6.563.5 7.697v.607c0 1.133 0 2.058.098 2.79.103.763.325 1.425.854 1.954.529.529 1.19.751 1.955.854.73.098 1.656.098 2.79.098h.107c1.133 0 2.058 0 2.79-.098.763-.103 1.425-.325 1.954-.854.529-.529.751-1.19.854-1.955.038-.286.062-.602.076-.949l1.93 1.418a1 1 0 0 0 1.592-.806V5.228a1 1 0 0 0-1.57-.822l-1.956 1.357a9.984 9.984 0 0 0-.072-.856c-.103-.764-.325-1.426-.854-1.955-.529-.529-1.19-.751-1.955-.854C8.363 2 7.437 2 6.303 2z"/></svg>
         <svg viewBox="0 0 16 16"><path d="M3 8a1 1 0 0 1 1-1h8a1 1 0 1 1 0 2H4a1 1 0 0 1-1-1z"/></svg>
         <svg viewBox="0 0 16 16"><path d="M13.457 3.957a1 1 0 0 0-1.414-1.414L8 6.586 3.957 2.543a1 1 0 0 0-1.414 1.414L6.586 8l-4.043 4.043a1 1 0 1 0 1.414 1.414L8 9.414l4.043 4.043a1 1 0 0 0 1.414-1.414L9.414 8l4.043-4.043z"/></svg>
-      </div></div><div class="mess-body">${rows}${appendControl}</div></div>`;
+      </div></div><div class="mess-body">${rows}${appendControl}</div>${s.messShowFooter?buildMessengerFooterHtml():''}</div>`;
 }
 
 function buildZaloHtml(s) {
@@ -342,7 +348,7 @@ function buildZaloHtml(s) {
   return `<div class="zalo-card">
     <div class="zalo-head"><span class="zalo-back">‹</span><div class="zalo-title"><div>${nameHtml}</div></div>
       <div class="zalo-head-icons" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M15 9l5-3v12l-5-3v3a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2z"/></svg><svg viewBox="0 0 24 24"><circle cx="10" cy="10" r="7"/><path d="m15 15 6 6"/></svg><svg viewBox="0 0 24 24"><path d="M8 6h13M8 12h13M8 18h13"/></svg></div>
-    </div><div class="zalo-body">${rows}${appendControl}</div>
+    </div><div class="zalo-body">${rows}${appendControl}</div>${s.messShowFooter?buildZaloFooterHtml():''}
     ${identityEditable ? `<div class="zalo-avatar-editor"${avatarEditAttr}><img src="${esc(partnerAvatar)}" alt=""/></div>` : ''}
   </div>`;
 }

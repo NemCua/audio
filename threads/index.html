@@ -974,7 +974,9 @@ header span { font-size: 12px; color: #4b5563; }
 .mess-live-wrap .mess-card{max-height:440px}
 .mess-live-wrap .mess-body{overflow-y:auto;overscroll-behavior:contain;scrollbar-width:thin;scrollbar-color:#bcc0c4 transparent}
 .mess-live-wrap .mess-body::-webkit-scrollbar{width:6px}.mess-live-wrap .mess-body::-webkit-scrollbar-thumb{background:#bcc0c4;border-radius:999px}.mess-live-wrap .mess-body::-webkit-scrollbar-track{background:transparent}
-.mess-preview-toolbar{position:relative;display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:10px}.mess-preview-label{font-size:12px;color:#9ca3af;font-weight:700}.mess-platform-trigger{display:flex;align-items:center;gap:8px;padding:7px 10px;border:1px solid #343b60;border-radius:8px;background:#171b35;color:#e5e7eb;font-size:12px;font-weight:700;cursor:pointer}.mess-platform-trigger::after{content:"";width:6px;height:6px;border-right:1.5px solid #a5b4fc;border-bottom:1.5px solid #a5b4fc;transform:rotate(45deg) translateY(-2px)}.mess-platform-menu{display:none;position:absolute;right:0;top:36px;width:150px;padding:6px;border:1px solid #343b60;border-radius:9px;background:#151932;box-shadow:0 10px 28px #0008;z-index:40}.mess-platform-menu.open{display:block}.mess-platform-option{display:flex;width:100%;padding:9px 10px;border:0;border-radius:7px;background:transparent;color:#e5e7eb;text-align:left;cursor:pointer;font-size:13px}.mess-platform-option:hover,.mess-platform-option.active{background:#282e50;color:#fff}
+.mess-preview-toolbar{position:relative;display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:10px}.mess-preview-label{font-size:12px;color:#9ca3af;font-weight:700}.mess-preview-controls{display:flex;align-items:center;gap:10px}.mess-footer-toggle{display:flex;align-items:center;gap:6px;color:#cbd5e1;font-size:12px;cursor:pointer;user-select:none}.mess-footer-toggle input{width:15px;height:15px;margin:0;accent-color:#7c3aed;cursor:pointer}.mess-platform-trigger{display:flex;align-items:center;gap:8px;padding:7px 10px;border:1px solid #343b60;border-radius:8px;background:#171b35;color:#e5e7eb;font-size:12px;font-weight:700;cursor:pointer}.mess-platform-trigger::after{content:"";width:6px;height:6px;border-right:1.5px solid #a5b4fc;border-bottom:1.5px solid #a5b4fc;transform:rotate(45deg) translateY(-2px)}.mess-platform-menu{display:none;position:absolute;right:0;top:36px;width:150px;padding:6px;border:1px solid #343b60;border-radius:9px;background:#151932;box-shadow:0 10px 28px #0008;z-index:40}.mess-platform-menu.open{display:block}.mess-platform-option{display:flex;width:100%;padding:9px 10px;border:0;border-radius:7px;background:transparent;color:#e5e7eb;text-align:left;cursor:pointer;font-size:13px}.mess-platform-option:hover,.mess-platform-option.active{background:#282e50;color:#fff}
+.mess-composer,.zalo-composer{flex:0 0 auto;display:flex;align-items:center;background:#fff}.mess-composer{height:8.8cqw;gap:.7cqw;padding:1cqw 1.2cqw 1.3cqw;border-top:.08cqw solid #edf0f3;color:#0084ff}.mess-compose-icon{display:grid;place-items:center;width:4.2cqw;height:4.2cqw;flex:0 0 4.2cqw;border-radius:50%;font-size:2.2cqw;font-weight:800}.mess-compose-input{height:5.2cqw;min-width:0;flex:1;display:flex;align-items:center;padding:0 1.5cqw;border-radius:2.8cqw;background:#f0f2f5;color:#8a8d91;font-size:2.4cqw}.mess-compose-input span{flex:1}.mess-compose-input b{color:#0084ff;font-size:2.6cqw}.mess-compose-like{font-size:3.5cqw}.zalo-composer{height:8.8cqw;gap:1.3cqw;padding:1cqw 1.6cqw;border-top:.1cqw solid #d8dee6;color:#5e6670;font-size:2.6cqw}.zalo-compose-more{color:#087ff5;font-weight:800;letter-spacing:.15cqw}.zalo-compose-input{height:5.4cqw;min-width:0;flex:1;display:flex;align-items:center;padding:0 1.5cqw;border-radius:2.8cqw;background:#f1f3f5;color:#9299a1}
+.mess-live-wrap .mess-composer{height:45px;gap:4px;padding:5px 7px 7px}.mess-live-wrap .mess-compose-icon{width:22px;height:22px;flex-basis:22px;font-size:12px}.mess-live-wrap .mess-compose-input{height:28px;padding:0 8px;border-radius:15px;font-size:12px}.mess-live-wrap .mess-compose-input b{font-size:14px}.mess-live-wrap .mess-compose-like{font-size:18px}.mess-live-wrap .zalo-composer{height:45px;gap:7px;padding:5px 8px;font-size:13px}.mess-live-wrap .zalo-compose-input{height:28px;padding:0 8px;border-radius:15px}
 /* Zalo dùng chung dữ liệu và thao tác với Messenger, chỉ đổi phần trình bày. */
 .zalo-card{position:relative;display:flex;flex-direction:column;width:76cqw;max-height:89cqw;margin:0 auto;overflow:hidden;border-radius:2.4cqw;background:#e4ebf3;color:#111827;box-shadow:0 1.6cqw 4cqw #0008;font-family:"SFPro",-apple-system,BlinkMacSystemFont,"Segoe UI",Arial,sans-serif}.zalo-head{height:10.4cqw;flex:0 0 auto;display:flex;align-items:center;gap:1.4cqw;padding:1.4cqw 2cqw;color:#fff;background:linear-gradient(110deg,#0b98f6,#04a8ec)}.zalo-back{font-size:5cqw;font-weight:200;line-height:1}.zalo-title{min-width:0;flex:1}.zalo-title>div{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:3.2cqw;font-weight:650}.zalo-name-input{width:100%;padding:0;border:0;border-bottom:.1cqw solid transparent;outline:0;background:transparent;color:#fff;font:inherit;font-weight:inherit}.zalo-name-input:focus{border-bottom-color:#fff9}.zalo-head-icons{display:flex;align-items:center;gap:1.3cqw}.zalo-head-icons svg{width:3.8cqw;height:3.8cqw;fill:none;stroke:#fff;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}.zalo-body{min-height:0;overflow:hidden;padding:2.2cqw 2cqw 2.8cqw;background:#e4ebf3}.zalo-row{position:relative;align-items:flex-start;gap:1cqw;margin-top:1.2cqw}.zalo-row.mine{padding-left:12cqw}.zalo-row.theirs{padding-right:9cqw}.zalo-mini-avatar{width:4.6cqw;height:4.6cqw;flex:0 0 4.6cqw;overflow:hidden;border:.1cqw solid #fff;border-radius:50%;background:#9dc4dc}.zalo-mini-avatar img{width:100%;height:100%;object-fit:cover}.zalo-content{display:flex;flex-direction:column;align-items:flex-start;gap:.65cqw;max-width:55cqw}.zalo-row.mine .zalo-content{align-items:flex-end}.zalo-bubble{max-width:55cqw;padding:1.5cqw 1.8cqw;border:.1cqw solid #c9d1da;border-radius:2cqw;background:#fff;color:#111827;font-size:2.9cqw;font-weight:400;line-height:1.32;overflow-wrap:anywhere}.zalo-row.mine .zalo-bubble{border-color:#c9d1da;background:#d9f2ff}.zalo-chat-image{display:block;max-width:43cqw;max-height:34cqw;object-fit:cover;border:.1cqw solid #c9d1da;border-radius:2cqw;background:#fff}.zalo-avatar-editor{display:none}
 .mess-live-wrap .zalo-card{width:430px;max-height:440px;border-radius:12px}.mess-live-wrap .zalo-head{height:50px;gap:7px;padding:7px 10px}.mess-live-wrap .zalo-back{font-size:26px}.mess-live-wrap .zalo-title>div{font-size:16px}.mess-live-wrap .zalo-head-icons{gap:7px}.mess-live-wrap .zalo-head-icons svg{width:19px;height:19px}.mess-live-wrap .zalo-body{overflow-y:auto;padding:11px 10px 14px}.mess-live-wrap .zalo-row{gap:5px;margin-top:6px}.mess-live-wrap .zalo-row.mine{padding-left:52px}.mess-live-wrap .zalo-row.theirs{padding-right:40px}.mess-live-wrap .zalo-mini-avatar{width:24px;height:24px;flex-basis:24px}.mess-live-wrap .zalo-mini-avatar.is-editable{cursor:pointer}.mess-live-wrap .zalo-mini-avatar.is-editable:hover{filter:brightness(.86)}.mess-live-wrap .zalo-content{gap:3px;max-width:300px}.mess-live-wrap .zalo-bubble{max-width:300px;padding:8px 10px;border-width:1px;border-radius:11px;font-size:13px}.mess-live-wrap .zalo-chat-image{max-width:230px;max-height:180px;border-width:1px;border-radius:11px}
@@ -1282,7 +1284,7 @@ header span { font-size: 12px; color: #4b5563; }
         <div id="mess-tts-status" style="font-size:11px;color:#a78bfa;margin-top:8px;min-height:14px"></div>
       </section>
       <section class="mess-preview-pane">
-        <div class="mess-preview-toolbar"><span class="mess-preview-label">PREVIEW ĐOẠN CHAT</span><div><button type="button" class="mess-platform-trigger" id="mess-platform-trigger" onclick="event.stopPropagation();toggleMessengerPlatformMenu()">Messenger</button><div class="mess-platform-menu" id="mess-platform-menu"><button type="button" class="mess-platform-option active" data-platform="messenger" onclick="selectMessengerPlatform('messenger')">Messenger</button><button type="button" class="mess-platform-option" data-platform="zalo" onclick="selectMessengerPlatform('zalo')">Zalo</button></div></div></div>
+        <div class="mess-preview-toolbar"><span class="mess-preview-label">PREVIEW ĐOẠN CHAT</span><div class="mess-preview-controls"><label class="mess-footer-toggle"><input type="checkbox" id="mess-footer-toggle" onchange="setMessengerFooterVisible(this.checked)"><span>Hiện ô nhập tin nhắn</span></label><div><button type="button" class="mess-platform-trigger" id="mess-platform-trigger" onclick="event.stopPropagation();toggleMessengerPlatformMenu()">Messenger</button><div class="mess-platform-menu" id="mess-platform-menu"><button type="button" class="mess-platform-option active" data-platform="messenger" onclick="selectMessengerPlatform('messenger')">Messenger</button><button type="button" class="mess-platform-option" data-platform="zalo" onclick="selectMessengerPlatform('zalo')">Zalo</button></div></div></div></div>
         <div class="mess-live-wrap"><div id="mess-live-preview"></div></div>
       </section>
     </div>
@@ -2001,6 +2003,7 @@ let messVoiceTouched = false;
 let messPartnerName = 'Cô nàng nổi loạn 🦄';
 let messPartnerAvatar = MESS_DEFAULT_AVATAR;
 let messPlatform = 'messenger';
+let messShowFooter = false;
 let messPendingImage = null;
 let messSideVoiceIdx = { theirs: 0, mine: 8 };
 let messTtsSpeed = 1;
@@ -2023,6 +2026,8 @@ function selectMessengerPlatform(platform){
   document.getElementById('mess-platform-menu')?.classList.remove('open');
   updateMessengerPlatformPicker();renderMessengerDrafts();
 }
+function setMessengerFooterVisible(visible){messShowFooter=!!visible;renderMessengerDrafts();}
+function updateMessengerFooterToggle(){const input=document.getElementById('mess-footer-toggle');if(input)input.checked=messShowFooter;}
 document.addEventListener('click',e=>{if(!e.target.closest('.mess-preview-toolbar'))document.getElementById('mess-platform-menu')?.classList.remove('open');});
 function openMessengerModal(stepId = null, conversationMode = false) {
   messEditingStepId = stepId;
@@ -2036,6 +2041,7 @@ function openMessengerModal(stepId = null, conversationMode = false) {
   messPartnerName = (s && s.messPartnerName) || 'Cô nàng nổi loạn 🦄';
   messPartnerAvatar = (s && s.messPartnerAvatar) || MESS_DEFAULT_AVATAR;
   messPlatform = s?.messPlatform === 'zalo' ? 'zalo' : 'messenger';
+  messShowFooter = !!s?.messShowFooter;
   messSideVoiceIdx = s && s.messSideVoices ? { ...s.messSideVoices } : { theirs: messengerVoiceIndexByLabel('Nhỏ Ngọt Ngào',0), mine: messengerVoiceIndexByLabel('Nam Minh',5) };
   messTtsSpeed = Math.max(1, Math.min(2, Number(s?.messTtsSpeed || 1)));
   messPendingImage = null;
@@ -2051,6 +2057,7 @@ function openMessengerModal(stepId = null, conversationMode = false) {
   updateMessengerComposerMode();
   document.getElementById('mess-finish-btn').textContent = conversationMode ? 'Lưu Box tin nhắn' : s ? 'Lưu thay đổi' : 'Tạo kịch bản tin nhắn';
   updateMessengerPlatformPicker();
+  updateMessengerFooterToggle();
   const current = s&&!conversationMode ? messDrafts[messDrafts.length - 1] : null;
   if (current && current.imageUrl) messPendingImage = { url: current.imageUrl, name: current.imageName || 'ảnh' };
   document.getElementById('mess-theirs').value = current && current.side === 'theirs' ? current.text : '';
@@ -2294,6 +2301,7 @@ function toggleMessengerJsonPaste() {
 function applyMessengerJson(raw) {
   if (!Array.isArray(raw)) {
     messPlatform = raw.platform === 'zalo' || raw.messPlatform === 'zalo' ? 'zalo' : 'messenger';
+    messShowFooter = !!(raw.showFooter ?? raw.messShowFooter);
     const theirsVoice = raw.theirsVoiceIdx ?? raw.opponentVoiceIdx;
     const mineVoice = raw.mineVoiceIdx ?? raw.myVoiceIdx;
     if (Number.isInteger(Number(theirsVoice))) messSideVoiceIdx.theirs = Number(theirsVoice);
@@ -2320,6 +2328,7 @@ function applyMessengerJson(raw) {
   messPartnerName = Array.isArray(raw) ? 'Cô nàng nổi loạn 🦄' : String(raw.partnerName || raw.name || 'Cô nàng nổi loạn 🦄').trim();
   messPartnerAvatar = Array.isArray(raw) ? MESS_DEFAULT_AVATAR : String(raw.partnerAvatar || raw.avatarUrl || MESS_DEFAULT_AVATAR).trim();
   updateMessengerPlatformPicker();
+  updateMessengerFooterToggle();
   resetMessengerComposer();
   renderMessengerDrafts();
   document.getElementById('mess-tts-status').textContent = `✓ Đã nạp ${messDrafts.length} tin từ JSON.`;
@@ -2348,7 +2357,7 @@ function importMessengerJson(input) {
 }
 function renderMessengerDrafts() {
   document.getElementById('mess-draft-list').innerHTML = messEditingStepId == null ? messDrafts.map((m,i)=>`<div class="mess-draft-item"><b>${m.side==='mine'?'Tôi':'Đối phương'}</b><span>${esc(m.text)}</span><button onclick="removeMessengerDraft(${i})">✕</button></div>`).join('') : '';
-  document.getElementById('mess-live-preview').innerHTML = buildMessengerHtml({ messHistory: messDrafts, messPartnerName, messPartnerAvatar, messPlatform, messEditable:messEditingStepId==null||messEditingConversationId!=null, messIdentityEditable:true, messAudioIndexes:messengerAudioIndexesForConversation(messengerConversationIdForQuickAudio()) });
+  document.getElementById('mess-live-preview').innerHTML = buildMessengerHtml({ messHistory: messDrafts, messPartnerName, messPartnerAvatar, messPlatform, messShowFooter, messEditable:messEditingStepId==null||messEditingConversationId!=null, messIdentityEditable:true, messAudioIndexes:messengerAudioIndexesForConversation(messengerConversationIdForQuickAudio()) });
   autoScrollMessenger(document.getElementById('mess-live-preview'));
 }
 function commitPendingMessengerDraft(){
@@ -2371,7 +2380,7 @@ async function generateMessengerTtsResults(messages,status,reuseSteps=[]){
   return results;
 }
 function makeMessengerStep(msg,index,history,conversationId,ttsResult,oldStep=null){
-  return {id:oldStep?.id??stepIdCounter++,type:'mess',conversationId,groupId:oldStep?.groupId===false?false:(oldStep?.groupId||conversationId),messIndex:index,messPlatform,messPartnerName:messPartnerName.trim()||'Cô nàng nổi loạn 🦄',messPartnerAvatar,messSideVoices:{...messSideVoiceIdx},messTtsSpeed,messHistory:history.map(x=>({...x})),text:msg.text,ttsText:msg.ttsText,voiceIdx:msg.voiceIdx,audioUrl:ttsResult?.audioUrl||null,ttsDuration:ttsResult?.duration||null,duration:ttsResult?.duration||DEFAULT_DUR.mess,gap:oldStep?.gap??0,clearBefore:oldStep?.clearBefore??true,hue:oldStep?.hue??0,offsetX:oldStep?.offsetX??0,offsetY:oldStep?.offsetY??0,rotation:oldStep?.rotation??0};
+  return {id:oldStep?.id??stepIdCounter++,type:'mess',conversationId,groupId:oldStep?.groupId===false?false:(oldStep?.groupId||conversationId),messIndex:index,messPlatform,messShowFooter,messPartnerName:messPartnerName.trim()||'Cô nàng nổi loạn 🦄',messPartnerAvatar,messSideVoices:{...messSideVoiceIdx},messTtsSpeed,messHistory:history.map(x=>({...x})),text:msg.text,ttsText:msg.ttsText,voiceIdx:msg.voiceIdx,audioUrl:ttsResult?.audioUrl||null,ttsDuration:ttsResult?.duration||null,duration:ttsResult?.duration||DEFAULT_DUR.mess,gap:oldStep?.gap??0,clearBefore:oldStep?.clearBefore??true,hue:oldStep?.hue??0,offsetX:oldStep?.offsetX??0,offsetY:oldStep?.offsetY??0,rotation:oldStep?.rotation??0};
 }
 function insertPendingMessengerAudios(drafts,messSteps){
   drafts.forEach((msg,i)=>{
@@ -2406,7 +2415,7 @@ async function submitMessengerConversation() {
       const idx=(s.messHistory||[]).length-1; const conv=s.conversationId;
       messSideVoiceIdx={theirs:parseInt(document.getElementById('mess-theirs-voice').value,10),mine:parseInt(document.getElementById('mess-mine-voice').value,10)};
       messPartnerName=messPartnerName.trim()||'Cô nàng nổi loạn 🦄';
-      for(const related of steps.filter(x=>x.type==='mess'&&x.conversationId===conv)){related.messPlatform=messPlatform;related.messPartnerName=messPartnerName;related.messPartnerAvatar=messPartnerAvatar;related.messSideVoices={...messSideVoiceIdx};related.messTtsSpeed=messTtsSpeed;}
+      for(const related of steps.filter(x=>x.type==='mess'&&x.conversationId===conv)){related.messPlatform=messPlatform;related.messShowFooter=messShowFooter;related.messPartnerName=messPartnerName;related.messPartnerAvatar=messPartnerAvatar;related.messSideVoices={...messSideVoiceIdx};related.messTtsSpeed=messTtsSpeed;}
       for (const later of steps.filter(x=>x.type==='mess'&&x.conversationId===conv&&((x.messIndex??0)>=idx))) if(later.messHistory&&later.messHistory[idx]) later.messHistory[idx]={...msg};
       s.text=msg.text;s.ttsText=msg.ttsText;s.voiceIdx=msg.voiceIdx;s.audioUrl=null;s.audioDesktopPath=null;s.ttsDuration=null;s.duration=DEFAULT_DUR.mess;
       for (const x of steps.filter(x=>x.type==='mess'&&x.conversationId===conv)) bumpStepRevision(x.id);
