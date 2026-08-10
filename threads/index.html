@@ -1097,7 +1097,7 @@ header span { font-size: 12px; color: #4b5563; }
       <div style="display:none">
         <input type="checkbox" id="tts-disabled-toggle"/>
         <select id="tts-voice"></select>
-        <input type="text" id="tts-server-url" value="http://localhost:8007" onchange="loadTtsVoices()"/>
+        <input type="text" id="tts-server-url" value="https://threads-api-s13z.onrender.com" onchange="loadTtsVoices()"/>
         <div id="tts-server-status">Đang kiểm tra kết nối…</div>
         <button id="gen-all-tts-btn" onclick="generateAllTts()"></button>
         <div id="gen-all-tts-status"></div>
@@ -1678,9 +1678,45 @@ function voiceOptionsHtml(selected) {
   }).join('');
 }
 
+const DEFAULT_TTS_SERVER_URL = 'https://threads-api-s13z.onrender.com';
 function ttsServerUrl() {
-  return (document.getElementById('tts-server-url').value || '').replace(/\/$/, '');
+  return (document.getElementById('tts-server-url').value || DEFAULT_TTS_SERVER_URL).replace(/\/$/, '');
 }
+
+let ttsWakePromise = null;
+let ttsLastHealthyAt = 0;
+async function ensureTtsServerAwake(onProgress) {
+  if (Date.now() - ttsLastHealthyAt < 10 * 60 * 1000) return true;
+  if (ttsWakePromise) return ttsWakePromise;
+  ttsWakePromise = (async () => {
+    const deadline = Date.now() + 90_000;
+    let attempt = 0;
+    let lastError = null;
+    while (Date.now() < deadline) {
+      attempt++;
+      if (onProgress) onProgress(attempt);
+      const controller = new AbortController();
+      const timeout = setTimeout(() => controller.abort(), 15_000);
+      try {
+        const response = await fetch(ttsServerUrl() + '/health', {cache:'no-store', signal:controller.signal});
+        if (response.ok) {
+          ttsLastHealthyAt = Date.now();
+          return true;
+        }
+        lastError = new Error('HTTP ' + response.status);
+      } catch (error) {
+        lastError = error;
+      } finally {
+        clearTimeout(timeout);
+      }
+      if (Date.now() < deadline) await new Promise(resolve => setTimeout(resolve, 3000));
+    }
+    throw new Error('Server TTS chưa thức sau 90 giây' + (lastError?.message ? ': ' + lastError.message : ''));
+  })();
+  try { return await ttsWakePromise; }
+  finally { ttsWakePromise = null; }
+}
+window.ensureTtsServerAwake = ensureTtsServerAwake;
 
 async function loadTtsVoices() {
   const statusEl = document.getElementById('tts-server-status');
@@ -1688,6 +1724,9 @@ async function loadTtsVoices() {
   statusEl.textContent = 'Đang kiểm tra kết nối...';
   dot.classList.remove('err');
   try {
+    await ensureTtsServerAwake(attempt => {
+      statusEl.textContent = attempt === 1 ? 'Đang kết nối server TTS...' : `Đang đánh thức server TTS... (${attempt})`;
+    });
     const res = await fetch(ttsServerUrl() + '/voices');
     if (!res.ok) throw new Error('HTTP ' + res.status);
     ttsVoices = await res.json();
@@ -4514,7 +4553,11 @@ async function importProjectJson(input) {
     });
     const unresolvedMedia = await resolveMediaNamesInSteps(steps);
     stepIdCounter = project.stepIdCounter || (Math.max(0, ...steps.map(s => s.id || 0)) + 1);
-    if (project.ttsServerUrl) document.getElementById('tts-server-url').value = project.ttsServerUrl;
+    if (project.ttsServerUrl) {
+      document.getElementById('tts-server-url').value = /^https?:\/\/(?:localhost|127\.0\.0\.1)(?::\d+)?/i.test(project.ttsServerUrl)
+        ? DEFAULT_TTS_SERVER_URL
+        : project.ttsServerUrl;
+    }
     if (project.bgAudioVolume != null) {
       document.getElementById('bgaudio-volume').value = project.bgAudioVolume;
       document.getElementById('bgaudio-volume-val').textContent = Math.round(project.bgAudioVolume * 100) + '%';
@@ -4921,7 +4964,14 @@ async function prepareProjectTts(action){
   ttsPreparing=true;showTtsLoading(action);
   const playBtn=document.getElementById('play-btn'),exportBtn=document.getElementById('export-btn');
   playBtn.disabled=true;exportBtn.disabled=true;
-  try{return await generateAllTts();}
+  try{
+    await ensureTtsServerAwake(attempt => setTtsLoadingText(
+      attempt === 1 ? 'Đang kết nối máy chủ TTS...' : `Máy chủ Free đang khởi động, vui lòng chờ... (${attempt})`
+    ));
+    setTtsLoadingText('Đang tạo các đoạn giọng đọc còn thiếu...');
+    return await generateAllTts();
+  }
+  catch(error){alert('Không kết nối được máy chủ TTS: '+error.message);return false;}
   finally{ttsPreparing=false;hideTtsLoading();playBtn.disabled=false;exportBtn.disabled=false;playBtn.textContent='▶ Play';}
 }
 

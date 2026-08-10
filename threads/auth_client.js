@@ -32,9 +32,10 @@
   let mode = 'login';
 
   function apiBase() {
-    return (document.getElementById('tts-server-url')?.value || 'http://localhost:8007').replace(/\/$/, '');
+    return (document.getElementById('tts-server-url')?.value || 'https://threads-api-s13z.onrender.com').replace(/\/$/, '');
   }
   async function request(path, options = {}, retry = true) {
+    if (window.ensureTtsServerAwake) await window.ensureTtsServerAwake();
     const headers = new Headers(options.headers || {});
     if (accessToken) headers.set('Authorization', `Bearer ${accessToken}`);
     const response = await fetch(apiBase() + path, { ...options, headers });
