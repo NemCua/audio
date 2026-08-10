@@ -1,0 +1,27 @@
+services:
+  - type: web
+    name: threads-api
+    runtime: docker
+    plan: free
+    dockerfilePath: ./Dockerfile
+    healthCheckPath: /health
+    envVars:
+      - key: DATABASE_URL
+        sync: false
+      - key: AUTH_SECRET_KEY
+        sync: false
+      - key: AUTH_ADMIN_KEY
+        sync: false
+      - key: CAPCUT_DEVICE_ID
+        sync: false
+      - key: CAPCUT_IID
+        sync: false
+      - key: REQUIRE_TTS_AUTH
+        value: "1"
+      - key: DB_POOL_MAX
+        value: "3"
+      - key: TTS_REQUESTS_PER_MINUTE
+        value: "30"
+      - key: TTS_FILE_TTL_SECONDS
+        value: "3600"
+

@@ -4,8 +4,13 @@ from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
 
-from account_api import migrate, router as account_router
-from tts_server import app as tts_app
+try:
+    from .account_api import migrate, router as account_router
+    from .tts_server import app as tts_app
+except ImportError:
+    # Giữ cách chạy trực tiếp: python3 threads/unified_server.py
+    from account_api import migrate, router as account_router
+    from tts_server import app as tts_app
 
 
 @asynccontextmanager
@@ -23,4 +28,8 @@ app = tts_app
 
 if __name__ == "__main__":
     import uvicorn
-    uvicorn.run(app, host=os.getenv("API_HOST", "0.0.0.0"), port=int(os.getenv("API_PORT", "8007")))
+    uvicorn.run(
+        app,
+        host=os.getenv("API_HOST", "0.0.0.0"),
+        port=int(os.getenv("PORT", os.getenv("API_PORT", "8007"))),
+    )

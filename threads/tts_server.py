@@ -60,6 +60,12 @@ app.add_middleware(
 app.mount("/videoPhanBiet", StaticFiles(directory=str(VIDEO_PHANBIET_DIR)), name="videoPhanBiet")
 
 
+@app.get("/health", include_in_schema=False)
+def health():
+    """Health check nhẹ để Render đánh thức service mà không chạm database/CapCut."""
+    return {"ok": True, "service": "threads-api"}
+
+
 def _cleanup_expired_tts_files() -> None:
     """TTS là file chuyển tiếp; bản desktop tải về máy user ngay sau khi tạo."""
     cutoff = time.time() - TTS_FILE_TTL_SECONDS

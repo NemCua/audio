@@ -1,0 +1,15 @@
+.git
+.gitignore
+.env
+.env.*
+!.env.example
+__pycache__/
+*.py[cod]
+*.log
+node_modules/
+electron/node_modules/
+threads/media/
+threads/tts_audio/
+output/
+workdir/
+
