@@ -80,7 +80,12 @@ def dashboard():
                            FROM export_reservations r JOIN users u ON u.id=r.user_id
                            ORDER BY r.created_at DESC LIMIT 20""")
             reservations = rows(cur)
-    return {"summary": summary, "pricing": pricing, "reservations": reservations}
+    return {
+        "summary": summary,
+        "pricing": pricing,
+        "default_pricing": DEFAULT_CREDIT_PRICING,
+        "reservations": reservations,
+    }
 
 
 @app.get("/api/users")
