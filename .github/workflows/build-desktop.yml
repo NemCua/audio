@@ -19,7 +19,7 @@ jobs:
           - os: macos-14
             command: npm run build:mac -- --arm64
             artifact: macos-arm64
-          - os: macos-13
+          - os: macos-15-intel
             command: npm run build:mac -- --x64
             artifact: macos-x64
     runs-on: ${{ matrix.os }}
@@ -58,6 +58,6 @@ jobs:
           path: release-assets
           merge-multiple: true
       - name: Publish GitHub Release
-        run: gh release create "$GITHUB_REF_NAME" release-assets/*.dmg release-assets/*.zip --title "Threads Video Maker v1.0.0" --generate-notes
+        run: gh release create "$GITHUB_REF_NAME" release-assets/*.dmg release-assets/*.zip --title "Threads Video Maker ${GITHUB_REF_NAME#desktop-}" --generate-notes
         env:
           GH_TOKEN: ${{ github.token }}
