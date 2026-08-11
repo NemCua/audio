@@ -871,6 +871,7 @@ header span { font-size: 12px; color: #4b5563; }
 }
 .lib-item { cursor: pointer; border-radius: 8px; border: 1px solid transparent; }
 .lib-item.selected { border-color: #4ade80; background: #0f2417; }
+.voice-picker{position:relative}.voice-picker-trigger{width:100%;display:flex;align-items:center;justify-content:space-between;gap:10px;padding:10px 12px;border:1px solid #303653;border-radius:8px;background:#11152a;color:#e5e7eb;cursor:pointer;text-align:left}.voice-picker-trigger::after{content:'▾';color:#8b5cf6}.voice-picker.open .voice-picker-trigger{border-color:#7c3aed}.voice-picker-menu{display:none;position:absolute;z-index:220;left:0;right:0;top:calc(100% + 5px);max-height:330px;overflow:auto;padding:7px;border:1px solid #343a5d;border-radius:10px;background:#0b0e1b;box-shadow:0 18px 45px #000b}.voice-picker.open .voice-picker-menu{display:block}.voice-picker-tools{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:5px 6px 9px;color:#8f96b3;font-size:10px}.voice-picker-tools button{padding:5px 8px;border:1px solid #343a5d;border-radius:6px;background:#151a31;color:#c4b5fd;cursor:pointer;font-size:10px}.voice-picker-group{padding:7px 8px 4px;color:#8b5cf6;font-size:10px;font-weight:800;text-transform:uppercase}.voice-picker-row{display:flex;align-items:center;gap:6px;padding:4px;border-radius:7px}.voice-picker-row:hover,.voice-picker-row.selected{background:#171c32}.voice-picker-select{min-width:0;flex:1;padding:7px 8px;border:0;background:transparent;color:#e5e7eb;cursor:pointer;text-align:left;font-size:12px}.voice-picker-preview{flex:0 0 auto;padding:6px 8px;border:1px solid #343a5d;border-radius:6px;background:#202641;color:#a78bfa;cursor:pointer;font-size:10px}.voice-picker-preview.playing{border-color:#22c55e;color:#4ade80}
 .lib-item-audio {
   display: flex; align-items: center; gap: 12px; padding: 10px 12px;
 }
@@ -1098,7 +1099,7 @@ header span { font-size: 12px; color: #4b5563; }
       </div>
       <div style="display:none">
         <input type="checkbox" id="tts-disabled-toggle"/>
-        <select id="tts-voice"></select>
+        <input type="hidden" id="tts-voice" value="0"/>
         <input type="text" id="tts-server-url" value="https://threads-api-s13z.onrender.com" onchange="loadTtsVoices()"/>
         <div id="tts-server-status">Đang kiểm tra kết nối…</div>
         <button id="gen-all-tts-btn" onclick="generateAllTts()"></button>
@@ -1244,8 +1245,8 @@ header span { font-size: 12px; color: #4b5563; }
         </div>
         <input type="file" id="mess-avatar-file" accept="image/*" style="display:none" onchange="uploadMessengerAvatar(this.files[0]);this.value=''"/>
         <div class="row2">
-          <div><label>Giọng mặc định — Đối phương</label><select id="mess-theirs-voice" onchange="setMessengerSideVoice('theirs',this.value)"></select></div>
-          <div><label>Giọng mặc định — Tôi</label><select id="mess-mine-voice" onchange="setMessengerSideVoice('mine',this.value)"></select></div>
+          <div><label>Giọng mặc định — Đối phương</label><div id="mess-theirs-voice-host"></div></div>
+          <div><label>Giọng mặc định — Tôi</label><div id="mess-mine-voice-host"></div></div>
         </div>
         <label>Tốc độ đọc toàn bộ hội thoại: <b id="mess-tts-speed-label">1.00×</b></label>
         <input type="range" id="mess-tts-speed" min="0.5" max="1.5" step="0.05" value="1" oninput="messTtsSpeed=parseFloat(this.value);document.getElementById('mess-tts-speed-label').textContent=messTtsSpeed.toFixed(2)+'×'"/>
@@ -1661,14 +1662,8 @@ let ttsVoices = [];
 // chọn nhầm. So khớp theo LABEL (không phải index, vì thứ tự trong
 // CAPCUT_VOICES_VI — translate_video.py — có thể đổi/thêm giọng sau này mà
 // không cần sửa danh sách cảnh báo này theo).
-const WARN_VOICE_LABELS = new Set([
-  'Giọng Gái Mới Lớn', 'Ban Mai', 'Bản Tin Nữ', 'Giọng Nam Trầm', 'Alex Đại Đế',
-]);
 function voiceOptionHtml(v, i, selected) {
-  const warn = WARN_VOICE_LABELS.has(v.label);
-  const label = (warn ? '⚠️ ' : '') + v.label + (warn ? ' (chất lượng chưa tốt)' : '');
-  const style = warn ? ' style="color:#eab308;background:#1c1917"' : '';
-  return `<option value="${i}" ${selected ? 'selected' : ''}${style}>${esc(label)}</option>`;
+  return `<option value="${i}" ${selected ? 'selected' : ''}>${esc(v.label)}</option>`;
 }
 function voiceOptionsHtml(selected) {
   const groups = [
@@ -1680,6 +1675,57 @@ function voiceOptionsHtml(selected) {
     return options.length ? `<optgroup label="${label}">${options.map(x => voiceOptionHtml(x.v, x.i, String(x.i) === String(selected))).join('')}</optgroup>` : '';
   }).join('');
 }
+
+const voicePreviewCache = new Map();
+const voicePreviewPlayer = new Audio();
+function voicePickerRowsHtml(selected) {
+  const groups=[['CapCut TTS','capcut'],['Edge TTS','edge']];
+  return groups.map(([label,engine])=>{
+    const rows=ttsVoices.map((voice,index)=>({voice,index})).filter(item=>(item.voice.engine||'capcut')===engine);
+    if(!rows.length)return '';
+    return `<div class="voice-picker-group">${label}</div>${rows.map(({voice,index})=>`<div class="voice-picker-row ${String(index)===String(selected)?'selected':''}" data-voice-index="${index}"><button type="button" class="voice-picker-select" onclick="selectCustomVoice(this.closest('.voice-picker'),${index});event.stopPropagation()">${esc(voice.label)}</button><button type="button" class="voice-picker-preview" onclick="previewCustomVoice(${index},this,event)">▶ Thử</button></div>`).join('')}`;
+  }).join('');
+}
+function voicePickerHtml(inputId,selected){
+  const index=Number.isFinite(Number(selected))?Number(selected):0,voice=ttsVoices[index]||ttsVoices[0];
+  return `<div class="voice-picker"><input type="hidden" id="${inputId}" value="${index}"/><button type="button" class="voice-picker-trigger" onclick="toggleCustomVoicePicker(this.parentElement,event)">${esc(voice?.label||'Chọn giọng đọc')}</button><div class="voice-picker-menu" onclick="event.stopPropagation()"><div class="voice-picker-tools"><span>${ttsVoices.length} giọng đọc</span><button type="button" onclick="prepareAllVoicePreviews(this,event)">Tạo tất cả mẫu thử</button></div>${voicePickerRowsHtml(index)}</div></div>`;
+}
+function toggleCustomVoicePicker(picker,event){event?.stopPropagation();document.querySelectorAll('.voice-picker.open').forEach(item=>{if(item!==picker)item.classList.remove('open')});picker.classList.toggle('open');}
+function selectCustomVoice(picker,index){
+  const input=picker.querySelector('input[type="hidden"]'),voice=ttsVoices[index];if(!input||!voice)return;
+  input.value=String(index);picker.querySelector('.voice-picker-trigger').textContent=voice.label;
+  picker.querySelectorAll('.voice-picker-row').forEach(row=>row.classList.toggle('selected',Number(row.dataset.voiceIndex)===index));picker.classList.remove('open');
+  if(input.id==='mess-theirs-voice')setMessengerSideVoice('theirs',index);
+  if(input.id==='mess-mine-voice')setMessengerSideVoice('mine',index);
+}
+function setCustomVoicePickerValue(inputId,index){
+  const input=document.getElementById(inputId),picker=input?.closest('.voice-picker');
+  if(!input||!picker||!ttsVoices[index])return;
+  input.value=String(index);picker.querySelector('.voice-picker-trigger').textContent=ttsVoices[index].label;
+  picker.querySelectorAll('.voice-picker-row').forEach(row=>row.classList.toggle('selected',Number(row.dataset.voiceIndex)===Number(index)));
+}
+async function previewCustomVoice(index,button,event){
+  event?.stopPropagation();const voice=ttsVoices[index];if(!voice)return;
+  const original=button.textContent;button.disabled=true;button.textContent='…';
+  try{
+    let sample=voicePreviewCache.get(index);
+    if(!sample){sample=await fetchTts(`Đây là giọng đọc ${voice.label}`,index,false,1);voicePreviewCache.set(index,sample);}
+    voicePreviewPlayer.pause();voicePreviewPlayer.src=sample.audioUrl;await voicePreviewPlayer.play();
+    document.querySelectorAll('.voice-picker-preview.playing').forEach(item=>item.classList.remove('playing'));button.classList.add('playing');button.textContent='■ Đang phát';
+    voicePreviewPlayer.onended=()=>{button.classList.remove('playing');button.textContent='▶ Thử';};
+  }catch(error){button.textContent='Lỗi';alert('Không thử được giọng đọc: '+error.message);}
+  finally{button.disabled=false;if(button.textContent==='…')button.textContent=original;}
+}
+async function prepareAllVoicePreviews(button,event){
+  event?.stopPropagation();const missing=ttsVoices.map((voice,index)=>({voice,index})).filter(item=>!voicePreviewCache.has(item.index));if(!missing.length){button.textContent='✓ Đã có đủ mẫu';return;}
+  button.disabled=true;button.textContent=`Đang tạo 0/${missing.length}`;
+  try{
+    const results=await fetchProjectTtsBatch(missing.map(({voice,index})=>({text:`Đây là giọng đọc ${voice.label}`,voiceIdx:index,speed:1,echo:false})));
+    results.forEach((result,i)=>voicePreviewCache.set(missing[i].index,result));button.textContent='✓ Đã tạo tất cả';
+  }catch(error){button.textContent='Thử lại';alert('Không tạo được toàn bộ mẫu giọng: '+error.message);}
+  finally{button.disabled=false;}
+}
+document.addEventListener('click',event=>{if(!event.target.closest('.voice-picker'))document.querySelectorAll('.voice-picker.open').forEach(item=>item.classList.remove('open'));});
 
 const DEFAULT_TTS_SERVER_URL = 'https://threads-api-s13z.onrender.com';
 function ttsServerUrl() {
@@ -1733,8 +1779,7 @@ async function loadTtsVoices() {
     const res = await fetch(ttsServerUrl() + '/voices');
     if (!res.ok) throw new Error('HTTP ' + res.status);
     ttsVoices = await res.json();
-    const sel = document.getElementById('tts-voice');
-    sel.innerHTML = voiceOptionsHtml(0);
+    document.getElementById('tts-voice').value = '0';
     statusEl.textContent = `✓ Kết nối OK — ${ttsVoices.length} giọng`;
     document.getElementById('feat-tts').classList.add('done');
   } catch (e) {
@@ -1762,9 +1807,7 @@ function voiceFieldHtml(prefix, currentIdx) {
   }
   const sidebarIdx = document.getElementById('tts-voice').value;
   const useIdx = currentIdx != null ? currentIdx : sidebarIdx;
-  const opts = voiceOptionsHtml(useIdx);
-  return `<label>🔊 Giọng đọc</label>
-          <select id="${prefix}-voice">${opts}</select>`;
+  return `<label>🔊 Giọng đọc</label>${voicePickerHtml(`${prefix}-voice`,useIdx)}`;
 }
 
 function readVoiceIdx(prefix) {
@@ -2044,9 +2087,6 @@ let messInsertAt = null;
 let messQuickAudioTargetIndex = null;
 let messQuickAudioMedia = null;
 
-function messVoiceOptions(selected) {
-  return voiceOptionsHtml(selected);
-}
 function updateMessengerPlatformPicker(){
   const trigger=document.getElementById('mess-platform-trigger');
   if(trigger)trigger.textContent=messPlatform==='zalo'?'Zalo':'Messenger';
@@ -2081,8 +2121,8 @@ function openMessengerModal(stepId = null, conversationMode = false) {
   document.getElementById('mess-modal-title').textContent = conversationMode ? 'Chi tiết Box tin nhắn' : s ? 'Sửa tin nhắn' : 'Thêm đoạn chat';
   document.getElementById('mess-json-paste-wrap').style.display = 'none';
   document.getElementById('mess-json-paste').value = '';
-  document.getElementById('mess-theirs-voice').innerHTML=messVoiceOptions(messSideVoiceIdx.theirs);
-  document.getElementById('mess-mine-voice').innerHTML=messVoiceOptions(messSideVoiceIdx.mine);
+  document.getElementById('mess-theirs-voice-host').innerHTML=voicePickerHtml('mess-theirs-voice',messSideVoiceIdx.theirs);
+  document.getElementById('mess-mine-voice-host').innerHTML=voicePickerHtml('mess-mine-voice',messSideVoiceIdx.mine);
   document.getElementById('mess-tts-speed').value=String(messTtsSpeed);
   document.getElementById('mess-tts-speed-label').textContent=messTtsSpeed.toFixed(2)+'×';
   document.getElementById('mess-add-btn').style.display = s&&!conversationMode ? 'none' : 'block';
@@ -2340,8 +2380,8 @@ function applyMessengerJson(raw) {
     const mineVoice = raw.mineVoiceIdx ?? raw.myVoiceIdx;
     if (Number.isInteger(Number(theirsVoice))) messSideVoiceIdx.theirs = Number(theirsVoice);
     if (Number.isInteger(Number(mineVoice))) messSideVoiceIdx.mine = Number(mineVoice);
-    document.getElementById('mess-theirs-voice').value = String(messSideVoiceIdx.theirs);
-    document.getElementById('mess-mine-voice').value = String(messSideVoiceIdx.mine);
+    setCustomVoicePickerValue('mess-theirs-voice',messSideVoiceIdx.theirs);
+    setCustomVoicePickerValue('mess-mine-voice',messSideVoiceIdx.mine);
     messTtsSpeed=Math.max(.5,Math.min(1.5,Number(raw.ttsSpeed || 1)));
     document.getElementById('mess-tts-speed').value=String(messTtsSpeed);
     document.getElementById('mess-tts-speed-label').textContent=messTtsSpeed.toFixed(2)+'×';
