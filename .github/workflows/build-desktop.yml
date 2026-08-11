@@ -4,6 +4,7 @@ on:
   workflow_dispatch:
   push:
     branches: [threads_all_browser]
+    tags: ["desktop-v*"]
     paths:
       - "electron/**"
       - "threads/**"
@@ -21,9 +22,6 @@ jobs:
           - os: macos-13
             command: npm run build:mac -- --x64
             artifact: macos-x64
-          - os: windows-2022
-            command: npm run build:win -- --x64
-            artifact: windows-x64
     runs-on: ${{ matrix.os }}
     defaults:
       run:
@@ -42,5 +40,24 @@ jobs:
       - uses: actions/upload-artifact@v4
         with:
           name: threads-video-maker-${{ matrix.artifact }}
-          path: electron/dist/*
+          path: |
+            electron/dist/*.dmg
+            electron/dist/*.zip
           if-no-files-found: error
+
+  release:
+    if: startsWith(github.ref, 'refs/tags/desktop-v')
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: threads-video-maker-macos-*
+          path: release-assets
+          merge-multiple: true
+      - name: Publish GitHub Release
+        run: gh release create "$GITHUB_REF_NAME" release-assets/*.dmg release-assets/*.zip --title "Threads Video Maker v1.0.0" --generate-notes
+        env:
+          GH_TOKEN: ${{ github.token }}

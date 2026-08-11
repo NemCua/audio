@@ -1,6 +1,6 @@
 {
   "name": "threads-video-maker-desktop",
-  "version": "0.1.0",
+  "version": "1.0.0",
   "author": "NemCua",
   "engines": { "node": ">=22.12.0" },
   "private": true,
