@@ -2411,7 +2411,7 @@ async function generateMessengerTtsResults(messages,status,reuseSteps=[]){
   return results;
 }
 function makeMessengerStep(msg,index,history,conversationId,ttsResult,oldStep=null){
-  return {id:oldStep?.id??stepIdCounter++,type:'mess',conversationId,groupId:oldStep?.groupId===false?false:(oldStep?.groupId||conversationId),messIndex:index,messPlatform,messShowFooter,messPartnerName:messPartnerName.trim()||'Tùng',messPartnerAvatar,messSideVoices:{...messSideVoiceIdx},messTtsSpeed,messHistory:history.map(x=>({...x})),text:msg.text,ttsText:msg.ttsText,voiceIdx:msg.voiceIdx,audioUrl:ttsResult?.audioUrl||null,ttsDuration:ttsResult?.duration||null,duration:ttsResult?.duration||DEFAULT_DUR.mess,gap:oldStep?.gap??0,clearBefore:oldStep?.clearBefore??true,hue:oldStep?.hue??0,offsetX:oldStep?.offsetX??0,offsetY:oldStep?.offsetY??0,rotation:oldStep?.rotation??0};
+  return {id:oldStep?.id??stepIdCounter++,type:'mess',conversationId,groupId:oldStep?.groupId===false?false:(oldStep?.groupId||conversationId),messIndex:index,messPlatform,messShowFooter,messPartnerName:messPartnerName.trim()||'Tùng',messPartnerAvatar,messSideVoices:{...messSideVoiceIdx},messTtsSpeed,messHistory:history.map(x=>({...x})),text:msg.text,ttsText:msg.ttsText,voiceIdx:msg.voiceIdx,audioUrl:ttsResult?.audioUrl||null,ttsDuration:ttsResult?.duration||null,duration:ttsResult?.duration||DEFAULT_DUR.mess,gap:oldStep?.gap??0,clearBefore:oldStep?.clearBefore??false,hue:oldStep?.hue??0,offsetX:oldStep?.offsetX??0,offsetY:oldStep?.offsetY??0,rotation:oldStep?.rotation??0};
 }
 function insertPendingMessengerAudios(drafts,messSteps){
   drafts.forEach((msg,i)=>{
@@ -3909,7 +3909,7 @@ function stepCardHtml(s, idx) {
           <input type="number" min="0" step="0.1" value="${s.gap}" onchange="updateStepField(${s.id},'gap',this.value)"/>
         </label>
         <label class="clear-toggle">
-          <input type="checkbox" ${s.clearBefore?'checked':''} onchange="updateStepField(${s.id},'clearBefore',this.checked)"/> Xoá nội dung cũ
+          <input type="checkbox" ${s.clearBefore?'checked':''} onchange="updateStepField(${s.id},'clearBefore',this.checked)"/> ${s.type==='mess'?'Ẩn card phía dưới':'Xoá nội dung cũ'}
         </label>
         <div class="sc-actions">
           <button onclick="${s.type==='mess'?`openMessengerModal(${s.id})`:`openStepModal('${s.type}',${s.id})`}" title="Sửa">✎</button>

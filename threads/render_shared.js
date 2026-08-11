@@ -478,9 +478,16 @@ function computeSceneAt(t) {
     // ĐỊNH DUY NHẤT (giống hệt post/comment/reply, mục 5.37 CONTEXT.md) —
     // logic render.
     let i = curIdx;
+    const visibleMessengerConversations = new Set();
     while (i >= 0) {
       const s = mainSteps[i];
-      if (s.type === 'post' || s.type === 'comment' || s.type === 'reply' || s.type === 'mess') stack.unshift(s);
+      if (s.type === 'mess') {
+        const conversationKey = s.conversationId || `mess-step-${s.id}`;
+        if (!visibleMessengerConversations.has(conversationKey)) {
+          stack.unshift(s);
+          visibleMessengerConversations.add(conversationKey);
+        }
+      } else if (s.type === 'post' || s.type === 'comment' || s.type === 'reply') stack.unshift(s);
       if (s.clearBefore) break;
       const prev = mainSteps[i - 1];
       if (!prev || Math.abs(prev._end + (prev.gap || 0) - s._start) > 1e-6) break;
