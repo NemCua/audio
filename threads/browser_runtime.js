@@ -18,14 +18,40 @@
 
   if (window.desktopApp?.getPathForFile) {
     const originalSetBgVideoFile = setBgVideoFile;
-    window.setBgVideoFile = setBgVideoFile = function (file) {
-      desktopBgVideoPath = window.desktopApp.getPathForFile(file);
-      return originalSetBgVideoFile(file);
+    window.setBgVideoFile = setBgVideoFile = async function (file) {
+      const result = originalSetBgVideoFile(file);
+      if (!file?.type?.startsWith('video/')) return result;
+      const applyButton = document.getElementById('bgvideo-apply');
+      if (applyButton) applyButton.disabled = true;
+      try {
+        const saved = await window.desktopApp.saveLocalAsset(new Uint8Array(await file.arrayBuffer()), 'video', file.name);
+        desktopBgVideoPath = saved.path;
+        document.getElementById('bgvideo-fname').textContent = `✓ Đã lưu vào thư viện: ${file.name}`;
+      } catch (_error) {
+        desktopBgVideoPath = window.desktopApp.getPathForFile(file);
+      } finally { if (applyButton) applyButton.disabled = false; }
     };
     const originalSetBgAudioFile = setBgAudioFile;
-    window.setBgAudioFile = setBgAudioFile = function (file) {
-      desktopBgAudioPath = window.desktopApp.getPathForFile(file);
-      return originalSetBgAudioFile(file);
+    window.setBgAudioFile = setBgAudioFile = async function (file) {
+      const result = originalSetBgAudioFile(file);
+      if (!file?.type?.startsWith('audio/')) return result;
+      const applyButton = document.getElementById('bgaudio-apply');
+      if (applyButton) applyButton.disabled = true;
+      try {
+        const saved = await window.desktopApp.saveLocalAsset(new Uint8Array(await file.arrayBuffer()), 'audio', file.name);
+        desktopBgAudioPath = saved.path;
+        document.getElementById('bgaudio-fname').textContent = `✓ Đã lưu vào thư viện: ${file.name}`;
+      } catch (_error) {
+        desktopBgAudioPath = window.desktopApp.getPathForFile(file);
+      } finally { if (applyButton) applyButton.disabled = false; }
+    };
+    const originalSelectBgVideoLibraryItem = selectBgVideoLibraryItem;
+    window.selectBgVideoLibraryItem = selectBgVideoLibraryItem = function (el) {
+      const result = originalSelectBgVideoLibraryItem(el); desktopBgVideoPath = bgVideoLibraryItem?.desktopPath || null; return result;
+    };
+    const originalSelectBgAudioLibraryItem = selectBgAudioLibraryItem;
+    window.selectBgAudioLibraryItem = selectBgAudioLibraryItem = function (el) {
+      const result = originalSelectBgAudioLibraryItem(el); desktopBgAudioPath = bgAudioLibraryItem?.desktopPath || null; return result;
     };
     const originalClearBgVideo = clearBgVideo;
     window.clearBgVideo = clearBgVideo = function () { desktopBgVideoPath = null; return originalClearBgVideo(); };
@@ -293,9 +319,7 @@
   }
   window.addEventListener('credit-balance-changed', refreshExportCreditInfo);
 
-  // Server-backed reusable libraries are intentionally disabled in static mode.
-  window.loadBgVideoLibrary = loadBgVideoLibrary = async () => {};
-  window.loadBgAudioLibrary = loadBgAudioLibrary = async () => {};
+  // Video/Audio nền dùng thư viện cục bộ trong Documents của người dùng.
   window.loadLibraryOptions = loadLibraryOptions = async function () {
     const category = arguments[0];
     const grid = document.getElementById('m-library-grid');

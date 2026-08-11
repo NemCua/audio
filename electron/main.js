@@ -153,6 +153,27 @@ ipcMain.handle('desktop:check-assets', () => {
 
 ipcMain.handle('desktop:get-workspace-info', () => ({ root: workspaceRoot() }));
 
+ipcMain.handle('desktop:get-local-media-library', (_event, kind) => {
+  const allowed = {
+    video: /\.(mp4|mov|m4v|webm|avi|mkv)$/i,
+    audio: /\.(mp3|wav|m4a|aac|ogg|flac|opus)$/i,
+  };
+  if (!allowed[kind]) throw new Error('Loại thư viện media không hợp lệ');
+  const root = assetDirectory(kind);
+  return fs.readdirSync(root, { withFileTypes: true })
+    .filter(entry => entry.isFile() && allowed[kind].test(entry.name))
+    .map(entry => {
+      const filePath = path.join(root, entry.name);
+      return { filename: entry.name, url: pathToFileURL(filePath).href, desktopPath: filePath, local: true };
+    })
+    .sort((a, b) => fs.statSync(b.desktopPath).mtimeMs - fs.statSync(a.desktopPath).mtimeMs);
+});
+
+ipcMain.handle('desktop:open-media-folder', (_event, kind) => {
+  if (!['video', 'audio'].includes(kind)) throw new Error('Loại thư mục media không hợp lệ');
+  return shell.openPath(assetDirectory(kind));
+});
+
 ipcMain.handle('desktop:get-bundled-memeready', () => {
   const root = path.join(threadsRoot(), 'memeready');
   if (!fs.existsSync(root)) return [];

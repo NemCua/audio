@@ -1029,7 +1029,7 @@ header span { font-size: 12px; color: #4b5563; }
         <div class="hint">Chọn 1 video gameplay chạy nền (vd: Subway Surfers, Minecraft parkour...). Video sẽ được crop phủ kín khung 9:16.</div>
         <div class="platform-picker">
           <button type="button" class="platform-btn active" onclick="setBgVideoSourceTab('file',this)">💻 Từ máy</button>
-          <button type="button" class="platform-btn" style="display:none" disabled>📂 Thư viện server</button>
+          <button type="button" class="platform-btn" onclick="setBgVideoSourceTab('library',this)">📂 Thư viện của tôi</button>
         </div>
         <div id="bgvideo-file-tab">
           <div class="drop-zone" id="bgvideo-dropzone">
@@ -1040,6 +1040,7 @@ header span { font-size: 12px; color: #4b5563; }
           </div>
         </div>
         <div id="bgvideo-library-tab" style="display:none">
+          <button type="button" class="btn btn-ghost" style="margin-bottom:8px" onclick="window.desktopApp?.openMediaFolder?.('video')">Mở thư mục Video</button>
           <div class="lib-grid lib-grid-bg" id="bgvideo-library-grid"><div class="lib-empty">Đang tải...</div></div>
         </div>
         <button class="btn btn-primary" id="bgvideo-apply" onclick="applyBgVideo()" disabled>▶ Xem thử trong khung 9:16</button>
@@ -1059,7 +1060,7 @@ header span { font-size: 12px; color: #4b5563; }
         <div class="hint">Chọn nhạc nền phát cùng lúc với video khi xem thử. Video gameplay sẽ tự tắt tiếng gốc.</div>
         <div class="platform-picker">
           <button type="button" class="platform-btn active" onclick="setBgAudioSourceTab('file',this)">💻 Từ máy</button>
-          <button type="button" class="platform-btn" style="display:none" disabled>📂 Thư viện server</button>
+          <button type="button" class="platform-btn" onclick="setBgAudioSourceTab('library',this)">📂 Thư viện của tôi</button>
         </div>
         <div id="bgaudio-file-tab">
           <div class="drop-zone" id="bgaudio-dropzone">
@@ -1070,6 +1071,7 @@ header span { font-size: 12px; color: #4b5563; }
           </div>
         </div>
         <div id="bgaudio-library-tab" style="display:none">
+          <button type="button" class="btn btn-ghost" style="margin-bottom:8px" onclick="window.desktopApp?.openMediaFolder?.('audio')">Mở thư mục Audio</button>
           <div class="lib-grid lib-grid-bg" id="bgaudio-library-grid"><div class="lib-empty">Đang tải...</div></div>
         </div>
 
@@ -1431,12 +1433,12 @@ async function loadBgVideoLibrary() {
   const grid = document.getElementById('bgvideo-library-grid');
   grid.innerHTML = `<div class="lib-empty">Đang tải...</div>`;
   try {
-    const res = await fetch(MEDIA_SERVER_URL + '/library/background');
-    if (!res.ok) throw new Error('HTTP ' + res.status);
-    const items = await res.json();
-    if (!items.length) { grid.innerHTML = `<div class="lib-empty">threads/background/ đang trống — copy video vào đó rồi tải lại tab này.</div>`; return; }
+    let items;
+    if (window.desktopApp?.getLocalMediaLibrary) items = await window.desktopApp.getLocalMediaLibrary('video');
+    else { const res = await fetch(MEDIA_SERVER_URL + '/library/background'); if (!res.ok) throw new Error('HTTP ' + res.status); items = await res.json(); }
+    if (!items.length) { grid.innerHTML = `<div class="lib-empty">Thư viện Video đang trống — chọn video từ máy hoặc mở thư mục để chép video vào.</div>`; return; }
     grid.innerHTML = items.map(it => {
-      const url = MEDIA_SERVER_URL + it.url;
+      const url = /^(?:file:|https?:|blob:)/i.test(it.url) ? it.url : MEDIA_SERVER_URL + it.url;
       const itemJson = esc(JSON.stringify(it));
       // preload="metadata" + KHÔNG autoplay — trình duyệt tự hiện frame đầu
       // làm poster mặc định của <video> khi đã load xong metadata+frame 0,
@@ -1447,13 +1449,13 @@ async function loadBgVideoLibrary() {
       </div>`;
     }).join('');
   } catch (e) {
-    grid.innerHTML = `<div class="lib-empty" style="color:#ef4444">⚠ Không tải được thư viện — kiểm tra media_server.py đang chạy</div>`;
+    grid.innerHTML = `<div class="lib-empty" style="color:#ef4444">⚠ Không tải được thư viện Video: ${esc(e.message)}</div>`;
   }
 }
 
 function selectBgVideoLibraryItem(el) {
   const item = JSON.parse(el.dataset.item);
-  bgVideoLibraryItem = { url: MEDIA_SERVER_URL + item.url, filename: item.filename };
+  bgVideoLibraryItem = { url: /^(?:file:|https?:|blob:)/i.test(item.url) ? item.url : MEDIA_SERVER_URL + item.url, filename: item.filename, desktopPath:item.desktopPath || null };
   bgVideoFile = null;
   document.getElementById('bgvideo-apply').disabled = false;
   document.querySelectorAll('#bgvideo-library-grid .lib-item.selected').forEach(x => x.classList.remove('selected'));
@@ -1561,12 +1563,12 @@ async function loadBgAudioLibrary() {
   const grid = document.getElementById('bgaudio-library-grid');
   grid.innerHTML = `<div class="lib-empty">Đang tải...</div>`;
   try {
-    const res = await fetch(MEDIA_SERVER_URL + '/library/bgaudio');
-    if (!res.ok) throw new Error('HTTP ' + res.status);
-    const items = await res.json();
-    if (!items.length) { grid.innerHTML = `<div class="lib-empty">threads/audiobackground/ đang trống — copy nhạc vào đó rồi tải lại tab này.</div>`; return; }
+    let items;
+    if (window.desktopApp?.getLocalMediaLibrary) items = await window.desktopApp.getLocalMediaLibrary('audio');
+    else { const res = await fetch(MEDIA_SERVER_URL + '/library/bgaudio'); if (!res.ok) throw new Error('HTTP ' + res.status); items = await res.json(); }
+    if (!items.length) { grid.innerHTML = `<div class="lib-empty">Thư viện Audio đang trống — chọn âm thanh từ máy hoặc mở thư mục để chép file vào.</div>`; return; }
     grid.innerHTML = items.map(it => {
-      const url = MEDIA_SERVER_URL + it.url;
+      const url = /^(?:file:|https?:|blob:)/i.test(it.url) ? it.url : MEDIA_SERVER_URL + it.url;
       const itemJson = esc(JSON.stringify(it));
       // Nghe thử (yêu cầu người dùng, mục 5.40) — tái dùng đúng
       // toggleLibraryPreviewAudio() đã có cho thư viện audio hiệu ứng.
@@ -1576,13 +1578,13 @@ async function loadBgAudioLibrary() {
       </div>`;
     }).join('');
   } catch (e) {
-    grid.innerHTML = `<div class="lib-empty" style="color:#ef4444">⚠ Không tải được thư viện — kiểm tra media_server.py đang chạy</div>`;
+    grid.innerHTML = `<div class="lib-empty" style="color:#ef4444">⚠ Không tải được thư viện Audio: ${esc(e.message)}</div>`;
   }
 }
 
 function selectBgAudioLibraryItem(el) {
   const item = JSON.parse(el.dataset.item);
-  bgAudioLibraryItem = { url: MEDIA_SERVER_URL + item.url, filename: item.filename };
+  bgAudioLibraryItem = { url: /^(?:file:|https?:|blob:)/i.test(item.url) ? item.url : MEDIA_SERVER_URL + item.url, filename: item.filename, desktopPath:item.desktopPath || null };
   bgAudioFile = null;
   document.getElementById('bgaudio-apply').disabled = false;
   document.querySelectorAll('#bgaudio-library-grid .lib-item.selected').forEach(x => x.classList.remove('selected'));
