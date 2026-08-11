@@ -2082,6 +2082,12 @@ let messInsertAt = null;
 let messQuickAudioTargetIndex = null;
 let messQuickAudioMedia = null;
 
+// Select giọng riêng của từng tin đang được ẩn nhưng vẫn được giữ để tương
+// thích dữ liệu dự án cũ và luồng lưu Messenger hiện tại.
+function messVoiceOptions(selected) {
+  return voiceOptionsHtml(selected);
+}
+
 function updateMessengerPlatformPicker(){
   const trigger=document.getElementById('mess-platform-trigger');
   if(trigger)trigger.textContent=messPlatform==='zalo'?'Zalo':'Messenger';
