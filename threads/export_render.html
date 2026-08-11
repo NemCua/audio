@@ -551,6 +551,7 @@ header span { font-size: 12px; color: #4b5563; }
   display: flex; align-items: center; justify-content: center;
   color: #ccc; font-size: 3cqw; font-weight: 700; text-align: center; padding: 4cqw;
 }
+.retained-meme-layer{position:absolute;inset:0;z-index:7;pointer-events:none}.retained-meme-layer .meme-overlay{z-index:auto}
 
 .preview-info {
   width: 100%;
@@ -798,6 +799,7 @@ header span { font-size: 12px; color: #4b5563; }
 
 <div class="preview-frame" id="preview-frame" style="max-width:none;border-radius:0;border:none;box-shadow:none;background:transparent">
   <div class="thr-stack" id="thr-stack"></div>
+  <div class="retained-meme-layer" id="retained-meme-layer"></div>
   <div class="meme-overlay" id="meme-overlay" style="display:none"></div>
 </div>
 <!-- Checkbox giả — displayIdentity()/blurIdentityOn() trong render_shared.js
@@ -917,13 +919,15 @@ function measureMemeBox() {
 }
 
 async function renderStackAt(t) {
-  const { stack, memeStep } = computeSceneAt(t);
+  const { stack, memeStep, memeSteps=[] } = computeSceneAt(t);
   const stackEl = document.getElementById('thr-stack');
   stackEl.innerHTML = stack.map(buildCardHtml).join('');
   autoScrollStack();
   autoScrollMessenger(stackEl);
 
   const memeEl = document.getElementById('meme-overlay');
+  const retainedMemeLayer = document.getElementById('retained-meme-layer');
+  retainedMemeLayer.innerHTML = memeSteps.filter(s=>!memeStep||s.id!==memeStep.id).map(retainedMemeHtml).join('');
   const dynamicMeme = isDynamicMeme(memeStep);
   let memeBox = null;
   if (memeStep && memeStep.mediaUrl) {
@@ -941,7 +945,9 @@ async function renderStackAt(t) {
 
   await Promise.all([
     waitImagesLoaded(stackEl),
+    waitImagesLoaded(retainedMemeLayer),
     waitImagesLoaded(memeEl),
+    waitVideosMetadata(retainedMemeLayer),
     waitVideosMetadata(memeEl),
     waitAnimationsDone(stackEl),
   ]);

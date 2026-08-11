@@ -443,6 +443,7 @@ let _lastStackKey = null;
 let _lastStackIds = [];   // mảng id của _lastStackKey — dùng để so khớp vị trí với stack mới
 let _lastStackRevisions = []; // revision của từng id tại _lastStackIds, cùng vị trí — phát hiện "id giữ nguyên nhưng nội dung đã sửa"
 let _lastMemeKey = null;
+let _lastRetainedMemeKey = null;
 
 // Đếm số lần mỗi step id được sửa nội dung (submitStepModal khi editingStepId
 // khớp) — dùng để renderAtTime() biết 1 step "trông giống cũ" (id không đổi,
@@ -495,16 +496,28 @@ function computeSceneAt(t) {
     }
   }
 
-  // Ảnh: chỉ hiện trong đúng cửa sổ sống của chính nó (biến memeStep giữ
-  // nguyên tên từ thời còn step 'meme' riêng — đã bỏ, xem CONTEXT.md — tránh
-  // đổi tên lan rộng sang buildCardHtml/renderAtTime/export_render.html
-  // không cần thiết chỉ vì đổi ý nghĩa).
-  let memeStep = null;
-  for (const s of steps) {
-    if ((s.type === 'image' || s.type === 'sticker') && t >= s._start - 1e-6 && t < s._end - 1e-6) { memeStep = s; break; }
+  // Ảnh/sticker tuần tự tồn tại tiếp cho tới khi một step sau bật
+  // clearBefore. Media song song vẫn chỉ sống đúng bằng cửa sổ card neo.
+  // Nhờ vậy sticker không tick "Xóa nội dung cũ" có thể nằm cùng ảnh trước.
+  const memeSteps = [];
+  if (curIdx >= 0) for (const s of steps) {
+    if ((s._start || 0) > t + 1e-6) continue;
+    if (!isParallelMedia(s) && s.clearBefore) memeSteps.length = 0;
+    if (s.type !== 'image' && s.type !== 'sticker') continue;
+    if (isParallelVisual(s) && !(t >= s._start - 1e-6 && t < s._end - 1e-6)) continue;
+    memeSteps.push(s);
   }
+  const memeStep = memeSteps.length ? memeSteps[memeSteps.length - 1] : null;
 
-  return { stack, memeStep };
+  return { stack, memeStep, memeSteps };
+}
+
+function retainedMemeHtml(step) {
+  if (!step || !step.mediaUrl) return '';
+  const media = step.mediaIsVideo
+    ? `<video src="${esc(step.mediaUrl)}" autoplay loop playsinline></video>`
+    : `<img src="${esc(step.mediaUrl)}" alt=""/>`;
+  return `<div class="meme-overlay retained-meme ${step.type==='sticker'?'sticker-overlay':''}" data-id="${step.id}" style="display:block;transform:${memeOverlayTransform(step)}">${media}</div>`;
 }
 
 function autoScrollStack() {

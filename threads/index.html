@@ -586,6 +586,7 @@ header span { font-size: 12px; color: #4b5563; }
   display: flex; align-items: center; justify-content: center;
   color: #ccc; font-size: 3cqw; font-weight: 700; text-align: center; padding: 4cqw;
 }
+.retained-meme-layer{position:absolute;inset:0;z-index:7;pointer-events:none}.retained-meme-layer .meme-overlay{z-index:auto}
 
 .preview-info {
   width: 100%;
@@ -1164,6 +1165,7 @@ header span { font-size: 12px; color: #4b5563; }
       <audio id="tts-audio"></audio>
       <!-- Stack các thẻ post/comment (JS đổ vào), tự cuộn lên khi tràn -->
       <div class="thr-stack" id="thr-stack"></div>
+      <div class="retained-meme-layer" id="retained-meme-layer"></div>
       <div class="position-guides" id="position-guides" aria-hidden="true"><i class="position-guide x g25" data-axis="x" data-ratio="0.25"></i><i class="position-guide x g50" data-axis="x" data-ratio="0.5"></i><i class="position-guide x g75" data-axis="x" data-ratio="0.75"></i><i class="position-guide y g25" data-axis="y" data-ratio="0.25"></i><i class="position-guide y g50" data-axis="y" data-ratio="0.5"></i><i class="position-guide y g75" data-axis="y" data-ratio="0.75"></i></div>
       <!-- Overlay meme (JS đổ vào khi step meme chạy) -->
       <div class="meme-overlay" id="meme-overlay" style="display:none"></div>
@@ -2412,7 +2414,7 @@ async function generateMessengerTtsResults(messages,status,reuseSteps=[]){
   return results;
 }
 function makeMessengerStep(msg,index,history,conversationId,ttsResult,oldStep=null){
-  return {id:oldStep?.id??stepIdCounter++,type:'mess',conversationId,groupId:oldStep?.groupId===false?false:(oldStep?.groupId||conversationId),messIndex:index,messPlatform,messShowFooter,messPartnerName:messPartnerName.trim()||'Tùng',messPartnerAvatar,messSideVoices:{...messSideVoiceIdx},messTtsSpeed,messHistory:history.map(x=>({...x})),text:msg.text,ttsText:msg.ttsText,voiceIdx:msg.voiceIdx,audioUrl:ttsResult?.audioUrl||null,ttsDuration:ttsResult?.duration||null,duration:ttsResult?.duration||DEFAULT_DUR.mess,gap:oldStep?.gap??0,clearBefore:oldStep?.clearBefore??false,hue:oldStep?.hue??0,offsetX:oldStep?.offsetX??0,offsetY:oldStep?.offsetY??0,rotation:oldStep?.rotation??0};
+  return {id:oldStep?.id??stepIdCounter++,type:'mess',conversationId,groupId:oldStep?.groupId===false?false:(oldStep?.groupId||conversationId),messIndex:index,messPlatform,messShowFooter,messPartnerName:messPartnerName.trim()||'Tùng',messPartnerAvatar,messSideVoices:{...messSideVoiceIdx},messTtsSpeed,messHistory:history.map(x=>({...x})),text:msg.text,ttsText:msg.ttsText,voiceIdx:msg.voiceIdx,audioUrl:ttsResult?.audioUrl||null,ttsDuration:ttsResult?.duration||null,duration:ttsResult?.duration||DEFAULT_DUR.mess,gap:oldStep?.gap??0,clearBefore:oldStep?.clearBefore??true,hue:oldStep?.hue??0,offsetX:oldStep?.offsetX??0,offsetY:oldStep?.offsetY??0,rotation:oldStep?.rotation??0};
 }
 function insertPendingMessengerAudios(drafts,messSteps){
   drafts.forEach((msg,i)=>{
@@ -4699,8 +4701,8 @@ function stopAllSfxAudio() {
 }
 
 function renderAtTime(t) {
-  let { stack, memeStep } = computeSceneAt(t);
-  if(!playing&&selectedOverlayStepId!=null){const selected=steps.find(s=>s.id===selectedOverlayStepId&&DRAGGABLE_OVERLAY_TYPES.includes(s.type)&&t>=s._start-1e-6&&t<s._end-1e-6);if(selected)memeStep=selected;}
+  let { stack, memeStep, memeSteps=[] } = computeSceneAt(t);
+  if(!playing&&selectedOverlayStepId!=null){const selected=memeSteps.find(s=>s.id===selectedOverlayStepId);if(selected)memeStep=selected;}
   if (playing) { syncTtsAudio(t); syncSfxAudio(t); }
 
   const ids = stack.map(s => s.id);
@@ -4763,6 +4765,10 @@ function renderAtTime(t) {
     autoScrollMessenger(stackEl);
   }
 
+  const retainedMemeSteps=memeSteps.filter(s=>!memeStep||s.id!==memeStep.id);
+  const retainedMemeKey=retainedMemeSteps.map(s=>`${s.id}:${s.overlayScale||1}:${s.offsetX||0}:${s.offsetY||0}:${s.rotation||0}`).join('|');
+  const retainedMemeLayer=document.getElementById('retained-meme-layer');
+  if(retainedMemeKey!==_lastRetainedMemeKey){retainedMemeLayer.innerHTML=retainedMemeSteps.map(retainedMemeHtml).join('');_lastRetainedMemeKey=retainedMemeKey;}
   const memeKey = memeStep ? String(memeStep.id) : '';
   const memeEl = document.getElementById('meme-overlay');
   if (memeKey !== _lastMemeKey) {
@@ -4850,8 +4856,8 @@ function snapOverlayToGuides(step,frame,toCqw,enterRadius=16,releaseRadius=26){
 }
 overlayPositionEl.addEventListener('pointerdown', event => {
   if (playing) return;
-  const { memeStep } = computeSceneAt(playheadT);
-  const selected=steps.find(s=>s.id===selectedOverlayStepId&&DRAGGABLE_OVERLAY_TYPES.includes(s.type)&&playheadT>=s._start-1e-6&&playheadT<s._end-1e-6);
+  const { memeStep, memeSteps=[] } = computeSceneAt(playheadT);
+  const selected=memeSteps.find(s=>s.id===selectedOverlayStepId&&DRAGGABLE_OVERLAY_TYPES.includes(s.type));
   const activeStep=selected||memeStep;
   if (!activeStep || !DRAGGABLE_OVERLAY_TYPES.includes(activeStep.type)) return;
   const frame = document.getElementById('preview-frame');
@@ -4866,8 +4872,8 @@ overlayPositionEl.addEventListener('pointerdown', event => {
     id:activeStep.id,
     startX:event.clientX,
     startY:event.clientY,
-    offsetX:memeStep.offsetX || 0,
-    offsetY:memeStep.offsetY || 0,
+    offsetX:activeStep.offsetX || 0,
+    offsetY:activeStep.offsetY || 0,
     frameWidth:Math.max(1, frame.getBoundingClientRect().width),
     snap:{x:null,y:null},
   };
@@ -4930,7 +4936,7 @@ function renderIdleScene() {
   // được stack mới là mở rộng của stack cũ (vd thêm step 3 cộng dồn lên
   // step 1+2 đã có), từ đó chỉ chèn thêm card mới thay vì vẽ lại toàn bộ
   // (tránh card cũ bị animation "tcard-in" chạy lại — xem renderAtTime).
-  _lastStackKey = null; _lastMemeKey = null;
+  _lastStackKey = null; _lastMemeKey = null; _lastRetainedMemeKey = null;
   if (!steps.length) {
     document.getElementById('thr-stack').innerHTML = '';
     document.getElementById('meme-overlay').style.display = 'none';
