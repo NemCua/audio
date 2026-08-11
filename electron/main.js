@@ -1,10 +1,10 @@
-const { app, BrowserWindow, ipcMain, shell, session, desktopCapturer, dialog, safeStorage } = require('electron');
+const { app, BrowserWindow, ipcMain: rawIpcMain, shell, session, desktopCapturer, dialog, safeStorage } = require('electron');
 const path = require('node:path');
 const fs = require('node:fs');
 const os = require('node:os');
 const { randomUUID } = require('node:crypto');
 const { spawn } = require('node:child_process');
-const { pathToFileURL } = require('node:url');
+const { pathToFileURL, fileURLToPath } = require('node:url');
 const { exportProject } = require('./exporter');
 
 const isDev = !app.isPackaged;
@@ -13,6 +13,40 @@ function threadsRoot() {
   return isDev
     ? path.resolve(__dirname, '..', 'threads')
     : path.join(process.resourcesPath, 'threads');
+}
+
+function trustedRenderer(event) {
+  try {
+    const framePath = fileURLToPath(event.senderFrame.url);
+    return path.resolve(framePath) === path.resolve(threadsRoot(), 'index.html');
+  } catch (_error) { return false; }
+}
+
+// Mọi handler bên dưới đều từ chối frame phụ/trang đã điều hướng. Điều này
+// giữ lớp bảo vệ ngay cả khi renderer vô tình dính XSS trong tương lai.
+const ipcMain = Object.freeze({
+  handle(channel, listener) {
+    rawIpcMain.handle(channel, (event, ...args) => {
+      if (!trustedRenderer(event)) throw new Error('IPC bị từ chối từ renderer không tin cậy');
+      return listener(event, ...args);
+    });
+  },
+});
+
+function allowedApiBase(value) {
+  try {
+    const url = new URL(String(value));
+    if (url.protocol !== 'http:' && url.protocol !== 'https:') return null;
+    const local = ['localhost', '127.0.0.1', '[::1]'].includes(url.hostname);
+    if (!local && url.origin !== 'https://threads-api-s13z.onrender.com') return null;
+    return url.origin;
+  } catch (_error) { return null; }
+}
+
+function bytesBuffer(bytes, maxBytes, label) {
+  const buffer = Buffer.from(bytes || []);
+  if (!buffer.length || buffer.length > maxBytes) throw new Error(`${label} vượt giới hạn cho phép`);
+  return buffer;
 }
 
 function createMainWindow() {
@@ -38,6 +72,7 @@ function createMainWindow() {
     if (/^https?:/i.test(url)) shell.openExternal(url);
     return { action: 'deny' };
   });
+  win.webContents.on('will-navigate', event => event.preventDefault());
   win.loadFile(path.join(threadsRoot(), 'index.html'));
   return win;
 }
@@ -246,7 +281,7 @@ ipcMain.handle('desktop:add-sticker', (_event, packId, bytes, originalName) => {
   if (!['.png', '.jpg', '.jpeg', '.webp', '.gif'].includes(ext)) throw new Error('Sticker phải là PNG, JPG, WebP hoặc GIF');
   const dir = path.join(stickerUserRoot(), id); fs.mkdirSync(dir, { recursive: true });
   const output = path.join(dir, safeAssetName(originalName, 'sticker'));
-  fs.writeFileSync(output, Buffer.from(bytes));
+  fs.writeFileSync(output, bytesBuffer(bytes, 20 * 1024 * 1024, 'Sticker'));
   return stickerLibrary();
 });
 
@@ -255,32 +290,48 @@ ipcMain.handle('desktop:get-media-stats', () => mediaDirectories().reduce((total
   return { files: total.files + stats.files, bytes: total.bytes + stats.bytes };
 }, { files: 0, bytes: 0 }));
 
-ipcMain.handle('desktop:clear-local-media', () => {
+ipcMain.handle('desktop:clear-local-media', async () => {
+  const choice = await dialog.showMessageBox({
+    type: 'warning', title: 'Xóa toàn bộ media cục bộ?',
+    message: 'Các dự án cũ có thể mất ảnh, âm thanh hoặc video đã lưu.',
+    detail: 'Projects, Exports và file gốc bên ngoài ứng dụng không bị xóa. Hành động này không thể hoàn tác.',
+    buttons: ['Hủy', 'Xóa media'], defaultId: 0, cancelId: 0, noLink: true,
+  });
+  if (choice.response !== 1) return { files: 0, bytes: 0, canceled: true };
   const before = mediaDirectories().reduce((total, dir) => {
     const stats = directoryStats(dir);
     for (const entry of fs.readdirSync(dir)) fs.rmSync(path.join(dir, entry), { recursive: true, force: true });
     return { files: total.files + stats.files, bytes: total.bytes + stats.bytes };
   }, { files: 0, bytes: 0 });
-  return before;
+  return { ...before, canceled: false };
 });
 
 ipcMain.handle('desktop:save-local-asset', (_event, bytes, kind, originalName) => {
+  if (!['tts', 'image', 'audio', 'video'].includes(kind)) throw new Error('Loại media không hợp lệ');
   const output = path.join(assetDirectory(kind), safeAssetName(originalName, kind || 'asset'));
-  fs.writeFileSync(output, Buffer.from(bytes));
+  fs.writeFileSync(output, bytesBuffer(bytes, 1024 * 1024 * 1024, 'Media'));
   return localAssetResult(output);
 });
 
 ipcMain.handle('desktop:download-asset', async (_event, url, kind, originalName, headers = {}) => {
-  const response = await fetch(url, { headers });
+  const parsed = new URL(String(url));
+  if (kind !== 'tts' || !allowedApiBase(parsed.origin) || !/^\/audio\/[a-f0-9]{32}\.mp3$/i.test(parsed.pathname)) {
+    throw new Error('Chỉ được tải file TTS từ API đã cấu hình');
+  }
+  const authorization = typeof headers?.Authorization === 'string' ? headers.Authorization : '';
+  const response = await fetch(parsed.href, { headers: authorization ? { Authorization: authorization } : {} });
   if (!response.ok) throw new Error(`Không tải được file từ server: HTTP ${response.status}`);
+  const declaredSize = Number(response.headers.get('content-length') || 0);
+  if (declaredSize > 20 * 1024 * 1024) throw new Error('File TTS từ server quá lớn');
   const contentType = response.headers.get('content-type') || '';
   const fallbackExt = contentType.includes('mpeg') ? '.mp3' : '';
   const output = path.join(assetDirectory(kind), safeAssetName(originalName || `${kind || 'asset'}${fallbackExt}`, kind || 'asset'));
-  fs.writeFileSync(output, Buffer.from(await response.arrayBuffer()));
+  fs.writeFileSync(output, bytesBuffer(await response.arrayBuffer(), 20 * 1024 * 1024, 'File TTS'));
   return localAssetResult(output);
 });
 
 ipcMain.handle('desktop:save-project-file', async (_event, json, suggestedName) => {
+  if (typeof json !== 'string' || Buffer.byteLength(json, 'utf8') > 10 * 1024 * 1024) throw new Error('File dự án vượt giới hạn 10 MB');
   const name = String(suggestedName || 'threads-project.json').replace(/[^\p{L}\p{N}._-]+/gu, '-');
   const choice = await dialog.showSaveDialog({
     title: 'Lưu dự án Threads',
@@ -295,7 +346,7 @@ ipcMain.handle('desktop:save-project-file', async (_event, json, suggestedName) 
 ipcMain.handle('desktop:convert-webm-to-mp4', async (_event, bytes, suggestedName) => {
   const tempRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'threads-export-'));
   const input = path.join(tempRoot, 'capture.webm');
-  fs.writeFileSync(input, Buffer.from(bytes));
+  fs.writeFileSync(input, bytesBuffer(bytes, 2 * 1024 * 1024 * 1024, 'Video'));
   const defaultName = String(suggestedName || 'threads-video.mp4').replace(/[^\p{L}\p{N}._-]+/gu, '-');
   const choice = await dialog.showSaveDialog({
     title: 'Lưu video MP4',
@@ -319,7 +370,12 @@ ipcMain.handle('desktop:convert-webm-to-mp4', async (_event, bytes, suggestedNam
   }
 });
 
-ipcMain.handle('desktop:reveal-file', (_event, filePath) => shell.showItemInFolder(filePath));
+ipcMain.handle('desktop:reveal-file', (_event, filePath) => {
+  const target = path.resolve(String(filePath || ''));
+  const root = path.resolve(workspaceRoot()) + path.sep;
+  if (!target.startsWith(root)) throw new Error('Chỉ được mở file trong thư mục dự án');
+  return shell.showItemInFolder(target);
+});
 
 ipcMain.handle('desktop:auth-save-refresh', (_event, refreshToken) => {
   if (!safeStorage.isEncryptionAvailable()) throw new Error('Hệ điều hành chưa sẵn sàng mã hóa phiên đăng nhập');
@@ -328,11 +384,27 @@ ipcMain.handle('desktop:auth-save-refresh', (_event, refreshToken) => {
   return true;
 });
 
-ipcMain.handle('desktop:auth-load-refresh', () => {
+ipcMain.handle('desktop:auth-refresh', async (_event, apiBase) => {
+  const base = allowedApiBase(apiBase);
+  if (!base) throw new Error('Auth server không được phép');
   try {
     const payload = JSON.parse(fs.readFileSync(authStorePath(), 'utf8'));
-    return safeStorage.decryptString(Buffer.from(payload.token, 'base64'));
-  } catch (_error) { return null; }
+    const refreshToken = safeStorage.decryptString(Buffer.from(payload.token, 'base64'));
+    const response = await fetch(`${base}/auth/refresh`, {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ refresh_token: refreshToken }),
+    });
+    if (!response.ok) throw new Error(`HTTP ${response.status}`);
+    const data = await response.json();
+    if (!data.refresh_token) throw new Error('Server không trả refresh token mới');
+    const encrypted = safeStorage.encryptString(String(data.refresh_token));
+    fs.writeFileSync(authStorePath(), JSON.stringify({ token: encrypted.toString('base64') }), { mode: 0o600 });
+    delete data.refresh_token;
+    return data;
+  } catch (_error) {
+    fs.rmSync(authStorePath(), { force: true });
+    return null;
+  }
 });
 
 ipcMain.handle('desktop:auth-clear', () => {
@@ -361,6 +433,8 @@ ipcMain.handle('desktop:export-project', async (event, payload) => {
 
 app.whenReady().then(() => {
   workspaceRoot();
+  session.defaultSession.setPermissionCheckHandler(() => false);
+  session.defaultSession.setPermissionRequestHandler((_webContents, _permission, callback) => callback(false));
   session.defaultSession.setDisplayMediaRequestHandler(async (_request, callback) => {
     try {
       const sources = await desktopCapturer.getSources({ types: ['window', 'screen'] });

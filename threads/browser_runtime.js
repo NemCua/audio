@@ -119,6 +119,7 @@
     const warning = 'Xóa TOÀN BỘ MP3 TTS, ảnh, audio và video đã chép vào thư mục Media của app?\n\nDự án đang mở hoặc dự án cũ tham chiếu các file này sẽ mất media và không thể xuất đúng. Projects, Exports và file gốc bên ngoài app không bị xóa. Hành động này không thể hoàn tác.';
     if (!confirm(warning)) return;
     const deleted = await window.desktopApp.clearLocalMedia();
+    if (deleted.canceled) return;
     localUrls.forEach(url => URL.revokeObjectURL(url));
     localUrls.clear();
     await refreshCacheSize();

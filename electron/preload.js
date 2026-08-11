@@ -27,6 +27,6 @@ contextBridge.exposeInMainWorld('desktopApp', Object.freeze({
   convertWebmToMp4: (bytes, suggestedName) => ipcRenderer.invoke('desktop:convert-webm-to-mp4', bytes, suggestedName),
   revealFile: filePath => ipcRenderer.invoke('desktop:reveal-file', filePath),
   saveRefreshToken: token => ipcRenderer.invoke('desktop:auth-save-refresh', token),
-  loadRefreshToken: () => ipcRenderer.invoke('desktop:auth-load-refresh'),
+  refreshSession: apiBase => ipcRenderer.invoke('desktop:auth-refresh', apiBase),
   clearAuth: () => ipcRenderer.invoke('desktop:auth-clear'),
 }));

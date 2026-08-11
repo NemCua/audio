@@ -22,6 +22,17 @@ services:
         value: "3"
       - key: TTS_REQUESTS_PER_MINUTE
         value: "30"
+      - key: TTS_CHARS_PER_MINUTE
+        value: "30000"
+      - key: TTS_DAILY_CHAR_QUOTA
+        value: "100000"
+      - key: AUTH_LOGIN_IP_PER_15_MIN
+        value: "30"
+      - key: AUTH_LOGIN_ACCOUNT_PER_15_MIN
+        value: "10"
+      - key: AUTH_REGISTER_PER_HOUR
+        value: "10"
+      - key: ENABLE_LEGACY_TOOLS
+        value: "0"
       - key: TTS_FILE_TTL_SECONDS
         value: "3600"
-

@@ -1724,7 +1724,13 @@ document.addEventListener('click',event=>{if(!event.target.closest('.voice-picke
 
 const DEFAULT_TTS_SERVER_URL = 'https://threads-api-s13z.onrender.com';
 function ttsServerUrl() {
-  return (document.getElementById('tts-server-url').value || DEFAULT_TTS_SERVER_URL).replace(/\/$/, '');
+  const raw = (document.getElementById('tts-server-url').value || DEFAULT_TTS_SERVER_URL).replace(/\/$/, '');
+  try {
+    const url = new URL(raw);
+    const local = ['localhost', '127.0.0.1', '[::1]'].includes(url.hostname) && url.protocol === 'http:';
+    if (local || url.origin === DEFAULT_TTS_SERVER_URL) return url.origin;
+  } catch (_error) {}
+  return DEFAULT_TTS_SERVER_URL;
 }
 
 let ttsWakePromise = null;
@@ -4579,6 +4585,11 @@ async function resolveMediaNamesInSteps(stepsArr) {
 async function importProjectJson(input) {
   const f = input.files[0];
   if (!f) return;
+  if (f.size > 10 * 1024 * 1024) {
+    alert('File dự án quá lớn (tối đa 10 MB).');
+    input.value = '';
+    return;
+  }
   const reader = new FileReader();
   reader.onload = async () => {
     let project;
@@ -4591,6 +4602,48 @@ async function importProjectJson(input) {
     }
     if (!project || project._format !== 'threads-short-video-project' || !Array.isArray(project.steps)) {
       alert('File này không phải JSON kịch bản hợp lệ (thiếu _format hoặc steps).');
+      input.value = '';
+      return;
+    }
+    const allowedTypes = new Set(['post', 'comment', 'reply', 'image', 'sticker', 'mess', 'audio']);
+    const urlFields = new Set(['mediaUrl', 'avatar', 'avatarUrl', 'partnerAvatar', 'audioUrl', 'audio2Url']);
+    let stringChars = 0;
+    const cleanImportedValue = (value, key = '', depth = 0) => {
+      if (depth > 8) throw new Error('Dữ liệu lồng quá sâu');
+      if (typeof value === 'string') {
+        stringChars += value.length;
+        if (value.length > 50000 || stringChars > 2000000) throw new Error('Nội dung dự án quá dài');
+        return urlFields.has(key) ? safeMediaUrl(value) : value;
+      }
+      if (typeof value === 'number') {
+        if (!Number.isFinite(value) || Math.abs(value) > 10000000) throw new Error('Giá trị số không hợp lệ');
+        return value;
+      }
+      if (typeof value === 'boolean' || value == null) return value;
+      if (Array.isArray(value)) {
+        if (value.length > 10000) throw new Error('Mảng dữ liệu quá lớn');
+        return value.map(item => cleanImportedValue(item, '', depth + 1));
+      }
+      if (typeof value === 'object') {
+        const clean = {};
+        for (const [childKey, childValue] of Object.entries(value)) {
+          if (childKey === '__proto__' || childKey === 'prototype' || childKey === 'constructor') continue;
+          clean[childKey] = cleanImportedValue(childValue, childKey, depth + 1);
+        }
+        return clean;
+      }
+      throw new Error('Kiểu dữ liệu không được hỗ trợ');
+    };
+    try {
+      if (project.steps.length > 5000) throw new Error('Dự án có quá nhiều card (tối đa 5.000)');
+      project = cleanImportedValue(project);
+      for (const step of project.steps) {
+        if (!step || typeof step !== 'object' || Array.isArray(step) || !allowedTypes.has(step.type)) {
+          throw new Error('Dự án chứa loại card không hợp lệ');
+        }
+      }
+    } catch (error) {
+      alert('Không thể nhập dự án: ' + error.message);
       input.value = '';
       return;
     }
@@ -4621,11 +4674,9 @@ async function importProjectJson(input) {
     });
     const unresolvedMedia = await resolveMediaNamesInSteps(steps);
     stepIdCounter = project.stepIdCounter || (Math.max(0, ...steps.map(s => s.id || 0)) + 1);
-    if (project.ttsServerUrl) {
-      document.getElementById('tts-server-url').value = /^https?:\/\/(?:localhost|127\.0\.0\.1)(?::\d+)?/i.test(project.ttsServerUrl)
-        ? DEFAULT_TTS_SERVER_URL
-        : project.ttsServerUrl;
-    }
+    // Không tin địa chỉ server nằm trong file dự án: nếu khôi phục URL tùy ý,
+    // app có thể gửi access token/TTS sang máy chủ của người tạo file JSON.
+    document.getElementById('tts-server-url').value = DEFAULT_TTS_SERVER_URL;
     if (project.bgAudioVolume != null) {
       document.getElementById('bgaudio-volume').value = project.bgAudioVolume;
       document.getElementById('bgaudio-volume-val').textContent = Math.round(project.bgAudioVolume * 100) + '%';
@@ -4639,13 +4690,15 @@ async function importProjectJson(input) {
     // dưới). Chuyển sang tab Thư viện + gọi applyBg*() luôn cho khỏi phải
     // bấm tay lại nút Áp dụng.
     let restoredBgVideo = false, restoredBgAudio = false;
-    if (project.bgVideoLibrary && project.bgVideoLibrary.url) {
+    if (project.bgVideoLibrary && safeMediaUrl(project.bgVideoLibrary.url)) {
+      project.bgVideoLibrary.url = safeMediaUrl(project.bgVideoLibrary.url);
       bgVideoLibraryItem = project.bgVideoLibrary;
       document.querySelectorAll('#feat-bgvideo .platform-btn')[1].click();
       applyBgVideo();
       restoredBgVideo = true;
     }
-    if (project.bgAudioLibrary && project.bgAudioLibrary.url) {
+    if (project.bgAudioLibrary && safeMediaUrl(project.bgAudioLibrary.url)) {
+      project.bgAudioLibrary.url = safeMediaUrl(project.bgAudioLibrary.url);
       bgAudioLibraryItem = project.bgAudioLibrary;
       document.querySelectorAll('#feat-bgaudio .platform-btn')[1].click();
       applyBgAudio();
@@ -4842,10 +4895,11 @@ function renderAtTime(t) {
       // nhau. loop vẫn giữ — nếu video ngắn hơn duration step, lặp lại
       // đúng ý preview cũ.
       const resizeHandles='<span class="overlay-resize-handle nw" data-corner="nw"></span><span class="overlay-resize-handle ne" data-corner="ne"></span><span class="overlay-resize-handle sw" data-corner="sw"></span><span class="overlay-resize-handle se" data-corner="se"></span>';
-      memeEl.innerHTML = (memeStep.mediaUrl
+      const memeUrl = safeMediaUrl(memeStep.mediaUrl);
+      memeEl.innerHTML = (memeUrl
         ? (memeStep.mediaIsVideo
-            ? `<video src="${memeStep.mediaUrl}" autoplay loop playsinline></video>`
-            : `<img src="${memeStep.mediaUrl}" alt=""/>`)
+            ? `<video src="${esc(memeUrl)}" autoplay loop playsinline></video>`
+            : `<img src="${esc(memeUrl)}" alt=""/>`)
         : `<div class="meme-ph">🖼 MEME<br/>(chưa chọn file)</div>`) + resizeHandles;
       memeEl.style.display = 'block';
       memeEl.classList.toggle('sticker-overlay', memeStep.type === 'sticker');

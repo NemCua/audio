@@ -17,7 +17,7 @@ import bcrypt
 import psycopg2
 import psycopg2.extras
 from dotenv import load_dotenv
-from fastapi import APIRouter, Depends, Header, HTTPException, status
+from fastapi import APIRouter, Depends, Header, HTTPException, Request, status
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from jose import JWTError, jwt
 from psycopg2.pool import ThreadedConnectionPool
@@ -129,6 +129,15 @@ def migrate() -> None:
             kind TEXT PRIMARY KEY, unit_cost INTEGER NOT NULL CHECK (unit_cost >= 0),
             updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
         )""",
+        """CREATE TABLE IF NOT EXISTS api_rate_limits (
+            bucket TEXT NOT NULL, rate_key TEXT NOT NULL, window_start BIGINT NOT NULL, hits BIGINT NOT NULL,
+            PRIMARY KEY(bucket, rate_key)
+        )""",
+        """CREATE TABLE IF NOT EXISTS tts_usage (
+            user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE, usage_date DATE NOT NULL,
+            chars BIGINT NOT NULL DEFAULT 0, requests INTEGER NOT NULL DEFAULT 0,
+            updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(), PRIMARY KEY(user_id, usage_date)
+        )""",
     ]
     with db() as conn:
         with conn.cursor() as cur:
@@ -151,6 +160,57 @@ def _verify_password(password: str, hashed: str) -> bool:
 
 def _refresh_hash(token: str) -> str:
     return hashlib.sha256(token.encode()).hexdigest()
+
+
+def _client_ip(request: Request) -> str:
+    # Render thêm địa chỉ client ở hop cuối; không đưa IP thô vào database.
+    forwarded = request.headers.get("x-forwarded-for", "").split(",")[-1].strip()
+    return forwarded or (request.client.host if request.client else "unknown")
+
+
+def _rate_key(value: str) -> str:
+    return hashlib.sha256(value.strip().lower().encode()).hexdigest()
+
+
+def _enforce_rate_limit(bucket: str, key: str, limit: int, window_seconds: int, units: int = 1) -> None:
+    now_window = int(time.time()) // window_seconds
+    with db() as conn:
+        with conn.cursor() as cur:
+            cur.execute(
+                """INSERT INTO api_rate_limits(bucket,rate_key,window_start,hits) VALUES(%s,%s,%s,%s)
+                   ON CONFLICT(bucket,rate_key) DO UPDATE SET
+                     window_start=CASE WHEN api_rate_limits.window_start=EXCLUDED.window_start THEN api_rate_limits.window_start ELSE EXCLUDED.window_start END,
+                     hits=CASE WHEN api_rate_limits.window_start=EXCLUDED.window_start THEN api_rate_limits.hits+EXCLUDED.hits ELSE EXCLUDED.hits END
+                   RETURNING hits""",
+                (bucket, _rate_key(key), now_window, units),
+            )
+            hits = int(cur.fetchone()[0])
+    if hits > limit:
+        raise HTTPException(429, "Bạn thao tác quá nhanh, hãy thử lại sau", headers={"Retry-After": str(window_seconds)})
+
+
+def consume_tts_quota(identity: dict, chars: int) -> None:
+    """Giữ quota trước khi gọi dịch vụ TTS để request đồng thời không vượt trần."""
+    if identity.get("id", 0) <= 0:
+        return
+    chars = int(chars)
+    if chars <= 0:
+        raise HTTPException(400, "Nội dung TTS rỗng")
+    per_minute = max(1, int(os.getenv("TTS_CHARS_PER_MINUTE", "30000")))
+    daily = max(per_minute, int(os.getenv("TTS_DAILY_CHAR_QUOTA", "100000")))
+    _enforce_rate_limit("tts_chars", str(identity["id"]), per_minute, 60, chars)
+    with db() as conn:
+        with conn.cursor() as cur:
+            cur.execute(
+                """INSERT INTO tts_usage(user_id,usage_date,chars,requests) VALUES(%s,CURRENT_DATE,%s,1)
+                   ON CONFLICT(user_id,usage_date) DO UPDATE SET
+                     chars=tts_usage.chars+EXCLUDED.chars, requests=tts_usage.requests+1, updated_at=NOW()
+                   WHERE tts_usage.chars+EXCLUDED.chars<=%s RETURNING chars""",
+                (identity["id"], chars, daily),
+            )
+            row = cur.fetchone()
+    if not row:
+        raise HTTPException(429, f"Đã vượt quota TTS {daily:,} ký tự/ngày")
 
 
 def _access_token(user_id: int, email: str, session_id: str) -> str:
@@ -206,11 +266,11 @@ def tts_identity(credentials: HTTPAuthorizationCredentials | None = Depends(bear
 
 
 class RegisterRequest(BaseModel):
-    email: str; password: str; display_name: str = ""; device_name: str = ""
+    email: str = Field(min_length=3, max_length=254); password: str = Field(min_length=8, max_length=128); display_name: str = Field(default="", max_length=120); device_name: str = Field(default="", max_length=120)
 class LoginRequest(BaseModel):
-    email: str; password: str; device_name: str = ""
+    email: str = Field(min_length=3, max_length=254); password: str = Field(min_length=1, max_length=128); device_name: str = Field(default="", max_length=120)
 class RefreshRequest(BaseModel):
-    refresh_token: str
+    refresh_token: str = Field(min_length=32, max_length=256)
 class ReserveRequest(BaseModel):
     idempotency_key: str
     type_counts: dict[str, int] = Field(default_factory=dict)
@@ -252,13 +312,16 @@ def _export_credit_cost(type_counts: dict[str, int], pricing: dict[str, int] | N
 
 
 @router.post("/register")
-def register(req: RegisterRequest):
+def register(req: RegisterRequest, request: Request):
+    _enforce_rate_limit("register_ip", _client_ip(request), int(os.getenv("AUTH_REGISTER_PER_HOUR", "10")), 3600)
     email = req.email.strip().lower()
     if "@" not in email or len(email) > 254: raise HTTPException(400, "Email không hợp lệ")
     if len(req.password) < 8: raise HTTPException(400, "Mật khẩu tối thiểu 8 ký tự")
     try:
         with db() as conn:
             with conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
+                cur.execute("SELECT 1 FROM users WHERE email=%s", (email,))
+                if cur.fetchone(): raise HTTPException(409, "Email đã được đăng ký")
                 cur.execute("INSERT INTO users(email,hashed_pw,display_name,balance) VALUES(%s,%s,%s,%s) RETURNING *", (email, _hash_password(req.password), req.display_name.strip(), SIGNUP_CREDITS))
                 user = cur.fetchone()
                 if SIGNUP_CREDITS:
@@ -269,10 +332,13 @@ def register(req: RegisterRequest):
 
 
 @router.post("/login")
-def login(req: LoginRequest):
+def login(req: LoginRequest, request: Request):
+    email = req.email.strip().lower()
+    _enforce_rate_limit("login_ip", _client_ip(request), int(os.getenv("AUTH_LOGIN_IP_PER_15_MIN", "30")), 900)
+    _enforce_rate_limit("login_account", email, int(os.getenv("AUTH_LOGIN_ACCOUNT_PER_15_MIN", "10")), 900)
     with db() as conn:
         with conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
-            cur.execute("SELECT * FROM users WHERE email=%s", (req.email.strip().lower(),)); user = cur.fetchone()
+            cur.execute("SELECT * FROM users WHERE email=%s", (email,)); user = cur.fetchone()
             if not user or not _verify_password(req.password, user["hashed_pw"]): raise HTTPException(401, "Email hoặc mật khẩu không đúng")
             return _create_session(cur, user, req.device_name)
 

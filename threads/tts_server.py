@@ -34,10 +34,10 @@ sys.path.insert(0, str(BASE_DIR))
 
 import translate_video as tv  # noqa: E402  (tái dùng capcut_tts_batch + danh sách giọng VN)
 try:
-    from account_api import tts_identity
+    from account_api import consume_tts_quota, tts_identity
 except ImportError:
     # Cho phép chạy dạng module từ repo root.
-    from threads.account_api import tts_identity
+    from threads.account_api import consume_tts_quota, tts_identity
 
 AUDIO_DIR = Path(__file__).resolve().parent / "tts_audio"
 AUDIO_DIR.mkdir(exist_ok=True)
@@ -53,9 +53,12 @@ AI_REQUEST_LOCK = threading.Lock()
 export_jobs: dict[str, dict] = {}
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
-    allow_methods=["*"],
-    allow_headers=["*"],
+    allow_origin_regex=os.getenv(
+        "CORS_ORIGIN_REGEX",
+        r"^(null|https?://(?:localhost|127\.0\.0\.1|\[::1\])(?::\d+)?)$",
+    ),
+    allow_methods=["GET", "POST", "PUT"],
+    allow_headers=["Authorization", "Content-Type", "X-Admin-Key"],
 )
 app.mount("/videoPhanBiet", StaticFiles(directory=str(VIDEO_PHANBIET_DIR)), name="videoPhanBiet")
 
@@ -75,6 +78,11 @@ def _cleanup_expired_tts_files() -> None:
                 path.unlink(missing_ok=True)
         except OSError:
             pass
+
+
+def _require_legacy_tools() -> None:
+    if os.getenv("ENABLE_LEGACY_TOOLS", "0").lower() not in ("1", "true", "yes"):
+        raise HTTPException(404, "Chức năng này không được bật trên production")
 
 
 class TTSRequest(BaseModel):
@@ -300,6 +308,7 @@ def generate_tts(req: TTSRequest, _identity: dict = Depends(tts_identity)):
         raise HTTPException(400, "text rỗng")
     if len(text) > int(os.getenv("TTS_MAX_CHARS", "5000")):
         raise HTTPException(400, "Nội dung TTS quá dài")
+    consume_tts_quota(_identity, len(text))
 
     voice_type = req.voice_type or tv.CAPCUT_VOICES_VI[1][1]
     resource_id = req.resource_id or tv.CAPCUT_VOICES_VI[1][2]
@@ -351,8 +360,11 @@ def generate_tts_batch(req: TTSBatchRequest, _identity: dict = Depends(tts_ident
         raise HTTPException(400, "texts phải là mảng các chuỗi không rỗng")
     if len(texts) > 50:
         raise HTTPException(400, "Mỗi batch tối đa 50 đoạn")
-    if sum(map(len, texts)) > int(os.getenv("TTS_BATCH_MAX_CHARS", "20000")):
+    total_chars = sum(map(len, texts))
+    if total_chars > int(os.getenv("TTS_BATCH_MAX_CHARS", "20000")):
         raise HTTPException(400, "Tổng nội dung TTS batch quá dài")
+    if not _identity.get("_quota_consumed"):
+        consume_tts_quota(_identity, total_chars)
 
     voice_type = req.voice_type or tv.CAPCUT_VOICES_VI[1][1]
     resource_id = req.resource_id or tv.CAPCUT_VOICES_VI[1][2]
@@ -418,8 +430,11 @@ def generate_project_tts_batch(req: ProjectTTSBatchRequest, identity: dict = Dep
         raise HTTPException(400, "items phải có từ 1 đến 2000 đoạn")
     if any(not item.text.strip() for item in req.items):
         raise HTTPException(400, "Mọi item TTS phải có text không rỗng")
-    if sum(len(item.text) for item in req.items) > int(os.getenv("TTS_PROJECT_MAX_CHARS", "200000")):
+    total_chars = sum(len(item.text) for item in req.items)
+    if total_chars > int(os.getenv("TTS_PROJECT_MAX_CHARS", "200000")):
         raise HTTPException(400, "Tổng nội dung TTS project quá dài")
+    consume_tts_quota(identity, total_chars)
+    batch_identity = {**identity, "_quota_consumed": True}
 
     grouped: dict[tuple, list[tuple[int, ProjectTTSItem]]] = {}
     for index, item in enumerate(req.items):
@@ -436,7 +451,7 @@ def generate_project_tts_batch(req: ProjectTTSBatchRequest, identity: dict = Dep
                 resource_id=resource_id,
                 speed=speed,
                 echo=echo,
-            ), identity)
+            ), batch_identity)
             for (original_index, _), generated in zip(chunk, result["items"]):
                 ordered_results[original_index] = generated
 
@@ -450,8 +465,10 @@ def generate_tts_mixed_batch(req: MixedTTSBatchRequest, _identity: dict = Depend
     _cleanup_expired_tts_files()
     if not req.items or len(req.items) > 50:
         raise HTTPException(400, "items phải có từ 1 đến 50 đoạn")
-    if sum(len(item.text or "") for item in req.items) > int(os.getenv("TTS_BATCH_MAX_CHARS", "20000")):
+    total_chars = sum(len(item.text or "") for item in req.items)
+    if total_chars > int(os.getenv("TTS_BATCH_MAX_CHARS", "20000")):
         raise HTTPException(400, "Tổng nội dung mixed TTS quá dài")
+    consume_tts_quota(_identity, total_chars)
 
     vi_voice_type = req.vi_voice_type or tv.CAPCUT_VOICES_VI[1][1]
     vi_resource_id = req.vi_resource_id or tv.CAPCUT_VOICES_VI[1][2]
@@ -509,7 +526,8 @@ def generate_tts_mixed_batch(req: MixedTTSBatchRequest, _identity: dict = Depend
 
 
 @app.post("/generate-comparisons")
-def generate_comparisons(req: GenerateComparisonsRequest):
+def generate_comparisons(req: GenerateComparisonsRequest, _identity: dict = Depends(tts_identity)):
+    _require_legacy_tools()
     if req.count < 1 or req.count > 50:
         raise HTTPException(400, "Số cặp phải từ 1 đến 50")
     api_key = os.environ.get("BEEKNOEE_API_KEY2", "").strip()
@@ -739,23 +757,29 @@ async def _run_phanbiet_export(job_id: str, req: ExportPhanBietRequest) -> None:
 
 
 @app.post("/export-phanbiet")
-async def export_phanbiet(req: ExportPhanBietRequest):
+async def export_phanbiet(req: ExportPhanBietRequest, identity: dict = Depends(tts_identity)):
+    _require_legacy_tools()
     job_id = uuid.uuid4().hex[:12]
-    export_jobs[job_id] = {"status": "queued", "progress": 0, "message": "Đang chờ...", "downloadUrl": None}
+    export_jobs[job_id] = {"userId": identity["id"], "status": "queued", "progress": 0, "message": "Đang chờ...", "downloadUrl": None}
     asyncio.create_task(_run_phanbiet_export(job_id, req))
     return {"job_id": job_id}
 
 
 @app.get("/export-phanbiet-status/{job_id}")
-def export_phanbiet_status(job_id: str):
+def export_phanbiet_status(job_id: str, identity: dict = Depends(tts_identity)):
+    _require_legacy_tools()
     job = export_jobs.get(job_id)
-    if not job:
+    if not job or job.get("userId") != identity["id"]:
         raise HTTPException(404, "Không tìm thấy job export")
     return job
 
 
 @app.get("/export-phanbiet-download/{job_id}")
-def export_phanbiet_download(job_id: str):
+def export_phanbiet_download(job_id: str, identity: dict = Depends(tts_identity)):
+    _require_legacy_tools()
+    job = export_jobs.get(job_id)
+    if not job or job.get("userId") != identity["id"]:
+        raise HTTPException(404, "Không tìm thấy job export")
     out_path = EXPORT_DIR / job_id / "output.mp4"
     if not out_path.exists():
         raise HTTPException(404, "File chưa sẵn sàng")
@@ -763,7 +787,9 @@ def export_phanbiet_download(job_id: str):
 
 
 @app.get("/audio/{filename}")
-def get_audio(filename: str):
+def get_audio(filename: str, _identity: dict = Depends(tts_identity)):
+    if not re.fullmatch(r"[a-f0-9]{32}\.mp3", filename):
+        raise HTTPException(404, "Không tìm thấy file audio")
     path = AUDIO_DIR / filename
     if not path.exists():
         raise HTTPException(404, "Không tìm thấy file audio")

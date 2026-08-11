@@ -27,7 +27,23 @@
 // dùng tắt blur trước khi xuất bản chính thức.
 // ============================================================
 
-function esc(s) { return (s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+function esc(s) {
+  return String(s ?? '')
+    .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')
+    .replace(/"/g,'&quot;').replace(/'/g,'&#39;');
+}
+function safeMediaUrl(value) {
+  const raw = String(value || '').trim();
+  if (!raw) return '';
+  if (/^(?:file:|blob:)/i.test(raw)) return raw;
+  if (/^data:image\/(?:png|jpe?g|gif|webp);base64,/i.test(raw)) return raw;
+  try {
+    const url = new URL(raw);
+    if (url.protocol === 'https:') return url.href;
+    if (url.protocol === 'http:' && ['127.0.0.1','localhost','[::1]'].includes(url.hostname)) return url.href;
+  } catch (_error) {}
+  return '';
+}
 function fmt(t) { return t.toFixed(1) + 's'; }
 
 // ---------- Tính timeline tương đối ----------
@@ -90,9 +106,10 @@ function statsRow(stats) {
   </div>`;
 }
 function imgWrapHtml(imgUrl) {
+  imgUrl = safeMediaUrl(imgUrl);
   if (!imgUrl) return '';
   return `<div class="thr-img-wrap">
-    <img src="${imgUrl}" alt="" referrerpolicy="no-referrer"/>
+    <img src="${esc(imgUrl)}" alt="" referrerpolicy="no-referrer"/>
     <div class="img-share-btn"><svg viewBox="0 0 24 24"><use href="#ic-share"/></svg></div>
   </div>`;
 }
@@ -101,6 +118,7 @@ function imgWrapHtml(imgUrl) {
 // referrerpolicy="no-referrer": nhiều CDN (Instagram, Facebook...) chặn
 // hotlink dựa trên Referer header — không gửi Referer thì qua được (xem mục 5.9).
 function avatarHtml(uname, hue, sm, avatarUrl) {
+  avatarUrl = safeMediaUrl(avatarUrl);
   const inner = avatarUrl
     ? `<img src="${esc(avatarUrl)}" alt="" referrerpolicy="no-referrer" style="width:100%;height:100%;object-fit:cover;border-radius:50%" onerror="this.replaceWith(Object.assign(document.createElement('div'),{textContent:${JSON.stringify((uname[0]||'?').toUpperCase())},style:'width:100%;height:100%;display:flex;align-items:center;justify-content:center'}))"/>`
     : esc((uname[0]||'?').toUpperCase());
@@ -113,6 +131,7 @@ function avatarHtml(uname, hue, sm, avatarUrl) {
 // Avatar riêng cho TikTok (mục 5.39 CONTEXT.md) — tròn thuần, KHÔNG có
 // follow-badge dấu "+" (đặc trưng riêng Threads, mock TikTok không có).
 function tiktokAvatarHtml(uname, hue, avatarUrl) {
+  avatarUrl = safeMediaUrl(avatarUrl);
   const inner = avatarUrl
     ? `<img src="${esc(avatarUrl)}" alt="" referrerpolicy="no-referrer" style="width:100%;height:100%;object-fit:cover" onerror="this.replaceWith(Object.assign(document.createElement('div'),{textContent:${JSON.stringify((uname[0]||'?').toUpperCase())},style:'width:100%;height:100%;display:flex;align-items:center;justify-content:center'}))"/>`
     : esc((uname[0]||'?').toUpperCase());
@@ -222,7 +241,8 @@ function displayIdentity(seed, realUname, realAvatarUrl, realTimeLabel) {
 // vào MỌI card. Dùng đơn vị cqw để tự scale đúng tỉ lệ giữa preview
 // (~460px) và export (1080px) nhờ container-type:inline-size sẵn có.
 function posTransform(s) {
-  const ox = s.offsetX || 0, oy = s.offsetY || 0, rot = s.rotation || 0;
+  const finite = value => Number.isFinite(Number(value)) ? Number(value) : 0;
+  const ox = finite(s.offsetX), oy = finite(s.offsetY), rot = finite(s.rotation);
   if (!ox && !oy && !rot) return '';
   const parts = [];
   if (ox || oy) parts.push(`translate(${ox}cqw, ${oy}cqw)`);
@@ -281,7 +301,7 @@ function buildMessengerHtml(s) {
   const identityEditable = !!s.messIdentityEditable;
   const audioIndexes = new Set(s.messAudioIndexes || []);
   const partnerName = s.messPartnerName || 'Tùng';
-  const partnerAvatar = s.messPartnerAvatar || MESS_DEFAULT_AVATAR;
+  const partnerAvatar = safeMediaUrl(s.messPartnerAvatar) || MESS_DEFAULT_AVATAR;
   const partnerNameAttr = esc(partnerName).replace(/"/g,'&quot;').replace(/'/g,'&#39;');
   const partnerNameSize = Math.max(1, Math.min(24, Array.from(partnerName).length));
   const rows = history.map((m,i) => {
@@ -289,7 +309,8 @@ function buildMessengerHtml(s) {
     const groupCls = prevSame&&nextSame?' middle':nextSame?' first':prevSame?' last':'';
     const avatar = m.side==='theirs' ? (nextSame?'<div class="mess-avatar-space"></div>':`<div class="mess-mini-avatar"><img src="${esc(partnerAvatar)}" alt="" referrerpolicy="no-referrer"/></div>`) : '';
     const textHtml = m.text ? `<div class="mess-bubble">${esc(m.text)}</div>` : '';
-    const imageHtml = m.imageUrl ? `<img class="mess-chat-image${m.imageType==='sticker'?' is-sticker':''}" src="${esc(m.imageUrl)}" alt="" referrerpolicy="no-referrer"/>` : '';
+    const imageUrl = safeMediaUrl(m.imageUrl);
+    const imageHtml = imageUrl ? `<img class="mess-chat-image${m.imageType==='sticker'?' is-sticker':''}" src="${esc(imageUrl)}" alt="" referrerpolicy="no-referrer"/>` : '';
     const audioBadge = editable && (audioIndexes.has(i) || (m.parallelAudios && m.parallelAudios.length)) ? `<span class="mess-audio-badge">🔊 ${m.parallelAudios?.length || 1}<button type="button" onclick="event.stopPropagation();removeMessengerQuickAudio(${i})" title="Xóa âm thanh song song" aria-label="Xóa âm thanh song song">×</button></span>` : '';
     const insert = editable ? `<div class="mess-insert-slot" onclick="event.stopPropagation();beginMessengerInsert(${i})" title="Chèn tin nhắn trước tin này"><span>＋ Chèn tin tại đây</span></div>` : '';
     const menuDirection = i < 4 ? '' : ' menu-up';
@@ -324,14 +345,15 @@ function buildZaloHtml(s) {
   const identityEditable = !!s.messIdentityEditable;
   const audioIndexes = new Set(s.messAudioIndexes || []);
   const partnerName = s.messPartnerName || 'Thảo Mộc Coffee_Group';
-  const partnerAvatar = s.messPartnerAvatar || MESS_DEFAULT_AVATAR;
+  const partnerAvatar = safeMediaUrl(s.messPartnerAvatar) || MESS_DEFAULT_AVATAR;
   const partnerNameAttr = esc(partnerName).replace(/"/g,'&quot;').replace(/'/g,'&#39;');
   const partnerNameSize = Math.max(1, Math.min(24, Array.from(partnerName).length));
   const rows = history.map((m,i) => {
     const avatarEdit = identityEditable ? ` role="button" tabindex="0" title="Đổi ảnh đại diện" onclick="event.stopPropagation();document.getElementById('mess-avatar-file').click()"` : '';
     const avatar = m.side === 'theirs' ? `<div class="zalo-mini-avatar${identityEditable?' is-editable':''}"${avatarEdit}><img src="${esc(partnerAvatar)}" alt="" referrerpolicy="no-referrer"/></div>` : '';
     const textHtml = m.text ? `<div class="zalo-bubble">${esc(m.text)}</div>` : '';
-    const imageHtml = m.imageUrl ? `<img class="zalo-chat-image${m.imageType==='sticker'?' is-sticker':''}" src="${esc(m.imageUrl)}" alt="" referrerpolicy="no-referrer"/>` : '';
+    const imageUrl = safeMediaUrl(m.imageUrl);
+    const imageHtml = imageUrl ? `<img class="zalo-chat-image${m.imageType==='sticker'?' is-sticker':''}" src="${esc(imageUrl)}" alt="" referrerpolicy="no-referrer"/>` : '';
     const audioBadge = editable && (audioIndexes.has(i) || (m.parallelAudios && m.parallelAudios.length)) ? `<span class="mess-audio-badge">🔊 ${m.parallelAudios?.length || 1}<button type="button" onclick="event.stopPropagation();removeMessengerQuickAudio(${i})" title="Xóa âm thanh song song" aria-label="Xóa âm thanh song song">×</button></span>` : '';
     const insert = editable ? `<div class="mess-insert-slot" onclick="event.stopPropagation();beginMessengerInsert(${i})" title="Chèn tin nhắn trước tin này"><span>＋ Chèn tin tại đây</span></div>` : '';
     const menuDirection = i < 4 ? '' : ' menu-up';
@@ -421,10 +443,11 @@ function buildTiktokCommentHtml(s, id1, posAttr) {
 // các step (vd. chuỗi crop nhiều-vùng tăng dần) phải đứng yên ở đỉnh thay
 // vì giãn đều 2 phía. offsetX/offsetY (D-pad) dịch thêm từ điểm neo đó.
 function memeOverlayTransform(memeStep) {
-  const ox = (memeStep && memeStep.offsetX) || 0;
-  const oy = (memeStep && memeStep.offsetY) || 0;
-  const rot = (memeStep && memeStep.rotation) || 0;
-  const scale = Math.max(.35, Math.min(2.5, Number((memeStep && memeStep.overlayScale) || 1)));
+  const finite = (value, fallback = 0) => Number.isFinite(Number(value)) ? Number(value) : fallback;
+  const ox = finite(memeStep && memeStep.offsetX);
+  const oy = finite(memeStep && memeStep.offsetY);
+  const rot = finite(memeStep && memeStep.rotation);
+  const scale = Math.max(.35, Math.min(2.5, finite(memeStep && memeStep.overlayScale, 1)));
   return `translate(${ox}cqw, ${oy}cqw) rotate(${rot}deg) scale(${scale})`;
 }
 
@@ -513,11 +536,12 @@ function computeSceneAt(t) {
 }
 
 function retainedMemeHtml(step) {
-  if (!step || !step.mediaUrl) return '';
+  const mediaUrl = safeMediaUrl(step?.mediaUrl);
+  if (!step || !mediaUrl) return '';
   const media = step.mediaIsVideo
-    ? `<video src="${esc(step.mediaUrl)}" autoplay loop playsinline></video>`
-    : `<img src="${esc(step.mediaUrl)}" alt=""/>`;
-  return `<div class="meme-overlay retained-meme ${step.type==='sticker'?'sticker-overlay':''}" data-id="${step.id}" style="display:block;transform:${memeOverlayTransform(step)}">${media}</div>`;
+    ? `<video src="${esc(mediaUrl)}" autoplay loop playsinline></video>`
+    : `<img src="${esc(mediaUrl)}" alt=""/>`;
+  return `<div class="meme-overlay retained-meme ${step.type==='sticker'?'sticker-overlay':''}" data-id="${esc(step.id)}" style="display:block;transform:${memeOverlayTransform(step)}">${media}</div>`;
 }
 
 function autoScrollStack() {

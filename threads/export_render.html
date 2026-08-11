@@ -930,10 +930,11 @@ async function renderStackAt(t) {
   retainedMemeLayer.innerHTML = memeSteps.filter(s=>!memeStep||s.id!==memeStep.id).map(retainedMemeHtml).join('');
   const dynamicMeme = isDynamicMeme(memeStep);
   let memeBox = null;
-  if (memeStep && memeStep.mediaUrl) {
+  const memeUrl = safeMediaUrl(memeStep?.mediaUrl);
+  if (memeStep && memeUrl) {
     memeEl.innerHTML = memeStep.mediaIsVideo
-      ? `<video src="${memeStep.mediaUrl}" autoplay muted loop playsinline></video>`
-      : `<img src="${memeStep.mediaUrl}" alt=""/>`;
+      ? `<video src="${esc(memeUrl)}" autoplay muted loop playsinline></video>`
+      : `<img src="${esc(memeUrl)}" alt=""/>`;
     memeEl.style.display = 'block';
     memeEl.classList.toggle('sticker-overlay', memeStep.type === 'sticker');
     memeEl.style.transform = memeOverlayTransform(memeStep);

@@ -32,7 +32,9 @@
   let mode = 'login';
 
   function apiBase() {
-    return (document.getElementById('tts-server-url')?.value || 'https://threads-api-s13z.onrender.com').replace(/\/$/, '');
+    return typeof window.ttsServerUrl === 'function'
+      ? window.ttsServerUrl()
+      : 'https://threads-api-s13z.onrender.com';
   }
   async function request(path, options = {}, retry = true) {
     if (window.ensureTtsServerAwake) await window.ensureTtsServerAwake();
@@ -87,12 +89,10 @@
     setCurrentUser(currentUser);
   }
   async function refreshSession() {
-    const refreshToken = await window.desktopApp.loadRefreshToken();
-    if (!refreshToken) return false;
     try {
-      const response = await fetch(apiBase() + '/auth/refresh', { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({refresh_token:refreshToken}) });
-      if (!response.ok) throw new Error();
-      await acceptSession(await response.json()); return true;
+      const data = await window.desktopApp.refreshSession(apiBase());
+      if (!data) return false;
+      await acceptSession(data); return true;
     } catch (_error) { await window.desktopApp.clearAuth(); return false; }
   }
   function renderAccount() {
