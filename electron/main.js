@@ -182,13 +182,19 @@ ipcMain.handle('desktop:get-bundled-memeready', () => {
 
 ipcMain.handle('desktop:get-bundled-library', (_event, category) => {
   const folders = { audio: 'audio', meme: 'gif', background: 'background', bgaudio: 'audiobackground' };
+  const allowedFiles = {
+    audio: /\.(mp3|wav|m4a|aac|ogg|flac|opus)$/i,
+    bgaudio: /\.(mp3|wav|m4a|aac|ogg|flac|opus)$/i,
+    background: /\.(mp4|mov|m4v|webm|avi|mkv)$/i,
+    meme: /\.(gif|png|jpe?g|webp|mp4|webm)$/i,
+  };
   const folder = folders[category];
   if (!folder) return [];
   const root = path.join(threadsRoot(), folder);
   if (!fs.existsSync(root)) return [];
   let metadata = {};
   try { metadata = JSON.parse(fs.readFileSync(path.join(root, '_meta.json'), 'utf8')); } catch (_error) {}
-  return fs.readdirSync(root, { withFileTypes: true }).filter(entry => entry.isFile() && entry.name !== '_meta.json').map(entry => {
+  return fs.readdirSync(root, { withFileTypes: true }).filter(entry => entry.isFile() && allowedFiles[category].test(entry.name)).map(entry => {
     const filePath = path.join(root, entry.name), meta = metadata[entry.name] || {};
     return {
       filename: entry.name,
