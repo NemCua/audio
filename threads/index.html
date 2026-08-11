@@ -1029,7 +1029,7 @@ header span { font-size: 12px; color: #4b5563; }
         <div class="hint">Chọn 1 video gameplay chạy nền (vd: Subway Surfers, Minecraft parkour...). Video sẽ được crop phủ kín khung 9:16.</div>
         <div class="platform-picker">
           <button type="button" class="platform-btn active" onclick="setBgVideoSourceTab('file',this)">💻 Từ máy</button>
-          <button type="button" class="platform-btn" onclick="setBgVideoSourceTab('library',this)">📂 Thư viện của tôi</button>
+          <button type="button" class="platform-btn" onclick="setBgVideoSourceTab('library',this)">📂 Thư viện có sẵn</button>
         </div>
         <div id="bgvideo-file-tab">
           <div class="drop-zone" id="bgvideo-dropzone">
@@ -1040,7 +1040,6 @@ header span { font-size: 12px; color: #4b5563; }
           </div>
         </div>
         <div id="bgvideo-library-tab" style="display:none">
-          <button type="button" class="btn btn-ghost" style="margin-bottom:8px" onclick="window.desktopApp?.openMediaFolder?.('video')">Mở thư mục Video</button>
           <div class="lib-grid lib-grid-bg" id="bgvideo-library-grid"><div class="lib-empty">Đang tải...</div></div>
         </div>
         <button class="btn btn-primary" id="bgvideo-apply" onclick="applyBgVideo()" disabled>▶ Xem thử trong khung 9:16</button>
@@ -1060,7 +1059,7 @@ header span { font-size: 12px; color: #4b5563; }
         <div class="hint">Chọn nhạc nền phát cùng lúc với video khi xem thử. Video gameplay sẽ tự tắt tiếng gốc.</div>
         <div class="platform-picker">
           <button type="button" class="platform-btn active" onclick="setBgAudioSourceTab('file',this)">💻 Từ máy</button>
-          <button type="button" class="platform-btn" onclick="setBgAudioSourceTab('library',this)">📂 Thư viện của tôi</button>
+          <button type="button" class="platform-btn" onclick="setBgAudioSourceTab('library',this)">📂 Thư viện có sẵn</button>
         </div>
         <div id="bgaudio-file-tab">
           <div class="drop-zone" id="bgaudio-dropzone">
@@ -1071,7 +1070,6 @@ header span { font-size: 12px; color: #4b5563; }
           </div>
         </div>
         <div id="bgaudio-library-tab" style="display:none">
-          <button type="button" class="btn btn-ghost" style="margin-bottom:8px" onclick="window.desktopApp?.openMediaFolder?.('audio')">Mở thư mục Audio</button>
           <div class="lib-grid lib-grid-bg" id="bgaudio-library-grid"><div class="lib-empty">Đang tải...</div></div>
         </div>
 
@@ -1434,9 +1432,9 @@ async function loadBgVideoLibrary() {
   grid.innerHTML = `<div class="lib-empty">Đang tải...</div>`;
   try {
     let items;
-    if (window.desktopApp?.getLocalMediaLibrary) items = await window.desktopApp.getLocalMediaLibrary('video');
+    if (window.desktopApp?.getBundledLibrary) items = await window.desktopApp.getBundledLibrary('background');
     else { const res = await fetch(MEDIA_SERVER_URL + '/library/background'); if (!res.ok) throw new Error('HTTP ' + res.status); items = await res.json(); }
-    if (!items.length) { grid.innerHTML = `<div class="lib-empty">Thư viện Video đang trống — chọn video từ máy hoặc mở thư mục để chép video vào.</div>`; return; }
+    if (!items.length) { grid.innerHTML = `<div class="lib-empty">Thư viện Video có sẵn đang trống.</div>`; return; }
     grid.innerHTML = items.map(it => {
       const url = /^(?:file:|https?:|blob:)/i.test(it.url) ? it.url : MEDIA_SERVER_URL + it.url;
       const itemJson = esc(JSON.stringify(it));
@@ -1564,9 +1562,9 @@ async function loadBgAudioLibrary() {
   grid.innerHTML = `<div class="lib-empty">Đang tải...</div>`;
   try {
     let items;
-    if (window.desktopApp?.getLocalMediaLibrary) items = await window.desktopApp.getLocalMediaLibrary('audio');
+    if (window.desktopApp?.getBundledLibrary) items = await window.desktopApp.getBundledLibrary('bgaudio');
     else { const res = await fetch(MEDIA_SERVER_URL + '/library/bgaudio'); if (!res.ok) throw new Error('HTTP ' + res.status); items = await res.json(); }
-    if (!items.length) { grid.innerHTML = `<div class="lib-empty">Thư viện Audio đang trống — chọn âm thanh từ máy hoặc mở thư mục để chép file vào.</div>`; return; }
+    if (!items.length) { grid.innerHTML = `<div class="lib-empty">Thư viện Audio có sẵn đang trống.</div>`; return; }
     grid.innerHTML = items.map(it => {
       const url = /^(?:file:|https?:|blob:)/i.test(it.url) ? it.url : MEDIA_SERVER_URL + it.url;
       const itemJson = esc(JSON.stringify(it));

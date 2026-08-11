@@ -18,32 +18,14 @@
 
   if (window.desktopApp?.getPathForFile) {
     const originalSetBgVideoFile = setBgVideoFile;
-    window.setBgVideoFile = setBgVideoFile = async function (file) {
-      const result = originalSetBgVideoFile(file);
-      if (!file?.type?.startsWith('video/')) return result;
-      const applyButton = document.getElementById('bgvideo-apply');
-      if (applyButton) applyButton.disabled = true;
-      try {
-        const saved = await window.desktopApp.saveLocalAsset(new Uint8Array(await file.arrayBuffer()), 'video', file.name);
-        desktopBgVideoPath = saved.path;
-        document.getElementById('bgvideo-fname').textContent = `✓ Đã lưu vào thư viện: ${file.name}`;
-      } catch (_error) {
-        desktopBgVideoPath = window.desktopApp.getPathForFile(file);
-      } finally { if (applyButton) applyButton.disabled = false; }
+    window.setBgVideoFile = setBgVideoFile = function (file) {
+      desktopBgVideoPath = window.desktopApp.getPathForFile(file);
+      return originalSetBgVideoFile(file);
     };
     const originalSetBgAudioFile = setBgAudioFile;
-    window.setBgAudioFile = setBgAudioFile = async function (file) {
-      const result = originalSetBgAudioFile(file);
-      if (!file?.type?.startsWith('audio/')) return result;
-      const applyButton = document.getElementById('bgaudio-apply');
-      if (applyButton) applyButton.disabled = true;
-      try {
-        const saved = await window.desktopApp.saveLocalAsset(new Uint8Array(await file.arrayBuffer()), 'audio', file.name);
-        desktopBgAudioPath = saved.path;
-        document.getElementById('bgaudio-fname').textContent = `✓ Đã lưu vào thư viện: ${file.name}`;
-      } catch (_error) {
-        desktopBgAudioPath = window.desktopApp.getPathForFile(file);
-      } finally { if (applyButton) applyButton.disabled = false; }
+    window.setBgAudioFile = setBgAudioFile = function (file) {
+      desktopBgAudioPath = window.desktopApp.getPathForFile(file);
+      return originalSetBgAudioFile(file);
     };
     const originalSelectBgVideoLibraryItem = selectBgVideoLibraryItem;
     window.selectBgVideoLibraryItem = selectBgVideoLibraryItem = function (el) {

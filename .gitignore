@@ -15,6 +15,12 @@ srt/
 # Media files
 *.mp3
 *.mp4
+!threads/background/**/*.mp4
+!threads/background/**/*.mov
+!threads/background/**/*.webm
+!threads/audiobackground/**/*.mp3
+!threads/audiobackground/**/*.wav
+!threads/audiobackground/**/*.m4a
 *.wav
 *.srt
 
