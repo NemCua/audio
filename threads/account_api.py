@@ -33,6 +33,15 @@ REFRESH_DAYS = int(os.getenv("AUTH_REFRESH_DAYS", "30"))
 SIGNUP_CREDITS = int(os.getenv("AUTH_SIGNUP_CREDITS", "0"))
 EXPORT_CREDIT_COST = int(os.getenv("EXPORT_CREDIT_COST", "1"))
 RESERVATION_MINUTES = int(os.getenv("EXPORT_RESERVATION_MINUTES", "30"))
+DEFAULT_CREDIT_PRICING = {
+    "post": 100,
+    "comment": 100,
+    "reply": 100,
+    "image": 150,
+    "sticker": 150,
+    "mess": 20,
+    "audio": 10,
+}
 
 if not DATABASE_URL:
     raise RuntimeError("Thiếu DATABASE_URL")
@@ -116,11 +125,19 @@ def migrate() -> None:
             expires_at TIMESTAMPTZ NOT NULL, created_at TIMESTAMPTZ DEFAULT NOW(), finished_at TIMESTAMPTZ,
             UNIQUE(user_id, idempotency_key)
         )""",
+        """CREATE TABLE IF NOT EXISTS credit_pricing (
+            kind TEXT PRIMARY KEY, unit_cost INTEGER NOT NULL CHECK (unit_cost >= 0),
+            updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+        )""",
     ]
     with db() as conn:
         with conn.cursor() as cur:
             for statement in statements:
                 cur.execute(statement)
+            cur.executemany(
+                "INSERT INTO credit_pricing(kind,unit_cost) VALUES(%s,%s) ON CONFLICT(kind) DO NOTHING",
+                list(DEFAULT_CREDIT_PRICING.items()),
+            )
 
 
 def _hash_password(password: str) -> str:
@@ -203,11 +220,12 @@ class ReservationRequest(BaseModel):
     reservation_id: str
 class AdminCreditRequest(BaseModel):
     user_id: int; amount: int; reference: str = "manual"; idempotency_key: str
+class AdminPricingRequest(BaseModel):
+    prices: dict[str, int] = Field(default_factory=dict)
 
 
-def _export_credit_cost(type_counts: dict[str, int]) -> int:
-    """Điểm thay duy nhất khi chốt công thức giá; client không được tự đặt cost."""
-    allowed = {"post", "comment", "reply", "image", "sticker", "mess", "audio"}
+def _validated_type_counts(type_counts: dict[str, int]) -> dict[str, int]:
+    allowed = set(DEFAULT_CREDIT_PRICING)
     counts: dict[str, int] = {}
     for kind, raw_count in type_counts.items():
         if kind not in allowed:
@@ -215,12 +233,22 @@ def _export_credit_cost(type_counts: dict[str, int]) -> int:
         if isinstance(raw_count, bool) or not isinstance(raw_count, int) or raw_count < 0 or raw_count > 100_000:
             raise HTTPException(400, "Số lượng nội dung không hợp lệ")
         counts[kind] = raw_count
-    return (
-        100 * (counts.get("post", 0) + counts.get("comment", 0) + counts.get("reply", 0))
-        + 150 * (counts.get("image", 0) + counts.get("sticker", 0))
-        + 20 * counts.get("mess", 0)
-        + 10 * counts.get("audio", 0)
-    )
+    return counts
+
+
+def _credit_pricing() -> dict[str, int]:
+    """Đọc bảng giá live; app đã cài không cần cập nhật khi chủ app đổi giá."""
+    with db() as conn:
+        with conn.cursor() as cur:
+            cur.execute("SELECT kind,unit_cost FROM credit_pricing")
+            stored = {kind: int(cost) for kind, cost in cur.fetchall()}
+    return {kind: stored.get(kind, default) for kind, default in DEFAULT_CREDIT_PRICING.items()}
+
+
+def _export_credit_cost(type_counts: dict[str, int], pricing: dict[str, int] | None = None) -> int:
+    counts = _validated_type_counts(type_counts)
+    prices = pricing or _credit_pricing()
+    return sum(counts.get(kind, 0) * prices[kind] for kind in DEFAULT_CREDIT_PRICING)
 
 
 @router.post("/register")
@@ -283,14 +311,21 @@ def ledger(identity: dict = Depends(current_identity)):
             return [dict(row) for row in cur.fetchall()]
 
 
+@router.get("/pricing")
+def get_pricing(identity: dict = Depends(current_identity)):
+    return {"pricing": _credit_pricing(), "version": "database-v1"}
+
+
 @router.post("/exports/quote")
 def quote_export(req: ExportQuoteRequest, identity: dict = Depends(current_identity)):
-    cost = _export_credit_cost(req.type_counts)
+    pricing = _credit_pricing()
+    cost = _export_credit_cost(req.type_counts, pricing)
     return {
         "cost": cost,
         "balance": identity["balance"] or 0,
         "can_export": (identity["balance"] or 0) >= cost,
-        "pricing": "content-type-v1",
+        "pricing": pricing,
+        "pricing_version": "database-v1",
     }
 
 
@@ -359,3 +394,25 @@ def admin_credit(req: AdminCreditRequest, x_admin_key: str = Header(default=""))
             if not row: raise HTTPException(404, "User không tồn tại")
             cur.execute("INSERT INTO credit_ledger(user_id,amount,balance_after,kind,reference,idempotency_key) VALUES(%s,%s,%s,'admin',%s,%s) RETURNING id", (req.user_id, req.amount, row["balance"], req.reference, req.idempotency_key)); ledger_id = cur.fetchone()["id"]
             return {"id": ledger_id, "balance": row["balance"]}
+
+
+@router.put("/admin/pricing")
+def update_pricing(req: AdminPricingRequest, x_admin_key: str = Header(default="")):
+    if not AUTH_ADMIN_KEY or not secrets.compare_digest(x_admin_key, AUTH_ADMIN_KEY):
+        raise HTTPException(403, "Admin key không hợp lệ")
+    if not req.prices:
+        raise HTTPException(400, "Bảng giá không được để trống")
+    unknown = set(req.prices) - set(DEFAULT_CREDIT_PRICING)
+    if unknown:
+        raise HTTPException(400, "Loại card không hợp lệ: " + ", ".join(sorted(unknown)))
+    for kind, value in req.prices.items():
+        if isinstance(value, bool) or not isinstance(value, int) or value < 0 or value > 1_000_000:
+            raise HTTPException(400, f"Giá {kind} không hợp lệ")
+    with db() as conn:
+        with conn.cursor() as cur:
+            cur.executemany(
+                """INSERT INTO credit_pricing(kind,unit_cost,updated_at) VALUES(%s,%s,NOW())
+                   ON CONFLICT(kind) DO UPDATE SET unit_cost=EXCLUDED.unit_cost,updated_at=NOW()""",
+                list(req.prices.items()),
+            )
+    return {"pricing": _credit_pricing(), "version": "database-v1"}

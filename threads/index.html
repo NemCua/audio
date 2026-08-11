@@ -4076,18 +4076,37 @@ function exportTypeCounts() {
   return counts;
 }
 
-function localExportCreditTotal() {
-  const c = exportTypeCounts();
-  return 100 * (c.post + c.comment + c.reply) + 150 * (c.image + c.sticker) + 20 * c.mess + 10 * c.audio;
-}
-
+let creditQuoteTimer = null;
+let creditQuoteSequence = 0;
 function updateCreditLabels() {
-  const total = localExportCreditTotal();
   const playLabel = document.getElementById('play-credit-label');
   const exportLabel = document.getElementById('export-credit-info');
-  if (playLabel) playLabel.textContent = `${total} credit`;
-  if (exportLabel) exportLabel.textContent = `Tổng: ${total} credit`;
+  const counts = exportTypeCounts();
+  const totalCards = Object.values(counts).reduce((sum, count) => sum + count, 0);
+  if (!totalCards) {
+    if (playLabel) playLabel.textContent = '0 credit';
+    if (exportLabel) exportLabel.textContent = 'Tổng: 0 credit';
+    return;
+  }
+  if (playLabel) playLabel.textContent = 'Đang tính…';
+  if (exportLabel) exportLabel.textContent = 'Đang lấy giá từ server…';
+  clearTimeout(creditQuoteTimer);
+  const sequence = ++creditQuoteSequence;
+  creditQuoteTimer = setTimeout(async () => {
+    if (!window.creditClient || sequence !== creditQuoteSequence) return;
+    try {
+      const quote = await window.creditClient.quoteExport({type_counts: counts});
+      if (sequence !== creditQuoteSequence) return;
+      if (playLabel) playLabel.textContent = `${quote.cost} credit`;
+      if (exportLabel) exportLabel.textContent = `Tổng: ${quote.cost} credit`;
+    } catch (_error) {
+      if (sequence !== creditQuoteSequence) return;
+      if (playLabel) playLabel.textContent = 'Chưa lấy được giá';
+      if (exportLabel) exportLabel.textContent = 'Không kết nối được bảng giá server.';
+    }
+  }, 250);
 }
+window.addEventListener('credit-balance-changed', updateCreditLabels);
 
 let _dragStepIds = null; // luôn là mảng — [id] khi kéo 1 card, [id1,id2] khi kéo cả cụm
 let _dragVisualOrigin=null,_dragVisualContainer=null,_dragPreviewTargetId=null,_dragPreviewAfter=false,_dragPreviewUnit=null;

@@ -69,6 +69,7 @@
   }
 
   window.creditClient = Object.freeze({
+    getPricing: () => jsonRequest('/auth/pricing'),
     quoteExport: input => jsonRequest('/auth/exports/quote', { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(input) }),
     reserveExport: input => jsonRequest('/auth/exports/reserve', { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(input) }).then(async data => { await refreshUser(); return data; }),
     consumeExport: reservationId => jsonRequest('/auth/exports/consume', { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({reservation_id:reservationId}) }).then(async data => { await refreshUser(); return data; }),
