@@ -789,6 +789,7 @@ header span { font-size: 12px; color: #4b5563; }
 }
 .step-card .sc-ctrls .sc-actions button:hover { background: #2a3050; color: #e2e8f0; }
 .mess-box{overflow:hidden;border:1px solid #234a75;border-radius:12px;background:linear-gradient(145deg,#101b31,#0f172a)}.mess-box.active-now{border-color:#7c3aed;box-shadow:0 0 0 1px #7c3aed}.mess-box.dragging{opacity:.45}.mess-box.drag-over{border-color:#4ade80;box-shadow:0 0 0 1px #4ade80}.mess-box-head{display:flex;align-items:center;gap:8px;padding:10px 12px;border-bottom:1px solid #20304d}.mess-box-drag{display:flex;align-items:center;gap:4px;margin-left:auto;padding:4px 7px;border:1px solid #2d4770;border-radius:6px;background:#14223a;color:#8da8cd;font-size:9px;cursor:grab;user-select:none}.mess-box-drag:hover{border-color:#4d6f9f;color:#dbeafe}.mess-box-drag:active{cursor:grabbing}.mess-box-head .sc-idx{width:20px;height:20px;border-radius:50%;display:grid;place-items:center;background:#1e1b4b;color:#a78bfa;font-size:10px;font-weight:800}.mess-box-head .sc-type{padding:3px 8px;border-radius:5px;background:#123e69;color:#60a5fa;font-size:10px;font-weight:700}.mess-box-head .sc-time{color:#6b7280;font-size:10px;font-variant-numeric:tabular-nums}.mess-box-summary{display:flex;align-items:center;gap:10px;padding:10px 12px}.mess-box-avatar{position:relative;width:34px;height:34px;flex:0 0 34px}.mess-box-avatar img{width:100%;height:100%;border-radius:50%;object-fit:cover}.mess-box-avatar::after{content:"";position:absolute;right:-1px;bottom:1px;width:8px;height:8px;border:2px solid #101b31;border-radius:50%;background:#31a24c}.mess-box-copy{min-width:0;flex:1}.mess-box-name{color:#f8fafc;font-size:13px;font-weight:700}.mess-box-meta{margin-top:3px;color:#94a3b8;font-size:10px}.mess-box-steps{display:flex;flex-direction:column;gap:7px;padding:9px;border-top:1px dashed #2a4161;background:#090e1a}.mess-box-steps .step-card{background:#0f1220}.mess-box-add-actions,.mess-box-actions{display:flex;gap:6px;padding:9px 12px;border-top:1px solid #20304d}.mess-box-add-actions{padding-bottom:0}.mess-box-add-actions button{flex:1;padding:7px 8px;border:1px dashed #3b5d89;border-radius:7px;background:#111f36;color:#bfdbfe;cursor:pointer;font-size:10px;font-weight:700}.mess-box-add-actions button:hover{border-color:#60a5fa;background:#172b49}.mess-box-actions button{padding:7px 9px;border:0;border-radius:7px;cursor:pointer;font-size:10px;font-weight:700}.mess-box-open{flex:1;background:#1877f2;color:#fff}.mess-box-open:hover{background:#0d6fe5}.mess-box-ungroup{background:#202d43;color:#cbd5e1}.mess-box-ungroup:hover{background:#2a3a55}.mess-box-delete{background:#351725;color:#f87171}.mess-box-delete:hover{background:#4b1d2e}
+.mess-box-clear-toggle{display:flex;align-items:center;gap:5px;padding:0 5px;color:#cbd5e1;font-size:10px;white-space:nowrap}.mess-box-clear-toggle input{width:auto;margin:0;accent-color:#8b5cf6}
 .mess-box>.mess-box-actions{border-top:0;border-bottom:1px solid #20304d}.mess-box-position{margin:0 12px 10px;border:1px solid #20304d;border-radius:9px;background:#0b1323}.mess-box-position .sc-position{border-top:0}.mess-box-position-label{padding:7px 10px 0;color:#8da8cd;font-size:10px;font-weight:700}
 .script-empty { color: #4b5563; font-size: 12px; padding: 16px 4px; text-align: center; }
 
@@ -2426,11 +2427,12 @@ async function submitMessengerConversation() {
   if(messEditingConversationId!=null){
     commitPendingMessengerDraft();if(!messDrafts.length){alert('Box tin nhắn phải có ít nhất một tin nhắn.');return;}
     const conv=messEditingConversationId,oldSteps=steps.filter(s=>s.type==='mess'&&s.conversationId===conv).sort((a,b)=>(a.messIndex??0)-(b.messIndex??0));
+    const boxClearBefore=oldSteps.some(s=>s.clearBefore);
     finish.disabled=true;
     try{
       messSideVoiceIdx={theirs:parseInt(document.getElementById('mess-theirs-voice').value,10),mine:parseInt(document.getElementById('mess-mine-voice').value,10)};messPartnerName=messPartnerName.trim()||'Tùng';
       const ttsResults=await generateMessengerTtsResults(messDrafts,status,oldSteps),history=[],replacements=[];
-      messDrafts.forEach((msg,i)=>{history.push(messengerHistoryMessage(msg));replacements.push(makeMessengerStep(msg,i,history,conv,ttsResults.get(i)||null,oldSteps[i]||null));});
+      messDrafts.forEach((msg,i)=>{history.push(messengerHistoryMessage(msg));const replacement=makeMessengerStep(msg,i,history,conv,ttsResults.get(i)||null,oldSteps[i]||null);replacement.clearBefore=boxClearBefore;replacements.push(replacement);});
       const rebuilt=[];let replacementIndex=0,lastConversationPosition=-1;
       for(const step of steps){if(step.type==='mess'&&step.conversationId===conv){if(replacementIndex<replacements.length){rebuilt.push(replacements[replacementIndex++]);lastConversationPosition=rebuilt.length;}}else rebuilt.push(step);}
       if(replacementIndex<replacements.length)rebuilt.splice(lastConversationPosition<0?rebuilt.length:lastConversationPosition,0,...replacements.slice(replacementIndex));
@@ -3908,9 +3910,7 @@ function stepCardHtml(s, idx) {
         <label>Gap sau
           <input type="number" min="0" step="0.1" value="${s.gap}" onchange="updateStepField(${s.id},'gap',this.value)"/>
         </label>
-        <label class="clear-toggle">
-          <input type="checkbox" ${s.clearBefore?'checked':''} onchange="updateStepField(${s.id},'clearBefore',this.checked)"/> ${s.type==='mess'?'Ẩn card phía dưới':'Xoá nội dung cũ'}
-        </label>
+        ${s.type==='mess'?'':`<label class="clear-toggle"><input type="checkbox" ${s.clearBefore?'checked':''} onchange="updateStepField(${s.id},'clearBefore',this.checked)"/> Xoá nội dung cũ</label>`}
         <div class="sc-actions">
           <button onclick="${s.type==='mess'?`openMessengerModal(${s.id})`:`openStepModal('${s.type}',${s.id})`}" title="Sửa">✎</button>
           ${isParallelMedia(s)?`<button onclick="detachParallelMedia(${s.id})" title="Tách khỏi step đang phát song song">↳ Tách</button>`:''}
@@ -3965,9 +3965,10 @@ function messengerBoxHtml(groupSteps,groupId){
   const meta=[messSteps.length?`${messSteps.length} tin nhắn`:'',audioCount?`${audioCount} âm thanh`:'',imageCount?`${imageCount} meme/ảnh`:''].filter(Boolean).join(' · ');
   const childCards=stepRowsHtml(ordered);
   const positionCtrls=messengerBoxPositionCtrlsHtml(groupId,ordered);
+  const hidesPrevious=messSteps.some(s=>s.clearBefore);
   return `<div class="mess-box" data-group-id="${groupKey}" ondragover="onStepDragOver(event)" ondragleave="onStepDragLeave(event)" ondrop="onStepDrop(event,${first.id})">
     <div class="mess-box-head" onclick="jumpToStep(${first.id})"><span class="sc-idx">${firstIndex}</span><span class="sc-type">BOX TIN NHẮN</span><span class="sc-time">${fmt(start)} → ${fmt(end)}</span><span class="mess-box-drag" draggable="true" onclick="event.stopPropagation()" ondragstart="event.stopPropagation();onRowDragStart(event,[${ids.join(',')}])" ondragend="onStepDragEnd(event)" title="Kéo toàn bộ Box tin nhắn">⠿ Kéo cả Box</span></div>
-    <div class="mess-box-actions">${messSteps.length?`<button type="button" class="mess-box-open" onclick="event.stopPropagation();openMessengerBox(decodeURIComponent('${groupKey}'))">Xem hội thoại</button>`:''}<button type="button" class="mess-box-ungroup" onclick="event.stopPropagation();ungroupMessengerBox(decodeURIComponent('${groupKey}'))">Bỏ nhóm</button><button type="button" class="mess-box-delete" onclick="event.stopPropagation();deleteMessengerBox(decodeURIComponent('${groupKey}'))">Xóa cả nhóm</button></div>
+    <div class="mess-box-actions"><label class="mess-box-clear-toggle" onclick="event.stopPropagation()"><input type="checkbox" ${hidesPrevious?'checked':''} onchange="setMessengerBoxClearBefore(decodeURIComponent('${groupKey}'),this.checked)"/> Xóa nội dung cũ</label>${messSteps.length?`<button type="button" class="mess-box-open" onclick="event.stopPropagation();openMessengerBox(decodeURIComponent('${groupKey}'))">Xem hội thoại</button>`:''}<button type="button" class="mess-box-ungroup" onclick="event.stopPropagation();ungroupMessengerBox(decodeURIComponent('${groupKey}'))">Bỏ nhóm</button><button type="button" class="mess-box-delete" onclick="event.stopPropagation();deleteMessengerBox(decodeURIComponent('${groupKey}'))">Xóa cả nhóm</button></div>
     <div class="mess-box-summary"><div class="mess-box-avatar"><img src="${esc(avatar)}" alt="" referrerpolicy="no-referrer"/></div><div class="mess-box-copy"><div class="mess-box-name">${esc(name)}</div><div class="mess-box-meta">${meta||`${ordered.length} step`} · phát theo đúng thứ tự bên dưới</div></div></div>
     ${positionCtrls}
     <div class="mess-box-steps" ondragover="onDragContainerOver(event)" ondrop="dropAtDragPreview(event)">${childCards}</div>
@@ -3976,6 +3977,11 @@ function messengerBoxHtml(groupSteps,groupId){
 function openMessengerBox(groupId){
   const related=steps.filter(s=>s.type==='mess'&&stepGroupId(s)===groupId);if(!related.length)return;
   const fullest=related.reduce((best,s)=>(s.messHistory||[]).length>(best.messHistory||[]).length?s:best,related[0]);openMessengerModal(fullest.id,true);
+}
+function setMessengerBoxClearBefore(groupId,checked){
+  const related=steps.filter(s=>s.type==='mess'&&stepGroupId(s)===groupId);
+  for(const step of related){step.clearBefore=!!checked;bumpStepRevision(step.id);}
+  renderStepList();renderIdleScene();
 }
 function ungroupMessengerBox(groupId){
   const related=steps.filter(s=>stepGroupId(s)===groupId);if(!related.length)return;
