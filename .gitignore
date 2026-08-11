@@ -19,6 +19,7 @@ srt/
 !threads/background/**/*.mov
 !threads/background/**/*.webm
 !threads/audiobackground/**/*.mp3
+!threads/voice-previews/**/*.mp3
 !threads/audiobackground/**/*.wav
 !threads/audiobackground/**/*.m4a
 *.wav

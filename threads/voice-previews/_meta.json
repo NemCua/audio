@@ -1,0 +1,170 @@
+{
+  "0": {
+    "filename": "voice-00.mp3",
+    "label": "Nhỏ Ngọt Ngào",
+    "duration": 1.704,
+    "voice_type": "BV421_vivn_streaming",
+    "resource_id": "7252594014782755330"
+  },
+  "1": {
+    "filename": "voice-01.mp3",
+    "label": "Giọng Nữ Phổ Thông",
+    "duration": 1.896,
+    "voice_type": "vi_female_huong",
+    "resource_id": "7264854897953083905"
+  },
+  "2": {
+    "filename": "voice-02.mp3",
+    "label": "Giọng Bé",
+    "duration": 1.335,
+    "voice_type": "BV074_streaming_dsp",
+    "resource_id": "7550087831092251920"
+  },
+  "3": {
+    "filename": "voice-03.mp3",
+    "label": "Cô Gái Hoạt Ngôn",
+    "duration": 1.944,
+    "voice_type": "BV074_streaming",
+    "resource_id": "7102355709945188865"
+  },
+  "4": {
+    "filename": "voice-04.mp3",
+    "label": "Hoai My",
+    "duration": 2.448,
+    "voice_type": "vi-VN-HoaiMyNeural",
+    "resource_id": "7371666434650280464"
+  },
+  "5": {
+    "filename": "voice-05.mp3",
+    "label": "Nam Minh",
+    "duration": 2.448,
+    "voice_type": "vi-VN-NamMinhNeural",
+    "resource_id": "7371666524727153168"
+  },
+  "6": {
+    "filename": "voice-06.mp3",
+    "label": "Việt Méo",
+    "duration": 1.355,
+    "voice_type": "BV075_streaming_vibrato_dsp",
+    "resource_id": "7569450639810465040"
+  },
+  "7": {
+    "filename": "voice-07.mp3",
+    "label": "Mai",
+    "duration": 1.368,
+    "voice_type": "BV562_streaming",
+    "resource_id": "7483736254694035984"
+  },
+  "8": {
+    "filename": "voice-08.mp3",
+    "label": "Ban Mai",
+    "duration": 2.256,
+    "voice_type": "multi_female_yangguangnv_uranus_bigtts",
+    "resource_id": "7637456432522218773"
+  },
+  "9": {
+    "filename": "voice-09.mp3",
+    "label": "Review Phim new",
+    "duration": 2.4,
+    "voice_type": "multi_female_richgirl_uranus_bigtts",
+    "resource_id": "7637460351541447956"
+  },
+  "10": {
+    "filename": "voice-10.mp3",
+    "label": "Bản Tin 1",
+    "duration": 1.632,
+    "voice_type": "multi_female_quanweinv_uranus_bigtts",
+    "resource_id": "7637458743197732117"
+  },
+  "11": {
+    "filename": "voice-11.mp3",
+    "label": "Review Phim 4",
+    "duration": 2.4,
+    "voice_type": "multi_female_stokie_uranus_bigtts",
+    "resource_id": "7637456729696996628"
+  },
+  "12": {
+    "filename": "voice-12.mp3",
+    "label": "Bản Tin nữ",
+    "duration": 2.256,
+    "voice_type": "multi_female_sisi_uranus_bigtts",
+    "resource_id": "7637455857285860629"
+  },
+  "13": {
+    "filename": "voice-13.mp3",
+    "label": "Review Phim 3",
+    "duration": 1.848,
+    "voice_type": "multi_female_daqi_uranus_bigtts",
+    "resource_id": "7637451983389019409"
+  },
+  "14": {
+    "filename": "voice-14.mp3",
+    "label": "Review Phim 2",
+    "duration": 2.232,
+    "voice_type": "multi_female_xyf04auto_uranus_bigtts",
+    "resource_id": "7637458743197732117"
+  },
+  "15": {
+    "filename": "voice-15.mp3",
+    "label": "Sunny Idol",
+    "duration": 2.016,
+    "voice_type": "multi_female_kiwi_uranus_bigtts",
+    "resource_id": "7637457995882089749"
+  },
+  "16": {
+    "filename": "voice-16.mp3",
+    "label": "Kenny Đại Đế",
+    "duration": 1.695,
+    "voice_type": "BV075_streaming_demon_dsp",
+    "resource_id": "7569442422665661712"
+  },
+  "17": {
+    "filename": "voice-17.mp3",
+    "label": "Robot VN",
+    "duration": 1.815,
+    "voice_type": "BV075_streaming_robot_dsp",
+    "resource_id": "7538698409633516816"
+  },
+  "18": {
+    "filename": "voice-18.mp3",
+    "label": "Giọng Nam Trầm",
+    "duration": 2.232,
+    "voice_type": "multi_male_felipe_uranus_bigtts",
+    "resource_id": "7637456729696996628"
+  },
+  "19": {
+    "filename": "voice-19.mp3",
+    "label": "Giọng Gái Mới Lớn",
+    "duration": 2.616,
+    "voice_type": "multi_female_peiqi_uranus_bigtts",
+    "resource_id": "7637458789033151751"
+  },
+  "20": {
+    "filename": "voice-20.mp3",
+    "label": "Nam bản tin",
+    "duration": 2.232,
+    "voice_type": "multi_female_xinwenjieshuo_uranus_bigtts",
+    "resource_id": "7637455039719640327"
+  },
+  "21": {
+    "filename": "voice-21.mp3",
+    "label": "Quên Tên Tự Test",
+    "duration": 2.64,
+    "voice_type": "multi_female_tianmeijieshuo_uranus_bigtts",
+    "resource_id": "7637460417295469832"
+  },
+  "22": {
+    "filename": "voice-22.mp3",
+    "label": "Thanh Niên Tự Tin",
+    "duration": 1.848,
+    "voice_type": "BV075_streaming",
+    "resource_id": "7102355803792740865"
+  },
+  "23": {
+    "filename": "voice-23.mp3",
+    "label": "Alex Đại Đế",
+    "duration": 1.464,
+    "voice_type": "BV560_streaming",
+    "resource_id": "7483736167565758992"
+  }
+}

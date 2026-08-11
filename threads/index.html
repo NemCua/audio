@@ -1676,8 +1676,12 @@ function voiceOptionsHtml(selected) {
   }).join('');
 }
 
-const voicePreviewCache = new Map();
 const voicePreviewPlayer = new Audio();
+const BUNDLED_VOICE_PREVIEW_COUNT = 24;
+function bundledVoicePreviewUrl(index) {
+  if (!Number.isInteger(index) || index < 0 || index >= BUNDLED_VOICE_PREVIEW_COUNT) return '';
+  return new URL(`voice-previews/voice-${String(index).padStart(2, '0')}.mp3`, window.location.href).href;
+}
 function voicePickerRowsHtml(selected) {
   const groups=[['CapCut TTS','capcut'],['Edge TTS','edge']];
   return groups.map(([label,engine])=>{
@@ -1688,7 +1692,7 @@ function voicePickerRowsHtml(selected) {
 }
 function voicePickerHtml(inputId,selected){
   const index=Number.isFinite(Number(selected))?Number(selected):0,voice=ttsVoices[index]||ttsVoices[0];
-  return `<div class="voice-picker"><input type="hidden" id="${inputId}" value="${index}"/><button type="button" class="voice-picker-trigger" onclick="toggleCustomVoicePicker(this.parentElement,event)">${esc(voice?.label||'Chọn giọng đọc')}</button><div class="voice-picker-menu" onclick="event.stopPropagation()"><div class="voice-picker-tools"><span>${ttsVoices.length} giọng đọc</span><button type="button" onclick="prepareAllVoicePreviews(this,event)">Tạo tất cả mẫu thử</button></div>${voicePickerRowsHtml(index)}</div></div>`;
+  return `<div class="voice-picker"><input type="hidden" id="${inputId}" value="${index}"/><button type="button" class="voice-picker-trigger" onclick="toggleCustomVoicePicker(this.parentElement,event)">${esc(voice?.label||'Chọn giọng đọc')}</button><div class="voice-picker-menu" onclick="event.stopPropagation()"><div class="voice-picker-tools"><span>${ttsVoices.length} giọng đọc · mẫu thử có sẵn</span></div>${voicePickerRowsHtml(index)}</div></div>`;
 }
 function toggleCustomVoicePicker(picker,event){event?.stopPropagation();document.querySelectorAll('.voice-picker.open').forEach(item=>{if(item!==picker)item.classList.remove('open')});picker.classList.toggle('open');}
 function selectCustomVoice(picker,index){
@@ -1708,22 +1712,13 @@ async function previewCustomVoice(index,button,event){
   event?.stopPropagation();const voice=ttsVoices[index];if(!voice)return;
   const original=button.textContent;button.disabled=true;button.textContent='…';
   try{
-    let sample=voicePreviewCache.get(index);
-    if(!sample){sample=await fetchTts(`Đây là giọng đọc ${voice.label}`,index,false,1);voicePreviewCache.set(index,sample);}
-    voicePreviewPlayer.pause();voicePreviewPlayer.src=sample.audioUrl;await voicePreviewPlayer.play();
+    const sampleUrl=bundledVoicePreviewUrl(index);
+    if(!sampleUrl)throw new Error('Giọng này chưa có mẫu thử đóng sẵn');
+    voicePreviewPlayer.pause();voicePreviewPlayer.src=sampleUrl;await voicePreviewPlayer.play();
     document.querySelectorAll('.voice-picker-preview.playing').forEach(item=>item.classList.remove('playing'));button.classList.add('playing');button.textContent='■ Đang phát';
     voicePreviewPlayer.onended=()=>{button.classList.remove('playing');button.textContent='▶ Thử';};
   }catch(error){button.textContent='Lỗi';alert('Không thử được giọng đọc: '+error.message);}
   finally{button.disabled=false;if(button.textContent==='…')button.textContent=original;}
-}
-async function prepareAllVoicePreviews(button,event){
-  event?.stopPropagation();const missing=ttsVoices.map((voice,index)=>({voice,index})).filter(item=>!voicePreviewCache.has(item.index));if(!missing.length){button.textContent='✓ Đã có đủ mẫu';return;}
-  button.disabled=true;button.textContent=`Đang tạo 0/${missing.length}`;
-  try{
-    const results=await fetchProjectTtsBatch(missing.map(({voice,index})=>({text:`Đây là giọng đọc ${voice.label}`,voiceIdx:index,speed:1,echo:false})));
-    results.forEach((result,i)=>voicePreviewCache.set(missing[i].index,result));button.textContent='✓ Đã tạo tất cả';
-  }catch(error){button.textContent='Thử lại';alert('Không tạo được toàn bộ mẫu giọng: '+error.message);}
-  finally{button.disabled=false;}
 }
 document.addEventListener('click',event=>{if(!event.target.closest('.voice-picker'))document.querySelectorAll('.voice-picker.open').forEach(item=>item.classList.remove('open'));});
 
