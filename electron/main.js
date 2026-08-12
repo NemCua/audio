@@ -83,6 +83,37 @@ function ffmpegPath() {
 }
 
 function authStorePath() { return path.join(app.getPath('userData'), 'auth-session.json'); }
+let volatileRefreshToken = null;
+
+function storeRefreshToken(refreshToken) {
+  const token = String(refreshToken || '');
+  if (!token) throw new Error('Refresh token không hợp lệ');
+  volatileRefreshToken = token;
+  if (!safeStorage.isEncryptionAvailable()) {
+    fs.rmSync(authStorePath(), { force: true });
+    return { persistent: false };
+  }
+  try {
+    const encrypted = safeStorage.encryptString(token);
+    fs.writeFileSync(authStorePath(), JSON.stringify({ token: encrypted.toString('base64') }), { mode: 0o600 });
+    return { persistent: true };
+  } catch (_error) {
+    fs.rmSync(authStorePath(), { force: true });
+    return { persistent: false };
+  }
+}
+
+function readRefreshToken() {
+  if (volatileRefreshToken) return volatileRefreshToken;
+  if (!safeStorage.isEncryptionAvailable()) return null;
+  try {
+    const payload = JSON.parse(fs.readFileSync(authStorePath(), 'utf8'));
+    return safeStorage.decryptString(Buffer.from(payload.token, 'base64'));
+  } catch (_error) {
+    fs.rmSync(authStorePath(), { force: true });
+    return null;
+  }
+}
 
 function workspaceRoot() {
   const root = path.join(app.getPath('documents'), 'Threads Video Maker');
@@ -378,18 +409,15 @@ ipcMain.handle('desktop:reveal-file', (_event, filePath) => {
 });
 
 ipcMain.handle('desktop:auth-save-refresh', (_event, refreshToken) => {
-  if (!safeStorage.isEncryptionAvailable()) throw new Error('Hệ điều hành chưa sẵn sàng mã hóa phiên đăng nhập');
-  const encrypted = safeStorage.encryptString(String(refreshToken));
-  fs.writeFileSync(authStorePath(), JSON.stringify({ token: encrypted.toString('base64') }), { mode: 0o600 });
-  return true;
+  return storeRefreshToken(refreshToken);
 });
 
 ipcMain.handle('desktop:auth-refresh', async (_event, apiBase) => {
   const base = allowedApiBase(apiBase);
   if (!base) throw new Error('Auth server không được phép');
   try {
-    const payload = JSON.parse(fs.readFileSync(authStorePath(), 'utf8'));
-    const refreshToken = safeStorage.decryptString(Buffer.from(payload.token, 'base64'));
+    const refreshToken = readRefreshToken();
+    if (!refreshToken) return null;
     const response = await fetch(`${base}/auth/refresh`, {
       method: 'POST', headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ refresh_token: refreshToken }),
@@ -397,17 +425,18 @@ ipcMain.handle('desktop:auth-refresh', async (_event, apiBase) => {
     if (!response.ok) throw new Error(`HTTP ${response.status}`);
     const data = await response.json();
     if (!data.refresh_token) throw new Error('Server không trả refresh token mới');
-    const encrypted = safeStorage.encryptString(String(data.refresh_token));
-    fs.writeFileSync(authStorePath(), JSON.stringify({ token: encrypted.toString('base64') }), { mode: 0o600 });
+    storeRefreshToken(data.refresh_token);
     delete data.refresh_token;
     return data;
   } catch (_error) {
+    volatileRefreshToken = null;
     fs.rmSync(authStorePath(), { force: true });
     return null;
   }
 });
 
 ipcMain.handle('desktop:auth-clear', () => {
+  volatileRefreshToken = null;
   fs.rmSync(authStorePath(), { force: true });
   return true;
 });
