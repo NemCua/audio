@@ -35,6 +35,13 @@ function esc(s) {
 function safeMediaUrl(value) {
   const raw = String(value || '').trim();
   if (!raw) return '';
+  // Bundled random avatars intentionally use a relative URL so the same
+  // project works in the browser, the Electron app and the hidden export
+  // renderer. Resolve only this tightly scoped asset path; the old code
+  // rejected every relative URL, causing avatars to fall back to initials.
+  if (/^avatarthreads\/[\p{L}\p{N}._-]+\.(?:png|jpe?g|gif|webp)$/iu.test(raw)) {
+    try { return new URL(raw, document.baseURI).href; } catch (_error) { return ''; }
+  }
   if (/^(?:file:|blob:)/i.test(raw)) return raw;
   if (/^data:image\/(?:png|jpe?g|gif|webp);base64,/i.test(raw)) return raw;
   try {
