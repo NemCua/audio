@@ -19,9 +19,19 @@ jobs:
           - os: macos-14
             command: npm run build:mac -- --arm64
             artifact: macos-arm64
+            files: |
+              electron/dist/*.dmg
+              electron/dist/*.zip
           - os: macos-15-intel
             command: npm run build:mac -- --x64
             artifact: macos-x64
+            files: |
+              electron/dist/*.dmg
+              electron/dist/*.zip
+          - os: windows-2025
+            command: npm run build:win -- --x64
+            artifact: windows-x64
+            files: electron/dist/*.exe
     runs-on: ${{ matrix.os }}
     defaults:
       run:
@@ -40,9 +50,7 @@ jobs:
       - uses: actions/upload-artifact@v4
         with:
           name: threads-video-maker-${{ matrix.artifact }}
-          path: |
-            electron/dist/*.dmg
-            electron/dist/*.zip
+          path: ${{ matrix.files }}
           if-no-files-found: error
 
   release:
@@ -54,14 +62,15 @@ jobs:
     steps:
       - uses: actions/download-artifact@v4
         with:
-          pattern: threads-video-maker-macos-*
+          pattern: threads-video-maker-*
           path: release-assets
           merge-multiple: true
       - name: Publish GitHub Release
         uses: softprops/action-gh-release@v2
         with:
-          name: Threads Video Maker v1.0.1 — Avatar fix
+          name: Threads Video Maker v1.1.0 — macOS + Windows
           generate_release_notes: true
           files: |
             release-assets/*.dmg
             release-assets/*.zip
+            release-assets/*.exe

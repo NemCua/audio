@@ -1,9 +1,11 @@
-# Phát hành Threads Video Maker cho macOS
+# Phát hành Threads Video Maker cho macOS và Windows
 
 GitHub Actions tạo hai bản:
 
 - `arm64`: Mac Apple Silicon (M1/M2/M3/M4 và mới hơn).
 - `x64`: Mac Intel.
+- `Setup x64`: bộ cài Windows 64-bit.
+- `Portable x64`: bản Windows 64-bit chạy trực tiếp, không cần cài.
 
 ## Tạo bản v1.0.0
 
