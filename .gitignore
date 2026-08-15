@@ -16,6 +16,7 @@ threads/media/
 
 # Media files
 *.mp3
+!threads/audio/**/*.mp3
 *.mp4
 !threads/background/**/*.mp4
 !threads/background/**/*.mov
