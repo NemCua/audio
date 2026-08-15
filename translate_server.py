@@ -45,6 +45,8 @@ FREE_THRESHOLD  = 3 * 60  # ≤ 3 phút → miễn phí
 
 AUDIO_DIR = Path(__file__).parent / "audio"
 AUDIO_DIR.mkdir(exist_ok=True)
+EXPORT_DIR = Path(__file__).parent / "exports"
+EXPORT_DIR.mkdir(exist_ok=True)
 BEEKNOEE_TITLE_MODEL = "glm-4.5-flash"
 
 # Routes that don't require auth
@@ -167,6 +169,22 @@ def decode_user_id(token: str) -> int | None:
     except (JWTError, KeyError, ValueError):
         return None
 
+
+def decode_media_user_id(token: str, job_id: str) -> int | None:
+    """Decode a short-lived token used by the native <video> element.
+
+    A video element cannot attach the Authorization header, so media playback
+    gets a narrowly scoped token instead of exposing the normal login token in
+    the URL.
+    """
+    try:
+        payload = jwt.decode(token, AUTH_SECRET_KEY, algorithms=[AUTH_ALGORITHM])
+        if payload.get("purpose") != "media" or payload.get("job_id") != job_id:
+            return None
+        return int(payload["sub"])
+    except (JWTError, KeyError, ValueError):
+        return None
+
 app = FastAPI()
 app.add_middleware(CORSMiddleware, allow_origins=["*"], allow_methods=["*"], allow_headers=["*"])
 
@@ -184,6 +202,17 @@ async def auth_guard(request: Request, call_next):
         return await call_next(request)
     if path.startswith("/api/"):
         token = request.headers.get("Authorization", "").removeprefix("Bearer ").strip()
+        # Native media requests cannot send our Authorization header. Accept a
+        # short-lived, job-scoped token only for the video download endpoint.
+        media_prefix = "/api/download/"
+        if path.startswith(media_prefix) and request.query_params.get("media_token"):
+            job_id = path[len(media_prefix):]
+            uid = decode_media_user_id(request.query_params["media_token"], job_id)
+            if uid is None:
+                return JSONResponse(status_code=http_status.HTTP_401_UNAUTHORIZED,
+                                    content={"detail": "Media token khong hop le"})
+            request.state.user_id = uid
+            return await call_next(request)
         if not token or not AUTH_SECRET_KEY:
             return JSONResponse(status_code=http_status.HTTP_401_UNAUTHORIZED,
                                 content={"detail": "Chua dang nhap"})
@@ -397,8 +426,16 @@ def _run_render(job_id: str, voice: str, bg_volume: float, tts_volume: float,
                      encode_preset=encode_preset,
                      thumbnail=Path(thumbnail_path) if thumbnail_path else None)
 
+        # Keep a durable copy outside the temporary job directory. Temporary
+        # folders may be cleaned by macOS or maintenance, and a successful
+        # translation must never disappear before the user downloads it.
+        durable_name = f"{video_path.stem}_vi_{job_id[:8]}.mp4"
+        durable_output = EXPORT_DIR / durable_name
+        shutil.copy2(output_path, durable_output)
+
         jobs[job_id].update(status="done", progress=100,
-                            message="Hoàn tất!", output=str(output_path))
+                            message="Hoàn tất!", output=str(durable_output),
+                            temp_output=str(output_path))
 
     except Exception as e:
         import traceback; traceback.print_exc()
@@ -749,6 +786,28 @@ async def render(
     if job.get("status") not in ("translated", "done", "error"):
         return JSONResponse({"error": "Job chua san sang render"}, status_code=400)
 
+    # Full render must have a translation that covers the full source. A
+    # preview JSON (for example, only the first 3 minutes of a 60-minute
+    # video) used to be accepted here, producing an hour-long file with
+    # almost no translated speech or subtitles while still saying "done".
+    cues = job.get("vi_cues") or []
+    video_duration = float(job.get("duration_secs") or 0)
+    if video_duration <= 0 and job.get("video_path"):
+        video_duration = get_video_duration(job["video_path"])
+    translated_cues = [c for c in cues if str(c.get("text", "")).strip()]
+    translated_end = max((float(c.get("end_sec") or 0) for c in translated_cues), default=0.0)
+    coverage = min(translated_end / video_duration, 1.0) if video_duration > 0 else 0.0
+    nonempty_ratio = len(translated_cues) / len(cues) if cues else 0.0
+    if not cues or coverage < 0.90 or nonempty_ratio < 0.80:
+        return JSONResponse({
+            "error": (
+                f"Bản dịch chưa đủ để render toàn bộ: video dài {video_duration/60:.1f} phút, "
+                f"phụ đề có nội dung mới tới {translated_end/60:.1f} phút "
+                f"({coverage*100:.0f}%, {len(translated_cues)}/{len(cues)} dòng có bản dịch). "
+                "Hãy nạp JSON/SRT đầy đủ hoặc chỉ dùng nút Preview."
+            )
+        }, status_code=400)
+
     work_dir = Path(job["work_dir"])
 
     bg_music_path = None
@@ -989,6 +1048,27 @@ async def download(job_id: str, request: Request):
     fname = job.get("filename", "video.mp4")
     stem  = Path(fname).stem
     return FileResponse(out, media_type="video/mp4", filename=f"{stem}_vi.mp4")
+
+
+@app.get("/api/media-token/{job_id}")
+async def media_token(job_id: str, request: Request):
+    """Issue a short-lived token so the browser can stream/seek the result."""
+    from datetime import datetime, timedelta, timezone
+
+    job, err = _get_job(job_id, request.state.user_id)
+    if err:
+        return err
+    if not job.get("output") or not Path(job["output"]).exists():
+        return JSONResponse({"error": "Video chua san sang"}, status_code=404)
+    now = datetime.now(timezone.utc)
+    token = jwt.encode({
+        "sub": str(request.state.user_id),
+        "purpose": "media",
+        "job_id": job_id,
+        "iat": now,
+        "exp": now + timedelta(minutes=30),
+    }, AUTH_SECRET_KEY, algorithm=AUTH_ALGORITHM)
+    return {"media_token": token}
 
 
 @app.get("/api/frame/{job_id}")

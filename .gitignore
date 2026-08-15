@@ -9,8 +9,10 @@ __pycache__/
 # Working directories
 input/
 output/
+exports/
 workdir/
 srt/
+threads/media/
 
 # Media files
 *.mp3

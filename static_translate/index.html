@@ -548,6 +548,8 @@ tr.timing-invalid .time-input{border-color:#ef4444;color:#fecaca}
             <input type="file" accept=".json" style="position:absolute;inset:0;opacity:0;cursor:pointer"
                    onchange="loadJsonFile(this)"/>
           </div>
+          <button class="btn" style="width:auto;margin:0;padding:8px 16px;background:#123524;color:#86efac;border:1px solid #166534"
+                  onclick="downloadFullJson(this)" id="btn-download-full-json">⬇ Tải JSON đầy đủ</button>
           <button class="btn btn-blue" style="width:auto;margin:0;padding:8px 16px"
                   onclick="saveCues()" id="btn-save">💾 Lưu bản dịch</button>
         </div>
@@ -1185,7 +1187,13 @@ async function startRender() {
   fd.append('original_volume', document.getElementById('orig-vol').value);
   fd.append('strip_background_music', document.getElementById('strip-background-music').checked ? 'true' : 'false');
 
-  await apiFetch(`${API}/api/render/${currentJobId}`, { method: 'POST', body: fd });
+  const renderRes = await apiFetch(`${API}/api/render/${currentJobId}`, { method: 'POST', body: fd });
+  if (!renderRes.ok) {
+    const renderError = await renderRes.json().catch(() => ({}));
+    document.getElementById('btn-render').disabled = false;
+    showError(renderError.error || renderError.detail || 'Không thể bắt đầu render');
+    return;
+  }
 
   pollTimer = setInterval(pollRender, 2000);
 }
@@ -1278,16 +1286,57 @@ function updateBalanceDisplay(deducted) {
 async function showVideo(jobId) {
   switchTab('output');
 
-  // Fetch video as blob (cần auth header)
-  const vRes  = await apiFetch(`${API}/api/download/${jobId}`);
-  const vBlob = await vRes.blob();
-  const vUrl  = URL.createObjectURL(vBlob);
-  document.getElementById('video-wrap').innerHTML =
-    `<video controls src="${vUrl}" style="width:100%;height:100%"></video>`;
+  // Stream directly into the native player. Previously this fetched the whole
+  // MP4 into a Blob first, which could leave the result box blank indefinitely.
+  const tokenRes = await apiFetch(`${API}/api/media-token/${jobId}`);
+  const tokenData = await tokenRes.json();
+  if (!tokenRes.ok || !tokenData.media_token) {
+    throw new Error(tokenData.error || tokenData.detail || 'Không mở được video kết quả');
+  }
+  const vUrl = `${API}/api/download/${jobId}?media_token=${encodeURIComponent(tokenData.media_token)}`;
+  const wrap = document.getElementById('video-wrap');
+  wrap.innerHTML = '';
+  const video = document.createElement('video');
+  video.controls = true;
+  video.preload = 'metadata';
+  video.src = vUrl;
+  video.style.cssText = 'width:100%;height:100%';
+  video.addEventListener('error', () => showError('Trình duyệt không phát được video kết quả'));
+  wrap.appendChild(video);
 
   const dlv = document.getElementById('dl-video');
-  dlv.href = vUrl;
-  dlv.setAttribute('download', `video_vi.mp4`);
+  dlv.removeAttribute('href');
+  dlv.setAttribute('download', `video_vi_translated.mp4`);
+  dlv.onclick = async event => {
+    event.preventDefault();
+    const oldText = dlv.textContent;
+    dlv.textContent = '⏳ Đang tải bản dịch…';
+    dlv.style.pointerEvents = 'none';
+    try {
+      // Separate the real download from the player's Range/cache requests.
+      const result = await apiFetch(`${API}/api/download/${jobId}?download=${Date.now()}`, {
+        cache: 'no-store',
+        headers: { 'Cache-Control': 'no-cache' },
+      });
+      if (!result.ok) {
+        const error = await result.json().catch(() => ({}));
+        throw new Error(error.error || error.detail || 'Không tải được video đã dịch');
+      }
+      const blobUrl = URL.createObjectURL(await result.blob());
+      const link = document.createElement('a');
+      link.href = blobUrl;
+      link.download = 'video_vi_translated.mp4';
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      setTimeout(() => URL.revokeObjectURL(blobUrl), 60000);
+    } catch (error) {
+      showError(error.message);
+    } finally {
+      dlv.textContent = oldText;
+      dlv.style.pointerEvents = '';
+    }
+  };
   dlv.classList.add('on');
 
   // Fetch SRT as blob
@@ -1299,12 +1348,12 @@ async function showVideo(jobId) {
   dls.setAttribute('download', `captions_vi.srt`);
   dls.classList.add('on');
 
-  const jRes  = await apiFetch(`${API}/api/export-json/${jobId}`);
-  const jBlob = await jRes.blob();
-  const jUrl  = URL.createObjectURL(jBlob);
   const dlj   = document.getElementById('dl-json');
-  dlj.href = jUrl;
-  dlj.setAttribute('download', `vi_cues.json`);
+  dlj.removeAttribute('href');
+  dlj.onclick = event => {
+    event.preventDefault();
+    downloadFullJson(dlj);
+  };
   dlj.classList.add('on');
 
   document.getElementById('titles-box').style.display = 'block';
@@ -1574,6 +1623,50 @@ async function showSrtPanel(jobId) {
     a.href = url; a.download = 'vi_cues.json';
     a.click(); URL.revokeObjectURL(url);
   };
+}
+
+async function downloadFullJson(btn) {
+  if (!currentJobId) { alert('Chưa có bản dịch để tải'); return; }
+  const timingError = validateSubtitleTimings();
+  if (timingError) {
+    const page = Math.floor(timingError.index / SUBS_PER_PAGE);
+    subsGoto(page, timingError.index);
+    alert(`Không thể tải dòng #${timingError.index + 1}: ${timingError.message}`);
+    return;
+  }
+
+  const oldText = btn ? btn.textContent : '';
+  if (btn) { btn.disabled = true; btn.textContent = '⏳ Đang chuẩn bị JSON...'; }
+  try {
+    // Lưu toàn bộ bảng đang sửa trước khi xuất. Luôn dùng currentJobId (job
+    // chính), tuyệt đối không dùng _pollJobId vì đó có thể là preview 3 phút.
+    const saveRes = await apiFetch(`${API}/api/save-cues/${currentJobId}`, {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({rows: subtitleRows}),
+    });
+    const saveData = await saveRes.json().catch(() => ({}));
+    if (!saveRes.ok) throw new Error(saveData.error || 'Không lưu được bản dịch');
+
+    const res = await apiFetch(`${API}/api/export-json/${currentJobId}`);
+    if (!res.ok) {
+      const data = await res.json().catch(() => ({}));
+      throw new Error(data.error || 'Không tải được JSON');
+    }
+    const blob = await res.blob();
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'vi_cues_full.json';
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 60000);
+  } catch (e) {
+    alert('Lỗi tải JSON: ' + e.message);
+  } finally {
+    if (btn) { btn.disabled = false; btn.textContent = oldText; }
+  }
 }
 
 async function loadJsonFile(input) {

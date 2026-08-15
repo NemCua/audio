@@ -1096,32 +1096,75 @@ def run_merge_chunks(chunk_state: list, progress=gr.Progress()) -> tuple[str, st
     return tmp.name, f"✅ Ghép xong {len(done_chunks)} chunks"
 
 
-def run_merge_video_files(video_files, progress=gr.Progress()) -> tuple[str, str]:
-    if not video_files:
-        raise gr.Error("Chưa chọn file video.")
-    files = video_files if isinstance(video_files, list) else [video_files]
-    paths = [Path(f) if isinstance(f, str) else Path(f.name) for f in files]
-    paths = [p for p in paths if p.exists()]
-    if not paths:
-        raise gr.Error("Không tìm thấy file nào hợp lệ.")
+def _merge_video_info(path: Path) -> dict:
+    ffprobe = str(Path(FFMPEG_BIN).with_name("ffprobe"))
+    probe = subprocess.run([
+        ffprobe, "-v", "error", "-show_streams", "-show_format",
+        "-of", "json", str(path),
+    ], capture_output=True, text=True)
+    if probe.returncode != 0:
+        raise gr.Error(f"Không đọc được {path.name}: {probe.stderr[-300:]}")
+    try:
+        data = json.loads(probe.stdout)
+        video = next(stream for stream in data["streams"] if stream.get("codec_type") == "video")
+        duration = float(data.get("format", {}).get("duration") or video.get("duration") or 0)
+        width, height = int(video["width"]), int(video["height"])
+    except (KeyError, StopIteration, TypeError, ValueError, json.JSONDecodeError):
+        raise gr.Error(f"{path.name} không có luồng video hợp lệ.")
+    if duration <= 0 or width <= 0 or height <= 0:
+        raise gr.Error(f"Không xác định được thời lượng/kích thước của {path.name}.")
+    return {
+        "width": width,
+        "height": height,
+        "duration": duration,
+        "has_audio": any(stream.get("codec_type") == "audio" for stream in data["streams"]),
+    }
 
-    list_file = Path(tempfile.mkdtemp()) / "concat.txt"
-    list_file.write_text("\n".join(f"file '{p}'" for p in paths), encoding="utf-8")
-    out_path = list_file.parent / "merged.mp4"
 
-    progress(0.3, desc=f"Ghép {len(paths)} video...")
-    ret = subprocess.run([
-        FFMPEG_BIN, "-y", "-f", "concat", "-safe", "0",
-        "-i", str(list_file), "-c", "copy", str(out_path),
-    ], capture_output=True)
-    if ret.returncode != 0:
-        raise gr.Error(f"Ghép thất bại: {ret.stderr.decode()[-300:]}")
+def run_merge_video_files(video_1, video_2, progress=gr.Progress()) -> tuple[str, str]:
+    if not video_1 or not video_2:
+        raise gr.Error("Hãy chọn đủ Video 1 và Video 2.")
+    paths = [Path(value) if isinstance(value, str) else Path(value.name)
+             for value in (video_1, video_2)]
+    if any(not path.exists() for path in paths):
+        raise gr.Error("Không tìm thấy một trong hai file video.")
 
-    progress(1.0, desc="Ghép xong!")
-    tmp = tempfile.NamedTemporaryFile(delete=False, suffix=".mp4")
-    tmp.close()
-    shutil.copy2(str(out_path), tmp.name)
-    return tmp.name, f"✅ Ghép xong {len(paths)} video"
+    work_dir = Path(tempfile.mkdtemp(prefix="merge_videos_")).resolve()
+    try:
+        progress(0.05, desc="Đang kiểm tra hai video...")
+        infos = [_merge_video_info(path) for path in paths]
+
+        # Dùng symlink tên đơn giản để ffconcat đọc được mọi đường dẫn nguồn,
+        # nhưng không copy hay mã hóa lại các file video lớn.
+        concat_inputs = []
+        for index, path in enumerate(paths, start=1):
+            link = work_dir / f"input-{index}{path.suffix.lower() or '.mp4'}"
+            link.symlink_to(path.resolve())
+            concat_inputs.append(link)
+
+        list_file = work_dir / "concat.txt"
+        list_file.write_text("\n".join(f"file '{path.name}'" for path in concat_inputs), encoding="utf-8")
+        out_path = work_dir / "video-da-ghep.mp4"
+        progress(0.35, desc="Đang nối nguyên bản Video 1 và Video 2...")
+        result = subprocess.run([
+            FFMPEG_BIN, "-y", "-f", "concat", "-safe", "0", "-i", str(list_file),
+            "-c", "copy", "-movflags", "+faststart", str(out_path),
+        ], cwd=work_dir, capture_output=True)
+        if result.returncode != 0:
+            error = result.stderr.decode(errors="replace")[-1200:]
+            raise gr.Error(f"Ghép video thất bại: {error}")
+
+        final_file = tempfile.NamedTemporaryFile(delete=False, suffix=".mp4")
+        final_file.close()
+        shutil.copy2(out_path, final_file.name)
+        total_duration = sum(info["duration"] for info in infos)
+        progress(1.0, desc="Ghép xong!")
+        return final_file.name, (
+            f"✅ Đã ghép nguyên bản Video 1 → Video 2 · không chuẩn hóa/mã hóa lại · "
+            f"khoảng {total_duration:.1f} giây"
+        )
+    finally:
+        shutil.rmtree(work_dir, ignore_errors=True)
 
 
 # ---------------------------------------------------------------------------
@@ -1628,21 +1671,20 @@ with gr.Blocks(title="Dịch Video Tiếng Trung → Tiếng Việt") as demo:
         # ══════════════════════════════════════════════════════════════════
         with gr.TabItem("🔗 Ghép Video"):
             gr.Markdown(
-                "## Ghép nhiều file video thành 1\n"
-                "Upload các file video theo thứ tự muốn ghép."
+                "## Ghép 2 video thành 1\n"
+                "Video 1 chạy trước, sau đó tới Video 2. Không chuẩn hóa hoặc mã hóa lại; "
+                "hai video nên có cùng codec, kích thước và FPS để phát ổn định."
             )
-            merge_files = gr.File(
-                label="Chọn video để ghép (theo thứ tự)",
-                file_count="multiple",
-                file_types=["video"],
-            )
+            with gr.Row():
+                merge_video_1 = gr.Video(label="Video 1 — chạy trước", sources=["upload"])
+                merge_video_2 = gr.Video(label="Video 2 — chạy sau", sources=["upload"])
             btn_merge_files = gr.Button("🔗 Ghép video", variant="primary")
             merge_status    = gr.Textbox(label="Trạng thái", interactive=False)
             merge_output    = gr.Video(label="Video sau ghép", interactive=False)
 
             btn_merge_files.click(
                 fn=run_merge_video_files,
-                inputs=[merge_files],
+                inputs=[merge_video_1, merge_video_2],
                 outputs=[merge_output, merge_status],
             )
 
