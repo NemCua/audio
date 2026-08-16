@@ -29,6 +29,7 @@ from pydantic import BaseModel
 FFPROBE_BIN = "ffprobe"
 FFMPEG_BIN = "ffmpeg"
 BASE_DIR = Path(__file__).resolve().parent
+STICKER_DIR = BASE_DIR / "stickers"
 
 
 def _probe_duration(path: Path) -> float | None:
@@ -216,6 +217,46 @@ def get_library_file(category: str, filename: str):
     path = lib_dir / filename
     if not path.exists() or lib_dir not in path.resolve().parents:
         raise HTTPException(404, "Không tìm thấy file")
+    return FileResponse(path)
+
+
+@app.get("/stickers")
+def list_sticker_packs():
+    """Thư viện sticker đóng sẵn cho bản web local (Electron dùng IPC)."""
+    if not STICKER_DIR.exists():
+        return []
+    packs = []
+    allowed = re.compile(r"\.(png|jpe?g|webp|gif)$", re.IGNORECASE)
+    for directory in sorted(STICKER_DIR.iterdir()):
+        if not directory.is_dir():
+            continue
+        meta = {}
+        try:
+            meta = json.loads((directory / "_pack.json").read_text(encoding="utf-8"))
+        except (OSError, json.JSONDecodeError):
+            pass
+        stickers = [
+            {
+                "filename": path.name,
+                "url": f"/sticker-file/{directory.name}/{path.name}",
+                "desktopPath": str(path),
+                "isVideo": False,
+            }
+            for path in sorted(directory.iterdir())
+            if path.is_file() and allowed.search(path.name)
+        ]
+        packs.append({"id": directory.name, "name": meta.get("name") or directory.name,
+                      "userOwned": False, "stickers": stickers})
+    return packs
+
+
+@app.get("/sticker-file/{pack_id}/{filename}")
+def get_sticker_file(pack_id: str, filename: str):
+    if not re.fullmatch(r"[A-Za-z0-9_-]+", pack_id) or Path(filename).name != filename:
+        raise HTTPException(400, "Đường dẫn sticker không hợp lệ")
+    path = STICKER_DIR / pack_id / filename
+    if not path.is_file() or path.suffix.lower() not in {".png", ".jpg", ".jpeg", ".webp", ".gif"}:
+        raise HTTPException(404, "Không tìm thấy sticker")
     return FileResponse(path)
 
 

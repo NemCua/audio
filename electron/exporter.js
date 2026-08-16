@@ -52,10 +52,15 @@ async function renderSegments({ steps, total, threadsRoot, workDir, blurIdentity
         imagePath = path.join(workDir, `scene-${String(i).padStart(4, '0')}.png`);
         fs.writeFileSync(imagePath, image.toPNG());
       }
-      const dynamicStep = state.dynamicMeme ? steps.find(step => step.mediaUrl === state.memeMediaUrl) : null;
+      const dynamicStep = state.dynamicMeme ? steps.find(step => step.id === state.memeStepId) : null;
       segments.push({
         t0, t1, imagePath,
-        dynamicMeme: state.dynamicMeme ? { ...state.memeBox, mediaUrl: state.memeMediaUrl, path: dynamicStep?.mediaDesktopPath || dynamicStep?.mediaPath || null } : null,
+        dynamicMeme: state.dynamicMeme ? {
+          ...state.memeBox,
+          mediaUrl: state.memeMediaUrl,
+          path: dynamicStep?.mediaDesktopPath || dynamicStep?.mediaPath || null,
+          stepStart: Number(dynamicStep?._start || 0),
+        } : null,
       });
       sendProgress({ percent: Math.round((i + 1) / Math.max(1, points.length - 1) * 55), text: `Đang dựng cảnh ${i + 1}/${points.length - 1}…` });
     }
@@ -89,12 +94,22 @@ async function collectAudio(steps, workDir) {
       for (const clip of clips) {
         if (clip.audioUrl) {
           const file = await download(clip.audioUrl, path.join(workDir, `tts-${index++}.mp3`));
-          tracks.push({ path: file, start: Number(step._start) + offset, volume: 1 });
+          const remaining = Math.max(0, Number(step.duration || 0) - offset);
+          const clipDuration = Number(clip.duration || 0);
+          const maxDuration = Math.min(clipDuration, remaining);
+          if (maxDuration > 0) tracks.push({ path: file, start: Number(step._start) + offset, volume: 1, maxDuration });
         }
         offset += Number(clip.duration || 0);
       }
-    } else if (step.type === 'audio' && step.mediaDesktopPath) {
-      tracks.push({ path: step.mediaDesktopPath, start: Number(step._start), volume: 1 });
+    }
+    const mediaPath = step.mediaDesktopPath || step.mediaPath || (String(step.mediaUrl || '').startsWith('file:') ? fileURLToPath(step.mediaUrl) : null);
+    if (step.type === 'audio' && mediaPath && fs.existsSync(mediaPath)) {
+      tracks.push({ path: mediaPath, start: Number(step._start), volume: 1, maxDuration: Number(step.duration || 0) || null });
+    }
+    // Tiếng gốc của video-card là một track độc lập với TTS. Trước đây đây
+    // là nhánh else-if nên card video có TTS bị bỏ mất tiếng video hoàn toàn.
+    if (step.type === 'image' && step.mediaIsVideo && mediaPath && fs.existsSync(mediaPath)) {
+      tracks.push({ path: mediaPath, start: Number(step._start), volume: 1, maxDuration: Number(step.duration || 0) || null });
     }
   }
   return tracks;
@@ -120,9 +135,18 @@ function ffmpegArgs({ bgVideoPath, bgAudioPath, bgAudioVolume, segments, total, 
     let height = Math.max(2, Math.round(Number(meme.hRatio) * HEIGHT));
     width += width % 2; height += height % 2;
     const isGif = /\.gif$/i.test(meme.path);
-    inputs.push(...(isGif ? ['-ignore_loop', '0'] : ['-stream_loop', '-1']), '-itsoffset', segment.t0.toFixed(3), '-t', duration.toFixed(3), '-i', meme.path);
+    if (isGif) {
+      inputs.push('-ignore_loop', '0', '-itsoffset', segment.t0.toFixed(3), '-t', duration.toFixed(3), '-i', meme.path);
+    } else {
+      // Mọi segment của cùng video đều giữ mốc PTS từ lúc CARD bắt đầu.
+      // Không dùng stream_loop và không đặt input bắt đầu tại segment.t0:
+      // hai cách đó làm card âm thanh tạo breakpoint rồi video chạy lại từ 0.
+      const stepStart = Number(meme.stepStart || 0);
+      inputs.push('-itsoffset', stepStart.toFixed(3), '-t', Math.max(0.001, segment.t1 - stepStart).toFixed(3), '-i', meme.path);
+    }
     const scaled = `m${inputIndex}`, next = `v${inputIndex}`;
-    filters.push(`[${inputIndex}:v]scale=${width}:${height}[${scaled}]`);
+    const holdFinalFrame = isGif ? '' : `,tpad=stop_mode=clone:stop_duration=${total.toFixed(3)}`;
+    filters.push(`[${inputIndex}:v]scale=${width}:${height}${holdFinalFrame}[${scaled}]`);
     filters.push(`[${last}][${scaled}]overlay=${x}:${y}:enable='between(t,${segment.t0.toFixed(3)},${segment.t1.toFixed(3)})'[${next}]`);
     last = next; inputIndex++;
   }
@@ -130,7 +154,8 @@ function ffmpegArgs({ bgVideoPath, bgAudioPath, bgAudioVolume, segments, total, 
   for (const track of audioTracks) {
     inputs.push('-i', track.path);
     const label = `a${inputIndex}`, delay = Math.round(track.start * 1000);
-    filters.push(`[${inputIndex}:a]adelay=${delay}|${delay},volume=${track.volume}[${label}]`);
+    const trim = track.maxDuration ? `atrim=duration=${Number(track.maxDuration).toFixed(3)},asetpts=PTS-STARTPTS,` : '';
+    filters.push(`[${inputIndex}:a]${trim}adelay=${delay}|${delay},volume=${track.volume}[${label}]`);
     audioLabels.push(label); inputIndex++;
   }
   if (bgAudioPath) {

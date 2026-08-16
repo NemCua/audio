@@ -92,9 +92,8 @@ class TTSRequest(BaseModel):
     rate: str = "1.0"
     speed: float = 1.0
     # Hiệu ứng "vang" (mục nhiều đoạn TTS trong index.html) — người dùng chọn
-    # sau khi nghe thử 3 mẫu (echo nhẹ/đậm, reverb phòng), chốt dùng đúng
-    # công thức aecho=0.8:0.7:60:0.4 (1 tiếng dội mờ dần ngay sau, kiểu nhấn
-    # nhá gây cười — KHÔNG phải reverb liên tục). Áp dụng cho TOÀN BỘ 1 đoạn
+    # Hiệu ứng vang phòng nhẹ, đồng thời tăng âm lượng đầu ra 30%.
+    # Limiter ở cuối giữ các đỉnh lớn không bị clipping/rè. Áp dụng cho TOÀN BỘ 1 đoạn
     # TTS (không tách riêng từng từ — CapCut không trả timestamp từng từ để
     # cắt chính xác).
     echo: bool = False
@@ -246,19 +245,23 @@ def _concat_audio(parts: list[Path], out_path: Path) -> None:
 
 
 def _apply_echo(path: Path) -> None:
-    """Ghi đè file mp3 tại chỗ với hiệu ứng 'vang' (aecho) — công thức đã
-    chốt sau khi người dùng nghe thử 3 mẫu (echo nhẹ/đậm, reverb phòng),
-    chọn "echo nhẹ": 1 tiếng dội mờ dần ngay sau giọng gốc, dùng để nhấn nhá
-    1 câu thoại cho hài/gây cười, không phải hiệu ứng vọng liên tục kiểu
-    phòng lớn. in_gain=0.8, out_gain=0.7 (tiếng dội nhỏ hơn gốc, không đè
-    lấn), delay=60ms (đủ tách bạch, không dính liền thành tiếng đôi), decay=0.4."""
+    """Ghi đè MP3 với vang phòng nhẹ và gain đầu ra +30%.
+
+    Bốn phản xạ 38/79/127/181ms không cách đều, decay thấp và giảm nhanh nên
+    hòa vào giọng như không gian phòng thay vì nghe thành các bản sao lặp lại.
+    Limiter tránh vỡ tiếng sau gain.
+    """
     tmp_out = path.with_suffix(".echo.mp3")
     # BUG đã gặp lúc verify: không chỉ định -b:a, FFmpeg tự chọn bitrate mp3
     # mặc định rất thấp (~33kbps thay vì 160kbps gốc CapCut trả về) — nghe
     # rè/mất chất lượng rõ rệt dù hiệu ứng echo đúng. Ép lại đúng 160k để
     # khớp chất lượng gốc.
     subprocess.run(
-        [FFMPEG_BIN, "-y", "-i", str(path), "-af", "aecho=0.8:0.7:60:0.4", "-b:a", "160k", str(tmp_out)],
+        [
+            FFMPEG_BIN, "-y", "-i", str(path),
+            "-af", "aecho=0.88:0.88:38|79|127|181:0.34|0.24|0.15|0.09,volume=2.0,alimiter=limit=0.97:level=false",
+            "-b:a", "160k", str(tmp_out),
+        ],
         capture_output=True, check=True,
     )
     tmp_out.replace(path)

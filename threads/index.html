@@ -1256,6 +1256,10 @@ header span { font-size: 12px; color: #4b5563; }
         </div>
         <label>Nội dung đọc TTS</label>
         <textarea id="mess-tts" placeholder="Tự đồng bộ theo tin nhắn..." oninput="messTtsDirty=true"></textarea>
+        <label style="display:flex;align-items:center;gap:6px;margin-top:6px;font-weight:400">
+          <input type="checkbox" id="mess-echo" style="width:auto"/>
+          <span>✨ Hiệu ứng vang (nhấn nhá tin nhắn này cho hài/gây cười)</span>
+        </label>
         <div style="display:none"><label>Giọng riêng cho tin này</label><select id="mess-voice" onchange="messVoiceTouched=!!this.value"><option value="">Theo giọng mặc định của bên gửi</option></select></div>
         <div id="mess-legacy-image-controls" style="display:none">
         <label>Ảnh trong tin nhắn (tuỳ chọn)</label>
@@ -1294,11 +1298,11 @@ header span { font-size: 12px; color: #4b5563; }
     <div style="font-size:12px;color:#9ca3af;margin-bottom:12px">Âm thanh sẽ chạy song song với tin nhắn đang chọn và hiện thành card âm thanh trong Box Messenger.</div>
     <button type="button" class="btn-cancel" style="width:100%;padding:10px;border:0;border-radius:8px;cursor:pointer;margin-bottom:10px" onclick="document.getElementById('mess-quick-audio-file').click()">📁 Nạp âm thanh từ máy</button>
     <input type="file" id="mess-quick-audio-file" accept="audio/*" style="display:none" onchange="uploadMessengerQuickAudio(this.files[0]);this.value=''"/>
-    <div style="display:none;align-items:center;justify-content:space-between;gap:8px;margin:8px 0">
+    <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;margin:8px 0">
       <label style="margin:0">Thư viện âm thanh</label>
       <button type="button" class="btn-cancel" style="padding:6px 9px;border:0;border-radius:7px;cursor:pointer" onclick="loadMessengerQuickAudioLibrary()">Tải lại</button>
     </div>
-    <div id="mess-quick-audio-library" class="quick-audio-grid" style="display:none"></div>
+    <div id="mess-quick-audio-library" class="quick-audio-grid"></div>
     <div id="mess-quick-audio-picked" class="quick-audio-picked"></div>
     <div id="mess-quick-audio-status" style="font-size:11px;color:#a78bfa;margin-top:6px;min-height:14px"></div>
     <div class="quick-audio-actions">
@@ -1722,13 +1726,23 @@ async function previewCustomVoice(index,button,event){
 }
 document.addEventListener('click',event=>{if(!event.target.closest('.voice-picker'))document.querySelectorAll('.voice-picker.open').forEach(item=>item.classList.remove('open'));});
 
-const DEFAULT_TTS_SERVER_URL = 'https://threads-api-s13z.onrender.com';
+const REMOTE_TTS_SERVER_URL = 'https://threads-api-s13z.onrender.com';
+const LOCAL_TTS_SERVER_URL = 'http://localhost:8007';
+// Bản web chạy trên localhost/file trực tiếp phải dùng API local. Electron
+// dev có ?localApi=1 do main.js gắn; Electron production không có query đó.
+const USE_LOCAL_TTS_API = new URLSearchParams(location.search).get('localApi') === '1'
+  || (!window.desktopApp?.isElectron
+    && (location.protocol === 'file:' || ['localhost','127.0.0.1','[::1]'].includes(location.hostname)));
+const DEFAULT_TTS_SERVER_URL = USE_LOCAL_TTS_API
+  ? LOCAL_TTS_SERVER_URL
+  : REMOTE_TTS_SERVER_URL;
+document.getElementById('tts-server-url').value = DEFAULT_TTS_SERVER_URL;
 function ttsServerUrl() {
   const raw = (document.getElementById('tts-server-url').value || DEFAULT_TTS_SERVER_URL).replace(/\/$/, '');
   try {
     const url = new URL(raw);
     const local = ['localhost', '127.0.0.1', '[::1]'].includes(url.hostname) && url.protocol === 'http:';
-    if (local || url.origin === DEFAULT_TTS_SERVER_URL) return url.origin;
+    if (local || url.origin === REMOTE_TTS_SERVER_URL) return url.origin;
   } catch (_error) {}
   return DEFAULT_TTS_SERVER_URL;
 }
@@ -1850,12 +1864,12 @@ async function fetchTts(text, voiceIdx, echo = false, speed = 1) {
 
 // Tối đa 50 đoạn CÙNG GIỌNG trong một task CapCut — dùng khi tạo cả đoạn
 // chat Messenger để tránh gửi từng request /tts riêng lẻ dễ bị block.
-async function fetchTtsBatch(texts, voiceIdx, speed = 1) {
+async function fetchTtsBatch(texts, voiceIdx, speed = 1, echo = false) {
   if (!texts.length || texts.length > 50) throw new Error('TTS batch phải có từ 1 đến 50 đoạn');
   const voice = selectedVoice(voiceIdx);
   const res = await fetch(ttsServerUrl() + '/tts-batch', {
     method: 'POST', headers: { 'Content-Type': 'application/json', ...(window.authHeaders ? window.authHeaders() : {}) },
-    body: JSON.stringify({ texts, voice_type: voice?.voice_type, resource_id: voice?.resource_id, speed }),
+    body: JSON.stringify({ texts, voice_type: voice?.voice_type, resource_id: voice?.resource_id, speed, echo }),
   });
   if (!res.ok) {
     const body = await res.json().catch(() => ({}));
@@ -1895,10 +1909,10 @@ const waitMs = ms => new Promise(resolve => setTimeout(resolve, ms));
 function isEdgeVoiceIdx(voiceIdx) {
   return selectedVoice(voiceIdx)?.engine === 'edge';
 }
-async function fetchEdgeTtsReliable(text, voiceIdx, speed = 1) {
+async function fetchEdgeTtsReliable(text, voiceIdx, speed = 1, echo = false) {
   let lastError;
   for (let attempt=0; attempt<3; attempt++) {
-    try { return await fetchTts(text, voiceIdx, false, speed); }
+    try { return await fetchTts(text, voiceIdx, echo, speed); }
     catch (e) {
       lastError=e;
       if(attempt<2) await waitMs((attempt+1)*2000);
@@ -1945,26 +1959,27 @@ async function generateAllTtsLegacy() {
     messTargets.forEach(s => {
       const voiceIdx = s.voiceIdx ?? messengerDefaultVoice(s.messHistory?.[s.messHistory.length-1]?.side || 'theirs');
       const speed = messengerServerSpeed(s.messTtsSpeed);
-      const key = `${voiceIdx}|${speed}`;
-      if (!byVoice.has(key)) byVoice.set(key, {voiceIdx,speed,items:[]});
+      const echo = !!s.echo;
+      const key = `${voiceIdx}|${speed}|${echo}`;
+      if (!byVoice.has(key)) byVoice.set(key, {voiceIdx,speed,echo,items:[]});
       byVoice.get(key).items.push(s);
     });
     const chunks=[];
-    for(const {voiceIdx,speed,items} of byVoice.values()){
+    for(const {voiceIdx,speed,echo,items} of byVoice.values()){
       if(isEdgeVoiceIdx(voiceIdx)){
         for(let i=0;i<items.length;i++){
           statusEl.textContent=`🔊 Edge TTS Messenger ${i+1}/${items.length} (từng đoạn)...`;
-          const result=await fetchEdgeTtsReliable((items[i].ttsText&&items[i].ttsText.trim())||items[i].text,voiceIdx,speed);
+          const result=await fetchEdgeTtsReliable((items[i].ttsText&&items[i].ttsText.trim())||items[i].text,voiceIdx,speed,echo);
           items[i].audioUrl=result.audioUrl;items[i].ttsDuration=result.duration;items[i].duration=result.duration;bumpStepRevision(items[i].id);ok++;
           await waitMs(700);
         }
       }else{
-        for(let start=0;start<items.length;start+=50)chunks.push({voiceIdx,speed,items:items.slice(start,start+50)});
+        for(let start=0;start<items.length;start+=50)chunks.push({voiceIdx,speed,echo,items:items.slice(start,start+50)});
       }
     }
     for(let ci=0;ci<chunks.length;ci++){
       const chunk=chunks[ci];statusEl.textContent=`🔊 Messenger batch ${ci+1}/${chunks.length} (${chunk.items.length} đoạn)...`;
-      const results=await fetchTtsBatch(chunk.items.map(s=>(s.ttsText&&s.ttsText.trim())||s.text),chunk.voiceIdx,chunk.speed);
+      const results=await fetchTtsBatch(chunk.items.map(s=>(s.ttsText&&s.ttsText.trim())||s.text),chunk.voiceIdx,chunk.speed,chunk.echo);
       if(results.length!==chunk.items.length)throw new Error('TTS batch trả về thiếu đoạn');
       chunk.items.forEach((s,i)=>{s.audioUrl=results[i].audioUrl;s.ttsDuration=results[i].duration;s.duration=results[i].duration;bumpStepRevision(s.id);ok++;});
     }
@@ -2042,7 +2057,7 @@ async function generateAllTts() {
     });
     for(const step of touched){step.duration=stepTtsClips(step).reduce((sum,clip)=>sum+(Number(clip.duration)||0),0)||step.duration;bumpStepRevision(step.id);}
     statusEl.textContent=`✓ Đã tạo ${jobs.length} đoạn TTS.`;setTtsLoadingText('Đã tải giọng đọc về máy. Đang cập nhật timeline...');renderStepList();renderIdleScene();return true;
-  }catch(error){statusEl.textContent='✗ Không tạo được TTS: '+error.message;setTtsLoadingText('Không tạo được giọng đọc: '+error.message);renderStepList();renderIdleScene();return false;}
+  }catch(error){statusEl.textContent='✗ Không tạo được TTS: '+error.message;setTtsLoadingText('Không tạo được giọng đọc: '+error.message);alert('Không tạo được giọng đọc từ API local: '+error.message);renderStepList();renderIdleScene();return false;}
   finally{btn.disabled=false;}
 }
 
@@ -2142,6 +2157,7 @@ function openMessengerModal(stepId = null, conversationMode = false) {
   document.getElementById('mess-theirs').value = current && current.side === 'theirs' ? current.text : '';
   document.getElementById('mess-mine').value = current && current.side === 'mine' ? current.text : '';
   document.getElementById('mess-tts').value = current ? (current.ttsText ?? current.text) : '';
+  document.getElementById('mess-echo').checked = !!current?.echo;
   document.getElementById('mess-image-side').value = current ? current.side : 'theirs';
   document.getElementById('mess-image-url').value = current && current.imageUrl && /^https?:/i.test(current.imageUrl) ? current.imageUrl : '';
   renderMessengerImagePreview();
@@ -2179,7 +2195,7 @@ function readMessengerComposer() {
   if (!theirs && !mine && !messPendingImage) return null;
   const side = mine ? 'mine' : theirs ? 'theirs' : document.getElementById('mess-image-side').value;
   const selectedOverride=parseInt(document.getElementById('mess-voice').value,10);
-  return { side, text: mine || theirs, ttsText: document.getElementById('mess-tts').value.trim() || mine || theirs, voiceIdx: Number.isNaN(selectedOverride)?messengerDefaultVoice(side):selectedOverride, voiceOverride:!Number.isNaN(selectedOverride), imageUrl: messPendingImage?.url || null, imageName: messPendingImage?.name || null, imageType:messPendingImage?.type || 'image', imageDesktopPath:messPendingImage?.desktopPath || null };
+  return { side, text: mine || theirs, ttsText: document.getElementById('mess-tts').value.trim() || mine || theirs, voiceIdx: Number.isNaN(selectedOverride)?messengerDefaultVoice(side):selectedOverride, voiceOverride:!Number.isNaN(selectedOverride), echo:document.getElementById('mess-echo').checked, imageUrl: messPendingImage?.url || null, imageName: messPendingImage?.name || null, imageType:messPendingImage?.type || 'image', imageDesktopPath:messPendingImage?.desktopPath || null };
 }
 function renderMessengerImagePreview() {
   const box=document.getElementById('mess-image-preview');
@@ -2235,7 +2251,7 @@ function removeMessengerDraft(i){
 }
 function resetMessengerComposer(){
   messDraftEditIndex=null;messInsertAt=null;messTtsDirty=false;messVoiceTouched=false;messPendingImage=null;
-  document.getElementById('mess-theirs').value='';document.getElementById('mess-mine').value='';document.getElementById('mess-tts').value='';document.getElementById('mess-image-url').value='';document.getElementById('mess-image-side').value='theirs';document.getElementById('mess-voice').value='';for(const side of ['theirs','mine']){const input=document.getElementById(`mess-inline-url-${side}`);if(input)input.value='';const row=document.getElementById(`mess-media-url-row-${side}`);if(row)row.classList.remove('open');}closeMessengerMediaMenus();renderMessengerImagePreview();updateMessengerComposerMode();
+  document.getElementById('mess-theirs').value='';document.getElementById('mess-mine').value='';document.getElementById('mess-tts').value='';document.getElementById('mess-echo').checked=false;document.getElementById('mess-image-url').value='';document.getElementById('mess-image-side').value='theirs';document.getElementById('mess-voice').value='';for(const side of ['theirs','mine']){const input=document.getElementById(`mess-inline-url-${side}`);if(input)input.value='';const row=document.getElementById(`mess-media-url-row-${side}`);if(row)row.classList.remove('open');}closeMessengerMediaMenus();renderMessengerImagePreview();updateMessengerComposerMode();
 }
 function updateMessengerComposerMode(){
   const box=document.getElementById('mess-compose-mode'),btn=document.getElementById('mess-add-btn'),cancel=document.getElementById('mess-compose-cancel');
@@ -2245,7 +2261,7 @@ function updateMessengerComposerMode(){
   else{box.style.display='none';box.textContent='';btn.textContent='＋ Thêm tin nhắn';cancel.style.display='none';}
 }
 function fillMessengerComposer(msg){
-  document.getElementById('mess-theirs').value=msg.side==='theirs'?(msg.text||''):'';document.getElementById('mess-mine').value=msg.side==='mine'?(msg.text||''):'';document.getElementById('mess-tts').value=msg.ttsText??msg.text??'';document.getElementById('mess-image-side').value=msg.side;messPendingImage=msg.imageUrl?{url:msg.imageUrl,name:msg.imageName||'ảnh',type:msg.imageType||'image',desktopPath:msg.imageDesktopPath||null}:null;document.getElementById('mess-image-url').value=msg.imageUrl&&/^https?:/i.test(msg.imageUrl)?msg.imageUrl:'';document.getElementById('mess-voice').value=msg.voiceOverride?String(msg.voiceIdx):'';messTtsDirty=true;messVoiceTouched=!!msg.voiceOverride;renderMessengerImagePreview();
+  document.getElementById('mess-theirs').value=msg.side==='theirs'?(msg.text||''):'';document.getElementById('mess-mine').value=msg.side==='mine'?(msg.text||''):'';document.getElementById('mess-tts').value=msg.ttsText??msg.text??'';document.getElementById('mess-echo').checked=!!msg.echo;document.getElementById('mess-image-side').value=msg.side;messPendingImage=msg.imageUrl?{url:msg.imageUrl,name:msg.imageName||'ảnh',type:msg.imageType||'image',desktopPath:msg.imageDesktopPath||null}:null;document.getElementById('mess-image-url').value=msg.imageUrl&&/^https?:/i.test(msg.imageUrl)?msg.imageUrl:'';document.getElementById('mess-voice').value=msg.voiceOverride?String(msg.voiceIdx):'';messTtsDirty=true;messVoiceTouched=!!msg.voiceOverride;renderMessengerImagePreview();
 }
 function closeMessengerDraftMenus(){document.querySelectorAll('.mess-draft-actions.open').forEach(el=>el.classList.remove('open'));}
 function editMessengerDraft(i){const msg=messDrafts[i];if(!msg)return;closeMessengerDraftMenus();messDraftEditIndex=i;messInsertAt=null;fillMessengerComposer(msg);updateMessengerComposerMode();document.getElementById('mess-theirs').scrollIntoView({behavior:'smooth',block:'center'});}
@@ -2342,6 +2358,7 @@ function setMessengerQuickAudioMedia(media){
 }
 async function loadMessengerQuickAudioLibrary(){
   const grid=document.getElementById('mess-quick-audio-library');if(!grid)return;
+  grid.style.display='grid';
   grid.innerHTML='<div class="lib-empty">Đang tải...</div>';
   try{
     const res=await fetch(MEDIA_SERVER_URL+'/library/audio');if(!res.ok)throw new Error('HTTP '+res.status);
@@ -2404,7 +2421,7 @@ function applyMessengerJson(raw) {
     if (!side || (!text && !imageUrl)) throw new Error(`Tin thứ ${i + 1} thiếu side hợp lệ hoặc cả text/imageUrl đều trống.`);
     const importedVoiceIdx=Number(item.voiceIdx);
     const hasVoiceOverride=item.voiceIdx!==undefined && Number.isInteger(importedVoiceIdx);
-    return { side, text, ttsText: String(item.ttsText ?? text).trim() || text, voiceIdx: hasVoiceOverride?importedVoiceIdx:messengerDefaultVoice(side), voiceOverride:hasVoiceOverride, imageUrl: imageUrl || null, imageName: item.imageName || null, imageType:item.imageType==='sticker'?'sticker':'image', imageDesktopPath:item.imageDesktopPath||null };
+    return { side, text, ttsText: String(item.ttsText ?? text).trim() || text, voiceIdx: hasVoiceOverride?importedVoiceIdx:messengerDefaultVoice(side), voiceOverride:hasVoiceOverride, echo:!!item.echo, imageUrl: imageUrl || null, imageName: item.imageName || null, imageType:item.imageType==='sticker'?'sticker':'image', imageDesktopPath:item.imageDesktopPath||null };
   });
   messPartnerName = Array.isArray(raw) ? 'Tùng' : String(raw.partnerName || raw.name || 'Tùng').trim();
   messPartnerAvatar = Array.isArray(raw) ? MESS_DEFAULT_AVATAR : String(raw.partnerAvatar || raw.avatarUrl || MESS_DEFAULT_AVATAR).trim();
@@ -2453,7 +2470,7 @@ async function generateMessengerTtsResults(messages,status,reuseSteps=[]){
   messages.forEach((msg,index)=>{
     if(!msg.ttsText)return;
     const old=reuseSteps.find(s=>(s.messIndex??((s.messHistory||[]).length-1))===index);
-    if(old&&old.audioUrl&&old.ttsText===msg.ttsText&&old.voiceIdx===msg.voiceIdx&&Number(old.messTtsSpeed||1)===Number(messTtsSpeed)){
+    if(old&&old.audioUrl&&old.ttsText===msg.ttsText&&old.voiceIdx===msg.voiceIdx&&!!old.echo===!!msg.echo&&Number(old.messTtsSpeed||1)===Number(messTtsSpeed)){
       results.set(index,{audioUrl:old.audioUrl,duration:old.ttsDuration||old.duration});return;
     }
   });
@@ -2461,7 +2478,7 @@ async function generateMessengerTtsResults(messages,status,reuseSteps=[]){
   return results;
 }
 function makeMessengerStep(msg,index,history,conversationId,ttsResult,oldStep=null){
-  return {id:oldStep?.id??stepIdCounter++,type:'mess',conversationId,groupId:oldStep?.groupId===false?false:(oldStep?.groupId||conversationId),messIndex:index,messPlatform,messShowFooter,messPartnerName:messPartnerName.trim()||'Tùng',messPartnerAvatar,messSideVoices:{...messSideVoiceIdx},messTtsSpeed,messHistory:history.map(x=>({...x})),text:msg.text,ttsText:msg.ttsText,voiceIdx:msg.voiceIdx,audioUrl:ttsResult?.audioUrl||null,ttsDuration:ttsResult?.duration||null,duration:ttsResult?.duration||DEFAULT_DUR.mess,gap:oldStep?.gap??0,clearBefore:oldStep?.clearBefore??true,hue:oldStep?.hue??0,offsetX:oldStep?.offsetX??0,offsetY:oldStep?.offsetY??0,rotation:oldStep?.rotation??0};
+  return {id:oldStep?.id??stepIdCounter++,type:'mess',conversationId,groupId:oldStep?.groupId===false?false:(oldStep?.groupId||conversationId),messIndex:index,messPlatform,messShowFooter,messPartnerName:messPartnerName.trim()||'Tùng',messPartnerAvatar,messSideVoices:{...messSideVoiceIdx},messTtsSpeed,messHistory:history.map(x=>({...x})),text:msg.text,ttsText:msg.ttsText,voiceIdx:msg.voiceIdx,echo:!!msg.echo,audioUrl:ttsResult?.audioUrl||null,ttsDuration:ttsResult?.duration||null,duration:ttsResult?.duration||DEFAULT_DUR.mess,gap:oldStep?.gap??0,clearBefore:oldStep?.clearBefore??true,hue:oldStep?.hue??0,offsetX:oldStep?.offsetX??0,offsetY:oldStep?.offsetY??0,rotation:oldStep?.rotation??0};
 }
 function insertPendingMessengerAudios(drafts,messSteps){
   drafts.forEach((msg,i)=>{
@@ -2499,7 +2516,7 @@ async function submitMessengerConversation() {
       messPartnerName=messPartnerName.trim()||'Tùng';
       for(const related of steps.filter(x=>x.type==='mess'&&x.conversationId===conv)){related.messPlatform=messPlatform;related.messShowFooter=messShowFooter;related.messPartnerName=messPartnerName;related.messPartnerAvatar=messPartnerAvatar;related.messSideVoices={...messSideVoiceIdx};related.messTtsSpeed=messTtsSpeed;}
       for (const later of steps.filter(x=>x.type==='mess'&&x.conversationId===conv&&((x.messIndex??0)>=idx))) if(later.messHistory&&later.messHistory[idx]) later.messHistory[idx]={...msg};
-      s.text=msg.text;s.ttsText=msg.ttsText;s.voiceIdx=msg.voiceIdx;s.audioUrl=null;s.audioDesktopPath=null;s.ttsDuration=null;s.duration=DEFAULT_DUR.mess;
+      s.text=msg.text;s.ttsText=msg.ttsText;s.voiceIdx=msg.voiceIdx;s.echo=!!msg.echo;s.audioUrl=null;s.audioDesktopPath=null;s.ttsDuration=null;s.duration=DEFAULT_DUR.mess;
       for (const x of steps.filter(x=>x.type==='mess'&&x.conversationId===conv)) bumpStepRevision(x.id);
     } catch(e){alert('Không tạo được giọng đọc: '+e.message);finish.disabled=false;return}
     finish.disabled=false;closeMessengerModal();renderStepList();renderIdleScene();return;
@@ -2653,7 +2670,11 @@ function filePathFieldHtml(label, currentPath, currentMediaUrl, currentMediaName
 // chạy hoạt hình luôn trong ô nhỏ) — thay cho dropdown chỉ có tên file
 // (phải chọn mù, không biết trước nghe/nhìn thế nào).
 function libraryPickerHtml(category) {
-  if (window.BROWSER_FIRST && !window.desktopApp?.isElectron) return '';
+  const localWeb = location.protocol === 'file:'
+    || ['localhost', '127.0.0.1', '[::1]'].includes(location.hostname);
+  // Browser online độc lập không có media_server nên ẩn thư viện. Bản web
+  // local có server 8010 phải hiện giống app Electron.
+  if (window.BROWSER_FIRST && !window.desktopApp?.isElectron && !localWeb) return '';
   return `<div class="lib-toggle-row">
       <button type="button" class="lib-toggle-btn" onclick="toggleLibraryGrid()">📂 Chọn từ thư viện có sẵn</button>
     </div>
@@ -3398,10 +3419,20 @@ document.addEventListener('keydown',event=>{
 
 async function loadStickerLibrary(preferredPackId = null) {
   const content = document.getElementById('sticker-library-content');
-  if (!content || !window.desktopApp?.getStickerLibrary) return;
+  if (!content) return;
   content.innerHTML = '<div class="lib-empty">Đang mở thư viện sticker...</div>';
   try {
-    stickerPacks = await window.desktopApp.getStickerLibrary();
+    if (window.desktopApp?.getStickerLibrary) {
+      stickerPacks = await window.desktopApp.getStickerLibrary();
+    } else {
+      const response = await fetch(MEDIA_SERVER_URL + '/stickers');
+      if (!response.ok) throw new Error('HTTP ' + response.status);
+      stickerPacks = await response.json();
+      stickerPacks = stickerPacks.map(pack => ({...pack, stickers:(pack.stickers||[]).map(sticker => ({
+        ...sticker,
+        url:/^(?:file:|https?:|blob:)/i.test(sticker.url) ? sticker.url : MEDIA_SERVER_URL + sticker.url,
+      }))}));
+    }
     activeStickerPackId = preferredPackId && stickerPacks.some(pack => pack.id === preferredPackId) ? preferredPackId : null;
     activeStickerPackId ? renderStickerPackDetail() : showStickerPackList();
   } catch (error) {
@@ -3410,11 +3441,12 @@ async function loadStickerLibrary(preferredPackId = null) {
 }
 
 function setStickerModalDetailControls(show) {
+  const canManage = !!window.desktopApp?.createStickerPack;
   document.getElementById('sticker-library-back').style.display = show ? '' : 'none';
-  document.getElementById('sticker-library-create').style.display = show ? 'none' : '';
-  document.getElementById('sticker-library-rename').style.display = show ? '' : 'none';
-  document.getElementById('sticker-library-delete').style.display = show ? '' : 'none';
-  document.getElementById('sticker-library-add').style.display = show ? '' : 'none';
+  document.getElementById('sticker-library-create').style.display = !show && canManage ? '' : 'none';
+  document.getElementById('sticker-library-rename').style.display = show && canManage ? '' : 'none';
+  document.getElementById('sticker-library-delete').style.display = show && canManage ? '' : 'none';
+  document.getElementById('sticker-library-add').style.display = show && canManage ? '' : 'none';
 }
 
 function showStickerPackList() {
@@ -3954,13 +3986,14 @@ function stepCardHtml(s, idx) {
       ${POSITIONABLE_TYPES.includes(s.type) ? stepPositionCtrlsHtml(s) : DRAGGABLE_OVERLAY_TYPES.includes(s.type) ? '<div class="sc-position" style="color:#a78bfa;font-size:10px">🖱 Kéo trực tiếp hình trong khung preview để đổi vị trí</div>' : ''}
       <div class="sc-ctrls">
         <label>Thời lượng${s.audioUrl?' 🔊':''}
-          <input type="number" min="0" step="0.1" value="${s.duration.toFixed(2)}" ${s.audioUrl?'disabled title="Tự tính từ độ dài giọng đọc TTS — sửa nội dung để tạo lại"':isParallelVisual(s)?'disabled title="Ảnh/sticker song song luôn bằng thời lượng card đích"':''} onchange="updateStepField(${s.id},'duration',this.value)"/>
+          <input type="number" min="0" step="0.1" value="${s.duration.toFixed(2)}" ${isParallelVisual(s)?'disabled title="Ảnh/sticker song song luôn bằng thời lượng card đích"':s.audioUrl?'title="Mặc định theo độ dài giọng đọc; tăng thì phần dư im lặng, giảm thì giọng bị cắt ngắn"':''} onchange="updateStepField(${s.id},'duration',this.value)"/>
         </label>
         <label>Gap sau
           <input type="number" min="0" step="0.1" value="${s.gap}" onchange="updateStepField(${s.id},'gap',this.value)"/>
         </label>
         ${s.type==='mess'?'':`<label class="clear-toggle"><input type="checkbox" ${s.clearBefore?'checked':''} onchange="updateStepField(${s.id},'clearBefore',this.checked)"/> Xoá nội dung cũ</label>`}
         <div class="sc-actions">
+          ${s.type==='image'&&s.mediaIsVideo?`<button class="media-video-toggle" onclick="toggleCardVideoPlayback(${s.id})" title="Phát video đúng một lượt">▶ Phát video</button>`:''}
           <button onclick="${s.type==='mess'?`openMessengerModal(${s.id})`:`openStepModal('${s.type}',${s.id})`}" title="Sửa">✎</button>
           ${isParallelMedia(s)?`<button onclick="detachParallelMedia(${s.id})" title="Tách khỏi step đang phát song song">↳ Tách</button>`:''}
           <button onclick="deleteStep(${s.id})" title="Xoá">🗑</button>
@@ -4368,6 +4401,81 @@ function updateStepField(id, field, val) {
   renderIdleScene();
 }
 
+// Video dùng trong card Ảnh mặc định luôn đứng yên. Người dùng chủ động bấm
+// Phát thì chạy từ đầu đúng một lượt; bấm Dừng sẽ trở về frame đầu. Việc
+// clearBefore=false chỉ giữ overlay trên màn hình, tuyệt đối không được biến
+// thành lệnh autoplay/loop.
+function setCardVideoButton(id, isPlaying) {
+  document.querySelectorAll(`.step-card[data-id="${id}"] .media-video-toggle`).forEach(button => {
+    button.textContent = isPlaying ? '■ Dừng video' : '▶ Phát video';
+    button.title = isPlaying ? 'Dừng và trở về đầu video' : 'Phát video đúng một lượt';
+  });
+}
+
+function cardVideoElements(id) {
+  return [...document.querySelectorAll(`#meme-overlay[data-id="${id}"] video, #retained-meme-layer .retained-meme[data-id="${id}"] video`)];
+}
+
+function toggleCardVideoPlayback(id) {
+  const step = steps.find(item => item.id === id);
+  if (!step || step.type !== 'image' || !step.mediaIsVideo) return;
+  let videos = cardVideoElements(id);
+  if (!videos.length) {
+    jumpToStep(id);
+    videos = cardVideoElements(id);
+  }
+  if (!videos.length) return;
+  const shouldStop = videos.some(video => !video.paused && !video.ended);
+  if (shouldStop) {
+    videos.forEach(video => { video.pause(); try { video.currentTime = 0; } catch (_error) {} });
+    setCardVideoButton(id, false);
+    return;
+  }
+  videos.forEach(video => {
+    video.loop = false;
+    try { video.currentTime = 0; } catch (_error) {}
+    video.onended = () => setCardVideoButton(id, false);
+    video.play().catch(() => setCardVideoButton(id, false));
+  });
+  setCardVideoButton(id, true);
+}
+
+// Đồng bộ video-card với nút Play TỔNG: chỉ khi playhead đang nằm trong
+// chính cửa sổ thời gian của card thì video mới chạy. Card được giữ lại do
+// clearBefore=false chỉ giữ hình/frame cuối, không phát tiếp và không lặp.
+function syncCardVideosToTimeline(t) {
+  document.querySelectorAll('#meme-overlay[data-id] video, #retained-meme-layer .retained-meme[data-id] video').forEach(video => {
+    const holder = video.closest('[data-id]');
+    const id = Number(holder?.dataset.id);
+    const step = steps.find(item => item.id === id);
+    if (!step || !step.mediaIsVideo) { video.pause(); return; }
+    video.loop = false;
+    const localTime = t - step._start;
+    const active = localTime >= -1e-6 && t < step._end - 1e-6;
+    const mediaDuration = Number(video.duration);
+    if (!active) {
+      video.pause();
+      if (Number.isFinite(mediaDuration) && mediaDuration > 0) {
+        const target = t >= step._end ? Math.max(0, mediaDuration - 0.04) : 0;
+        if (Math.abs(video.currentTime - target) > 0.08) try { video.currentTime = target; } catch (_error) {}
+      }
+      setCardVideoButton(id, false);
+      return;
+    }
+    if (Number.isFinite(mediaDuration) && mediaDuration > 0 && localTime >= mediaDuration) {
+      video.pause();
+      const finalFrame = Math.max(0, mediaDuration - 0.04);
+      if (Math.abs(video.currentTime - finalFrame) > 0.08) try { video.currentTime = finalFrame; } catch (_error) {}
+      setCardVideoButton(id, false);
+      return;
+    }
+    const target = Math.max(0, localTime);
+    if (Math.abs(video.currentTime - target) > 0.35) try { video.currentTime = target; } catch (_error) {}
+    if (video.paused) video.play().catch(() => {});
+    setCardVideoButton(id, true);
+  });
+}
+
 // Điều chỉnh vị trí/xoay từng step qua nút bấm (mục 5.21 CONTEXT.md) —
 // KHÔNG gọi computeTimeline() vì offset/rotation không ảnh hưởng thời
 // lượng/timeline, chỉ ảnh hưởng hiển thị. bumpStepRevision() BẮT BUỘC —
@@ -4690,20 +4798,29 @@ async function importProjectJson(input) {
     // dưới). Chuyển sang tab Thư viện + gọi applyBg*() luôn cho khỏi phải
     // bấm tay lại nút Áp dụng.
     let restoredBgVideo = false, restoredBgAudio = false;
-    if (project.bgVideoLibrary && safeMediaUrl(project.bgVideoLibrary.url)) {
-      project.bgVideoLibrary.url = safeMediaUrl(project.bgVideoLibrary.url);
+    const restoredLibraryUrl = (item, category) => {
+      const raw = String(item?.url || '').trim();
+      const absolute = /^(?:file:|https?:|blob:)/i.test(raw) ? raw : (/^\/library-file\//.test(raw) ? MEDIA_SERVER_URL + raw : '');
+      const safe = safeMediaUrl(absolute);
+      return safe && safe.includes(`/library-file/${category}/`) ? safe : '';
+    };
+    const restoredVideoUrl = restoredLibraryUrl(project.bgVideoLibrary, 'background');
+    const restoredAudioUrl = restoredLibraryUrl(project.bgAudioLibrary, 'bgaudio');
+    if (project.bgVideoLibrary && restoredVideoUrl) {
+      project.bgVideoLibrary.url = restoredVideoUrl;
       bgVideoLibraryItem = project.bgVideoLibrary;
       document.querySelectorAll('#feat-bgvideo .platform-btn')[1].click();
       applyBgVideo();
       restoredBgVideo = true;
     }
-    if (project.bgAudioLibrary && safeMediaUrl(project.bgAudioLibrary.url)) {
-      project.bgAudioLibrary.url = safeMediaUrl(project.bgAudioLibrary.url);
+    if (project.bgAudioLibrary && restoredAudioUrl) {
+      project.bgAudioLibrary.url = restoredAudioUrl;
       bgAudioLibraryItem = project.bgAudioLibrary;
       document.querySelectorAll('#feat-bgaudio .platform-btn')[1].click();
       applyBgAudio();
       restoredBgAudio = true;
     }
+    window.onProjectBackgroundsRestored?.(bgVideoLibraryItem, bgAudioLibraryItem);
     renderStepList();
     renderIdleScene();
     input.value = '';
@@ -4892,21 +5009,23 @@ function renderAtTime(t) {
       // tiếng làm meme (thay vì ghép gif+audio rời, mục 5.19) — muted khiến
       // preview câm hoàn toàn dù file gốc có tiếng, và không khớp hành vi
       // export (đã phát đúng tiếng, mục 5.27) khiến preview/export lệch
-      // nhau. loop vẫn giữ — nếu video ngắn hơn duration step, lặp lại
-      // đúng ý preview cũ.
+      // nhau. Video mặc định đứng hình; chỉ chạy một lượt khi người dùng
+      // bấm nút Phát video trên đúng card.
       const resizeHandles='<span class="overlay-resize-handle nw" data-corner="nw"></span><span class="overlay-resize-handle ne" data-corner="ne"></span><span class="overlay-resize-handle sw" data-corner="sw"></span><span class="overlay-resize-handle se" data-corner="se"></span>';
       const memeUrl = safeMediaUrl(memeStep.mediaUrl);
       memeEl.innerHTML = (memeUrl
         ? (memeStep.mediaIsVideo
-            ? `<video src="${esc(memeUrl)}" autoplay loop playsinline></video>`
+            ? `<video src="${esc(memeUrl)}" preload="metadata" playsinline></video>`
             : `<img src="${esc(memeUrl)}" alt=""/>`)
         : `<div class="meme-ph">🖼 MEME<br/>(chưa chọn file)</div>`) + resizeHandles;
       memeEl.style.display = 'block';
+      memeEl.dataset.id = String(memeStep.id);
       memeEl.classList.toggle('sticker-overlay', memeStep.type === 'sticker');
       memeEl.classList.toggle('drag-positionable', DRAGGABLE_OVERLAY_TYPES.includes(memeStep.type));
     } else {
       memeEl.style.display = 'none';
       memeEl.innerHTML = '';
+      delete memeEl.dataset.id;
       memeEl.classList.remove('sticker-overlay');
       memeEl.classList.remove('drag-positionable');
       memeEl.classList.remove('resize-selected');
@@ -4919,6 +5038,7 @@ function renderAtTime(t) {
   // nếu chỉ đặt trong đó — bug tiềm ẩn đã xác nhận trước khi code.
   if (memeStep) memeEl.style.transform = memeOverlayTransform(memeStep);
   memeEl.classList.toggle('resize-selected',!!memeStep&&memeStep.id===selectedOverlayStepId&&!playing);
+  if (playing) syncCardVideosToTimeline(t);
 
   // highlight step đang chạy trong panel — có thể nhiều step cùng lúc
   // (1 step track chính + 0..n step audio song song chồng lên nó)
@@ -5153,6 +5273,11 @@ function stopPlay() {
   document.getElementById('tts-audio').pause();
   _lastTtsClipKey = null;
   stopAllSfxAudio();
+  document.querySelectorAll('#meme-overlay video, #retained-meme-layer video').forEach(video => video.pause());
+  document.querySelectorAll('.media-video-toggle').forEach(button => {
+    button.textContent = '▶ Phát video';
+    button.title = 'Phát video đúng một lượt';
+  });
 }
 
 function seekPreview(value) {
@@ -5340,7 +5465,7 @@ renderStepList();
 // Bản browser-first cập nhật trạng thái lưu trữ sau khi runtime khởi tạo.
 </script>
 <script src="auth_client.js?v=20260807-auth-v2"></script>
-<script src="browser_runtime.js?v=20260807-browser-first"></script>
+<script src="browser_runtime.js?v=20260815-local-api-fix"></script>
 
 </body>
 </html>

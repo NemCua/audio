@@ -135,11 +135,15 @@ async def render_stack_images(job_id: str, steps: list[dict], breakpoints: list[
             is_dynamic = result.get("dynamicMeme", False)
             meme_box = result.get("memeBox")
             meme_media_url = result.get("memeMediaUrl")
+            meme_step_id = result.get("memeStepId")
+            meme_step_start = result.get("memeStepStart")
 
             dynamic_meme = None
             if has_meme and is_dynamic and meme_box:
                 dynamic_meme = {
                     "media_url": meme_media_url,
+                    "step_id": meme_step_id,
+                    "step_start": meme_step_start,
                     "x_ratio": meme_box["xRatio"], "y_ratio": meme_box["yRatio"],
                     "w_ratio": meme_box["wRatio"], "h_ratio": meme_box["hRatio"],
                 }
@@ -161,8 +165,8 @@ async def render_stack_images(job_id: str, steps: list[dict], breakpoints: list[
 
 
 def build_ffmpeg_cmd(job_id: str, bg_video_path: Path, bg_audio_path: Path | None, bg_audio_volume: float,
-                      segments: list, total_duration: float, out_path: Path, audio_tracks: list[tuple[str, float, float]]):
-    """audio_tracks: list of (file_path, start_offset_seconds, volume) — TTS + hiệu ứng, mỗi cái adelay theo start.
+                      segments: list, total_duration: float, out_path: Path, audio_tracks: list[tuple[str, float, float, float | None]]):
+    """audio_tracks: list of (file_path, start_offset_seconds, volume, max_duration) — TTS + hiệu ứng.
     segments: list[dict] từ render_stack_images() — mỗi phần tử {t0, t1, img_path, dynamic_meme}."""
     inputs = []
     filter_parts = []
@@ -190,10 +194,9 @@ def build_ffmpeg_cmd(job_id: str, bg_video_path: Path, bg_audio_path: Path | Non
 
     # Meme video/gif ĐỘNG: overlay file gốc (không phải PNG tĩnh) tại đúng vị
     # trí/kích thước đo được ở export_render.html (measureMemeBox — tỉ lệ so
-    # với #preview-frame, quy đổi ra pixel TARGET_W/TARGET_H ở đây). Loop input
-    # bằng -stream_loop -1 vì file gốc có thể ngắn hơn quãng [t0,t1) cần hiện
-    # (giống hệt cách xử lý video nền) — riêng ảnh GIF ffmpeg cần -ignore_loop 0
-    # để nhận đúng số vòng lặp thay vì chỉ phát 1 lần.
+    # với #preview-frame, quy đổi ra pixel TARGET_W/TARGET_H ở đây). Video MP4
+    # chỉ phát đúng một lượt rồi overlay giữ frame cuối; không stream_loop.
+    # Riêng GIF vẫn giữ cách đọc loop nội tại của chính file GIF.
     for seg in segments:
         dm = seg.get("dynamic_meme")
         if not dm or not dm.get("_local_path"):
@@ -208,7 +211,17 @@ def build_ffmpeg_cmd(job_id: str, bg_video_path: Path, bg_audio_path: Path | Non
         w_px += w_px % 2
         h_px += h_px % 2
         is_gif = dm["_local_path"].lower().endswith(".gif")
-        loop_flags = ["-ignore_loop", "0"] if is_gif else ["-stream_loop", "-1"]
+        loop_flags = ["-ignore_loop", "0"] if is_gif else []
+        # Một video-card có thể trải qua nhiều segment do card TTS/audio khác
+        # tạo breakpoint. Mỗi segment phải tiếp tục đúng vị trí trong file,
+        # không được mở lại từ giây 0 (gây lóe/phát lại video cũ).
+        raw_step_start = dm.get("step_start")
+        step_start = t0 if raw_step_start is None else float(raw_step_start)
+        source_offset = max(0.0, t0 - step_start)
+        if not is_gif:
+            media_duration = probe_duration(Path(dm["_local_path"]))
+            if media_duration > 0:
+                source_offset = min(source_offset, max(0.0, media_duration - 0.04))
         # -itsoffset {t0} — BẮT BUỘC, không chỉ là tối ưu. Không có nó, input
         # gif/video bắt đầu đọc PTS=0 ngay từ đầu lệnh ffmpeg, nhưng overlay
         # 'enable=between(t,t0,t1)' chỉ ẨN/HIỆN kết quả — không hề dịch PTS
@@ -220,7 +233,8 @@ def build_ffmpeg_cmd(job_id: str, bg_video_path: Path, bg_audio_path: Path | Non
         # chuyển động thật — ffprobe/duration không lộ được bug này, phải
         # crop đúng vùng meme rồi xếp lưới nhiều khung mới thấy). itsoffset
         # dịch input để nó "bắt đầu" đúng lúc t0 của track chính, khớp pha.
-        inputs += loop_flags + ["-itsoffset", f"{t0:.3f}", "-t", f"{dur:.3f}", "-i", dm["_local_path"]]
+        seek_flags = ["-ss", f"{source_offset:.3f}"] if source_offset > 0 and not is_gif else []
+        inputs += loop_flags + seek_flags + ["-itsoffset", f"{t0:.3f}", "-t", f"{dur:.3f}", "-i", dm["_local_path"]]
         new_label = f"v{idx}"
         filter_parts.append(
             f"[{idx}:v]scale={w_px}:{h_px}[m{idx}];"
@@ -231,11 +245,12 @@ def build_ffmpeg_cmd(job_id: str, bg_video_path: Path, bg_audio_path: Path | Non
 
     # audio: TTS/hiệu ứng qua adelay, nhạc nền qua stream_loop riêng, amix gộp
     audio_input_labels = []
-    for (afile, astart, avol) in audio_tracks:
+    for (afile, astart, avol, max_duration) in audio_tracks:
         inputs += ["-i", afile]
         lbl = f"a{idx}"
         ms = int(round(astart * 1000))
-        filter_parts.append(f"[{idx}:a]adelay={ms}|{ms},volume={avol}[{lbl}]")
+        trim = f"atrim=duration={max_duration:.3f},asetpts=PTS-STARTPTS," if max_duration is not None else ""
+        filter_parts.append(f"[{idx}:a]{trim}adelay={ms}|{ms},volume={avol}[{lbl}]")
         audio_input_labels.append(lbl)
         idx += 1
 
@@ -335,17 +350,22 @@ async def run_export_job(job_id: str, req: ExportRequest):
                 acc = 0.0
                 for clip in clips:
                     url = clip.get("audioUrl")
-                    if url:
+                    # Card ngắn hơn giọng: chỉ lấy phần audio còn nằm trong
+                    # card. Card dài hơn giọng: amix tự để im lặng phần dư.
+                    remaining = max(0.0, (s.get("duration") or 0) - acc)
+                    clip_duration = clip.get("duration") or 0
+                    allowed_duration = min(clip_duration, remaining)
+                    if url and allowed_duration > 0:
                         fname = url.rstrip("/").split("/")[-1]
                         fpath = TTS_AUDIO_DIR / fname
                         if fpath.exists():
-                            audio_tracks.append((str(fpath), s["_start"] + acc, 1.0))
-                    acc += clip.get("duration") or 0
-            elif s.get("type") == "audio" and s.get("mediaUrl"):
+                            audio_tracks.append((str(fpath), s["_start"] + acc, 1.0, allowed_duration))
+                    acc += clip_duration
+            if s.get("type") == "audio" and s.get("mediaUrl"):
                 local_path = _resolve_local_media(s["mediaUrl"])
                 if local_path:
-                    audio_tracks.append((str(local_path), s["_start"], 1.0))
-            elif s.get("type") == "image" and s.get("mediaUrl") and s.get("mediaIsVideo"):
+                    audio_tracks.append((str(local_path), s["_start"], 1.0, None))
+            if s.get("type") == "image" and s.get("mediaUrl") and s.get("mediaIsVideo"):
                 # Ảnh dạng VIDEO (không phải gif) có thể tự mang sẵn audio
                 # track (vd clip có tiếng cười/nhạc nền riêng) — bug đã gặp:
                 # build_ffmpeg_cmd() chỉ overlay VIDEO stream của input động
@@ -357,7 +377,7 @@ async def run_export_job(job_id: str, req: ExportRequest):
                 # không lặp audio nhiều lần.
                 local_path = _resolve_local_media(s["mediaUrl"])
                 if local_path and has_audio_stream(local_path):
-                    audio_tracks.append((str(local_path), s["_start"], 1.0))
+                    audio_tracks.append((str(local_path), s["_start"], 1.0, max(0.0, s.get("duration") or 0)))
 
         # overlay động (step 'image' dạng video/gif): resolve mediaUrl -> file
         # thật trên đĩa (giống mọi media khác qua media_server.py) — nếu không

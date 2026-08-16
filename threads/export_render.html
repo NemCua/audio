@@ -862,10 +862,13 @@ function setSteps(newSteps) {
 function waitImagesLoaded(container) {
   const imgs = Array.from(container.querySelectorAll('img'));
   return Promise.all(imgs.map(img => {
-    if (img.complete && img.naturalWidth > 0) return Promise.resolve();
-    return (img.decode ? img.decode() : new Promise((res) => {
+    // complete chỉ có nghĩa tải xong bytes, chưa chắc ảnh đã decode/raster
+    // xong để screenshot. Luôn gọi decode(), kể cả complete=true.
+    if (img.decode) return img.decode().catch(() => {});
+    if (img.complete) return Promise.resolve();
+    return new Promise((res) => {
       img.onload = res; img.onerror = res;
-    })).catch(() => {});
+    });
   }));
 }
 
@@ -933,7 +936,7 @@ async function renderStackAt(t) {
   const memeUrl = safeMediaUrl(memeStep?.mediaUrl);
   if (memeStep && memeUrl) {
     memeEl.innerHTML = memeStep.mediaIsVideo
-      ? `<video src="${esc(memeUrl)}" autoplay muted loop playsinline></video>`
+      ? `<video src="${esc(memeUrl)}" preload="metadata" muted playsinline></video>`
       : `<img src="${esc(memeUrl)}" alt=""/>`;
     memeEl.style.display = 'block';
     memeEl.classList.toggle('sticker-overlay', memeStep.type === 'sticker');
@@ -952,6 +955,9 @@ async function renderStackAt(t) {
     waitVideosMetadata(memeEl),
     waitAnimationsDone(stackEl),
   ]);
+  // Cho Chromium thêm hai frame để commit ảnh vừa decode vào compositor
+  // trước khi Playwright screenshot, tránh avatar chỉ xuất hiện từ ~0.3s.
+  await new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve)));
 
   // Meme động: đo vị trí/kích thước THẬT (đã có layout đúng từ ảnh/video vừa
   // load xong ở trên) rồi ẨN đi trước khi báo hasMeme — export_server.py sẽ
@@ -977,6 +983,8 @@ async function renderStackAt(t) {
     dynamicMeme,
     memeBox,
     memeMediaUrl: memeStep ? memeStep.mediaUrl : null,
+    memeStepId: memeStep ? memeStep.id : null,
+    memeStepStart: memeStep ? memeStep._start : null,
   };
 }
 </script>

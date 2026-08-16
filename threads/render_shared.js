@@ -39,7 +39,7 @@ function safeMediaUrl(value) {
   // project works in the browser, the Electron app and the hidden export
   // renderer. Resolve only this tightly scoped asset path; the old code
   // rejected every relative URL, causing avatars to fall back to initials.
-  if (/^avatarthreads\/[\p{L}\p{N}._-]+\.(?:png|jpe?g|gif|webp)$/iu.test(raw)) {
+  if (raw === 'messenger-default-avatar.png' || /^avatarthreads\/[\p{L}\p{N}._-]+\.(?:png|jpe?g|gif|webp)$/iu.test(raw)) {
     try { return new URL(raw, document.baseURI).href; } catch (_error) { return ''; }
   }
   if (/^(?:file:|blob:)/i.test(raw)) return raw;
@@ -288,7 +288,16 @@ function buildCardHtml(s) {
   return '';
 }
 
-const MESS_DEFAULT_AVATAR = 'https://scontent.fsgn2-6.fna.fbcdn.net/v/t1.30497-1/453178253_471506465671661_2781666950760530985_n.png?stp=dst-png_s200x200&_nc_cat=110&ccb=1-7&_nc_sid=b224c7&_nc_ohc=37S9MJzUa4AQ7kNvwFpaTtl&_nc_oc=AdoHkBq6RhqdatGu3Nr_2oC2jy4r8U1V6UOn5fGIQOiMaoLOpewLVlpXS3s5T6Bx-RSoWHQ39WJv5VinMwSkBfTJ&_nc_ad=z-m&_nc_cid=0&_nc_zt=24&_nc_ht=scontent.fsgn2-6.fna&_nc_ss=7a22e&oh=00_AQHnmeH6FCOqTPiPzWVETrLxP3ReV40dXBTzcNYByY2Hpw&oe=6A981C7A';
+// Ảnh mặc định phải là asset đóng sẵn, không dùng CDN Facebook: URL mạng
+// từng làm 0.3s đầu video xuất bị trống avatar trong lúc Playwright chờ tải.
+const MESS_DEFAULT_AVATAR = 'messenger-default-avatar.png';
+function messengerPartnerAvatar(value) {
+  const raw = String(value || '');
+  // Dự án cũ đã serialize URL avatar mặc định Facebook: tự nâng cấp về asset
+  // local. Avatar mạng do người dùng tự chọn vẫn được giữ nguyên.
+  if (raw.includes('453178253_471506465671661_2781666950760530985_n.png')) return safeMediaUrl(MESS_DEFAULT_AVATAR);
+  return safeMediaUrl(raw) || safeMediaUrl(MESS_DEFAULT_AVATAR);
+}
 function buildMessengerFooterHtml() {
   return `<div class="mess-composer" aria-hidden="true">
     <span class="mess-compose-icon"><svg viewBox="0 0 16 16"><path d="M8 .5A3.5 3.5 0 0 0 4.5 4v4a3.5 3.5 0 1 0 7 0V4A3.5 3.5 0 0 0 8 .5z"/><path d="M8.749 13.954 8.75 14v.75a.75.75 0 0 1-1.5 0V14l.001-.046A6.001 6.001 0 0 1 2 8v-.25a.75.75 0 0 1 1.5 0V8a4.5 4.5 0 1 0 9 0v-.25a.75.75 0 0 1 1.5 0V8a6.001 6.001 0 0 1-5.251 5.954z"/></svg></span>
@@ -308,7 +317,7 @@ function buildMessengerHtml(s) {
   const identityEditable = !!s.messIdentityEditable;
   const audioIndexes = new Set(s.messAudioIndexes || []);
   const partnerName = s.messPartnerName || 'Tùng';
-  const partnerAvatar = safeMediaUrl(s.messPartnerAvatar) || MESS_DEFAULT_AVATAR;
+  const partnerAvatar = messengerPartnerAvatar(s.messPartnerAvatar);
   const partnerNameAttr = esc(partnerName).replace(/"/g,'&quot;').replace(/'/g,'&#39;');
   const partnerNameSize = Math.max(1, Math.min(24, Array.from(partnerName).length));
   const rows = history.map((m,i) => {
@@ -352,7 +361,7 @@ function buildZaloHtml(s) {
   const identityEditable = !!s.messIdentityEditable;
   const audioIndexes = new Set(s.messAudioIndexes || []);
   const partnerName = s.messPartnerName || 'Thảo Mộc Coffee_Group';
-  const partnerAvatar = safeMediaUrl(s.messPartnerAvatar) || MESS_DEFAULT_AVATAR;
+  const partnerAvatar = messengerPartnerAvatar(s.messPartnerAvatar);
   const partnerNameAttr = esc(partnerName).replace(/"/g,'&quot;').replace(/'/g,'&#39;');
   const partnerNameSize = Math.max(1, Math.min(24, Array.from(partnerName).length));
   const rows = history.map((m,i) => {
@@ -546,7 +555,7 @@ function retainedMemeHtml(step) {
   const mediaUrl = safeMediaUrl(step?.mediaUrl);
   if (!step || !mediaUrl) return '';
   const media = step.mediaIsVideo
-    ? `<video src="${esc(mediaUrl)}" autoplay loop playsinline></video>`
+    ? `<video src="${esc(mediaUrl)}" preload="metadata" playsinline></video>`
     : `<img src="${esc(mediaUrl)}" alt=""/>`;
   return `<div class="meme-overlay retained-meme ${step.type==='sticker'?'sticker-overlay':''}" data-id="${esc(step.id)}" style="display:block;transform:${memeOverlayTransform(step)}">${media}</div>`;
 }

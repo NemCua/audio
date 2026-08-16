@@ -2,6 +2,14 @@
 (() => {
   'use strict';
 
+  // Khi chạy bản web local, giữ nguyên các hàm trong index.html để chúng gọi
+  // media_server/export_server local (8010/8011). Browser runtime trước đây
+  // ghi đè các hàm thư viện bằng bản chỉ dành cho desktop/browser độc lập,
+  // khiến thư viện âm thanh local bị trả thành mảng rỗng dù file vẫn còn.
+  const isLocalWeb = !window.desktopApp?.isElectron
+    && (location.protocol === 'file:' || ['localhost', '127.0.0.1', '[::1]'].includes(location.hostname));
+  if (isLocalWeb) return;
+
   const localUrls = new Set();
   let desktopBgVideoPath = null;
   let desktopBgAudioPath = null;
@@ -17,6 +25,10 @@
   window.browserLocalUrl = makeLocalUrl;
 
   if (window.desktopApp?.getPathForFile) {
+    window.onProjectBackgroundsRestored = (videoItem, audioItem) => {
+      desktopBgVideoPath = videoItem?.desktopPath || null;
+      desktopBgAudioPath = audioItem?.desktopPath || null;
+    };
     const originalSetBgVideoFile = setBgVideoFile;
     window.setBgVideoFile = setBgVideoFile = function (file) {
       desktopBgVideoPath = window.desktopApp.getPathForFile(file);
@@ -233,7 +245,7 @@
     }
   };
 
-  async function exportVideoOfflineDesktop() {
+async function exportVideoOfflineDesktop() {
     if (!steps.length) { alert('Chưa có step nào trong kịch bản.'); return; }
     if (!desktopBgVideoPath) { alert('Hãy chọn lại video nền từ máy trước khi xuất.'); return; }
     computeTimeline();

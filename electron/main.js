@@ -73,7 +73,9 @@ function createMainWindow() {
     return { action: 'deny' };
   });
   win.webContents.on('will-navigate', event => event.preventDefault());
-  win.loadFile(path.join(threadsRoot(), 'index.html'));
+  // Dev app dùng API/TTS local để sửa và test sát Electron production nhưng
+  // không gọi dịch vụ online. Bản đóng gói không có query này.
+  win.loadFile(path.join(threadsRoot(), 'index.html'), isDev ? { query: { localApi: '1' } } : undefined);
   return win;
 }
 
