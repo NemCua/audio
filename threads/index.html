@@ -1113,7 +1113,7 @@ header span { font-size: 12px; color: #4b5563; }
       <div style="display:none">
         <input type="checkbox" id="tts-disabled-toggle"/>
         <input type="hidden" id="tts-voice" value="0"/>
-        <input type="text" id="tts-server-url" value="https://threads-api-s13z.onrender.com" onchange="loadTtsVoices()"/>
+        <input type="text" id="tts-server-url" value="https://103-121-90-232.sslip.io" onchange="loadTtsVoices()"/>
         <div id="tts-server-status">Đang kiểm tra kết nối…</div>
         <button id="gen-all-tts-btn" onclick="generateAllTts()"></button>
         <div id="gen-all-tts-status"></div>
@@ -1813,7 +1813,7 @@ async function previewCustomVoice(index,button,event){
 }
 document.addEventListener('click',event=>{if(!event.target.closest('.voice-picker'))document.querySelectorAll('.voice-picker.open').forEach(item=>item.classList.remove('open'));});
 
-const REMOTE_TTS_SERVER_URL = 'https://threads-api-s13z.onrender.com';
+const REMOTE_TTS_SERVER_URL = 'https://103-121-90-232.sslip.io';
 const LOCAL_TTS_SERVER_URL = 'http://localhost:8007';
 // Bản web chạy trên localhost/file trực tiếp phải dùng API local. Electron
 // dev có ?localApi=1 do main.js gắn; Electron production không có query đó.

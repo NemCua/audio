@@ -38,7 +38,7 @@ function allowedApiBase(value) {
     const url = new URL(String(value));
     if (url.protocol !== 'http:' && url.protocol !== 'https:') return null;
     const local = ['localhost', '127.0.0.1', '[::1]'].includes(url.hostname);
-    if (!local && url.origin !== 'https://threads-api-s13z.onrender.com') return null;
+    if (!local && url.origin !== 'https://103-121-90-232.sslip.io') return null;
     return url.origin;
   } catch (_error) { return null; }
 }

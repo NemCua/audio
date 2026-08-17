@@ -34,7 +34,7 @@
   function apiBase() {
     return typeof window.ttsServerUrl === 'function'
       ? window.ttsServerUrl()
-      : 'https://threads-api-s13z.onrender.com';
+      : 'https://103-121-90-232.sslip.io';
   }
   async function request(path, options = {}, retry = true) {
     if (window.ensureTtsServerAwake) await window.ensureTtsServerAwake();
