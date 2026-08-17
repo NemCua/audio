@@ -422,8 +422,11 @@ def quote_export(req: ExportQuoteRequest, identity: dict = Depends(current_ident
 
 @router.post("/exports/reserve")
 def reserve_export(req: ReserveRequest, identity: dict = Depends(current_identity)):
-    cost = _export_credit_cost(req.type_counts)
-    if cost < 1: raise HTTPException(400, "Video chưa có nội dung tính credit")
+    counts = _validated_type_counts(req.type_counts)
+    if not any(counts.values()):
+        raise HTTPException(400, "Video chưa có nội dung tính credit")
+    pricing = _credit_pricing()
+    cost = sum(counts.get(kind, 0) * pricing[kind] for kind in DEFAULT_CREDIT_PRICING)
     if not req.idempotency_key.strip(): raise HTTPException(400, "Thiếu idempotency_key")
     with db() as conn:
         with conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
