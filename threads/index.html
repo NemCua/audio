@@ -14,7 +14,9 @@ body {
   font-family: "SFPro", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif;
   background: #0a0c14;
   color: #e2e8f0;
-  min-height: 100vh;
+  height: 100vh;
+  height: 100dvh;
+  overflow: hidden;
   display: flex;
   flex-direction: column;
 }
@@ -35,6 +37,7 @@ header span { font-size: 12px; color: #4b5563; }
   display: grid;
   grid-template-columns: 300px 1fr 460px;
   flex: 1;
+  min-height: 0;
   overflow: hidden;
 }
 
@@ -298,6 +301,16 @@ header span { font-size: 12px; color: #4b5563; }
   z-index: 5;
   pointer-events: none;
 }
+.thr-stack .tcard-pos[data-step-id] {
+  pointer-events: auto;
+  cursor: pointer;
+}
+.thr-stack .tcard-pos[data-step-id]:hover .tcard,
+.thr-stack .tcard-pos[data-step-id]:hover .tk-comment,
+.thr-stack .tcard-pos[data-step-id]:hover .mess-phone {
+  outline: .35cqw solid rgba(167,139,250,.9);
+  outline-offset: .35cqw;
+}
 .tcard {
   background: #ffffff;
   color: #000;
@@ -311,6 +324,7 @@ header span { font-size: 12px; color: #4b5563; }
   from { opacity: 0; transform: translateY(3cqw) scale(.97); }
   to   { opacity: 1; transform: translateY(0) scale(1); }
 }
+.progressive-reveal-card .tcard{animation:none}
 /* .thr-row: avatar (trái) + nội dung thụt vào theo avatar (giữa) + trái
    tim/menu (phải, ngang hàng tên/giờ). align-items:flex-start là mấu chốt
    để .follow-badge không bị kéo giãn lệch vị trí (xem giải thích trong mock). */
@@ -486,6 +500,7 @@ header span { font-size: 12px; color: #4b5563; }
   color: #16161a;
   line-height: 1.35;
   word-wrap: break-word;
+  white-space: pre-wrap;
 }
 
 /* Ảnh đính kèm comment TikTok (đối chiếu threads/commentIMG.jpg) — bo góc
@@ -587,7 +602,7 @@ header span { font-size: 12px; color: #4b5563; }
   display: flex; align-items: center; justify-content: center;
   color: #ccc; font-size: 3cqw; font-weight: 700; text-align: center; padding: 4cqw;
 }
-.retained-meme-layer{position:absolute;inset:0;z-index:7;pointer-events:none}.retained-meme-layer .meme-overlay{z-index:auto}
+.retained-meme-layer{position:absolute;inset:0;z-index:7;pointer-events:none}.retained-meme-layer .meme-overlay{z-index:auto;pointer-events:auto;cursor:pointer}
 
 .preview-info {
   width: 100%;
@@ -647,9 +662,10 @@ header span { font-size: 12px; color: #4b5563; }
   padding: 18px;
   display: flex;
   flex-direction: column;
+  min-height: 0;
   gap: 10px;
 }
-#step-list{flex:1;min-height:0;overflow-y:auto;overscroll-behavior:contain;padding-right:4px;scrollbar-gutter:stable}
+#step-list{flex:1;min-height:0;overflow-x:hidden;overflow-y:auto;overscroll-behavior:contain;padding-right:4px;scrollbar-gutter:stable}
 .script-panel h2 {
   font-size: 11px; font-weight: 700; color: #4b5563;
   text-transform: uppercase; letter-spacing: .08em; padding: 0 2px;
@@ -684,11 +700,11 @@ header span { font-size: 12px; color: #4b5563; }
   cursor: grab;
 }
 .step-card.active-now { border-color: #7c3aed; box-shadow: 0 0 0 1px #7c3aed; }
+.step-card.preview-focused-card{border-color:#c4b5fd;box-shadow:0 0 0 2px #8b5cf6,0 10px 28px #7c3aed38;outline:none}
 .step-card.dragging { opacity: .4; }
 .step-card.drag-over { border-color: #4ade80; box-shadow: 0 0 0 1px #4ade80; }
 .drag-preview-origin{opacity:.12!important;transition:opacity 140ms ease}.drag-preview-shift{transition:transform 190ms ease!important}.drag-preview-target{box-shadow:0 0 0 1px #7c3aed!important}
 .step-card.selected-overlay-card{box-shadow:0 0 0 2px #8b5cf6,0 8px 24px #7c3aed33}
-.crop-feature-locked>:not(summary){display:none!important}
 /* Hàng chứa step chính + audio SONG SONG bám theo nó — 2 cột kề nhau để
    biểu thị trực quan "cùng lúc" (mục 5.13 CONTEXT.md), thay vì xếp dọc.
    .step-row-wrap bọc khung viền NGOÀI cả cặp + 1 tay cầm kéo riêng
@@ -707,17 +723,23 @@ header span { font-size: 12px; color: #4b5563; }
 }
 .row-handle:hover { background: #1e2340; color: #a78bfa; }
 .row-handle.dragging { opacity: .4; }
-.step-row { display: flex; gap: 8px; align-items: stretch; flex: 1; min-width: 0; }
-.step-row > .step-card { flex: 1; min-width: 0; }
-.step-row > .step-card.t-audio-parallel { flex: 0 0 42%; }
-.step-card.t-audio-parallel{opacity:.68;background:#0c111d;border-color:#26314b}
+.step-row {
+  display: grid; grid-template-columns: minmax(0, 55%) minmax(0, 45%);
+  gap: 8px; align-items: stretch; flex: 1; min-width: 0;
+}
+.step-row > .step-card { min-width: 0; }
+.parallel-media-stack{display:grid;grid-auto-rows:minmax(0,1fr);gap:8px;min-width:0;height:100%}
+.step-card.t-audio-parallel{display:flex;flex-direction:column;min-height:0;opacity:.82;background:#0c111d;border-color:#26314b}
 .step-card.t-audio-parallel:hover{opacity:.9}
-.step-card.t-audio-parallel .sc-head{padding:8px 10px}
-.step-card.t-audio-parallel .sc-summary{padding:8px 10px;color:#94a3b8;font-size:12px;white-space:nowrap}
-.step-card.t-audio-parallel .sc-ctrls{padding:10px;gap:8px}
-.step-card.t-audio-parallel .sc-ctrls label{font-size:11px}
-.step-card.t-audio-parallel .sc-actions{margin-top:2px}
-.step-card.t-audio-parallel .sc-time{margin-left:auto;max-width:54px;white-space:normal;line-height:1.25;text-align:right}
+.step-card.t-audio-parallel .sc-head{padding:10px 11px;gap:7px;min-height:42px}
+.step-card.t-audio-parallel .sc-type{padding:3px 7px;font-size:10px}
+.step-card.t-audio-parallel .sc-ctrls{flex:1;align-content:center;padding:12px 11px;gap:10px;border-top:1px solid #1e2340}
+.step-card.t-audio-parallel .sc-ctrls label{width:100%;font-size:12px;justify-content:space-between}
+.step-card.t-audio-parallel .sc-ctrls input[type=number]{width:72px;padding:6px 8px;font-size:12px}
+.step-card.t-audio-parallel .sc-actions{width:100%;margin:2px 0 0!important;display:flex;flex-wrap:wrap;justify-content:flex-end}
+.step-card.t-audio-parallel .sc-actions button{min-height:30px;padding:6px 9px;white-space:nowrap}
+.step-card.t-audio-parallel .sc-actions .parallel-reset-time{margin-right:auto;color:#c4b5fd}
+.step-card.t-audio-parallel .sc-time{margin-left:auto;white-space:nowrap;font-size:10px;text-align:right}
 .step-card .sc-head {
   display: flex; align-items: center; gap: 8px;
   padding: 10px 12px; cursor: pointer;
@@ -1426,7 +1448,7 @@ function toggleBlurIdentity() {
   // khai báo ở phần dưới file — `let` có temporal dead zone, `typeof` cũng
   // không an toàn để né TDZ) nên chỉ set class CSS, bỏ qua phần render.
   if (!_stepEngineReady) return;
-  _lastStackKey = null; _lastStackIds = [];
+  _lastStackKey = null; _lastStackIds = []; _lastStackRevealStages = [];
   if (playing) return; // Play đang chạy tự render lại theo RAF, không cần ép
   renderIdleScene();
 }
@@ -2101,7 +2123,7 @@ async function generateAllTtsLegacy() {
         seg.duration = rSeg.duration;
         totalDuration += rSeg.duration;
       }
-      s.duration = totalDuration;
+      s.duration = totalDuration + Math.max(0, stepTtsClips(s).filter(clip=>clip.text||clip.audioUrl).length-1) * stepTtsPause(s);
       bumpStepRevision(s.id);
       ok++;
     } catch (e) {
@@ -2142,7 +2164,7 @@ async function generateAllTts() {
       if(job.segment){job.segment.audioUrl=result.audioUrl;job.segment.audioDesktopPath=result.audioDesktopPath||null;job.segment.duration=result.duration;}
       else{job.step.audioUrl=result.audioUrl;job.step.audioDesktopPath=result.audioDesktopPath||null;job.step.ttsDuration=result.duration;}
     });
-    for(const step of touched){step.duration=stepTtsClips(step).reduce((sum,clip)=>sum+(Number(clip.duration)||0),0)||step.duration;bumpStepRevision(step.id);}
+    for(const step of touched){step.duration=stepTtsTotalDuration(step)||step.duration;bumpStepRevision(step.id);}
     statusEl.textContent=`✓ Đã tạo ${jobs.length} đoạn TTS.`;setTtsLoadingText('Đã tải giọng đọc về máy. Đang cập nhật timeline...');renderStepList();renderIdleScene();return true;
   }catch(error){statusEl.textContent='✗ Không tạo được TTS: '+error.message;setTtsLoadingText('Không tạo được giọng đọc: '+error.message);alert('Không tạo được giọng đọc từ API local: '+error.message);renderStepList();renderIdleScene();return false;}
   finally{btn.disabled=false;}
@@ -3307,6 +3329,14 @@ function stepTtsClips(s) {
   for (const seg of (s.extraTtsSegments || [])) clips.push(seg);
   return clips;
 }
+function stepTtsPause(s) {
+  return s.progressiveReveal ? Math.max(0, Number(s.progressivePause ?? .3)) : 0;
+}
+function stepTtsTotalDuration(s) {
+  const clips = stepTtsClips(s).filter(clip => clip.text || clip.audioUrl);
+  return clips.reduce((sum, clip) => sum + (Number(clip.duration) || 0), 0)
+    + Math.max(0, clips.length - 1) * stepTtsPause(s);
+}
 
 // Khối UI cho các đoạn TTS THÊM (sau đoạn #1) trong modal soạn step — mỗi
 // khối có textarea nội dung đọc riêng + chọn giọng riêng + nút 🗑 xoá đoạn
@@ -3396,6 +3426,13 @@ function platformPickerHtml() {
           <div class="platform-picker">${mk('threads', '🧵 Threads')}${mk('tiktok', '🎵 TikTok')}</div>`;
 }
 
+function progressiveRevealFieldHtml(editing) {
+  return `<label style="display:flex;align-items:flex-start;gap:7px;margin-top:10px;padding:10px;border:1px solid #2a3050;border-radius:8px;background:#11152a">
+    <input type="checkbox" id="m-progressive-reveal" style="width:auto;margin-top:2px" ${editing&&editing.progressiveReveal?'checked':''}/>
+    <span><b style="color:#c4b5fd">Hiện nội dung tăng dần theo đoạn xuống hàng</b><br/><small style="color:#6b7280;font-weight:400">Vẫn là một card; TTS tự tách từng đoạn và nghỉ 0,3 giây trước đoạn kế.</small></span>
+  </label>`;
+}
+
 function setModalPlatform(platform) {
   modalPlatform = platform;
   // renderCommentReplyFields() rebuild toàn bộ #step-modal-fields (kể cả
@@ -3421,6 +3458,7 @@ function renderCommentReplyFields() {
              <input type="checkbox" id="m-author" style="width:auto" ${editing&&editing.isAuthor?'checked':''}/> ${authorLabel}</label>`;
   html += `<label>Nội dung</label>
            <textarea id="m-text" placeholder="Nội dung...">${esc(editing?editing.text:'')}</textarea>`;
+  html += progressiveRevealFieldHtml(editing);
   html += ttsFieldHtml('m', editing ? (editing.ttsText ?? editing.text) : '', editing ? editing.echo : false);
   html += voiceFieldHtml('m', editing ? editing.voiceIdx : null);
   html += `<div id="m-extra-tts-box"></div>`;
@@ -3469,6 +3507,7 @@ function openStepModal(type, stepId = null, targetGroupId = null) {
   if (type === 'post') {
     html += `<label>Nội dung</label>
              <textarea id="m-text" placeholder="Nội dung...">${esc(editing?editing.text:'')}</textarea>`;
+    html += progressiveRevealFieldHtml(editing);
     html += ttsFieldHtml('m', editing ? (editing.ttsText ?? editing.text) : '', editing ? editing.echo : false);
     html += voiceFieldHtml('m', editing ? editing.voiceIdx : null);
     html += `<div id="m-extra-tts-box"></div>`;
@@ -3511,8 +3550,8 @@ function openStepModal(type, stepId = null, targetGroupId = null) {
     // đó) — nút đổi nhãn cho khớp hành vi thật sự sẽ xảy ra khi bấm.
     {
       const addBtnLabel = stepId == null ? '💾 Tạo step từ vùng này' : '💾 Cập nhật ảnh cho step này';
-      html += `<details class="crop-feature-locked" onclick="event.preventDefault()" style="margin-top:14px;border-top:1px solid #1e2340;padding-top:12px;opacity:.65">
-        <summary style="font-size:12px;color:#94a3b8;cursor:not-allowed;font-weight:600">🔒 Cắt nhiều vùng từ một ảnh gốc — tạm khóa</summary>
+      html += `<details style="margin-top:14px;border-top:1px solid #1e2340;padding-top:12px">
+        <summary style="font-size:12px;color:#c4b5fd;cursor:pointer;font-weight:700">✂️ Cắt nhiều vùng từ một ảnh gốc</summary>
         <div style="font-size:11px;color:#6b7280;margin:8px 0">Tải ảnh gốc 1 lần, kéo khung vàng chọn vùng muốn hiện → gõ đúng câu chữ MỚI trong vùng đó → bấm "Tạo step". Khung crop giữ nguyên vị trí sau mỗi lần tạo — kéo rộng thêm rồi tạo tiếp cho vùng kế.</div>
         <input type="file" id="m-crop-src-input" accept="image/*" style="display:none" onchange="onImageCropSrcChosen(this.files[0])"/>
         <button type="button" class="btn-cancel" style="width:100%;padding:10px;border-radius:8px;border:none;cursor:pointer" onclick="document.getElementById('m-crop-src-input').click()">📁 Chọn ảnh gốc...</button>
@@ -3945,6 +3984,7 @@ async function submitStepModal() {
 
   if (t === 'post' || t === 'comment' || t === 'reply') {
     data.text = document.getElementById('m-text').value.trim();
+    data.progressiveReveal = !!document.getElementById('m-progressive-reveal')?.checked;
     if (t === 'comment' || t === 'reply') data.isAuthor = document.getElementById('m-author').checked;
     // Cho phép BỎ TRỐNG nội dung — vẫn tạo được step (theo yêu cầu người
     // dùng). Nội dung rỗng thì bỏ qua gọi TTS (giống image/meme cho phép
@@ -4042,11 +4082,18 @@ async function submitStepModal() {
   // lỗi 400 "text rỗng" — xem generate_tts()).
   const skipTts = !data.text;
   if (!skipTts && (t === 'post' || t === 'comment' || t === 'reply' || t === 'image')) {
-    data.ttsText = readTtsText('m', 'm-text');
     data.voiceIdx = readVoiceIdx('m');
     data.echo = document.getElementById('m-echo')?.checked || false;
+    const revealParts = progressiveTextParts(data);
+    if (revealParts.length > 1) {
+      data.ttsText = revealParts[0];
+      data.progressivePause = .3;
+      data.extraTtsSegments = revealParts.slice(1).map(text => ({text,voiceIdx:data.voiceIdx,echo:data.echo,audioUrl:null,audioDesktopPath:null,duration:0}));
+    } else {
+      data.ttsText = editingNow?.progressiveReveal ? data.text : readTtsText('m', 'm-text');
+      data.extraTtsSegments = editingNow?.progressiveReveal ? [] : modalExtraTts.map(seg=>({text:(seg.text||'').trim(),voiceIdx:seg.voiceIdx,echo:!!seg.echo,audioUrl:null,audioDesktopPath:null,duration:0}));
+    }
     data.audioUrl = null; data.audioDesktopPath = null; data.ttsDuration = null;
-    data.extraTtsSegments = modalExtraTts.map(seg=>({text:(seg.text||'').trim(),voiceIdx:seg.voiceIdx,echo:!!seg.echo,audioUrl:null,audioDesktopPath:null,duration:0}));
     statusEl.textContent='✓ Đã lưu card; TTS sẽ tạo khi nhấn Play.';
   } else if (t === 'post' || t === 'comment' || t === 'reply' || t === 'image') {
     data.audioUrl=null;data.audioDesktopPath=null;data.ttsDuration=null;data.extraTtsSegments=[];
@@ -4096,6 +4143,10 @@ function platformBadge(s) {
   return s.platform === 'tiktok' ? ' 🎵' : ' 🧵';
 }
 
+function stepTypeLabel(s) {
+  return s.type === 'image' && s.mediaIsVideo ? 'VIDEO' : TYPE_LABEL[s.type];
+}
+
 function stepSummary(s) {
   if (s.type === 'mess') {
     const history = s.messHistory || [];
@@ -4117,6 +4168,7 @@ function stepSummary(s) {
 const POSITIONABLE_TYPES = ['post', 'comment', 'reply', 'mess'];
 const DRAGGABLE_OVERLAY_TYPES = ['image', 'sticker'];
 let selectedOverlayStepId = null;
+let focusedScriptStepId = null;
 function stepPositionCtrlsHtml(s) {
   const ox = s.offsetX || 0, oy = s.offsetY || 0, rot = s.rotation || 0;
   const showWarn = s.type === 'image' && isDynamicMeme(s) && rot !== 0;
@@ -4139,17 +4191,42 @@ function stepPositionCtrlsHtml(s) {
 
 function stepCardHtml(s, idx) {
   const typeCls = (s.type === 'image' || s.type === 'sticker') ? 't-meme' : s.type === 'audio' ? 't-audio' : '';
-  const cardCls = (isParallelMedia(s) ? ' t-audio-parallel' : '') + (s.id===selectedOverlayStepId ? ' selected-overlay-card' : '');
+  const parallel = isParallelMedia(s);
+  const cardCls = (parallel ? ' t-audio-parallel' : '') + (s.id===selectedOverlayStepId ? ' selected-overlay-card' : '') + (s.id===focusedScriptStepId ? ' preview-focused-card' : '');
+  if (parallel) {
+    const durationControl = `<label>Thời lượng
+      <input type="number" min="0" step="0.1" value="${s.duration.toFixed(2)}" onchange="updateStepField(${s.id},'duration',this.value)"/>
+    </label>`;
+    const playControl = s.type==='image'&&s.mediaIsVideo ? `<button class="media-video-toggle" onclick="toggleCardVideoPlayback(${s.id})" title="Phát video đúng một lượt">▶</button>` : '';
+    const canResetTime = (s.type==='audio'&&s.mediaUrl) || (s.type==='image'&&s.mediaIsVideo);
+    const resetControl = canResetTime ? `<button class="parallel-reset-time" onclick="resetStepTime(${s.id})" title="Đưa thời lượng về đúng độ dài file gốc">⟲ Reset time</button>` : '';
+    return `
+      <div class="step-card${cardCls}" data-id="${s.id}" tabindex="-1" draggable="true" ondragstart="onStepDragStart(event,${s.id})" ondragend="onStepDragEnd(event)" ondragover="onStepDragOver(event)" ondragleave="onStepDragLeave(event)" ondrop="onStepDrop(event,${s.id})">
+        <div class="sc-head" onclick="jumpToStep(${s.id})" title="Xem media đang chạy song song">
+          <span class="sc-type ${typeCls}">${stepTypeLabel(s)} ⏱</span>
+          <span class="sc-time">${fmt(s._start)} → ${fmt(s._end)}</span>
+        </div>
+        <div class="sc-ctrls">
+          ${durationControl}
+          <div class="sc-actions">
+            ${playControl}${resetControl}
+            <button onclick="openStepModal('${s.type}',${s.id})" title="Sửa">✎</button>
+            <button onclick="detachParallelMedia(${s.id})" title="Tách khỏi card chính">↳</button>
+            <button onclick="deleteStep(${s.id})" title="Xoá">🗑</button>
+          </div>
+        </div>
+      </div>`;
+  }
   return `
-    <div class="step-card${cardCls}" data-id="${s.id}" draggable="true" ondragstart="onStepDragStart(event,${s.id})" ondragend="onStepDragEnd(event)" ondragover="onStepDragOver(event)" ondragleave="onStepDragLeave(event)" ondrop="onStepDrop(event,${s.id})">
+    <div class="step-card${cardCls}" data-id="${s.id}" tabindex="-1" draggable="true" ondragstart="onStepDragStart(event,${s.id})" ondragend="onStepDragEnd(event)" ondragover="onStepDragOver(event)" ondragleave="onStepDragLeave(event)" ondrop="onStepDrop(event,${s.id})">
       <div class="sc-head" onclick="jumpToStep(${s.id})" title="Xem lúc step này hiển thị trên preview">
         <span class="sc-idx">${idx + 1}</span>
-        <span class="sc-type ${typeCls}">${TYPE_LABEL[s.type]}${platformBadge(s)}${isParallelMedia(s)?' ⏱':''}</span>
+        <span class="sc-type ${typeCls}">${stepTypeLabel(s)}${platformBadge(s)}${isParallelMedia(s)?' ⏱':''}</span>
         <span class="sc-time">${fmt(s._start)} → ${fmt(s._end)}</span>
       </div>
-      <div class="sc-summary" onclick="jumpToStep(${s.id})" title="Xem lúc step này hiển thị trên preview">${esc(stepSummary(s))}</div>
+      ${['image','sticker','audio'].includes(s.type) ? '' : `<div class="sc-summary" onclick="jumpToStep(${s.id})" title="Xem lúc step này hiển thị trên preview">${esc(stepSummary(s))}</div>`}
       ${voiceLabelHtml(s)}
-      ${POSITIONABLE_TYPES.includes(s.type) ? stepPositionCtrlsHtml(s) : DRAGGABLE_OVERLAY_TYPES.includes(s.type) ? '<div class="sc-position" style="color:#a78bfa;font-size:10px">🖱 Kéo trực tiếp hình trong khung preview để đổi vị trí</div>' : ''}
+      ${POSITIONABLE_TYPES.includes(s.type) ? stepPositionCtrlsHtml(s) : ''}
       <div class="sc-ctrls">
         <label>Thời lượng${s.audioUrl?' 🔊':''}
           <input type="number" min="0" step="0.1" value="${s.duration.toFixed(2)}" ${isParallelVisual(s)?'disabled title="Ảnh/sticker song song luôn bằng thời lượng card đích"':s.audioUrl?'title="Mặc định theo độ dài giọng đọc; tăng thì phần dư im lặng, giảm thì giọng bị cắt ngắn"':''} onchange="updateStepField(${s.id},'duration',this.value)"/>
@@ -4183,7 +4260,10 @@ function stepRowsHtml(ordered){
     return `<div class="step-row-wrap" ondragover="onParallelDetachOver(event)" ondrop="dropParallelAudioOut(event)">
       <div class="row-handle" draggable="true" title="Kéo để di chuyển CẢ CẶP"
            ondragstart="onRowDragStart(event,[${ids.join(',')}])" ondragend="onStepDragEnd(event)">⠿⠿</div>
-      <div class="step-row">${row.map(s=>stepCardHtml(s,steps.indexOf(s))).join('')}</div>
+      <div class="step-row">
+        ${stepCardHtml(row[0],steps.indexOf(row[0]))}
+        <div class="parallel-media-stack">${row.slice(1).map(s=>stepCardHtml(s,steps.indexOf(s))).join('')}</div>
+      </div>
     </div>`;
   }).join('');
 }
@@ -4380,7 +4460,7 @@ function dropParallelAudioOut(ev){
   ev.preventDefault();ev.stopPropagation();
   detachDraggedParallelMediaToContainer(ev.currentTarget);
 }
-function canAttachMediaToStep(mediaStep,targetStep){
+function canAttachMediaTypeToStep(mediaStep,targetStep){
   if(!mediaStep||!targetStep||mediaStep.id===targetStep.id||isParallelMedia(targetStep))return false;
   if(!['audio','image','sticker'].includes(mediaStep.type))return false;
   if(['post','comment','reply','mess'].includes(targetStep.type))return true;
@@ -4388,13 +4468,20 @@ function canAttachMediaToStep(mediaStep,targetStep){
   // được ghép vào visual để tránh vô tình chồng thêm một visual lên visual.
   return mediaStep.type==='audio'&&['image','sticker'].includes(targetStep.type);
 }
+function parallelMediaCountForStep(targetStep,excludedId=null){
+  const anchorIdx=steps.indexOf(targetStep);if(anchorIdx<0)return 0;
+  let count=0;
+  for(let i=anchorIdx+1;i<steps.length&&isParallelMedia(steps[i]);i++)if(steps[i].id!==excludedId)count++;
+  return count;
+}
+function canAttachMediaToStep(mediaStep,targetStep){
+  return canAttachMediaTypeToStep(mediaStep,targetStep)&&parallelMediaCountForStep(targetStep,mediaStep.id)<2;
+}
 function attachMediaToStep(mediaStep,targetStep,destinationGroupId=null){
   mediaStep.parallel=true;
   mediaStep.groupId=destinationGroupId||stepGroupId(targetStep)||false;
-  // Audio song song vẫn giữ đúng độ dài file. Chỉ visual song song mới bám
-  // thời lượng card đích để ảnh/sticker tồn tại cùng card đó.
-  if(mediaStep.type!=='audio')mediaStep.duration=targetStep.duration;
-  else mediaStep.duration=mediaStep.intrinsicMediaDuration||mediaStep.duration||DEFAULT_DUR.audio;
+  // Mọi media song song giữ thời lượng riêng; track chính không chờ media.
+  mediaStep.duration=mediaStep.intrinsicMediaDuration||mediaStep.duration||DEFAULT_DUR[mediaStep.type];
 }
 function detachDraggedParallelMediaToContainer(container){
   const media=draggedParallelMedia();if(!media)return;
@@ -4501,6 +4588,12 @@ function onStepDrop(ev, targetId) {
   if (_dragStepIds == null || _dragStepIds.includes(targetId)){clearDragPreview();return;}
   const toIdx = steps.findIndex(s => s.id === targetId);
   if (toIdx < 0){clearDragPreview();return;}
+  const draggedSingle=_dragStepIds.length===1?steps.find(s=>s.id===_dragStepIds[0]):null;
+  const capacityTarget=Number.isFinite(directTargetId)?steps.find(s=>s.id===directTargetId):null;
+  if(canAttachMediaTypeToStep(draggedSingle,capacityTarget)&&parallelMediaCountForStep(capacityTarget,draggedSingle.id)>=2){
+    alert('Mỗi card chính chỉ được gắn tối đa 2 card song song.');
+    clearDragPreview();return;
+  }
   const oldPositions = flipCapturePositions();
   for(const id of _dragStepIds)oldPositions.delete(String(id));
   // Xoá hết cụm đang kéo (giữ nguyên thứ tự tương đối giữa chúng — quan
@@ -4670,7 +4763,10 @@ function syncCardVideosToTimeline(t) {
 // thấy đổi ngay trên preview.
 const OFFSET_STEP = 2;   // cqw mỗi lần bấm
 const ROTATE_STEP = 5;   // độ mỗi lần bấm
-const OFFSET_X_RANGE = 40, OFFSET_Y_RANGE = 60, ROTATE_RANGE = 45;
+// Trục Y dùng cqw trong khung 9:16 (chiều cao ~177.8cqw). Cho phép đi quá
+// trọn một chiều cao khung để ảnh/sticker có thể nằm sát đáy hoặc khuất một
+// phần ra ngoài theo chủ ý; preview/export tự cắt phần vượt khung.
+const OFFSET_X_RANGE = 40, OFFSET_Y_RANGE = 180, ROTATE_RANGE = 45;
 
 function clampPos(v, lo, hi) { return Math.max(lo, Math.min(hi, v)); }
 
@@ -4693,12 +4789,32 @@ function previewStepPosition(s) {
 // step đó hiển thị trên preview 9:16 — không chỉnh gì, chỉ để dễ quan sát
 // trước khi bấm nút d-pad/xoay. Tách riêng khỏi previewStepPosition() vì
 // gọi qua id (từ onclick HTML), không có sẵn object step.
+function focusScriptStep(id, { refreshPreview = false } = {}) {
+  const s = steps.find(x => x.id === id);
+  if (!s) return null;
+  focusedScriptStepId = s.id;
+  selectedOverlayStepId = DRAGGABLE_OVERLAY_TYPES.includes(s.type) ? s.id : null;
+  document.querySelectorAll('.step-card[data-id]').forEach(card => {
+    const cardId = Number(card.dataset.id);
+    card.classList.toggle('selected-overlay-card', cardId === selectedOverlayStepId);
+    card.classList.toggle('preview-focused-card', cardId === focusedScriptStepId);
+  });
+  if (refreshPreview && !playing) renderAtTime(playheadT);
+  const card = document.querySelector(`.step-card[data-id="${s.id}"]`);
+  if (card) {
+    card.scrollIntoView({ behavior: 'smooth', block: 'center', inline: 'nearest' });
+    try { card.focus({ preventScroll: true }); } catch (_) { card.focus(); }
+  }
+  return s;
+}
+
 function jumpToStep(id) {
   const s = steps.find(x => x.id === id);
   if (!s) return;
+  focusedScriptStepId = s.id;
   selectedOverlayStepId = DRAGGABLE_OVERLAY_TYPES.includes(s.type) ? s.id : null;
-  document.querySelectorAll('.step-card[data-id]').forEach(card=>card.classList.toggle('selected-overlay-card',Number(card.dataset.id)===selectedOverlayStepId));
   previewStepPosition(s);
+  focusScriptStep(s.id);
 }
 
 function nudgeStepOffset(id, dx, dy) {
@@ -5043,15 +5159,17 @@ function ttsClipAt(t) {
   if ((s.type === 'post' || s.type === 'comment' || s.type === 'reply' || s.type === 'image' || s.type === 'mess') && s.audioUrl) {
     let acc = 0;
     const clips = stepTtsClips(s);
+    const pause = stepTtsPause(s);
     for (let i = 0; i < clips.length; i++) {
       const clip = clips[i];
       if (!clip.audioUrl) continue;
       const dur = clip.duration || 0;
       const localT = t - s._start - acc;
+      if (localT < -1e-6) return null; // đang ở khoảng nghỉ trước đoạn này
       if (localT < dur - 1e-6 || i === clips.length - 1) {
         return { url: clip.audioUrl, offset: localT, stepId: s.id, part: i + 1 };
       }
-      acc += dur;
+      acc += dur + (i < clips.length - 1 ? pause : 0);
     }
   }
   return null;
@@ -5143,13 +5261,15 @@ function renderAtTime(t) {
   const ids = stack.map(s => s.id);
   const key = ids.join(',');
   const revisions = ids.map(id => stepRevision.get(id) || 0);
+  const revealStages = stack.map(s => progressiveRevealStage(s, t));
+  const renderedStack = stack.map(s => stepForRenderAtTime(s, t));
   // So CẢ key (bộ id) LẪN revision từng id — chỉ so key là chưa đủ: nudge
   // vị trí/xoay liên tiếp trên CÙNG 1 bộ stack (id không đổi, chỉ revision
   // tăng qua bumpStepRevision) sẽ giữ key y hệt lần trước, khiến khối rebuild
   // bên dưới bị bỏ qua hoàn toàn dù dữ liệu đã đổi — bug thật đã gặp: bấm
   // nút d-pad không thấy dịch chuyển ngay, phải nhấn sang step khác rồi quay
   // lại (đổi key) mới ép rebuild và thấy đúng.
-  const revKey = key + '|' + revisions.join(',');
+  const revKey = key + '|' + revisions.join(',') + '|reveal:' + revealStages.join(',');
   const stackEl = document.getElementById('thr-stack');
   if (revKey !== _lastStackKey) {
     // Không rebuild toàn bộ mỗi khi stack đổi — chỉ vẽ lại phần THỰC SỰ
@@ -5181,21 +5301,23 @@ function renderAtTime(t) {
     while (
       commonLen < ids.length && commonLen < _lastStackIds.length &&
       ids[commonLen] === _lastStackIds[commonLen] &&
-      (stepRevision.get(ids[commonLen]) || 0) === (_lastStackRevisions[commonLen] || 0)
+      (stepRevision.get(ids[commonLen]) || 0) === (_lastStackRevisions[commonLen] || 0) &&
+      revealStages[commonLen] === (_lastStackRevealStages[commonLen] || 0)
     ) commonLen++;
 
     const domOk = stackEl.children.length === _lastStackIds.length;
     if (domOk && commonLen > 0) {
       // xoá các card từ vị trí commonLen trở đi, giữ nguyên [0, commonLen)
       while (stackEl.children.length > commonLen) stackEl.removeChild(stackEl.lastElementChild);
-      const rebuiltOnes = stack.slice(commonLen);
+      const rebuiltOnes = renderedStack.slice(commonLen);
       stackEl.insertAdjacentHTML('beforeend', rebuiltOnes.map(buildCardHtml).join(''));
     } else {
-      stackEl.innerHTML = stack.map(buildCardHtml).join('');
+      stackEl.innerHTML = renderedStack.map(buildCardHtml).join('');
     }
     _lastStackKey = revKey;
     _lastStackIds = ids;
     _lastStackRevisions = revisions;
+    _lastStackRevealStages = revealStages;
     autoScrollStack();
     autoScrollMessenger(stackEl);
   }
@@ -5264,7 +5386,7 @@ function clearOverlaySnap(){
   positionGuidesEl.querySelectorAll('.snapped').forEach(line=>line.classList.remove('snapped'));
   overlayPositionEl.classList.remove('snap-soft');
 }
-function snapOverlayToGuides(step,frame,toCqw,enterRadius=16,releaseRadius=26){
+function snapOverlayToGuides(step,frame,toCqw,enterRadius=8,releaseRadius=14){
   positionGuidesEl.querySelectorAll('.snapped').forEach(line=>line.classList.remove('snapped'));
   const frameRect=frame.getBoundingClientRect(),overlayRect=overlayPositionEl.getBoundingClientRect();
   let snapped=false;
@@ -5296,9 +5418,13 @@ function snapOverlayToGuides(step,frame,toCqw,enterRadius=16,releaseRadius=26){
 overlayPositionEl.addEventListener('pointerdown', event => {
   if (playing) return;
   const { memeStep, memeSteps=[] } = computeSceneAt(playheadT);
+  const clickedId=Number(overlayPositionEl.dataset.id);
+  const clicked=memeSteps.find(s=>s.id===clickedId&&DRAGGABLE_OVERLAY_TYPES.includes(s.type));
   const selected=memeSteps.find(s=>s.id===selectedOverlayStepId&&DRAGGABLE_OVERLAY_TYPES.includes(s.type));
-  const activeStep=selected||memeStep;
+  const activeStep=clicked||selected||memeStep;
   if (!activeStep || !DRAGGABLE_OVERLAY_TYPES.includes(activeStep.type)) return;
+  focusScriptStep(activeStep.id);
+  overlayPositionEl.classList.add('resize-selected');
   const frame = document.getElementById('preview-frame');
   const handle=event.target.closest('.overlay-resize-handle');
   if(handle){
@@ -5319,6 +5445,24 @@ overlayPositionEl.addEventListener('pointerdown', event => {
   positionGuidesEl.classList.add('open');
   overlayPositionEl.setPointerCapture(event.pointerId);
   event.preventDefault();
+});
+
+document.getElementById('retained-meme-layer').addEventListener('pointerdown', event => {
+  if (playing) return;
+  const overlay = event.target.closest('.retained-meme[data-id]');
+  if (!overlay) return;
+  const id = Number(overlay.dataset.id);
+  if (!steps.some(step => step.id === id && DRAGGABLE_OVERLAY_TYPES.includes(step.type))) return;
+  event.preventDefault();
+  event.stopPropagation();
+  focusScriptStep(id, { refreshPreview: true });
+});
+
+document.getElementById('thr-stack').addEventListener('click', event => {
+  if (playing) return;
+  const card = event.target.closest('.tcard-pos[data-step-id]');
+  if (!card) return;
+  focusScriptStep(Number(card.dataset.stepId));
 });
 overlayPositionEl.addEventListener('pointermove', event => {
   if(overlayResizeDrag){
@@ -5348,9 +5492,8 @@ function finishOverlayPositionDrag(event) {
   const step = steps.find(item => item.id === overlayPositionDrag.id);
   if(step){
     const frame=document.getElementById('preview-frame'),toCqw=100/Math.max(1,frame.getBoundingClientRect().width);
-    // Khi THẢ hình, chạy một lượt bắt dính rộng hơn để người dùng nhìn rõ
-    // chuyển động hút vào đường; giữ transition lại 220ms rồi mới dọn class.
-    snapOverlayToGuides(step,frame,toCqw,32,42);
+    // Khi thả chỉ nới vùng bắt dính rất nhẹ; tránh hình bị hút mạnh từ xa.
+    snapOverlayToGuides(step,frame,toCqw,12,18);
     overlayPositionEl.style.transform=memeOverlayTransform(step);
   }
   overlayPositionDrag = null;
@@ -5380,6 +5523,7 @@ function renderIdleScene() {
     document.getElementById('thr-stack').innerHTML = '';
     document.getElementById('meme-overlay').style.display = 'none';
     _lastStackIds = [];
+    _lastStackRevealStages = [];
     return;
   }
   computeTimeline();
@@ -5391,7 +5535,8 @@ function renderIdleScene() {
   // tính vào track chính bình thường).
   const mainSteps = steps.filter(s => !isParallelMedia(s));
   const last = mainSteps.length ? mainSteps[mainSteps.length - 1] : steps[steps.length - 1];
-  const previewT = (last._start + last._end) / 2;
+  // Chế độ hiện chữ tăng dần cần trạng thái đứng yên là bản hoàn chỉnh.
+  const previewT = Math.max(last._start, last._end - .001);
   renderAtTime(previewT);
 }
 

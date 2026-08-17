@@ -13,6 +13,15 @@ function visualBreakpoints(steps, total) {
   for (const step of steps) {
     if (['post', 'comment', 'reply', 'image', 'sticker', 'mess'].includes(step.type)) {
       points.add(Number(step._start)); points.add(Number(step._end));
+      if (step.progressiveReveal) {
+        const clips = [{ duration: step.ttsDuration || 0 }, ...(step.extraTtsSegments || [])];
+        const pause = Math.max(0, Number(step.progressivePause ?? .3));
+        let offset = 0;
+        for (let i = 0; i < clips.length - 1; i++) {
+          offset += Number(clips[i].duration || 0) + pause;
+          if (offset > 0) points.add(Number(step._start) + offset);
+        }
+      }
     }
   }
   return [...points].filter(Number.isFinite).sort((a, b) => a - b);
@@ -99,8 +108,10 @@ async function collectAudio(steps, workDir) {
   for (const step of steps) {
     if (['post', 'comment', 'reply', 'image', 'mess'].includes(step.type) && step.audioUrl) {
       const clips = [{ audioUrl: step.audioUrl, duration: step.ttsDuration || 0 }, ...(step.extraTtsSegments || [])];
+      const pause = step.progressiveReveal ? Math.max(0, Number(step.progressivePause ?? .3)) : 0;
       let offset = 0;
-      for (const clip of clips) {
+      for (let clipIndex = 0; clipIndex < clips.length; clipIndex++) {
+        const clip = clips[clipIndex];
         if (clip.audioUrl) {
           const file = await download(clip.audioUrl, path.join(workDir, `tts-${index++}.mp3`));
           const remaining = Math.max(0, Number(step.duration || 0) - offset);
@@ -108,7 +119,7 @@ async function collectAudio(steps, workDir) {
           const maxDuration = Math.min(clipDuration, remaining);
           if (maxDuration > 0) tracks.push({ path: file, start: Number(step._start) + offset, volume: 1, maxDuration });
         }
-        offset += Number(clip.duration || 0);
+        offset += Number(clip.duration || 0) + (clipIndex < clips.length - 1 ? pause : 0);
       }
     }
     const mediaPath = step.mediaDesktopPath || step.mediaPath || (String(step.mediaUrl || '').startsWith('file:') ? fileURLToPath(step.mediaUrl) : null);

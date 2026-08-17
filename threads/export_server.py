@@ -100,6 +100,14 @@ def compute_breakpoints(steps: list[dict], total_duration: float) -> list[float]
         if s.get("type") in ("post", "comment", "reply", "image", "mess"):
             points.add(round(s["_start"], 6))
             points.add(round(s["_end"], 6))
+            if s.get("progressiveReveal"):
+                clips = [{"duration": s.get("ttsDuration") or 0}, *(s.get("extraTtsSegments") or [])]
+                pause = max(0.0, float(s.get("progressivePause", 0.3)))
+                acc = 0.0
+                for clip in clips[:-1]:
+                    acc += float(clip.get("duration") or 0) + pause
+                    if acc > 0:
+                        points.add(round(s["_start"] + acc, 6))
     return sorted(points)
 
 
@@ -347,8 +355,9 @@ async def run_export_job(job_id: str, req: ExportRequest):
                 # thay vì hard-code đúng 2 khối.
                 clips = [{"audioUrl": s["audioUrl"], "duration": s.get("ttsDuration") or 0}]
                 clips.extend(s.get("extraTtsSegments") or [])
+                pause = max(0.0, float(s.get("progressivePause", 0.3))) if s.get("progressiveReveal") else 0.0
                 acc = 0.0
-                for clip in clips:
+                for clip_index, clip in enumerate(clips):
                     url = clip.get("audioUrl")
                     # Card ngắn hơn giọng: chỉ lấy phần audio còn nằm trong
                     # card. Card dài hơn giọng: amix tự để im lặng phần dư.
@@ -361,6 +370,8 @@ async def run_export_job(job_id: str, req: ExportRequest):
                         if fpath.exists():
                             audio_tracks.append((str(fpath), s["_start"] + acc, 1.0, allowed_duration))
                     acc += clip_duration
+                    if clip_index < len(clips) - 1:
+                        acc += pause
             if s.get("type") == "audio" and s.get("mediaUrl"):
                 local_path = _resolve_local_media(s["mediaUrl"])
                 if local_path:

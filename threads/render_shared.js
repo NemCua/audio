@@ -84,18 +84,61 @@ function computeTimeline() {
   }
 
   let lastMainStep = null;
+  let parallelEnd = 0;
   for (const s of steps) {
     if (!isParallelMedia(s)) { lastMainStep = s; continue; }
     s._start = lastMainStep ? lastMainStep._start : 0;
-    // Ảnh/sticker song song luôn phủ trọn card neo, kể cả sau khi TTS làm
-    // duration của card neo thay đổi. Audio giữ duration riêng như cũ.
-    if (isParallelVisual(s) && lastMainStep) s.duration = effectiveDuration(lastMainStep);
+    // Media song song có thời lượng riêng và không đẩy lùi track chính.
+    // Ví dụ card chính 0–3s, media 0–5s thì card chính kế vẫn bắt đầu ở 3s;
+    // media tiếp tục phủ/phát chồng cho tới giây 5.
     s._end = s._start + effectiveDuration(s);
+    parallelEnd = Math.max(parallelEnd, s._end);
   }
 
-  return mainEnd;
+  // Nếu media song song cuối cùng dài hơn track chính thì vẫn phải xuất hết
+  // phần đuôi của media, nhưng nó không được ảnh hưởng mốc bắt đầu card kế.
+  return Math.max(mainEnd, parallelEnd);
 }
 function totalDuration() { return computeTimeline(); }
+
+// Một card kể chuyện có thể hiện chữ tích luỹ theo các dòng người dùng chủ
+// động xuống hàng: đoạn 1 -> đoạn 1+2 -> ... -> toàn bài. Đây chỉ là trạng
+// thái render theo thời gian, không tách/sinh thêm step trong timeline.
+function progressiveTextParts(s) {
+  if (!s || !s.progressiveReveal || !['post', 'comment', 'reply'].includes(s.type)) return [];
+  return String(s.text || '').split(/\r?\n+/).map(part => part.trim()).filter(Boolean);
+}
+function progressiveRevealStage(s, t) {
+  const parts = progressiveTextParts(s);
+  if (parts.length < 2) return 0;
+  const clipDurations = [Number(s.ttsDuration || 0), ...(s.extraTtsSegments || []).map(seg => Number(seg.duration || 0))].slice(0, parts.length);
+  if (clipDurations.length === parts.length && clipDurations.every(duration => duration > 0)) {
+    const pause = Math.max(0, Number(s.progressivePause ?? .3));
+    const localT = Math.max(0, Number(t) - Number(s._start));
+    let stage = 1, nextStart = clipDurations[0] + pause;
+    while (stage < parts.length && localT >= nextStart - 1e-6) {
+      stage++;
+      nextStart += clipDurations[stage - 1] + (stage < parts.length ? pause : 0);
+    }
+    return stage;
+  }
+  const weights = parts.map(part => Math.max(1, [...part].length));
+  const totalWeight = weights.reduce((sum, value) => sum + value, 0);
+  const duration = Math.max(.001, Number(s._end) - Number(s._start));
+  const elapsedWeight = Math.max(0, Math.min(1, (Number(t) - Number(s._start)) / duration)) * totalWeight;
+  let stage = 1, boundary = weights[0];
+  while (stage < parts.length && elapsedWeight >= boundary - 1e-6) {
+    stage++;
+    boundary += weights[stage - 1];
+  }
+  return stage;
+}
+function stepForRenderAtTime(s, t) {
+  const stage = progressiveRevealStage(s, t);
+  if (!stage) return s;
+  const parts = progressiveTextParts(s);
+  return { ...s, text: parts.slice(0, stage).join('\n'), _progressiveFinal: stage === parts.length };
+}
 
 // ---------- Build 1 thẻ post/comment/reply cho stack ----------
 // ---------- Build HTML thẻ post/comment/reply — BÊ NGUYÊN SI cấu trúc từ
@@ -259,10 +302,13 @@ function posTransform(s) {
 
 function buildCardHtml(s) {
   const posAttr = posTransform(s);
-  if (s.type === 'mess') return `<div class="tcard-pos"${posAttr}>${buildMessengerHtml(s)}</div>`;
+  const stepAttr = ` data-step-id="${esc(s.id)}"`;
+  const posClass = s.progressiveReveal ? 'tcard-pos progressive-reveal-card' : 'tcard-pos';
+  if (s.type === 'mess') return `<div class="${posClass}"${stepAttr}${posAttr}>${buildMessengerHtml(s)}</div>`;
   if (s.type === 'post') {
     const id1 = displayIdentity(s.id + ':m', s.uname, s.avatarUrl, (s.stats&&s.stats.timeLabel)||'vừa xong');
-    return `<div class="tcard-pos"${posAttr}><div class="tcard">${buildPostHtml(id1.uname, s.text, id1.timeLabel, s.imgUrl, statsRow(s.stats), id1.avatarUrl)}</div></div>`;
+    const showFooter = !s.progressiveReveal || s._progressiveFinal;
+    return `<div class="${posClass}"${stepAttr}${posAttr}><div class="tcard">${buildPostHtml(id1.uname, s.text, id1.timeLabel, showFooter?s.imgUrl:null, showFooter?statsRow(s.stats):'', id1.avatarUrl)}</div></div>`;
   }
   if (s.type === 'comment' || s.type === 'reply') {
     // Platform (Threads/TikTok, mục 5.39 CONTEXT.md) — thay hẳn step 'reply'
@@ -277,13 +323,14 @@ function buildCardHtml(s) {
     const platform = s.platform || 'threads';
     const id1 = displayIdentity(s.id + ':m', s.uname, s.avatarUrl, (s.stats&&s.stats.timeLabel)||'vừa xong');
     if (platform === 'tiktok') {
-      return buildTiktokCommentHtml(s, id1, posAttr);
+      return buildTiktokCommentHtml(s, id1, posAttr, stepAttr);
     }
     // Threads reply thụt TOÀN BỘ card giống TikTok reply; không gắn margin
     // vào .thr-row vì làm vậy chỉ đẩy avatar/content bên trong nền trắng.
     // Không vẽ connector vì step này không chứa comment cha.
-    const commentHtml = buildCommentRow(id1.uname, s.text, s.hue, s.isAuthor, id1.timeLabel, s.imgUrl, statsRow(s.stats), null, id1.avatarUrl);
-    return `<div class="tcard-pos"${posAttr}><div class="tcard${s.type==='reply'?' thr-reply-card':''}">${commentHtml}</div></div>`;
+    const showFooter = !s.progressiveReveal || s._progressiveFinal;
+    const commentHtml = buildCommentRow(id1.uname, s.text, s.hue, s.isAuthor, id1.timeLabel, showFooter?s.imgUrl:null, showFooter?statsRow(s.stats):'', null, id1.avatarUrl);
+    return `<div class="${posClass}"${stepAttr}${posAttr}><div class="tcard${s.type==='reply'?' thr-reply-card':''}">${commentHtml}</div></div>`;
   }
   return '';
 }
@@ -409,7 +456,7 @@ function tiktokImgWrapHtml(imgUrl) {
   return `<div class="tk-img-wrap"><img src="${imgUrl}" alt="" referrerpolicy="no-referrer"/></div>`;
 }
 
-function buildTiktokCommentHtml(s, id1, posAttr) {
+function buildTiktokCommentHtml(s, id1, posAttr, stepAttr = '') {
   const isReply = s.type === 'reply';
   const cardCls = 'tk-comment' + (isReply ? ' tk-comment-reply' : '');
   const likeCount = (s.stats && s.stats.likes) || '0';
@@ -430,13 +477,14 @@ function buildTiktokCommentHtml(s, id1, posAttr) {
   // danh cần che — người dùng phản hồi thực tế không thấy được badge màu
   // khi tick "Là tác giả" vì lý do này.
   const creatorBadge = s.isAuthor ? '<span class="tk-creator-badge">· Nhà sáng tạo</span>' : '';
-  return `<div class="tcard-pos"${posAttr}><div class="${cardCls}">
+  const showFooter = !s.progressiveReveal || s._progressiveFinal;
+  return `<div class="tcard-pos${s.progressiveReveal?' progressive-reveal-card':''}"${stepAttr}${posAttr}><div class="${cardCls}">
     ${tiktokAvatarHtml(id1.uname, s.hue, id1.avatarUrl)}
     <div class="tk-main">
       <div class="tk-uname-row"><div class="tk-uname">${esc(id1.uname)}</div>${creatorBadge}</div>
       <div class="tk-text">${esc(s.text)}</div>
-      ${tiktokImgWrapHtml(s.imgUrl)}
-      <div class="tk-foot">
+      ${showFooter?tiktokImgWrapHtml(s.imgUrl):''}
+      ${showFooter?`<div class="tk-foot">
         <div class="tk-foot-left">
           <span class="tk-date">${esc(timeLabel)}</span>
           <span class="tk-reply-btn">Trả lời</span>
@@ -448,7 +496,7 @@ function buildTiktokCommentHtml(s, id1, posAttr) {
           </div>
         </div>
       </div>
-      ${replyNoteHtml}
+      ${replyNoteHtml}`:''}
     </div>
   </div></div>`;
 }
@@ -481,6 +529,7 @@ function isDynamicMeme(memeStep) {
 let _lastStackKey = null;
 let _lastStackIds = [];   // mảng id của _lastStackKey — dùng để so khớp vị trí với stack mới
 let _lastStackRevisions = []; // revision của từng id tại _lastStackIds, cùng vị trí — phát hiện "id giữ nguyên nhưng nội dung đã sửa"
+let _lastStackRevealStages = [];
 let _lastMemeKey = null;
 let _lastRetainedMemeKey = null;
 

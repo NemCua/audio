@@ -467,6 +467,7 @@ header span { font-size: 12px; color: #4b5563; }
   color: #16161a;
   line-height: 1.35;
   word-wrap: break-word;
+  white-space: pre-wrap;
 }
 
 .tk-img-wrap {
@@ -924,7 +925,7 @@ function measureMemeBox() {
 async function renderStackAt(t) {
   const { stack, memeStep, memeSteps=[] } = computeSceneAt(t);
   const stackEl = document.getElementById('thr-stack');
-  stackEl.innerHTML = stack.map(buildCardHtml).join('');
+  stackEl.innerHTML = stack.map(s => buildCardHtml(stepForRenderAtTime(s, t))).join('');
   autoScrollStack();
   autoScrollMessenger(stackEl);
 
