@@ -7,6 +7,7 @@ contextBridge.exposeInMainWorld('desktopApp', Object.freeze({
   getWorkspaceInfo: () => ipcRenderer.invoke('desktop:get-workspace-info'),
   getBundledMemeready: () => ipcRenderer.invoke('desktop:get-bundled-memeready'),
   getBundledLibrary: category => ipcRenderer.invoke('desktop:get-bundled-library', category),
+  addLibraryFile: (category, bytes, originalName) => ipcRenderer.invoke('desktop:add-library-file', category, bytes, originalName),
   getStickerLibrary: () => ipcRenderer.invoke('desktop:get-sticker-library'),
   createStickerPack: name => ipcRenderer.invoke('desktop:create-sticker-pack', name),
   deleteStickerPack: packId => ipcRenderer.invoke('desktop:delete-sticker-pack', packId),

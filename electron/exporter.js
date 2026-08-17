@@ -48,7 +48,16 @@ async function renderSegments({ steps, total, threadsRoot, workDir, blurIdentity
       let imagePath = null;
       if ((state.stackIds || []).length || (state.hasMeme && !state.dynamicMeme)) {
         const rect = await win.webContents.executeJavaScript(`(() => { const r=document.getElementById('preview-frame').getBoundingClientRect(); return {x:Math.round(r.x),y:Math.round(r.y),width:Math.round(r.width),height:Math.round(r.height)} })()`);
-        const image = await win.webContents.capturePage(rect);
+        const captured = await win.webContents.capturePage(rect);
+        // capturePage trả pixel vật lý trên màn hình Retina (thường 2x), dù
+        // rect và BrowserWindow dùng pixel CSS. Nếu đưa PNG 2160x3840 đó vào
+        // canvas video 1080x1920, FFmpeg sẽ giữ nguyên kích thước và chỉ hiện
+        // góc trên-trái: toàn bộ UI trông bị phóng 2 lần, mất nửa bên phải.
+        // Chuẩn hóa ảnh scene về đúng kích thước xuất, độc lập tỉ lệ màn hình.
+        const capturedSize = captured.getSize();
+        const image = capturedSize.width === WIDTH && capturedSize.height === HEIGHT
+          ? captured
+          : captured.resize({ width: WIDTH, height: HEIGHT, quality: 'best' });
         imagePath = path.join(workDir, `scene-${String(i).padStart(4, '0')}.png`);
         fs.writeFileSync(imagePath, image.toPNG());
       }
@@ -104,7 +113,7 @@ async function collectAudio(steps, workDir) {
     }
     const mediaPath = step.mediaDesktopPath || step.mediaPath || (String(step.mediaUrl || '').startsWith('file:') ? fileURLToPath(step.mediaUrl) : null);
     if (step.type === 'audio' && mediaPath && fs.existsSync(mediaPath)) {
-      tracks.push({ path: mediaPath, start: Number(step._start), volume: 1, maxDuration: Number(step.duration || 0) || null });
+      tracks.push({ path: mediaPath, start: Number(step._start), volume: Number(step.volume || 1), maxDuration: Number(step.duration || 0) || null });
     }
     // Tiếng gốc của video-card là một track độc lập với TTS. Trước đây đây
     // là nhánh else-if nên card video có TTS bị bỏ mất tiếng video hoàn toàn.

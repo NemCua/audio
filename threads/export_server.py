@@ -364,7 +364,7 @@ async def run_export_job(job_id: str, req: ExportRequest):
             if s.get("type") == "audio" and s.get("mediaUrl"):
                 local_path = _resolve_local_media(s["mediaUrl"])
                 if local_path:
-                    audio_tracks.append((str(local_path), s["_start"], 1.0, None))
+                    audio_tracks.append((str(local_path), s["_start"], float(s.get("volume") or 1.0), None))
             if s.get("type") == "image" and s.get("mediaUrl") and s.get("mediaIsVideo"):
                 # Ảnh dạng VIDEO (không phải gif) có thể tự mang sẵn audio
                 # track (vd clip có tiếng cười/nhạc nền riêng) — bug đã gặp:

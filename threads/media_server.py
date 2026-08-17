@@ -209,6 +209,26 @@ def list_library(category: str):
     ]
 
 
+@app.post("/library/{category}")
+async def add_library_file(category: str, file: UploadFile):
+    lib_dir = LIBRARY_DIRS.get(category)
+    if lib_dir is None:
+        raise HTTPException(404, f"Không có thư viện '{category}'")
+    if not file.filename:
+        raise HTTPException(400, "Thiếu tên file")
+    lib_dir.mkdir(parents=True, exist_ok=True)
+    safe_name = _safe_filename(file.filename)
+    target = lib_dir / safe_name
+    content = await file.read()
+    target.write_bytes(content)
+    return {
+        "filename": target.name,
+        "url": f"/library-file/{category}/{target.name}",
+        "desktopPath": str(target),
+        "duration": _probe_duration(target),
+    }
+
+
 @app.get("/library-file/{category}/{filename}")
 def get_library_file(category: str, filename: str):
     lib_dir = LIBRARY_DIRS.get(category)

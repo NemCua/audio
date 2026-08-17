@@ -68,7 +68,7 @@ jobs:
       - name: Publish GitHub Release
         uses: softprops/action-gh-release@v2
         with:
-          name: Threads Video Maker v1.1.1 — Built-in media fix
+          name: Threads Video Maker ${{ github.ref_name }}
           generate_release_notes: true
           files: |
             release-assets/*.dmg

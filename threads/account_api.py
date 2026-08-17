@@ -107,6 +107,10 @@ def migrate() -> None:
     statements = [
         "ALTER TABLE users ADD COLUMN IF NOT EXISTS settings JSONB DEFAULT '{}'",
         "ALTER TABLE users ADD COLUMN IF NOT EXISTS balance INTEGER DEFAULT 0",
+        "ALTER TABLE users ADD COLUMN IF NOT EXISTS account_status TEXT NOT NULL DEFAULT 'active'",
+        "ALTER TABLE users ADD COLUMN IF NOT EXISTS status_reason TEXT DEFAULT ''",
+        "ALTER TABLE users ADD COLUMN IF NOT EXISTS status_changed_at TIMESTAMPTZ",
+        "ALTER TABLE users ADD COLUMN IF NOT EXISTS deleted_at TIMESTAMPTZ",
         """CREATE TABLE IF NOT EXISTS auth_sessions (
             id UUID PRIMARY KEY, user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
             refresh_hash TEXT NOT NULL, device_name TEXT DEFAULT '', revoked_at TIMESTAMPTZ,
@@ -138,6 +142,11 @@ def migrate() -> None:
             chars BIGINT NOT NULL DEFAULT 0, requests INTEGER NOT NULL DEFAULT 0,
             updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(), PRIMARY KEY(user_id, usage_date)
         )""",
+        """CREATE TABLE IF NOT EXISTS admin_audit_log (
+            id BIGSERIAL PRIMARY KEY, user_id INTEGER REFERENCES users(id), action TEXT NOT NULL,
+            reason TEXT DEFAULT '', metadata JSONB DEFAULT '{}', created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+        )""",
+        "CREATE INDEX IF NOT EXISTS admin_audit_user_idx ON admin_audit_log(user_id, created_at DESC)",
     ]
     with db() as conn:
         with conn.cursor() as cur:
@@ -222,6 +231,14 @@ def _user(row) -> dict:
     return {"id": row["id"], "email": row["email"], "display_name": row["display_name"] or "", "balance": row["balance"] or 0}
 
 
+def _ensure_account_active(user) -> None:
+    account_status = user.get("account_status", "active")
+    if account_status == "suspended":
+        raise HTTPException(403, "Tài khoản đang bị tạm khóa. Vui lòng liên hệ quản trị viên")
+    if account_status == "deleted" or user.get("deleted_at") is not None:
+        raise HTTPException(403, "Tài khoản đã bị vô hiệu hóa")
+
+
 def _create_session(cur, user, device_name: str = "") -> dict:
     session_id, refresh = str(uuid.uuid4()), secrets.token_urlsafe(48)
     expires = datetime.now(timezone.utc) + timedelta(days=REFRESH_DAYS)
@@ -241,9 +258,10 @@ def current_identity(credentials: HTTPAuthorizationCredentials | None = Depends(
         raise HTTPException(status.HTTP_401_UNAUTHORIZED, "Access token không hợp lệ hoặc đã hết hạn")
     with db() as conn:
         with conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
-            cur.execute("""SELECT u.id,u.email,u.display_name,u.balance,s.id AS session_id
+            cur.execute("""SELECT u.id,u.email,u.display_name,u.balance,u.account_status,u.deleted_at,s.id AS session_id
                            FROM users u JOIN auth_sessions s ON s.user_id=u.id
-                           WHERE u.id=%s AND s.id=%s AND s.revoked_at IS NULL AND s.expires_at>NOW()""", (user_id, session_id))
+                           WHERE u.id=%s AND s.id=%s AND s.revoked_at IS NULL AND s.expires_at>NOW()
+                             AND u.account_status='active' AND u.deleted_at IS NULL""", (user_id, session_id))
             row = cur.fetchone()
     if not row: raise HTTPException(status.HTTP_401_UNAUTHORIZED, "Phiên đăng nhập đã bị thu hồi")
     return dict(row)
@@ -340,6 +358,7 @@ def login(req: LoginRequest, request: Request):
         with conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
             cur.execute("SELECT * FROM users WHERE email=%s", (email,)); user = cur.fetchone()
             if not user or not _verify_password(req.password, user["hashed_pw"]): raise HTTPException(401, "Email hoặc mật khẩu không đúng")
+            _ensure_account_active(user)
             return _create_session(cur, user, req.device_name)
 
 
@@ -348,8 +367,10 @@ def refresh(req: RefreshRequest):
     token_hash = _refresh_hash(req.refresh_token)
     with db() as conn:
         with conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
-            cur.execute("""SELECT s.*,u.email,u.display_name,u.balance FROM auth_sessions s JOIN users u ON u.id=s.user_id
-                           WHERE s.refresh_hash=%s AND s.revoked_at IS NULL AND s.expires_at>NOW() FOR UPDATE""", (token_hash,)); row = cur.fetchone()
+            cur.execute("""SELECT s.*,u.email,u.display_name,u.balance,u.account_status,u.deleted_at
+                           FROM auth_sessions s JOIN users u ON u.id=s.user_id
+                           WHERE s.refresh_hash=%s AND s.revoked_at IS NULL AND s.expires_at>NOW()
+                             AND u.account_status='active' AND u.deleted_at IS NULL FOR UPDATE""", (token_hash,)); row = cur.fetchone()
             if not row: raise HTTPException(401, "Refresh token không hợp lệ hoặc đã hết hạn")
             new_refresh = secrets.token_urlsafe(48)
             cur.execute("UPDATE auth_sessions SET refresh_hash=%s,last_used_at=NOW() WHERE id=%s", (_refresh_hash(new_refresh), row["id"]))

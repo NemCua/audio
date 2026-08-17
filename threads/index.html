@@ -580,6 +580,7 @@ header span { font-size: 12px; color: #4b5563; }
 .meme-overlay.drag-positionable img,.meme-overlay.drag-positionable video { pointer-events:none;user-select:none;-webkit-user-drag:none; }
 .meme-overlay.resize-selected{outline:.35cqw solid #8b5cf6;outline-offset:.5cqw;overflow:visible}.meme-overlay.resize-selected>img,.meme-overlay.resize-selected>video{border-radius:inherit}.overlay-resize-handle{display:none;position:absolute;width:3.2cqw;height:3.2cqw;border:.35cqw solid #7c3aed;border-radius:.7cqw;background:#fff;box-shadow:0 .5cqw 1.5cqw #0008;pointer-events:auto;cursor:nwse-resize;z-index:4}.meme-overlay.resize-selected .overlay-resize-handle{display:block}.overlay-resize-handle.nw{left:-2.1cqw;top:-2.1cqw}.overlay-resize-handle.ne{right:-2.1cqw;top:-2.1cqw;cursor:nesw-resize}.overlay-resize-handle.sw{left:-2.1cqw;bottom:-2.1cqw;cursor:nesw-resize}.overlay-resize-handle.se{right:-2.1cqw;bottom:-2.1cqw}
 .position-guides{position:absolute;inset:0;z-index:12;pointer-events:none;opacity:0;transition:opacity 140ms ease}.position-guides.open{opacity:1}.position-guide{position:absolute;background:rgba(125,211,252,.24);transition:background 100ms ease,box-shadow 100ms ease}.position-guide.x{top:0;bottom:0;width:1px}.position-guide.y{left:0;right:0;height:1px}.position-guide.x.g25{left:25%}.position-guide.x.g50{left:50%}.position-guide.x.g75{left:75%}.position-guide.y.g25{top:25%}.position-guide.y.g50{top:50%}.position-guide.y.g75{top:75%}.position-guide.g50{background:rgba(167,139,250,.42)}.position-guide.snapped{background:#7dd3fc;box-shadow:0 0 7px #38bdf8}
+.preview-watermark{position:absolute;inset:-12%;z-index:50;display:flex;flex-direction:column;align-items:center;justify-content:space-evenly;overflow:hidden;pointer-events:none;user-select:none;transform:rotate(-28deg) scale(1.18);transform-origin:center;mix-blend-mode:difference}.preview-watermark span{display:block;color:rgba(255,255,255,.2);font-size:4.15cqw;font-weight:800;line-height:1;letter-spacing:.12cqw;white-space:nowrap;text-shadow:0 0 .25cqw rgba(255,255,255,.12)}
 .meme-overlay .meme-ph {
   aspect-ratio: 1/1;
   background: repeating-linear-gradient(45deg,#333,#333 3cqw,#2a2a2a 3cqw,#2a2a2a 6cqw);
@@ -642,12 +643,13 @@ header span { font-size: 12px; color: #4b5563; }
 .script-panel {
   background: #12152a;
   border-left: 1px solid #1e2340;
-  overflow-y: auto;
+  overflow: hidden;
   padding: 18px;
   display: flex;
   flex-direction: column;
   gap: 10px;
 }
+#step-list{flex:1;min-height:0;overflow-y:auto;overscroll-behavior:contain;padding-right:4px;scrollbar-gutter:stable}
 .script-panel h2 {
   font-size: 11px; font-weight: 700; color: #4b5563;
   text-transform: uppercase; letter-spacing: .08em; padding: 0 2px;
@@ -840,6 +842,17 @@ header span { font-size: 12px; color: #4b5563; }
 }
 .lib-grid:has(.lib-item-audio) { grid-template-columns: 1fr; }
 .lib-grid:has(.lib-item-meme) { grid-template-columns: repeat(3, 1fr); }
+.background-library-modal{width:min(1040px,96vw)}
+.background-library-grid{grid-template-columns:repeat(3,minmax(0,1fr));max-height:520px;grid-auto-rows:245px}
+.background-library-grid .lib-item-bgvideo{min-height:225px}
+.background-library-grid video{width:100%;height:180px;object-fit:cover;border-radius:9px;background:#000}
+.background-audio-list{display:flex;flex-direction:column;gap:9px;max-height:520px;overflow-y:auto;padding:10px;border:1px solid #1e2340;border-radius:10px;background:#0a0c14}
+.background-audio-list .lib-item{display:flex;align-items:center;gap:12px;min-height:58px}
+.library-modal-head{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:14px}
+.library-modal-head h3{margin:0}
+.export-btn-loading{display:inline-flex;align-items:center;justify-content:center;gap:8px}
+.export-btn-loading::before{content:"";width:14px;height:14px;border:2px solid #ffffff66;border-top-color:#fff;border-radius:50%;animation:export-spin .7s linear infinite}
+@keyframes export-spin{to{transform:rotate(360deg)}}
 .sticker-library-modal { width:min(1040px,96vw);padding:24px; }
 .sticker-modal-head { display:flex;align-items:center;gap:12px;margin-bottom:16px; }
 .sticker-modal-head h3 { margin:0;flex:1; }
@@ -1043,7 +1056,7 @@ header span { font-size: 12px; color: #4b5563; }
           </div>
         </div>
         <div id="bgvideo-library-tab" style="display:none">
-          <div class="lib-grid lib-grid-bg" id="bgvideo-library-grid"><div class="lib-empty">Đang tải...</div></div>
+          <button type="button" class="lib-toggle-btn" onclick="openBackgroundVideoLibrary()">📂 Mở thư viện video nền</button>
         </div>
         <button class="btn btn-primary" id="bgvideo-apply" onclick="applyBgVideo()" disabled>▶ Xem thử trong khung 9:16</button>
         <button class="btn btn-ghost" onclick="clearBgVideo()">Xoá video</button>
@@ -1073,7 +1086,7 @@ header span { font-size: 12px; color: #4b5563; }
           </div>
         </div>
         <div id="bgaudio-library-tab" style="display:none">
-          <div class="lib-grid lib-grid-bg" id="bgaudio-library-grid"><div class="lib-empty">Đang tải...</div></div>
+          <button type="button" class="lib-toggle-btn" onclick="openBackgroundAudioLibrary()">🎵 Mở thư viện âm thanh nền</button>
         </div>
 
         <label>Âm lượng nhạc nền</label>
@@ -1170,6 +1183,10 @@ header span { font-size: 12px; color: #4b5563; }
       <div class="position-guides" id="position-guides" aria-hidden="true"><i class="position-guide x g25" data-axis="x" data-ratio="0.25"></i><i class="position-guide x g50" data-axis="x" data-ratio="0.5"></i><i class="position-guide x g75" data-axis="x" data-ratio="0.75"></i><i class="position-guide y g25" data-axis="y" data-ratio="0.25"></i><i class="position-guide y g50" data-axis="y" data-ratio="0.5"></i><i class="position-guide y g75" data-axis="y" data-ratio="0.75"></i></div>
       <!-- Overlay meme (JS đổ vào khi step meme chạy) -->
       <div class="meme-overlay" id="meme-overlay" style="display:none"></div>
+      <!-- Chỉ bảo vệ preview khỏi quay màn hình; export_render.html không có lớp này nên MP4 xuất ra luôn sạch. -->
+      <div class="preview-watermark" aria-hidden="true">
+        <span>nemcuaa1@gmail.com</span><span>nemcuaa1@gmail.com</span><span>nemcuaa1@gmail.com</span><span>nemcuaa1@gmail.com</span><span>nemcuaa1@gmail.com</span>
+      </div>
     </div>
 
     <div class="play-bar">
@@ -1208,6 +1225,24 @@ header span { font-size: 12px; color: #4b5563; }
     <div id="step-list" ondragover="onDragContainerOver(event)" ondrop="dropAtDragPreview(event)">
       <div class="script-empty">Chưa có step nào.<br/>Bấm một nút ＋ ở trên để thêm.</div>
     </div>
+  </div>
+</div>
+
+<div class="step-modal-overlay" id="bgvideo-library-overlay" onclick="if(event.target===this)closeBackgroundVideoLibrary()">
+  <div class="step-modal background-library-modal">
+    <div class="library-modal-head"><h3>Thư viện video nền</h3><button type="button" class="btn-cancel" onclick="closeBackgroundVideoLibrary()">✕ Đóng</button></div>
+    <div style="display:flex;gap:10px;margin-bottom:12px"><button type="button" class="btn-ok" onclick="document.getElementById('bgvideo-library-add').click()">＋ Thêm video vào thư viện</button><input id="bgvideo-library-add" type="file" accept="video/*" hidden onchange="addBackgroundLibraryFile('background',this.files[0]);this.value=''"/></div>
+    <div id="bgvideo-library-grid" class="lib-grid background-library-grid"><div class="lib-empty">Đang tải...</div></div>
+    <div class="modal-actions"><button type="button" class="btn-cancel" onclick="closeBackgroundVideoLibrary()">Huỷ</button><button type="button" class="btn-ok" id="bgvideo-library-confirm" onclick="confirmBackgroundVideoLibrary()" disabled>Chọn video này</button></div>
+  </div>
+</div>
+
+<div class="step-modal-overlay" id="bgaudio-library-overlay" onclick="if(event.target===this)closeBackgroundAudioLibrary()">
+  <div class="step-modal background-library-modal" style="max-width:760px">
+    <div class="library-modal-head"><h3>Thư viện âm thanh nền</h3><button type="button" class="btn-cancel" onclick="closeBackgroundAudioLibrary()">✕ Đóng</button></div>
+    <div style="display:flex;gap:10px;margin-bottom:12px"><button type="button" class="btn-ok" onclick="document.getElementById('bgaudio-library-add').click()">＋ Thêm âm thanh vào thư viện</button><input id="bgaudio-library-add" type="file" accept="audio/*" hidden onchange="addBackgroundLibraryFile('bgaudio',this.files[0]);this.value=''"/></div>
+    <div id="bgaudio-library-grid" class="background-audio-list"><div class="lib-empty">Đang tải...</div></div>
+    <div class="modal-actions"><button type="button" class="btn-cancel" onclick="closeBackgroundAudioLibrary()">Huỷ</button><button type="button" class="btn-ok" id="bgaudio-library-confirm" onclick="confirmBackgroundAudioLibrary()" disabled>Chọn âm thanh này</button></div>
   </div>
 </div>
 
@@ -1281,6 +1316,10 @@ header span { font-size: 12px; color: #4b5563; }
       </section>
       <section class="mess-preview-pane">
         <div class="mess-preview-toolbar"><span class="mess-preview-label">PREVIEW ĐOẠN CHAT</span><div class="mess-preview-controls"><label class="mess-footer-toggle"><input type="checkbox" id="mess-footer-toggle" onchange="setMessengerFooterVisible(this.checked)"><span>Hiện ô nhập tin nhắn</span></label><div><button type="button" class="mess-platform-trigger" id="mess-platform-trigger" onclick="event.stopPropagation();toggleMessengerPlatformMenu()">Messenger</button><div class="mess-platform-menu" id="mess-platform-menu"><button type="button" class="mess-platform-option active" data-platform="messenger" onclick="selectMessengerPlatform('messenger')">Messenger</button><button type="button" class="mess-platform-option" data-platform="zalo" onclick="selectMessengerPlatform('zalo')">Zalo</button></div></div></div></div>
+        <div style="display:flex;flex-wrap:wrap;gap:8px 16px;padding:10px 12px;border-bottom:1px solid rgba(148,163,184,.16);background:rgba(15,23,42,.55)">
+          <label class="mess-footer-toggle" title="Tự thêm messenger-tone.mp3 chạy song song với mọi tin của đối phương"><input type="checkbox" id="mess-auto-received-tone" onchange="toggleMessengerAutoTone('received',this.checked)"><span>Thêm âm thanh nhận vào tất cả tin nhận</span></label>
+          <label class="mess-footer-toggle" title="Tự thêm sentmessage_1.mp3 chạy song song với mọi tin của tôi"><input type="checkbox" id="mess-auto-sent-tone" onchange="toggleMessengerAutoTone('sent',this.checked)"><span>Thêm âm thanh gửi vào tất cả tin gửi</span></label>
+        </div>
         <div class="mess-live-wrap"><div id="mess-live-preview"></div></div>
       </section>
     </div>
@@ -1401,6 +1440,7 @@ let bgVideoObjectUrl = null;
 // biến có giá trị tại một thời điểm — chọn nguồn nào thì clear nguồn kia
 // (xem setBgVideoFile()/selectBgVideoLibraryItem()).
 let bgVideoLibraryItem = null; // { url, filename }
+let bgVideoModalSelection = null;
 
 const dz = document.getElementById('bgvideo-dropzone');
 dz.addEventListener('dragover', e => { e.preventDefault(); dz.classList.add('over'); });
@@ -1432,8 +1472,16 @@ function setBgVideoSourceTab(tab, btnEl) {
   btnEl.classList.add('active');
   document.getElementById('bgvideo-file-tab').style.display = tab === 'file' ? 'block' : 'none';
   document.getElementById('bgvideo-library-tab').style.display = tab === 'library' ? 'block' : 'none';
-  if (tab === 'library') loadBgVideoLibrary();
+  if (tab === 'library') openBackgroundVideoLibrary();
 }
+
+function openBackgroundVideoLibrary(){
+  bgVideoModalSelection=null;
+  document.getElementById('bgvideo-library-confirm').disabled=true;
+  document.getElementById('bgvideo-library-overlay').classList.add('open');
+  loadBgVideoLibrary();
+}
+function closeBackgroundVideoLibrary(){document.getElementById('bgvideo-library-overlay').classList.remove('open');}
 
 async function loadBgVideoLibrary() {
   const grid = document.getElementById('bgvideo-library-grid');
@@ -1461,11 +1509,17 @@ async function loadBgVideoLibrary() {
 
 function selectBgVideoLibraryItem(el) {
   const item = JSON.parse(el.dataset.item);
-  bgVideoLibraryItem = { url: /^(?:file:|https?:|blob:)/i.test(item.url) ? item.url : MEDIA_SERVER_URL + item.url, filename: item.filename, desktopPath:item.desktopPath || null };
-  bgVideoFile = null;
-  document.getElementById('bgvideo-apply').disabled = false;
+  bgVideoModalSelection = { url: /^(?:file:|https?:|blob:)/i.test(item.url) ? item.url : MEDIA_SERVER_URL + item.url, filename: item.filename, desktopPath:item.desktopPath || null };
+  document.getElementById('bgvideo-library-confirm').disabled=false;
   document.querySelectorAll('#bgvideo-library-grid .lib-item.selected').forEach(x => x.classList.remove('selected'));
   el.classList.add('selected');
+}
+function confirmBackgroundVideoLibrary(){
+  if(!bgVideoModalSelection)return;
+  bgVideoLibraryItem={...bgVideoModalSelection};bgVideoFile=null;
+  window.onBackgroundLibrarySelected?.('video',bgVideoLibraryItem);
+  document.getElementById('bgvideo-apply').disabled=false;
+  closeBackgroundVideoLibrary();applyBgVideo();
 }
 
 function applyBgVideo() {
@@ -1527,6 +1581,7 @@ let bgAudioObjectUrl = null;
 // Nguồn "Thư viện" (mục 5.40 CONTEXT.md, threads/audiobackground/) — song
 // song với bgAudioFile, giống hệt bgVideoLibraryItem ở Feature 1.
 let bgAudioLibraryItem = null; // { url, filename }
+let bgAudioModalSelection = null;
 
 const dzAudio = document.getElementById('bgaudio-dropzone');
 dzAudio.addEventListener('dragover', e => { e.preventDefault(); dzAudio.classList.add('over'); });
@@ -1562,8 +1617,21 @@ function setBgAudioSourceTab(tab, btnEl) {
   btnEl.classList.add('active');
   document.getElementById('bgaudio-file-tab').style.display = tab === 'file' ? 'block' : 'none';
   document.getElementById('bgaudio-library-tab').style.display = tab === 'library' ? 'block' : 'none';
-  if (tab === 'library') loadBgAudioLibrary();
+  if (tab === 'library') openBackgroundAudioLibrary();
 }
+
+function stopLibraryPreviewAudio(){
+  if(_libPreviewAudioEl){_libPreviewAudioEl.pause();_libPreviewAudioEl.removeAttribute('src');_libPreviewAudioEl.load();}
+  if(_libPreviewPlayingBtn)_libPreviewPlayingBtn.textContent='▶';
+  _libPreviewPlayingBtn=null;
+}
+function openBackgroundAudioLibrary(){
+  bgAudioModalSelection=null;
+  document.getElementById('bgaudio-library-confirm').disabled=true;
+  document.getElementById('bgaudio-library-overlay').classList.add('open');
+  loadBgAudioLibrary();
+}
+function closeBackgroundAudioLibrary(){stopLibraryPreviewAudio();document.getElementById('bgaudio-library-overlay').classList.remove('open');}
 
 async function loadBgAudioLibrary() {
   const grid = document.getElementById('bgaudio-library-grid');
@@ -1579,7 +1647,7 @@ async function loadBgAudioLibrary() {
       // Nghe thử (yêu cầu người dùng, mục 5.40) — tái dùng đúng
       // toggleLibraryPreviewAudio() đã có cho thư viện audio hiệu ứng.
       return `<div class="lib-item lib-item-audio" data-item='${itemJson}' onclick="selectBgAudioLibraryItem(this)" title="${esc(it.filename)}">
-        <button type="button" class="lib-play-btn" onclick="event.stopPropagation();toggleLibraryPreviewAudio('${url}',this)">▶</button>
+        <button type="button" class="lib-play-btn" onclick="event.stopPropagation();selectBgAudioLibraryItem(this.closest('.lib-item'));toggleLibraryPreviewAudio('${url}',this)">▶</button>
         <span class="lib-item-name">${esc(it.filename)}</span>
       </div>`;
     }).join('');
@@ -1590,11 +1658,30 @@ async function loadBgAudioLibrary() {
 
 function selectBgAudioLibraryItem(el) {
   const item = JSON.parse(el.dataset.item);
-  bgAudioLibraryItem = { url: /^(?:file:|https?:|blob:)/i.test(item.url) ? item.url : MEDIA_SERVER_URL + item.url, filename: item.filename, desktopPath:item.desktopPath || null };
-  bgAudioFile = null;
-  document.getElementById('bgaudio-apply').disabled = false;
+  bgAudioModalSelection = { url: /^(?:file:|https?:|blob:)/i.test(item.url) ? item.url : MEDIA_SERVER_URL + item.url, filename: item.filename, desktopPath:item.desktopPath || null };
+  document.getElementById('bgaudio-library-confirm').disabled=false;
   document.querySelectorAll('#bgaudio-library-grid .lib-item.selected').forEach(x => x.classList.remove('selected'));
   el.classList.add('selected');
+}
+function confirmBackgroundAudioLibrary(){
+  if(!bgAudioModalSelection)return;
+  bgAudioLibraryItem={...bgAudioModalSelection};bgAudioFile=null;
+  window.onBackgroundLibrarySelected?.('audio',bgAudioLibraryItem);
+  document.getElementById('bgaudio-apply').disabled=false;
+  closeBackgroundAudioLibrary();applyBgAudio();
+}
+async function addBackgroundLibraryFile(category,file){
+  if(!file)return;
+  try{
+    if(window.desktopApp?.addLibraryFile){
+      await window.desktopApp.addLibraryFile(category,new Uint8Array(await file.arrayBuffer()),file.name);
+    }else{
+      const form=new FormData();form.append('file',file);
+      const res=await fetch(`${MEDIA_SERVER_URL}/library/${category}`,{method:'POST',body:form});
+      if(!res.ok)throw new Error('HTTP '+res.status);
+    }
+    if(category==='background')await loadBgVideoLibrary();else await loadBgAudioLibrary();
+  }catch(error){alert('Không thêm được vào thư viện: '+error.message);}
 }
 
 function applyBgAudio() {
@@ -2102,6 +2189,9 @@ let messDraftEditIndex = null;
 let messInsertAt = null;
 let messQuickAudioTargetIndex = null;
 let messQuickAudioMedia = null;
+let messAutoToneEnabled = { received:false, sent:false };
+let messAutoToneMedia = { received:null, sent:null };
+const MESS_AUTO_TONE_FILES = { received:'messenger-tone.mp3', sent:'sentmessage_1.mp3' };
 
 // Select giọng riêng của từng tin đang được ẩn nhưng vẫn được giữ để tương
 // thích dữ liệu dự án cũ và luồng lưu Messenger hiện tại.
@@ -2130,6 +2220,8 @@ function openMessengerModal(stepId = null, conversationMode = false) {
   messVoiceTouched = false;
   messDraftEditIndex = null;
   messInsertAt = null;
+  messAutoToneEnabled = { received:false, sent:false };
+  messAutoToneMedia = { received:null, sent:null };
   const s = stepId != null ? steps.find(x => x.id === stepId) : null;
   if(conversationMode&&s)messEditingConversationId=s.conversationId;
   messPartnerName = (s && s.messPartnerName) || 'Tùng';
@@ -2152,6 +2244,8 @@ function openMessengerModal(stepId = null, conversationMode = false) {
   document.getElementById('mess-finish-btn').textContent = conversationMode ? 'Lưu Box tin nhắn' : s ? 'Lưu thay đổi' : 'Tạo kịch bản tin nhắn';
   updateMessengerPlatformPicker();
   updateMessengerFooterToggle();
+  document.getElementById('mess-auto-received-tone').checked=false;
+  document.getElementById('mess-auto-sent-tone').checked=false;
   const current = s&&!conversationMode ? messDrafts[messDrafts.length - 1] : null;
   if (current && current.imageUrl) messPendingImage = { url: current.imageUrl, name: current.imageName || 'ảnh', type:current.imageType||'image', desktopPath:current.imageDesktopPath||null };
   document.getElementById('mess-theirs').value = current && current.side === 'theirs' ? current.text : '';
@@ -2238,6 +2332,7 @@ function applyMessengerImageUrl(){const url=document.getElementById('mess-image-
 function addMessengerDraft() {
   const msg = readMessengerComposer();
   if (!msg) { alert('Nhập tin nhắn vào ô Đối phương hoặc Tôi.'); return; }
+  applyEnabledMessengerAutoTones(msg);
   if(messDraftEditIndex!=null)messDrafts[messDraftEditIndex]=msg;
   else if(messInsertAt!=null)messDrafts.splice(messInsertAt,0,msg);
   else messDrafts.push(msg);
@@ -2292,20 +2387,27 @@ function makeParallelAudioStepFromMedia(media,targetStep){
     type:'audio',
     mediaPath:null,
     mediaUrl:media.url,
+    mediaDesktopPath:media.desktopPath||null,
     mediaName:media.filename||media.name||'âm thanh',
     mediaIsVideo:false,
-    duration:targetStep.duration||media.duration||DEFAULT_DUR.audio,
+    // Âm thanh song song giữ đúng độ dài thật của file, không bị kéo theo
+    // thời lượng 2 giây mặc định của card Messenger.
+    duration:media.duration||DEFAULT_DUR.audio,
+    intrinsicMediaDuration:media.duration||DEFAULT_DUR.audio,
+    volume:Number(media.volume||1),
     gap:0,
     clearBefore:false,
     parallel:true,
     groupId:stepGroupId(targetStep)||targetStep.conversationId||false,
     hue:Math.floor(Math.random()*360),
     offsetX:0,offsetY:0,rotation:0,
+    messAutoToneKind:media.messAutoToneKind||null,
   };
 }
 function insertParallelAudioAfterStep(audioStep,targetStep){
   attachMediaToStep(audioStep,targetStep,stepGroupId(targetStep));
   audioStep.mediaIsVideo=false;
+  audioStep.duration=audioStep.intrinsicMediaDuration||audioStep.duration||DEFAULT_DUR.audio;
   let idx=steps.findIndex(s=>s.id===targetStep.id);
   if(idx<0){steps.push(audioStep);return;}
   idx++;
@@ -2315,8 +2417,63 @@ function insertParallelAudioAfterStep(audioStep,targetStep){
 function addQuickAudioToDraft(index,media){
   const msg=messDrafts[index];if(!msg)return false;
   if(!msg.parallelAudios)msg.parallelAudios=[];
-  msg.parallelAudios.push({url:media.url,filename:media.filename||media.name||'âm thanh',duration:media.duration||DEFAULT_DUR.audio});
+  msg.parallelAudios.push({url:media.url,filename:media.filename||media.name||'âm thanh',duration:media.duration||DEFAULT_DUR.audio,desktopPath:media.desktopPath||null,messAutoToneKind:media.messAutoToneKind||null,volume:Number(media.volume||1)});
   return true;
+}
+async function messengerAudioLibraryItems(){
+  if(window.desktopApp?.getBundledLibrary)return await window.desktopApp.getBundledLibrary('audio');
+  const res=await fetch(MEDIA_SERVER_URL+'/library/audio');
+  if(!res.ok)throw new Error('HTTP '+res.status);
+  return await res.json();
+}
+function messengerAudioDuration(url){
+  return new Promise(resolve=>{
+    const audio=document.createElement('audio');
+    const done=value=>{audio.removeAttribute('src');audio.load();resolve(value);};
+    audio.preload='metadata';
+    audio.onloadedmetadata=()=>done(Number.isFinite(audio.duration)&&audio.duration>0?audio.duration:null);
+    audio.onerror=()=>done(null);
+    audio.src=url;
+  });
+}
+async function resolveMessengerAutoTone(kind){
+  if(messAutoToneMedia[kind])return messAutoToneMedia[kind];
+  const filename=MESS_AUTO_TONE_FILES[kind];
+  const items=await messengerAudioLibraryItems();
+  const item=items.find(x=>String(x.filename).toLowerCase()===filename.toLowerCase());
+  if(!item)throw new Error(`Không tìm thấy ${filename} trong thư viện âm thanh.`);
+  const url=/^(?:file:|https?:|blob:)/i.test(item.url)?item.url:MEDIA_SERVER_URL+item.url;
+  const duration=item.duration||await messengerAudioDuration(url)||DEFAULT_DUR.audio;
+  return messAutoToneMedia[kind]={url,filename:item.filename,duration,desktopPath:item.desktopPath||null,messAutoToneKind:kind,volume:1.9};
+}
+function applyEnabledMessengerAutoTones(msg){
+  const kind=msg.side==='mine'?'sent':'received';
+  if(!messAutoToneEnabled[kind]||!messAutoToneMedia[kind])return;
+  msg.parallelAudios=(msg.parallelAudios||[]).filter(x=>x.messAutoToneKind!==kind);
+  msg.parallelAudios.push({...messAutoToneMedia[kind]});
+}
+async function toggleMessengerAutoTone(kind,enabled){
+  const checkbox=document.getElementById(kind==='received'?'mess-auto-received-tone':'mess-auto-sent-tone');
+  const side=kind==='received'?'theirs':'mine';
+  const status=document.getElementById('mess-tts-status');
+  try{
+    messAutoToneEnabled[kind]=!!enabled;
+    const media=enabled?await resolveMessengerAutoTone(kind):null;
+    for(let i=0;i<messDrafts.length;i++){
+      const msg=messDrafts[i];if(msg.side!==side)continue;
+      msg.parallelAudios=(msg.parallelAudios||[]).filter(x=>x.messAutoToneKind!==kind);
+      const target=messengerStepForDraftIndex(i);
+      if(target){
+        steps=steps.filter(s=>!(isParallelAudio(s)&&parallelAudioAnchor(s)?.id===target.id&&s.messAutoToneKind===kind));
+        if(enabled)insertParallelAudioAfterStep(makeParallelAudioStepFromMedia(media,target),target);
+      }else if(enabled)msg.parallelAudios.push({...media});
+    }
+    status.textContent=enabled?`✓ Đã thêm ${MESS_AUTO_TONE_FILES[kind]} vào tất cả tin ${kind==='received'?'nhận':'gửi'}.`:`✓ Đã bỏ âm thanh mặc định khỏi tất cả tin ${kind==='received'?'nhận':'gửi'}.`;
+    renderMessengerDrafts();renderStepList();renderIdleScene();
+  }catch(error){
+    messAutoToneEnabled[kind]=false;if(checkbox)checkbox.checked=false;
+    alert('Không thêm được âm thanh mặc định: '+error.message);
+  }
 }
 function messengerAudioIndexesForConversation(conv){
   if(!conv)return [];
@@ -2348,22 +2505,26 @@ function openMessengerQuickAudio(index){
   loadMessengerQuickAudioLibrary();
 }
 function closeMessengerQuickAudio(){
+  stopLibraryPreviewAudio();
   document.getElementById('mess-quick-audio-overlay').classList.remove('open');
   messQuickAudioTargetIndex=null;
   messQuickAudioMedia=null;
 }
-function setMessengerQuickAudioMedia(media){
+async function setMessengerQuickAudioMedia(media){
+  if(!media.duration)media.duration=await messengerAudioDuration(media.url)||DEFAULT_DUR.audio;
   messQuickAudioMedia=media;
   document.getElementById('mess-quick-audio-picked').textContent='✓ Đã chọn: '+(media.filename||media.name||'âm thanh');
+  document.querySelectorAll('#mess-quick-audio-library .lib-item').forEach(el=>{
+    try{el.classList.toggle('selected',JSON.parse(el.dataset.item).filename===media.filename);}catch(_error){}
+  });
 }
 async function loadMessengerQuickAudioLibrary(){
   const grid=document.getElementById('mess-quick-audio-library');if(!grid)return;
   grid.style.display='grid';
   grid.innerHTML='<div class="lib-empty">Đang tải...</div>';
   try{
-    const res=await fetch(MEDIA_SERVER_URL+'/library/audio');if(!res.ok)throw new Error('HTTP '+res.status);
-    const items=await res.json();if(!items.length){grid.innerHTML='<div class="lib-empty">Thư mục thư viện đang trống.</div>';return;}
-    grid.innerHTML=items.map(it=>{const url=MEDIA_SERVER_URL+it.url,itemJson=JSON.stringify({url,filename:it.filename,duration:it.duration||DEFAULT_DUR.audio}).replace(/&/g,'&amp;').replace(/'/g,'&#39;').replace(/</g,'&lt;'),label=it.label||it.filename,tip=it.description||label;return `<div class="lib-item lib-item-audio" data-item='${itemJson}' onclick="setMessengerQuickAudioMedia(JSON.parse(this.dataset.item))" title="${esc(tip)}"><button type="button" class="lib-play-btn" onclick="event.stopPropagation();toggleLibraryPreviewAudio('${url}',this)">▶</button><span class="lib-item-name">${esc(label)}</span></div>`;}).join('');
+    const items=await messengerAudioLibraryItems();if(!items.length){grid.innerHTML='<div class="lib-empty">Thư mục thư viện đang trống.</div>';return;}
+    grid.innerHTML=items.map(it=>{const url=/^(?:file:|https?:|blob:)/i.test(it.url)?it.url:MEDIA_SERVER_URL+it.url,itemJson=JSON.stringify({url,filename:it.filename,duration:it.duration||null,desktopPath:it.desktopPath||null}).replace(/&/g,'&amp;').replace(/'/g,'&#39;').replace(/</g,'&lt;'),label=it.label||it.filename,tip=it.description||label;return `<div class="lib-item lib-item-audio" data-item='${itemJson}' onclick="setMessengerQuickAudioMedia(JSON.parse(this.dataset.item))" title="${esc(tip)}"><button type="button" class="lib-play-btn" onclick="event.stopPropagation();setMessengerQuickAudioMedia(JSON.parse(this.closest('.lib-item').dataset.item));toggleLibraryPreviewAudio('${url}',this)">▶</button><span class="lib-item-name">${esc(label)}</span></div>`;}).join('');
   }catch(e){grid.innerHTML='<div class="lib-empty" style="color:#ef4444">⚠ Không tải được thư viện — kiểm tra media_server.py đang chạy</div>';}
 }
 async function uploadMessengerQuickAudio(file){
@@ -2460,6 +2621,7 @@ function renderMessengerDrafts() {
 }
 function commitPendingMessengerDraft(){
   const pending=readMessengerComposer();if(!pending)return;
+  applyEnabledMessengerAutoTones(pending);
   if(messDraftEditIndex!=null)messDrafts[messDraftEditIndex]=pending;
   else if(messInsertAt!=null)messDrafts.splice(messInsertAt,0,pending);
   else messDrafts.push(pending);
@@ -2718,7 +2880,7 @@ function libraryItemHtml(category, item, i) {
     </div>`;
   if (category === 'audio') {
     return `<div class="lib-item lib-item-audio" data-item='${itemJson}' onclick="selectLibraryItem(this)" title="${esc(tooltip)}">
-      <button type="button" class="lib-play-btn" onclick="event.stopPropagation();toggleLibraryPreviewAudio('${url}',this)">▶</button>
+      <button type="button" class="lib-play-btn" onclick="event.stopPropagation();selectLibraryItem(this.closest('.lib-item'));toggleLibraryPreviewAudio('${url}',this)">▶</button>
       <span class="lib-item-name">${esc(displayLabel)}</span>
       ${editActions}
     </div>`;
@@ -2791,17 +2953,19 @@ function toggleLibraryPreviewAudio(url, btn) {
   _libPreviewAudioEl.onended = () => { btn.textContent = '▶'; _libPreviewPlayingBtn = null; };
 }
 
-function selectLibraryItem(el) {
+async function selectLibraryItem(el) {
   const item = JSON.parse(el.dataset.item);
   const url = /^(?:file:|https?:|blob:)/i.test(item.url) ? item.url : MEDIA_SERVER_URL + item.url;
   modalUploadedMedia = { url, filename: item.filename, isVideo: item.isVideo, duration: item.duration, desktopPath: item.desktopPath || null };
+  if(!modalUploadedMedia.isVideo&&!modalUploadedMedia.duration&&/\.(mp3|wav|m4a|aac|ogg|flac|opus)$/i.test(item.filename||'')){
+    modalUploadedMedia.duration=await messengerAudioDuration(url)||DEFAULT_DUR.audio;
+  }
   document.getElementById('m-dropzone-text').textContent = '✓ ' + item.filename;
   document.getElementById('m-file-path').value = '';
   document.getElementById('m-upload-status').textContent = '✓ Đã chọn từ thư viện';
   document.getElementById('m-upload-status').style.color = '#4ade80';
   document.querySelectorAll('.lib-item.selected').forEach(x => x.classList.remove('selected'));
   el.classList.add('selected');
-  if (_libPreviewAudioEl) { _libPreviewAudioEl.pause(); if (_libPreviewPlayingBtn) _libPreviewPlayingBtn.textContent = '▶'; _libPreviewPlayingBtn = null; }
 }
 
 // ---------- Meme sẵn (v2 — snapshot toàn bộ step, không giới hạn ở media) ----------
@@ -3533,6 +3697,7 @@ async function addStickerToCurrentPack(file) {
 }
 
 function closeStepModal() {
+  stopLibraryPreviewAudio();
   document.getElementById('step-modal-overlay').classList.remove('open');
   editingStepId = null;
   modalTargetGroupId = null;
@@ -3857,6 +4022,7 @@ async function submitStepModal() {
     // luôn áp dụng; `meme`/`image` CHỈ áp dụng khi file thật sự có "thời
     // lượng nội dung" (video hoặc gif động), không áp cho ảnh tĩnh khác.
     const isTimedMedia = t === 'audio' || (modalUploadedMedia && (modalUploadedMedia.isVideo || /\.gif(\?|$)/i.test(modalUploadedMedia.url || '')));
+    if(isTimedMedia&&modalUploadedMedia?.duration)data.intrinsicMediaDuration=modalUploadedMedia.duration;
     if (editingStepId == null && isTimedMedia && modalUploadedMedia && modalUploadedMedia.duration != null) {
       data.duration = modalUploadedMedia.duration;
     }
@@ -3994,6 +4160,7 @@ function stepCardHtml(s, idx) {
         ${s.type==='mess'?'':`<label class="clear-toggle"><input type="checkbox" ${s.clearBefore?'checked':''} onchange="updateStepField(${s.id},'clearBefore',this.checked)"/> Xoá nội dung cũ</label>`}
         <div class="sc-actions">
           ${s.type==='image'&&s.mediaIsVideo?`<button class="media-video-toggle" onclick="toggleCardVideoPlayback(${s.id})" title="Phát video đúng một lượt">▶ Phát video</button>`:''}
+          ${s.type==='sticker'||(s.type==='image'&&!s.mediaIsVideo&&!/\.gif(\?|$)/i.test(s.mediaUrl||s.mediaName||''))?'':`<button onclick="resetStepTime(${s.id})" title="Đưa thời lượng về đúng độ dài âm thanh/video gốc">⟲ Reset time</button>`}
           <button onclick="${s.type==='mess'?`openMessengerModal(${s.id})`:`openStepModal('${s.type}',${s.id})`}" title="Sửa">✎</button>
           ${isParallelMedia(s)?`<button onclick="detachParallelMedia(${s.id})" title="Tách khỏi step đang phát song song">↳ Tách</button>`:''}
           <button onclick="deleteStep(${s.id})" title="Xoá">🗑</button>
@@ -4224,7 +4391,10 @@ function canAttachMediaToStep(mediaStep,targetStep){
 function attachMediaToStep(mediaStep,targetStep,destinationGroupId=null){
   mediaStep.parallel=true;
   mediaStep.groupId=destinationGroupId||stepGroupId(targetStep)||false;
-  mediaStep.duration=targetStep.duration;
+  // Audio song song vẫn giữ đúng độ dài file. Chỉ visual song song mới bám
+  // thời lượng card đích để ảnh/sticker tồn tại cùng card đó.
+  if(mediaStep.type!=='audio')mediaStep.duration=targetStep.duration;
+  else mediaStep.duration=mediaStep.intrinsicMediaDuration||mediaStep.duration||DEFAULT_DUR.audio;
 }
 function detachDraggedParallelMediaToContainer(container){
   const media=draggedParallelMedia();if(!media)return;
@@ -4399,6 +4569,22 @@ function updateStepField(id, field, val) {
   // cập nhật lại nhãn thời gian mà không rebuild toàn bộ (giữ focus input)
   renderStepList();
   renderIdleScene();
+}
+
+async function resetStepTime(id){
+  const s=steps.find(x=>x.id===id);if(!s)return;
+  let duration=Number(s.intrinsicMediaDuration||0);
+  if(!duration&&s.type==='audio'&&s.mediaUrl)duration=await messengerAudioDuration(s.mediaUrl)||0;
+  if(!duration&&s.type==='image'&&s.mediaIsVideo&&s.mediaUrl)duration=await new Promise(resolve=>{
+    const video=document.createElement('video');video.preload='metadata';
+    video.onloadedmetadata=()=>resolve(Number(video.duration)||0);video.onerror=()=>resolve(0);video.src=s.mediaUrl;
+  });
+  if(!duration&&['post','comment','reply','image','mess'].includes(s.type)){
+    duration=stepTtsClips(s).reduce((sum,clip)=>sum+(Number(clip.duration)||0),0)||Number(s.ttsDuration||0);
+  }
+  if(!duration)duration=DEFAULT_DUR[s.type]||1;
+  s.intrinsicMediaDuration=duration;s.duration=duration;
+  computeTimeline();renderStepList();renderIdleScene();
 }
 
 // Video dùng trong card Ảnh mặc định luôn đứng yên. Người dùng chủ động bấm
@@ -4900,6 +5086,24 @@ function syncTtsAudio(t) {
 // Mỗi step audio có 1 thẻ <audio> riêng, tạo động và giữ trong Map theo id,
 // dọn dẹp khi step không còn sống hoặc bị xoá khỏi kịch bản.
 const sfxAudioEls = new Map(); // stepId -> HTMLAudioElement
+let sfxAudioContext = null;
+const sfxGainNodes = new WeakMap();
+
+function setSfxPreviewVolume(el,volume){
+  const gainValue=Math.max(0,Number(volume||1));
+  if(gainValue<=1&&!sfxGainNodes.has(el)){el.volume=gainValue;return;}
+  try{
+    if(!sfxAudioContext)sfxAudioContext=new (window.AudioContext||window.webkitAudioContext)();
+    let gain=sfxGainNodes.get(el);
+    if(!gain){
+      const source=sfxAudioContext.createMediaElementSource(el);
+      gain=sfxAudioContext.createGain();source.connect(gain).connect(sfxAudioContext.destination);
+      sfxGainNodes.set(el,gain);
+    }
+    gain.gain.value=gainValue;
+    if(sfxAudioContext.state==='suspended')sfxAudioContext.resume().catch(()=>{});
+  }catch(_error){el.volume=Math.min(1,gainValue);}
+}
 
 function syncSfxAudio(t) {
   const livingIds = new Set();
@@ -4910,6 +5114,7 @@ function syncSfxAudio(t) {
     let el = sfxAudioEls.get(s.id);
     if (!el) {
       el = new Audio(s.mediaUrl);
+      setSfxPreviewVolume(el,s.volume||1);
       sfxAudioEls.set(s.id, el);
     }
     if (el.paused) {
@@ -5338,6 +5543,12 @@ function setExportProgress(pct, text) {
   document.getElementById('export-progress-bar').style.width = pct + '%';
   document.getElementById('export-progress-text').textContent = text;
 }
+function setExportLoading(active){
+  const btn=document.getElementById('export-btn');if(!btn)return;
+  btn.classList.toggle('export-btn-loading',!!active);
+  btn.textContent=active?'Đang xuất video…':'🎬 Xuất MP4';
+  btn.disabled=!!active;
+}
 
 async function exportVideo() {
   if (!steps.length) { alert('Chưa có step nào trong kịch bản.'); return; }
@@ -5350,7 +5561,9 @@ async function exportVideo() {
   const btn = document.getElementById('export-btn');
   const resultEl = document.getElementById('export-result');
   resultEl.innerHTML = '';
+  setExportLoading(true);
   if(!await prepareProjectTts('export')){
+    setExportLoading(false);
     resultEl.innerHTML='<div style="color:#ef4444;font-size:12px">✗ Chưa thể xuất vì không tạo được đầy đủ giọng đọc TTS.</div>';
     return;
   }
@@ -5386,7 +5599,7 @@ async function exportVideo() {
     const { job_id } = await res.json();
     pollExportStatus(job_id);
   } catch (e) {
-    btn.disabled = false;
+    setExportLoading(false);
     setExportProgress(0, '');
     document.getElementById('export-progress-wrap').style.display = 'none';
     resultEl.innerHTML = `<div style="color:#ef4444;font-size:12px">✗ Lỗi: ${esc(e.message)} — kiểm tra media_server.py (8010) và export_server.py (8011) đang chạy.</div>`;
@@ -5403,19 +5616,19 @@ function pollExportStatus(jobId) {
       setExportProgress(job.progress || 0, job.message || '');
       if (job.status === 'done') {
         clearInterval(exportPollTimer);
-        document.getElementById('export-btn').disabled = false;
+        setExportLoading(false);
         const url = EXPORT_SERVER_URL + job.downloadUrl;
         document.getElementById('export-result').innerHTML =
           `<a href="${url}" download class="btn btn-primary" style="display:block;text-align:center;text-decoration:none">⭳ Tải video vừa xuất (.mp4)</a>`;
       } else if (job.status === 'error') {
         clearInterval(exportPollTimer);
-        document.getElementById('export-btn').disabled = false;
+        setExportLoading(false);
         document.getElementById('export-result').innerHTML =
           `<div style="color:#ef4444;font-size:12px">✗ Xuất video lỗi: ${esc(job.message || '')}</div>`;
       }
     } catch (e) {
       clearInterval(exportPollTimer);
-      document.getElementById('export-btn').disabled = false;
+      setExportLoading(false);
       document.getElementById('export-result').innerHTML =
         `<div style="color:#ef4444;font-size:12px">✗ Mất kết nối tới export_server.py: ${esc(e.message)}</div>`;
     }

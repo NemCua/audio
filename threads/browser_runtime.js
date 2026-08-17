@@ -25,6 +25,10 @@
   window.browserLocalUrl = makeLocalUrl;
 
   if (window.desktopApp?.getPathForFile) {
+    window.onBackgroundLibrarySelected = (kind,item) => {
+      if(kind==='video')desktopBgVideoPath=item?.desktopPath||null;
+      else desktopBgAudioPath=item?.desktopPath||null;
+    };
     window.onProjectBackgroundsRestored = (videoItem, audioItem) => {
       desktopBgVideoPath = videoItem?.desktopPath || null;
       desktopBgAudioPath = audioItem?.desktopPath || null;
@@ -102,7 +106,24 @@
     if (status) status.textContent = '✓ Đã đổi avatar cục bộ.';
   };
 
-  window.loadMessengerQuickAudioLibrary = loadMessengerQuickAudioLibrary = async function () {};
+  // App desktop dùng trực tiếp bộ âm thanh đóng sẵn. Trước đây hàm rỗng này
+  // làm modal "Thêm âm thanh" luôn trống dù asset vẫn nằm trong app.
+  window.loadMessengerQuickAudioLibrary = loadMessengerQuickAudioLibrary = async function () {
+    const grid = document.getElementById('mess-quick-audio-library');
+    if (!grid) return;
+    grid.style.display = 'grid';
+    grid.innerHTML = '<div class="lib-empty">Đang tải...</div>';
+    try {
+      const items = await window.desktopApp?.getBundledLibrary?.('audio') || [];
+      if (!items.length) { grid.innerHTML = '<div class="lib-empty">Thư viện âm thanh đóng sẵn đang trống.</div>'; return; }
+      grid.innerHTML = items.map(item => {
+        const media = esc(JSON.stringify({ url:item.url, filename:item.filename, duration:item.duration || DEFAULT_DUR.audio, desktopPath:item.desktopPath || null }));
+        return `<div class="lib-item lib-item-audio" data-item='${media}' onclick="setMessengerQuickAudioMedia(JSON.parse(this.dataset.item))" title="${esc(item.description || item.label || item.filename)}"><button type="button" class="lib-play-btn" onclick="event.stopPropagation();setMessengerQuickAudioMedia(JSON.parse(this.closest('.lib-item').dataset.item));toggleLibraryPreviewAudio('${item.url}',this)">▶</button><span class="lib-item-name">${esc(item.label || item.filename)}</span></div>`;
+      }).join('');
+    } catch (error) {
+      grid.innerHTML = `<div class="lib-empty" style="color:#ef4444">⚠ Không tải được thư viện: ${esc(error.message)}</div>`;
+    }
+  };
   window.uploadMessengerQuickAudio = uploadMessengerQuickAudio = async function (file) {
     if (!file) return;
     const data = await localUpload(file);
@@ -180,7 +201,7 @@
 
     const btn = document.getElementById('export-btn');
     const result = document.getElementById('export-result');
-    btn.disabled = true;
+    setExportLoading(true);
     result.innerHTML = '';
     setExportProgress(2, 'Chọn tab hiện tại và bật Chia sẻ âm thanh tab…');
     try {
@@ -241,7 +262,7 @@
     } finally {
       captureStream?.getTracks().forEach(track => track.stop());
       captureStream = null;
-      btn.disabled = false;
+      setExportLoading(false);
     }
   };
 
@@ -251,7 +272,7 @@ async function exportVideoOfflineDesktop() {
     computeTimeline();
     const btn = document.getElementById('export-btn'), result = document.getElementById('export-result');
     const creditInfo = document.getElementById('export-credit-info');
-    btn.disabled = true; result.innerHTML = '';
+    setExportLoading(true); result.innerHTML = '';
     const unsubscribe = window.desktopApp.onExportProgress(progress => setExportProgress(progress.percent || 0, progress.text || ''));
     let reservation = null;
     let exportCompleted = false;
@@ -298,7 +319,7 @@ async function exportVideoOfflineDesktop() {
       const prefix = exportCompleted ? 'MP4 đã tạo nhưng chưa xác nhận được giao dịch credit: ' : '';
       result.innerHTML = `<div style="color:#ef4444;font-size:12px">✗ ${esc(prefix + (error.message || String(error)) + refundNote)}</div>`;
     } finally {
-      unsubscribe?.(); btn.disabled = false;
+      unsubscribe?.(); setExportLoading(false);
     }
   }
 

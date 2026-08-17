@@ -258,23 +258,41 @@ ipcMain.handle('desktop:get-bundled-library', (_event, category) => {
   };
   const folder = folders[category];
   if (!folder) return [];
-  const root = path.join(threadsRoot(), folder);
-  if (!fs.existsSync(root)) return [];
+  const roots = [path.join(threadsRoot(), folder), path.join(app.getPath('documents'), 'Threads Video Maker', 'Library', folder)];
   let metadata = {};
-  try { metadata = JSON.parse(fs.readFileSync(path.join(root, '_meta.json'), 'utf8')); } catch (_error) {}
-  return fs.readdirSync(root, { withFileTypes: true }).filter(entry => entry.isFile() && allowedFiles[category].test(entry.name)).map(entry => {
-    const filePath = path.join(root, entry.name), meta = metadata[entry.name] || {};
-    return {
-      filename: entry.name,
-      label: meta.label || entry.name,
-      description: meta.description || '',
-      url: pathToFileURL(filePath).href,
-      desktopPath: filePath,
-      isVideo: /\.(mp4|mov|webm|m4v)$/i.test(entry.name),
-      local: true,
-      readOnly: true,
-    };
-  });
+  const results = [];
+  for (const root of roots) {
+    if (!fs.existsSync(root)) continue;
+    try { metadata = { ...metadata, ...JSON.parse(fs.readFileSync(path.join(root, '_meta.json'), 'utf8')) }; } catch (_error) {}
+    for (const entry of fs.readdirSync(root, { withFileTypes: true }).filter(entry => entry.isFile() && allowedFiles[category].test(entry.name))) {
+      const filePath = path.join(root, entry.name), meta = metadata[entry.name] || {};
+      results.push({
+        filename: entry.name,
+        label: meta.label || entry.name,
+        description: meta.description || '',
+        url: pathToFileURL(filePath).href,
+        desktopPath: filePath,
+        isVideo: /\.(mp4|mov|webm|m4v)$/i.test(entry.name),
+        local: true,
+        readOnly: root === roots[0],
+      });
+    }
+  }
+  return results;
+});
+
+ipcMain.handle('desktop:add-library-file', (_event, category, bytes, originalName) => {
+  const folders = { audio:'audio', meme:'gif', background:'background', bgaudio:'audiobackground' };
+  const folder = folders[category];
+  if (!folder) throw new Error('Loại thư viện không hợp lệ');
+  const safeName = path.basename(String(originalName || 'media.bin')).replace(/[^\p{L}\p{N}._ -]/gu, '_');
+  const root = path.join(app.getPath('documents'), 'Threads Video Maker', 'Library', folder);
+  fs.mkdirSync(root, { recursive:true });
+  let target = path.join(root, safeName), index = 2;
+  const ext = path.extname(safeName), stem = path.basename(safeName, ext);
+  while (fs.existsSync(target)) target = path.join(root, `${stem}-${index++}${ext}`);
+  fs.writeFileSync(target, Buffer.from(bytes));
+  return { filename:path.basename(target), url:pathToFileURL(target).href, desktopPath:target };
 });
 
 ipcMain.handle('desktop:get-sticker-library', () => stickerLibrary());
