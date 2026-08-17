@@ -150,6 +150,10 @@ def migrate() -> None:
     ]
     with db() as conn:
         with conn.cursor() as cur:
+            # Không để một DDL đang chờ lock khiến toàn bộ API treo vô hạn ở
+            # startup. Docker sẽ restart và thử lại sau nếu Neon tạm bận.
+            cur.execute("SET LOCAL lock_timeout = '5s'")
+            cur.execute("SET LOCAL statement_timeout = '60s'")
             for statement in statements:
                 cur.execute(statement)
             cur.executemany(

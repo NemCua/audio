@@ -39,11 +39,13 @@ except ImportError:
     # Cho phép chạy dạng module từ repo root.
     from threads.account_api import consume_tts_quota, tts_identity
 
-AUDIO_DIR = Path(__file__).resolve().parent / "tts_audio"
-AUDIO_DIR.mkdir(exist_ok=True)
+AUDIO_DIR = Path(os.environ.get("TTS_AUDIO_DIR", Path(__file__).resolve().parent / "tts_audio"))
+AUDIO_DIR.mkdir(parents=True, exist_ok=True)
 VIDEO_PHANBIET_DIR = BASE_DIR / "allYoutube" / "videoPhanBiet"
 EXPORT_DIR = VIDEO_PHANBIET_DIR / "exports"
-EXPORT_DIR.mkdir(exist_ok=True)
+ENABLE_LEGACY_TOOLS = os.getenv("ENABLE_LEGACY_TOOLS", "0").lower() in ("1", "true", "yes")
+if ENABLE_LEGACY_TOOLS:
+    EXPORT_DIR.mkdir(parents=True, exist_ok=True)
 FFMPEG_BIN = os.environ.get("FFMPEG_BIN", "ffmpeg")
 FFPROBE_BIN = os.environ.get("FFPROBE_BIN", "ffprobe")
 TTS_FILE_TTL_SECONDS = max(300, int(os.environ.get("TTS_FILE_TTL_SECONDS", "3600")))
@@ -60,7 +62,8 @@ app.add_middleware(
     allow_methods=["GET", "POST", "PUT"],
     allow_headers=["Authorization", "Content-Type", "X-Admin-Key"],
 )
-app.mount("/videoPhanBiet", StaticFiles(directory=str(VIDEO_PHANBIET_DIR)), name="videoPhanBiet")
+if ENABLE_LEGACY_TOOLS:
+    app.mount("/videoPhanBiet", StaticFiles(directory=str(VIDEO_PHANBIET_DIR)), name="videoPhanBiet")
 
 
 @app.get("/health", include_in_schema=False)
@@ -81,7 +84,7 @@ def _cleanup_expired_tts_files() -> None:
 
 
 def _require_legacy_tools() -> None:
-    if os.getenv("ENABLE_LEGACY_TOOLS", "0").lower() not in ("1", "true", "yes"):
+    if not ENABLE_LEGACY_TOOLS:
         raise HTTPException(404, "Chức năng này không được bật trên production")
 
 

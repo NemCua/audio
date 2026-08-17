@@ -1,5 +1,9 @@
 # Threads Desktop API
 
+Triển khai production lên VPS bằng Docker Compose + HTTPS: xem
+[`deploy/VPS.md`](../deploy/VPS.md). Đây là cách khuyến nghị; Docker image chỉ
+chứa account/credit và TTS, không chứa Electron hoặc pipeline export video.
+
 Server mới gộp account/credit và CapCut TTS vào cùng một process. Nó dùng lại
 `DATABASE_URL` Neon hiện tại và bảng `users` cũ; migration chỉ thêm bảng/cột,
 không xóa dữ liệu.
