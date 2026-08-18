@@ -20,10 +20,11 @@ import time
 import asyncio
 import subprocess
 import unicodedata
+import contextvars
 from pathlib import Path
 
 from dotenv import load_dotenv
-from fastapi import FastAPI, HTTPException, Depends
+from fastapi import FastAPI, HTTPException, Depends, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
@@ -35,10 +36,10 @@ sys.path.insert(0, str(BASE_DIR))
 
 import translate_video as tv  # noqa: E402  (tái dùng capcut_tts_batch + danh sách giọng VN)
 try:
-    from account_api import consume_tts_quota, finish_ai_script_credit, reserve_ai_script_credit, tts_identity
+    from account_api import consume_tts_quota, current_identity, finish_ai_script_credit, reserve_ai_script_credit, tts_identity
 except ImportError:
     # Cho phép chạy dạng module từ repo root.
-    from threads.account_api import consume_tts_quota, finish_ai_script_credit, reserve_ai_script_credit, tts_identity
+    from threads.account_api import consume_tts_quota, current_identity, finish_ai_script_credit, reserve_ai_script_credit, tts_identity
 
 AUDIO_DIR = Path(os.environ.get("TTS_AUDIO_DIR", Path(__file__).resolve().parent / "tts_audio"))
 AUDIO_DIR.mkdir(parents=True, exist_ok=True)
@@ -54,6 +55,7 @@ TTS_FILE_TTL_SECONDS = max(300, int(os.environ.get("TTS_FILE_TTL_SECONDS", "3600
 app = FastAPI(title="Threads TTS Service")
 AI_REQUEST_LOCK = threading.Lock()
 export_jobs: dict[str, dict] = {}
+_request_id_ctx = contextvars.ContextVar("tts_request_id", default="-")
 app.add_middleware(
     CORSMiddleware,
     allow_origin_regex=os.getenv(
@@ -65,6 +67,42 @@ app.add_middleware(
 )
 if ENABLE_LEGACY_TOOLS:
     app.mount("/videoPhanBiet", StaticFiles(directory=str(VIDEO_PHANBIET_DIR)), name="videoPhanBiet")
+
+
+def _tts_log(event: str, **fields) -> None:
+    """Một dòng JSON cho mỗi mốc để tra trọn luồng theo request_id."""
+    record = {
+        "event": event,
+        "request_id": _request_id_ctx.get(),
+        "ts": round(time.time(), 3),
+        **fields,
+    }
+    print("TTS_TRACE " + json.dumps(record, ensure_ascii=False, default=str), flush=True)
+
+
+@app.middleware("http")
+async def trace_requests(request: Request, call_next):
+    request_id = request.headers.get("x-request-id", "").strip()[:80] or uuid.uuid4().hex[:12]
+    token = _request_id_ctx.set(request_id)
+    started = time.perf_counter()
+    client = request.client.host if request.client else "unknown"
+    if request.url.path != "/health":
+        _tts_log("request_start", method=request.method, path=request.url.path, client=client)
+    try:
+        response = await call_next(request)
+        response.headers["X-Request-ID"] = request_id
+        if request.url.path != "/health":
+            _tts_log("request_end", method=request.method, path=request.url.path,
+                     status=response.status_code,
+                     elapsed_ms=round((time.perf_counter() - started) * 1000, 1))
+        return response
+    except Exception as exc:
+        _tts_log("request_exception", method=request.method, path=request.url.path,
+                 elapsed_ms=round((time.perf_counter() - started) * 1000, 1),
+                 error_type=type(exc).__name__, error=str(exc)[:1000])
+        raise
+    finally:
+        _request_id_ctx.reset(token)
 
 
 @app.get("/health", include_in_schema=False)
@@ -479,6 +517,7 @@ def generate_tts(req: TTSRequest, _identity: dict = Depends(tts_identity)):
 
 @app.post("/tts-batch")
 def generate_tts_batch(req: TTSBatchRequest, _identity: dict = Depends(tts_identity)):
+    batch_started = time.perf_counter()
     _cleanup_expired_tts_files()
     """Tạo tối đa 50 đoạn trong đúng một task CapCut để giảm số request."""
     texts = [text.strip() for text in req.texts]
@@ -500,9 +539,16 @@ def generate_tts_batch(req: TTSBatchRequest, _identity: dict = Depends(tts_ident
 
     names = [f"{uuid.uuid4().hex}.mp3" for _ in texts]
     paths = [AUDIO_DIR / name for name in names]
+    _tts_log("batch_start", engine="edge" if _is_edge_voice(voice_type) else "capcut",
+             voice_type=voice_type, resource_id=resource_id, count=len(texts),
+             chars=total_chars, speed=req.speed, echo=req.echo)
     if _is_edge_voice(voice_type):
         try:
+            provider_started = time.perf_counter()
             asyncio.run(_edge_tts_files(texts, voice_type, paths))
+            _tts_log("provider_success", engine="edge", voice_type=voice_type,
+                     count=len(texts), elapsed_ms=round((time.perf_counter() - provider_started) * 1000, 1))
+            effects_started = time.perf_counter()
             for path in paths:
                 _apply_speed(path, req.speed)
             if req.echo:
@@ -514,16 +560,31 @@ def generate_tts_batch(req: TTSBatchRequest, _identity: dict = Depends(tts_ident
                 if duration <= 0:
                     raise RuntimeError(f"File Edge TTS {name} rỗng/0 giây")
                 items.append({"audio_url": f"/audio/{name}", "duration": duration})
+            _tts_log("batch_success", engine="edge", voice_type=voice_type, count=len(items),
+                     effects_ms=round((time.perf_counter() - effects_started) * 1000, 1),
+                     elapsed_ms=round((time.perf_counter() - batch_started) * 1000, 1))
             return {"items": items}
         except Exception as e:
+            _tts_log("batch_error", engine="edge", voice_type=voice_type,
+                     elapsed_ms=round((time.perf_counter() - batch_started) * 1000, 1),
+                     error_type=type(e).__name__, error=str(e)[:1000])
             for path in paths:
                 path.unlink(missing_ok=True)
             raise HTTPException(502, f"Edge TTS batch lỗi: {e}")
     current_did = device_id
     last_err = None
     for _attempt in range(5):
+        attempt = _attempt + 1
+        attempt_started = time.perf_counter()
+        _tts_log("provider_attempt_start", engine="capcut", voice_type=voice_type,
+                 count=len(texts), attempt=attempt, max_attempts=5,
+                 device_id_suffix=current_did[-6:])
         try:
             tv.capcut_tts_batch(texts, voice_type, resource_id, paths, current_did, rate=req.rate)
+            _tts_log("provider_success", engine="capcut", voice_type=voice_type,
+                     count=len(texts), attempt=attempt,
+                     elapsed_ms=round((time.perf_counter() - attempt_started) * 1000, 1))
+            effects_started = time.perf_counter()
             for path in paths:
                 _apply_speed(path, req.speed)
             if req.echo:
@@ -535,12 +596,24 @@ def generate_tts_batch(req: TTSBatchRequest, _identity: dict = Depends(tts_ident
                 if duration <= 0:
                     raise RuntimeError(f"File TTS {name} rỗng/0 giây")
                 items.append({"audio_url": f"/audio/{name}", "duration": duration})
+            _tts_log("batch_success", engine="capcut", voice_type=voice_type, count=len(items),
+                     attempt=attempt,
+                     effects_ms=round((time.perf_counter() - effects_started) * 1000, 1),
+                     elapsed_ms=round((time.perf_counter() - batch_started) * 1000, 1))
             return {"items": items}
         except Exception as exc:
             last_err = exc
+            _tts_log("provider_attempt_error", engine="capcut", voice_type=voice_type,
+                     count=len(texts), attempt=attempt,
+                     elapsed_ms=round((time.perf_counter() - attempt_started) * 1000, 1),
+                     error_type=type(exc).__name__, error=str(exc)[:1000])
             current_did = str(random.randint(7000000000000000000, 7999999999999999999))
     for path in paths:
         path.unlink(missing_ok=True)
+    _tts_log("batch_error", engine="capcut", voice_type=voice_type, count=len(texts),
+             elapsed_ms=round((time.perf_counter() - batch_started) * 1000, 1),
+             error_type=type(last_err).__name__ if last_err else "unknown",
+             error=str(last_err)[:1000])
     raise HTTPException(502, f"CapCut TTS batch lỗi sau 5 lần đổi device_id: {last_err}")
 
 
@@ -567,10 +640,23 @@ def generate_project_tts_batch(req: ProjectTTSBatchRequest, identity: dict = Dep
         key = (item.voice_type, item.resource_id, round(item.speed, 4), item.echo)
         grouped.setdefault(key, []).append((index, item))
 
+    project_started = time.perf_counter()
+    _tts_log("project_start", items=len(req.items), chars=total_chars, groups=len(grouped),
+             user_id=identity.get("id"))
+
     ordered_results: list[dict | None] = [None] * len(req.items)
-    for (voice_type, resource_id, speed, echo), indexed_items in grouped.items():
+    total_groups = len(grouped)
+    for group_index, ((voice_type, resource_id, speed, echo), indexed_items) in enumerate(grouped.items(), 1):
+        _tts_log("project_group_start", group_index=group_index, total_groups=total_groups,
+                 voice_type=voice_type, resource_id=resource_id, speed=speed, echo=echo,
+                 items=len(indexed_items), chunks=(len(indexed_items) + 49) // 50)
         for start in range(0, len(indexed_items), 50):
             chunk = indexed_items[start:start + 50]
+            chunk_started = time.perf_counter()
+            chunk_index = start // 50 + 1
+            _tts_log("project_chunk_start", group_index=group_index, chunk_index=chunk_index,
+                     voice_type=voice_type, items=len(chunk),
+                     chars=sum(len(item.text.strip()) for _, item in chunk))
             result = generate_tts_batch(TTSBatchRequest(
                 texts=[item.text.strip() for _, item in chunk],
                 voice_type=voice_type,
@@ -580,9 +666,15 @@ def generate_project_tts_batch(req: ProjectTTSBatchRequest, identity: dict = Dep
             ), batch_identity)
             for (original_index, _), generated in zip(chunk, result["items"]):
                 ordered_results[original_index] = generated
+            _tts_log("project_chunk_success", group_index=group_index, chunk_index=chunk_index,
+                     voice_type=voice_type, items=len(chunk),
+                     elapsed_ms=round((time.perf_counter() - chunk_started) * 1000, 1))
 
     if any(item is None for item in ordered_results):
+        _tts_log("project_error", reason="missing_results", items=len(req.items))
         raise HTTPException(500, "TTS project batch trả về thiếu kết quả")
+    _tts_log("project_success", items=len(ordered_results), groups=len(grouped),
+             elapsed_ms=round((time.perf_counter() - project_started) * 1000, 1))
     return {"items": ordered_results}
 
 
@@ -1005,7 +1097,8 @@ def export_phanbiet_download(job_id: str, identity: dict = Depends(tts_identity)
 
 
 @app.get("/audio/{filename}")
-def get_audio(filename: str, _identity: dict = Depends(tts_identity)):
+def get_audio(filename: str, _identity: dict = Depends(current_identity)):
+    """Tải file cần đăng nhập nhưng không tính vào rate limit tạo TTS."""
     if not re.fullmatch(r"[a-f0-9]{32}\.mp3", filename):
         raise HTTPException(404, "Không tìm thấy file audio")
     path = AUDIO_DIR / filename

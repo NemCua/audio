@@ -73,9 +73,10 @@ function createMainWindow() {
     return { action: 'deny' };
   });
   win.webContents.on('will-navigate', event => event.preventDefault());
-  // Dev app dùng API/TTS local để sửa và test sát Electron production nhưng
-  // không gọi dịch vụ online. Bản đóng gói không có query này.
-  win.loadFile(path.join(threadsRoot(), 'index.html'), isDev ? { query: { localApi: '1' } } : undefined);
+  // Mặc định dev dùng API local. Khi cần kiểm thử đúng backend production,
+  // chạy THREADS_USE_REMOTE_API=1 npm start để dùng VPS như bản đóng gói.
+  const useLocalApi = isDev && process.env.THREADS_USE_REMOTE_API !== '1';
+  win.loadFile(path.join(threadsRoot(), 'index.html'), useLocalApi ? { query: { localApi: '1' } } : undefined);
   return win;
 }
 
@@ -384,7 +385,10 @@ ipcMain.handle('desktop:download-asset', async (_event, url, kind, originalName,
   }
   const authorization = typeof headers?.Authorization === 'string' ? headers.Authorization : '';
   const response = await fetch(parsed.href, { headers: authorization ? { Authorization: authorization } : {} });
-  if (!response.ok) throw new Error(`Không tải được file từ server: HTTP ${response.status}`);
+  if (!response.ok) {
+    const requestId = response.headers.get('x-request-id');
+    throw new Error(`Không tải được file từ server: HTTP ${response.status}${requestId ? ` · mã ${requestId}` : ''}`);
+  }
   const declaredSize = Number(response.headers.get('content-length') || 0);
   if (declaredSize > 20 * 1024 * 1024) throw new Error('File TTS từ server quá lớn');
   const contentType = response.headers.get('content-type') || '';
