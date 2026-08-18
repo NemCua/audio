@@ -43,7 +43,7 @@
 </main>
 <div class="toast" id="toast"></div>
 <script>
-const labels={post:'Post',comment:'Comment',reply:'Reply',image:'Ảnh',sticker:'Sticker',mess:'Tin nhắn',audio:'Âm thanh'};
+const labels={ai_script_short:'✨ AI kịch bản ngắn',ai_script_medium:'✨ AI kịch bản vừa',ai_script_long:'✨ AI kịch bản dài',ai_script_prompt_word:'✨ AI mỗi từ trong prompt',post:'Post',comment:'Comment',reply:'Reply',image:'Ảnh',sticker:'Sticker',mess:'Tin nhắn',audio:'Âm thanh'};
 const fmt=n=>new Intl.NumberFormat('vi-VN').format(Number(n||0));
 const date=v=>v?new Date(v).toLocaleString('vi-VN',{dateStyle:'short',timeStyle:'short'}):'—';
 const esc=v=>{const e=document.createElement('span');e.textContent=String(v??'');return e.innerHTML};

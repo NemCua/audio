@@ -19,6 +19,7 @@ import threading
 import time
 import asyncio
 import subprocess
+import unicodedata
 from pathlib import Path
 
 from dotenv import load_dotenv
@@ -34,10 +35,10 @@ sys.path.insert(0, str(BASE_DIR))
 
 import translate_video as tv  # noqa: E402  (tái dùng capcut_tts_batch + danh sách giọng VN)
 try:
-    from account_api import consume_tts_quota, tts_identity
+    from account_api import consume_tts_quota, finish_ai_script_credit, reserve_ai_script_credit, tts_identity
 except ImportError:
     # Cho phép chạy dạng module từ repo root.
-    from threads.account_api import consume_tts_quota, tts_identity
+    from threads.account_api import consume_tts_quota, finish_ai_script_credit, reserve_ai_script_credit, tts_identity
 
 AUDIO_DIR = Path(os.environ.get("TTS_AUDIO_DIR", Path(__file__).resolve().parent / "tts_audio"))
 AUDIO_DIR.mkdir(parents=True, exist_ok=True)
@@ -140,6 +141,125 @@ class MixedTTSBatchRequest(BaseModel):
 class GenerateComparisonsRequest(BaseModel):
     count: int
     theme: str = ""
+
+
+class GenerateThreadsScriptRequest(BaseModel):
+    prompt: str
+    platform: str = "auto"
+    length: str = "medium"
+    allow_echo: bool = True
+    idempotency_key: str
+
+
+AI_FEMALE_VOICES = ("Nhỏ Ngọt Ngào", "Giọng Nữ Phổ Thông", "Giọng Bé", "Cô Gái Hoạt Ngôn", "Mai")
+AI_MALE_VOICES = ("Thanh Niên Tự Tin", "Alex Đại Đế", "Nam Minh")
+AI_ALLOWED_VOICES = set(AI_FEMALE_VOICES + AI_MALE_VOICES)
+
+
+def _sanitize_ai_tts_text(value: object, visible_text: str = "") -> str:
+    """TTS chỉ giữ chữ/số, khoảng trắng, dấu phẩy và dấu chấm.
+
+    Dấu hỏi và các ký tự đặc biệt bị loại khỏi lời đọc. Xử lý từng dòng để
+    không làm mất ranh giới progressive reveal.
+    """
+    source = str(value or "")
+    lines = []
+    source_lines = source.splitlines()
+    visible_lines = str(visible_text or "").splitlines()
+    for line_index, raw_line in enumerate(source_lines):
+        kept = []
+        for char in raw_line:
+            category = unicodedata.category(char)
+            if char in ",." or char.isspace() or category[0] in ("L", "N"):
+                kept.append(char)
+            else:
+                kept.append(" ")
+        cleaned_line = re.sub(r"\s+", " ", "".join(kept)).strip()
+        if len(source_lines) == len(visible_lines) and re.fullmatch(r"\?+", visible_lines[line_index].strip()):
+            cleaned_line = "hỏi chấm"
+        lines.append(cleaned_line)
+    if re.fullmatch(r"\?+", str(visible_text or "").strip()):
+        return "hỏi chấm"
+    return "\n".join(line for line in lines if line).strip()
+
+
+def _validate_ai_question_reading(text: str, tts_text: str, label: str) -> None:
+    visible_parts = [part.strip() for part in text.splitlines() if part.strip()]
+    spoken_parts = [part.strip() for part in tts_text.splitlines() if part.strip()]
+    if len(visible_parts) != len(spoken_parts):
+        return  # Luật progressive sẽ báo lỗi rõ hơn ở bước sau.
+    for index, visible in enumerate(visible_parts):
+        if re.fullmatch(r"\?+", visible) and spoken_parts[index].lower() != "hỏi chấm":
+            raise ValueError(f"{label}: đoạn chỉ có dấu ? phải có ttsText là hỏi chấm")
+
+
+def _extract_json_object(raw: str) -> dict:
+    cleaned = re.sub(r"^```(?:json)?\s*|\s*```$", "", str(raw or "").strip(), flags=re.IGNORECASE)
+    try:
+        value = json.loads(cleaned)
+    except json.JSONDecodeError:
+        start, end = cleaned.find("{"), cleaned.rfind("}")
+        if start < 0 or end <= start: raise ValueError("AI không trả JSON object")
+        value = json.loads(cleaned[start:end + 1])
+    if not isinstance(value, dict): raise ValueError("Kịch bản AI phải là JSON object")
+    return value
+
+
+def _clean_ai_script(value: dict, allow_echo: bool) -> dict:
+    raw_cards = value.get("cards")
+    if not isinstance(raw_cards, list) or not raw_cards or len(raw_cards) > 40:
+        raise ValueError("AI phải trả từ 1 đến 40 card")
+    content_units = sum(1 if not isinstance(c, dict) or c.get("type") != "mess" else len(c.get("messages") or []) for c in raw_cards)
+    cards, echo_budget = [], max(1, content_units // 5)
+    echo_used = 0
+    for card_index, raw in enumerate(raw_cards):
+        if not isinstance(raw, dict): raise ValueError(f"Card {card_index + 1} không hợp lệ")
+        kind = str(raw.get("type") or "").lower()
+        if kind not in ("post", "comment", "reply", "mess"):
+            raise ValueError(f"AI tạo loại card bị cấm: {kind or '?'}")
+        if kind == "mess":
+            messages = raw.get("messages")
+            if not isinstance(messages, list) or not messages or len(messages) > 60:
+                raise ValueError("Hội thoại phải có 1-60 tin nhắn")
+            mine_gender = str(raw.get("mineGender") or "male").lower()
+            theirs_gender = str(raw.get("theirsGender") or "female").lower()
+            if mine_gender not in ("male", "female") or theirs_gender not in ("male", "female"):
+                raise ValueError("Giới tính Messenger chỉ nhận male/female")
+            mine_voice = str(raw.get("mineVoice") or "")
+            theirs_voice = str(raw.get("theirsVoice") or "")
+            if mine_voice not in (AI_MALE_VOICES if mine_gender == "male" else AI_FEMALE_VOICES): raise ValueError("Giọng Tôi không khớp giới tính")
+            if theirs_voice not in (AI_MALE_VOICES if theirs_gender == "male" else AI_FEMALE_VOICES): raise ValueError("Giọng Đối phương không khớp giới tính")
+            cleaned_messages = []
+            for message in messages:
+                side, text = str(message.get("side") or ""), str(message.get("text") or "").strip()
+                tts_text = _sanitize_ai_tts_text(message.get("ttsText"), text)
+                if side not in ("mine", "theirs") or not text or not tts_text or len(text) > 1200 or len(tts_text) > 1800: raise ValueError("Tin nhắn AI thiếu text/ttsText hợp lệ")
+                _validate_ai_question_reading(text, tts_text, "Tin nhắn AI")
+                echo = bool(message.get("echo")) and allow_echo and echo_used < echo_budget
+                if echo: echo_used += 1
+                cleaned_messages.append({"side": side, "text": text, "ttsText": tts_text, "echo": echo})
+            cards.append({"type":"mess","partnerName":str(raw.get("partnerName") or "Đối phương")[:80],"platform":str(raw.get("platform") or "messenger"),"mineGender":mine_gender,"theirsGender":theirs_gender,"mineVoice":mine_voice,"theirsVoice":theirs_voice,"messages":cleaned_messages})
+            continue
+        text = str(raw.get("text") or "").strip()
+        tts_text = _sanitize_ai_tts_text(raw.get("ttsText"), text)
+        if not text or not tts_text or len(text) > 8000 or len(tts_text) > 12000: raise ValueError(f"Card {kind} thiếu text/ttsText")
+        _validate_ai_question_reading(text, tts_text, f"Card {kind}")
+        voice = str(raw.get("voice") or "")
+        if voice not in AI_ALLOWED_VOICES: raise ValueError(f"Giọng card {kind} không thuộc whitelist")
+        echo = bool(raw.get("echo")) and allow_echo and echo_used < echo_budget
+        if echo: echo_used += 1
+        platform = "threads" if kind == "post" else str(raw.get("platform") or "threads").lower()
+        if platform not in ("threads", "tiktok"): platform = "threads"
+        progressive = bool(raw.get("progressiveReveal")) and "\n" in text
+        if progressive:
+            visible_parts = [part.strip() for part in text.splitlines() if part.strip()]
+            spoken_parts = [part.strip() for part in tts_text.splitlines() if part.strip()]
+            if len(visible_parts) != len(spoken_parts):
+                raise ValueError(f"Card {kind} có số đoạn text và ttsText không khớp")
+        # Ranh giới cụm nội dung là luật của renderer, không giao AI quyết:
+        # Post/Comment mở cụm mới; Reply nối tiếp Comment ngay trước nó.
+        cards.append({"type":kind,"text":text,"ttsText":tts_text,"platform":platform,"voice":voice,"echo":echo,"progressiveReveal":progressive,"clearBefore":kind in ("post", "comment")})
+    return {"title": str(value.get("title") or "Kịch bản AI")[:120], "cards": cards}
 
 
 class ExportTrack(BaseModel):
@@ -626,6 +746,98 @@ Mảng phải có đúng {req.count} phần tử."""
         raise
     except Exception as exc:
         raise HTTPException(502, f"Beeknoee AI lỗi: {exc}")
+
+
+@app.post("/ai/generate-script")
+def generate_threads_script(req: GenerateThreadsScriptRequest, identity: dict = Depends(tts_identity)):
+    user_prompt = req.prompt.strip()
+    if len(user_prompt) < 3 or len(user_prompt) > 50_000: raise HTTPException(400, "Yêu cầu AI phải dài từ 3 đến 50.000 ký tự")
+    if req.platform not in ("auto", "threads", "tiktok"): raise HTTPException(400, "Nền tảng AI không hợp lệ")
+    if req.length not in ("short", "medium", "long"): raise HTTPException(400, "Độ dài AI không hợp lệ")
+    api_key = (os.environ.get("BEEKNOEE_API_KEY") or os.environ.get("BEEKNOEE_API_KEY2") or "").strip()
+    if not api_key: raise HTTPException(500, "Backend chưa cấu hình BEEKNOEE_API_KEY")
+    reservation = reserve_ai_script_credit(identity, req.idempotency_key, req.length, user_prompt)
+    try:
+        from openai import OpenAI
+        client = OpenAI(api_key=api_key, base_url=tv.BEEKNOEE_BASE_URL)
+        system_prompt = f"""Bạn là biên kịch video mạng xã hội Việt Nam cho ứng dụng Threads Video Maker.
+Chỉ trả JSON thuần hợp lệ, không markdown, không giải thích.
+
+PHẠM VI TUYỆT ĐỐI:
+- Chỉ được tạo 4 loại card: post, comment, reply, mess.
+- CẤM tạo ảnh, video, sticker, meme, âm thanh hoặc gợi ý file media.
+- Có thể dùng Threads hoặc TikTok cho comment/reply. Post là Threads.
+- progressiveReveal=true chỉ khi một post/comment/reply dài có nhiều đoạn chủ ý; giữ ký tự xuống hàng trong text.
+- Tôn trọng chính xác số lượng/loại card người dùng yêu cầu (ví dụ "một post duy nhất" thì chỉ trả đúng một post, không tự thêm comment/reply).
+- Luật clearBefore cố định: post=true, comment=true, reply=false. Comment mở cụm mới; các reply sau nó phải cộng dồn và không xóa comment/reply trước.
+
+TEXT HIỂN THỊ VÀ TEXT ĐỌC:
+- Mọi card/câu tin nhắn bắt buộc có cả text và ttsText.
+- text là chữ người xem nhìn thấy: viết tự nhiên như người Việt nhắn mạng xã hội, có thể rút gọn hợp ngữ cảnh như "tao"→"t", "mày"→"m", "rồi"→"r", "không"→"k/ko", "được"→"đc". Không rút gọn đến mức khó hiểu và không áp dụng máy móc cho nội dung trang trọng.
+- ttsText là câu để máy đọc: phải mở rộng toàn bộ chữ viết tắt về tiếng Việt đầy đủ (t→tao, m→mày, r→rồi, k/ko→không, đc→được theo đúng ngữ cảnh).
+- Trong ttsText, từ/cụm tiếng Anh phải đổi sang phiên âm cách người Việt đọc, không để nguyên chính tả tiếng Anh. Ví dụ: "deadline"→"đét lai", "crush"→"cờ rớt", "sorry"→"so ri", "AI"→"ây ai".
+- ttsText CHỈ được chứa chữ, số, khoảng trắng, dấu phẩy và dấu chấm. Cấm mọi ký tự đặc biệt khác như @ # $ % ^ & * ( ) ` ~ _ - + / \\ | = và dấu nháy, hai chấm, chấm phẩy, chấm than.
+- Dấu ? trong câu bình thường KHÔNG được đọc và không xuất hiện trong ttsText. Ví dụ text "m đi đâu?" thì ttsText kết thúc ở chữ "đâu".
+- Trường hợp đặc biệt: nếu toàn bộ một câu/đoạn text chỉ gồm một hoặc nhiều dấu hỏi ("?", "??", "???"), ttsText của riêng đoạn đó phải là đúng hai chữ "hỏi chấm".
+- text vẫn được phép giữ từ tiếng Anh đúng chính tả để giống bài đăng/tin nhắn thật.
+- Nếu progressiveReveal=true, số đoạn xuống hàng trong text và ttsText phải bằng nhau, mỗi đoạn nhìn thấy khớp đúng đoạn được đọc.
+
+ECHO / HIỆU ỨNG VANG:
+- echo là hiệu ứng nhấn gây hài, chỉ dùng ở đúng câu punchline, plot twist hoặc cú bẻ lái thật sự gây cười.
+- Mặc định echo=false. Không dùng cho câu dẫn, câu bình thường, câu buồn/nghiêm túc; tuyệt đối không lạm dụng.
+- Nếu toàn kịch bản không có đoạn gây cười rõ ràng thì tất cả echo=false.
+- Người dùng cho phép echo: {str(req.allow_echo).lower()}.
+
+GIỌNG ĐƯỢC PHÉP (phải chép đúng nhãn):
+- Nữ: {', '.join(AI_FEMALE_VOICES)}.
+- Nam: {', '.join(AI_MALE_VOICES)}.
+- post/comment/reply: chọn tự nhiên một giọng bất kỳ trong whitelist, không cần suy luận giới tính.
+- mess: tự quyết định mineGender/theirsGender là male hoặc female, chọn mineVoice/theirsVoice đúng nhóm và giữ mỗi bên một giọng xuyên suốt hội thoại.
+
+SCHEMA DUY NHẤT:
+{{"title":"...","cards":[
+  {{"type":"post","text":"...","ttsText":"...","voice":"Mai","echo":false,"progressiveReveal":false,"clearBefore":true}},
+  {{"type":"comment","platform":"threads|tiktok","text":"...","ttsText":"...","voice":"Nam Minh","echo":false,"progressiveReveal":false,"clearBefore":true}},
+  {{"type":"reply","platform":"threads|tiktok","text":"...","ttsText":"...","voice":"Giọng Bé","echo":false,"progressiveReveal":false,"clearBefore":false}},
+  {{"type":"mess","platform":"messenger","partnerName":"...","mineGender":"male|female","theirsGender":"male|female","mineVoice":"...","theirsVoice":"...","messages":[{{"side":"mine|theirs","text":"...","ttsText":"...","echo":false}}]}}
+]}}
+
+Viết tự nhiên, có mở đầu/diễn biến/kết thúc đúng prompt. Không thêm field ngoài schema."""
+        length_hint = {"short":"ngắn gọn, khoảng 1-5 card hoặc 5-10 tin nhắn", "medium":"vừa phải, khoảng 4-12 card hoặc 12-24 tin nhắn", "long":"dài và nhiều diễn biến, khoảng 12-30 card hoặc 32-48 tin nhắn"}[req.length]
+        platform_hint = "tự chọn Threads/TikTok phù hợp" if req.platform == "auto" else f"ưu tiên nền tảng {req.platform}"
+        messages = [{"role":"system","content":system_prompt},{"role":"user","content":f"Yêu cầu: {user_prompt}\nĐộ dài: {length_hint}.\nNền tảng: {platform_hint}."}]
+        script = None
+        last_ai_error = None
+        with AI_REQUEST_LOCK:
+            for attempt in range(3):
+                response = client.chat.completions.create(
+                    model=os.environ.get("BEEKNOEE_SCRIPT_MODEL", "gemini-2.5-flash-lite"),
+                    messages=messages,
+                    temperature=0.65 if attempt == 0 else 0.15,
+                    max_tokens=12000,
+                )
+                raw = response.choices[0].message.content or ""
+                try:
+                    script = _clean_ai_script(_extract_json_object(raw), req.allow_echo)
+                    break
+                except (ValueError, json.JSONDecodeError) as exc:
+                    last_ai_error = exc
+                    if attempt >= 2: break
+                    # Cho model tự sửa chính output vừa trả. Không tự chắp vá
+                    # bằng regex vì dễ tạo JSON hợp lệ cú pháp nhưng sai nội dung.
+                    messages.extend([
+                        {"role":"assistant","content":raw[:24000]},
+                        {"role":"user","content":f"JSON trên không hợp lệ: {exc}. Hãy trả lại TOÀN BỘ JSON đã sửa, giữ nguyên ý và đúng schema. Chỉ JSON thuần, kiểm tra kỹ dấu phẩy, dấu ngoặc và escape dấu nháy trong text."},
+                    ])
+        if script is None: raise ValueError(f"AI không sửa được JSON sau 3 lần: {last_ai_error}")
+        payment = finish_ai_script_credit(identity, str(reservation["id"]), True)
+        return {"script": script, "cost": reservation["cost"], "balance": payment["balance"], "model": os.environ.get("BEEKNOEE_SCRIPT_MODEL", "gemini-2.5-flash-lite")}
+    except HTTPException:
+        finish_ai_script_credit(identity, str(reservation["id"]), False)
+        raise
+    except Exception as exc:
+        finish_ai_script_credit(identity, str(reservation["id"]), False)
+        raise HTTPException(502, f"Beeknoee tạo kịch bản lỗi: {exc}")
 
 
 def _export_timeline(tracks: list[ExportTrack]) -> list[dict]:

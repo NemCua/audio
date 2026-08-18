@@ -84,7 +84,7 @@ def dashboard():
             cur.execute("SELECT COUNT(*)::int AS exports_today,COALESCE(SUM(cost),0)::bigint AS credits_today FROM export_reservations WHERE status='consumed' AND finished_at>=CURRENT_DATE")
             summary.update(cur.fetchone())
             cur.execute("SELECT kind,unit_cost,updated_at FROM credit_pricing ORDER BY kind")
-            pricing = rows(cur)
+            pricing = [item for item in rows(cur) if item["kind"] in DEFAULT_CREDIT_PRICING]
             cur.execute("""SELECT r.id,r.user_id,u.email,r.cost,r.status,r.created_at,r.finished_at
                            FROM export_reservations r JOIN users u ON u.id=r.user_id
                            ORDER BY r.created_at DESC LIMIT 20""")

@@ -80,8 +80,21 @@ function createMainWindow() {
 }
 
 function ffmpegPath() {
-  if (isDev) return require('ffmpeg-static');
-  return path.join(process.resourcesPath, 'ffmpeg', process.platform === 'win32' ? 'ffmpeg.exe' : 'ffmpeg');
+  const bundled = isDev
+    ? require('ffmpeg-static')
+    : path.join(process.resourcesPath, 'ffmpeg', process.platform === 'win32' ? 'ffmpeg.exe' : 'ffmpeg');
+  const candidates = [
+    bundled,
+    process.env.FFMPEG_PATH,
+    process.platform === 'darwin' ? '/opt/homebrew/bin/ffmpeg' : null,
+    process.platform === 'darwin' ? '/usr/local/bin/ffmpeg' : null,
+    process.platform !== 'win32' ? '/usr/bin/ffmpeg' : null,
+  ].filter(Boolean);
+  const found = candidates.find(candidate => {
+    try { fs.accessSync(candidate, fs.constants.X_OK); return true; } catch (_error) { return false; }
+  });
+  if (found) return found;
+  throw new Error('Không tìm thấy FFmpeg. Hãy cài lại ứng dụng hoặc cấu hình FFMPEG_PATH.');
 }
 
 function authStorePath() { return path.join(app.getPath('userData'), 'auth-session.json'); }

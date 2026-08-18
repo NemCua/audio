@@ -691,6 +691,8 @@ header span { font-size: 12px; color: #4b5563; }
   padding: 6px 8px; cursor: pointer; white-space: nowrap;
 }
 .io-btn:hover { background: #1e1c38; }
+.ai-script-btn{display:flex;align-items:center;gap:6px;background:linear-gradient(135deg,#6d28d9,#db2777);color:#fff;border-color:transparent}.ai-script-logo{display:grid;place-items:center;width:20px;height:20px;border-radius:6px;background:#fff;color:#7c3aed;font-size:9px;font-weight:900;letter-spacing:-.04em}
+.ai-script-modal{width:min(720px,94vw)}.ai-script-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}.ai-script-result{display:none;margin-top:14px;padding:13px;border:1px solid #3b2d64;border-radius:10px;background:#0d1020;color:#cbd5e1;font-size:12px;line-height:1.6}.ai-script-result.open{display:block}.ai-script-cost{font-size:11px;color:#f0abfc;margin-top:8px}.ai-script-actions{display:none;gap:8px;margin-top:12px}.ai-script-actions.open{display:flex}.ai-script-actions button{flex:1}@media(max-width:620px){.ai-script-grid{grid-template-columns:1fr}}
 
 .step-card {
   border: 1px solid #1e2340;
@@ -1230,6 +1232,7 @@ header span { font-size: 12px; color: #4b5563; }
     <div style="display:flex;align-items:center;justify-content:space-between;gap:8px">
       <h2 style="margin:0">Kịch bản (các step)</h2>
       <div style="display:flex;gap:6px">
+        <button class="io-btn ai-script-btn" onclick="openAiScriptModal()" title="Tạo kịch bản card bằng AI"><span class="ai-script-logo">AI</span>Tạo bằng AI</button>
         <button class="io-btn" onclick="exportProjectJson()" title="Xuất toàn bộ kịch bản ra file JSON">⭳ Xuất JSON</button>
         <button class="io-btn" onclick="document.getElementById('import-json-input').click()" title="Nạp lại kịch bản từ file JSON đã xuất trước đó">⭱ Nạp JSON</button>
         <input type="file" id="import-json-input" accept="application/json,.json" style="display:none" onchange="importProjectJson(this)"/>
@@ -1247,6 +1250,25 @@ header span { font-size: 12px; color: #4b5563; }
     <div id="step-list" ondragover="onDragContainerOver(event)" ondrop="dropAtDragPreview(event)">
       <div class="script-empty">Chưa có step nào.<br/>Bấm một nút ＋ ở trên để thêm.</div>
     </div>
+  </div>
+</div>
+
+<div class="step-modal-overlay" id="ai-script-overlay" onclick="if(event.target===this)closeAiScriptModal()">
+  <div class="step-modal ai-script-modal">
+    <h3>✨ AI biên kịch</h3>
+    <div style="font-size:12px;color:#94a3b8;line-height:1.55">AI chỉ tạo Post, Comment, Reply và Tin nhắn. Ảnh, video, sticker và âm thanh sẽ không bị AI can thiệp.</div>
+    <label>Bạn muốn kịch bản như thế nào?</label>
+    <textarea id="ai-script-prompt" style="min-height:150px" placeholder="Ví dụ: Tạo một post Threads buồn về tình yêu, sau đó có vài comment an ủi và một reply bẻ lái nhẹ..."></textarea>
+    <div class="ai-script-grid">
+      <div><label>Nền tảng</label><select id="ai-script-platform"><option value="auto">AI tự chọn</option><option value="threads">Threads</option><option value="tiktok">TikTok</option></select></div>
+      <div><label>Độ dài</label><select id="ai-script-length"><option value="short">Ngắn</option><option value="medium" selected>Vừa</option><option value="long">Dài</option></select></div>
+    </div>
+    <label style="display:flex;align-items:center;gap:7px;font-weight:500"><input id="ai-script-echo" type="checkbox" checked style="width:auto"/> Cho phép AI dùng vang ở punchline/plot twist gây cười</label>
+    <div class="ai-script-cost" id="ai-script-cost">Chi phí do quản trị viên cấu hình và chỉ trừ khi AI tạo thành công.</div>
+    <div id="ai-script-status" style="min-height:20px;margin-top:10px;color:#a78bfa;font-size:12px"></div>
+    <div class="ai-script-result" id="ai-script-result"></div>
+    <div class="ai-script-actions" id="ai-script-actions"><button type="button" class="btn-ok" onclick="applyAiScript('append')">＋ Thêm vào kịch bản</button><button type="button" class="btn-ok" onclick="applyAiScript('replace')">Thay toàn bộ kịch bản</button></div>
+    <div class="modal-actions"><button type="button" class="btn-cancel" onclick="closeAiScriptModal()">Đóng</button><button type="button" class="btn-ok" id="ai-script-generate" onclick="generateAiScript()">✨ Tạo bản nháp</button></div>
   </div>
 </div>
 
@@ -4114,7 +4136,7 @@ async function submitStepModal() {
       // hợp meme/ảnh phủ giữa khung nên xoá nội dung Threads phía trước, chỉ
       // BỎ tick lúc nào muốn cố tình cho card cũ + meme/ảnh cùng hiện). Các
       // loại step khác (post/comment/reply/audio) vẫn mặc định false như cũ.
-      clearBefore: (t === 'image' || t === 'sticker'),
+      clearBefore: (t === 'post' || t === 'comment' || t === 'image' || t === 'sticker'),
       hue: Math.floor(Math.random() * 360),
       offsetX: 0, offsetY: 0, rotation: 0, // vị trí/xoay tuỳ chỉnh (mục 5.21) — chỉ post/comment/reply/meme có UI chỉnh, audio bỏ qua không dùng tới
       ...data,
@@ -4893,6 +4915,58 @@ function deleteStep(id) {
 // nhạc nền (vẫn là File object chọn qua <input type=file>, quá nặng để nhét
 // vào JSON và không có cách nào phục hồi lại File từ JSON) — sau khi nạp lại,
 // người dùng phải tự chọn lại 2 file đó, UI có nhắc rõ.
+let aiScriptDraft = null;
+let aiScriptPricing = null;
+function aiPromptWordCount(value){return (String(value||'').match(/[\p{L}\p{N}]+/gu)||[]).length;}
+function renderAiScriptCost(){
+  if(!aiScriptPricing)return;
+  const length=document.getElementById('ai-script-length').value,prompt=document.getElementById('ai-script-prompt').value;
+  const base=Number(aiScriptPricing[`ai_script_${length}`]||0),words=aiPromptWordCount(prompt),perWord=Number(aiScriptPricing.ai_script_prompt_word||0),total=base+words*perWord;
+  document.getElementById('ai-script-cost').textContent=`Ước tính: ${total} credit (${base} phí ${length==='short'?'ngắn':length==='medium'?'vừa':'dài'} + ${words} từ × ${perWord}) · Số dư: ${window.creditClient.balance()} credit`;
+}
+function openAiScriptModal(){
+  aiScriptDraft=null;document.getElementById('ai-script-result').classList.remove('open');document.getElementById('ai-script-actions').classList.remove('open');document.getElementById('ai-script-status').textContent='';document.getElementById('ai-script-overlay').classList.add('open');
+  document.getElementById('ai-script-prompt').oninput=renderAiScriptCost;document.getElementById('ai-script-length').onchange=renderAiScriptCost;
+  window.creditClient?.getPricing().then(data=>{aiScriptPricing=data?.pricing||null;renderAiScriptCost();}).catch(()=>{});
+  setTimeout(()=>document.getElementById('ai-script-prompt').focus(),50);
+}
+function closeAiScriptModal(){document.getElementById('ai-script-overlay').classList.remove('open');}
+function aiVoiceIndex(label){const index=ttsVoices.findIndex(voice=>voice.label===label);if(index<0)throw new Error(`Không tìm thấy giọng AI cho phép: ${label}`);return index;}
+function aiBaseStep(type){return {id:stepIdCounter++,type,duration:DEFAULT_DUR[type],gap:0,clearBefore:false,hue:Math.floor(Math.random()*360),offsetX:0,offsetY:0,rotation:0};}
+function compileAiTextCard(card){
+  const step=aiBaseStep(card.type),identity=randomFakeIdentity(step.id+':m'),voiceIdx=aiVoiceIndex(card.voice),visibleParts=String(card.text||'').split(/\r?\n+/).map(v=>v.trim()).filter(Boolean),spokenParts=String(card.ttsText||'').split(/\r?\n+/).map(v=>v.trim()).filter(Boolean),progressive=!!card.progressiveReveal&&visibleParts.length>1;
+  if(!card.ttsText)throw new Error(`Card ${card.type} thiếu ttsText`);
+  if(progressive&&visibleParts.length!==spokenParts.length)throw new Error(`Card ${card.type} có số đoạn chữ và lời đọc không khớp`);
+  Object.assign(step,{text:card.text,ttsText:progressive?spokenParts[0]:card.ttsText,voiceIdx,echo:progressive?false:!!card.echo,audioUrl:null,ttsDuration:null,extraTtsSegments:progressive?spokenParts.slice(1).map((text,index)=>({text,voiceIdx,echo:!!card.echo&&index===spokenParts.length-2,audioUrl:null,duration:0})):[],progressiveReveal:progressive,progressivePause:.3,clearBefore:card.type==='post'||card.type==='comment',uname:identity.uname,avatarUrl:identity.avatarUrl,stats:{likes:'1,2K',comments:'34',reposts:'8',shares:'150',timeLabel:identity.timeLabel},imgUrl:null,isAuthor:false});
+  if(card.type==='comment'||card.type==='reply')step.platform=card.platform==='tiktok'?'tiktok':'threads';
+  return step;
+}
+function compileAiMessengerCard(card){
+  const conversationId=`ai-${Date.now()}-${stepIdCounter}`,mineVoice=aiVoiceIndex(card.mineVoice),theirsVoice=aiVoiceIndex(card.theirsVoice),history=[];
+  return card.messages.map((message,index)=>{
+    if(!message.ttsText)throw new Error(`Tin nhắn AI thứ ${index+1} thiếu ttsText`);
+    const voiceIdx=message.side==='mine'?mineVoice:theirsVoice,msg={side:message.side,text:message.text,ttsText:message.ttsText,voiceIdx,voiceOverride:false,echo:!!message.echo,imageUrl:null,imageName:null,imageType:'image',imageDesktopPath:null};history.push({...msg});
+    return {...aiBaseStep('mess'),conversationId,groupId:conversationId,messIndex:index,messPlatform:'messenger',messShowFooter:true,messPartnerName:card.partnerName||'Đối phương',messPartnerAvatar:'messenger-default-avatar.png',messSideVoices:{mine:mineVoice,theirs:theirsVoice},messTtsSpeed:1,messHistory:history.map(item=>({...item})),text:msg.text,ttsText:msg.ttsText,voiceIdx,echo:msg.echo,audioUrl:null,ttsDuration:null,clearBefore:true};
+  });
+}
+function compileAiScript(script){
+  const compiled=[];for(const card of script.cards||[]){if(['post','comment','reply'].includes(card.type))compiled.push(compileAiTextCard(card));else if(card.type==='mess')compiled.push(...compileAiMessengerCard(card));else throw new Error(`AI trả card không được phép: ${card.type}`);}return compiled;
+}
+async function generateAiScript(){
+  const prompt=document.getElementById('ai-script-prompt').value.trim(),button=document.getElementById('ai-script-generate'),status=document.getElementById('ai-script-status');if(prompt.length<3){status.textContent='Hãy mô tả kịch bản cần tạo.';return;}
+  button.disabled=true;aiScriptDraft=null;document.getElementById('ai-script-result').classList.remove('open');document.getElementById('ai-script-actions').classList.remove('open');status.textContent='✨ AI đang viết và kiểm tra cấu trúc kịch bản...';
+  try{
+    const response=await fetch(ttsServerUrl()+'/ai/generate-script',{method:'POST',headers:{'Content-Type':'application/json',...(window.authHeaders?window.authHeaders():{})},body:JSON.stringify({prompt,platform:document.getElementById('ai-script-platform').value,length:document.getElementById('ai-script-length').value,allow_echo:document.getElementById('ai-script-echo').checked,idempotency_key:crypto.randomUUID?crypto.randomUUID():`${Date.now()}-${Math.random()}`})});
+    const data=await response.json().catch(()=>({}));if(!response.ok)throw new Error(data.detail||`HTTP ${response.status}`);aiScriptDraft=data.script;const counts={post:0,comment:0,reply:0,mess:0,messages:0};for(const card of aiScriptDraft.cards){counts[card.type]=(counts[card.type]||0)+1;if(card.type==='mess')counts.messages+=card.messages.length;}
+    document.getElementById('ai-script-result').innerHTML=`<b>${esc(aiScriptDraft.title||'Kịch bản AI')}</b><br/>${counts.post} Post · ${counts.comment} Comment · ${counts.reply} Reply · ${counts.mess} cuộc trò chuyện (${counts.messages} tin)<br/><span style="color:#f0abfc">Đã dùng ${data.cost||0} credit.</span>`;document.getElementById('ai-script-result').classList.add('open');document.getElementById('ai-script-actions').classList.add('open');status.textContent='✓ JSON đã qua kiểm tra an toàn. Chọn cách đưa vào Kịch bản.';await window.creditClient?.refresh();
+  }catch(error){status.textContent='✗ '+error.message;}finally{button.disabled=false;}
+}
+function applyAiScript(mode){
+  if(!aiScriptDraft)return;let compiled;try{compiled=compileAiScript(aiScriptDraft);}catch(error){document.getElementById('ai-script-status').textContent='✗ '+error.message;return;}
+  if(mode==='replace'&&steps.length&&!confirm(`Thay toàn bộ ${steps.length} card hiện tại bằng kịch bản AI?`))return;
+  if(mode==='replace')steps=compiled;else steps.push(...compiled);computeTimeline();renderStepList();renderIdleScene();updateCreditLabels();closeAiScriptModal();
+}
+
 async function exportProjectJson() {
   computeTimeline();
   const project = {
