@@ -38,3 +38,4 @@ electron/.cache/
 # Logs and local scratch data
 *.log
 content_scenes*.json
+tmp/
