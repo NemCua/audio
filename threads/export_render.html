@@ -5,6 +5,18 @@
 <title>Threads Export Render — nội bộ, dùng bởi Playwright (mục 5.17 CONTEXT.md)</title>
 <style>
 * { box-sizing: border-box; margin: 0; padding: 0; }
+/* Trang này chỉ là canvas render ẩn, không phải UI để cuộn. Scrollbar macOS
+   là overlay nên lỗi cũ khó thấy; scrollbar Windows chiếm pixel thật, làm
+   viewport hụt rồi ảnh capture bị kéo giãn và bẹp. Khóa cả document. */
+html, body {
+  width: 100%;
+  height: 100%;
+  min-width: 0;
+  min-height: 0;
+  overflow: hidden !important;
+  scrollbar-width: none;
+}
+html::-webkit-scrollbar, body::-webkit-scrollbar { display: none; width: 0; height: 0; }
 @font-face {
   font-family: "SFPro";
   src: local("SFNS"), local(".AppleSystemUIFont");
@@ -13,9 +25,8 @@ body {
   font-family: "SFPro", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif;
   background: #0a0c14;
   color: #e2e8f0;
-  min-height: 100vh;
-  display: flex;
-  flex-direction: column;
+  position: relative;
+  display: block;
 }
 
 header {
@@ -833,8 +844,16 @@ function applyFrameWidth() {
   const params = new URLSearchParams(location.search);
   const w = parseInt(params.get('w'), 10) || 1080;
   const frame = document.getElementById('preview-frame');
+  const h = Math.round(w * 16 / 9);
   frame.style.width = w + 'px';
-  frame.style.aspectRatio = '9 / 16';
+  frame.style.height = h + 'px';
+  frame.style.aspectRatio = 'auto';
+  frame.style.position = 'absolute';
+  frame.style.inset = '0 auto auto 0';
+  document.documentElement.style.width = w + 'px';
+  document.documentElement.style.height = h + 'px';
+  document.body.style.width = w + 'px';
+  document.body.style.height = h + 'px';
   // Khớp trạng thái checkbox "Làm mờ tên & avatar" ở index.html lúc bấm
   // Xuất (mục 5.17 CONTEXT.md) — displayIdentity() đọc #blur-identity-toggle,
   // class .blur-identity trên #preview-frame áp thêm CSS filter:blur() (mục 5.10).

@@ -44,11 +44,28 @@ async function renderSegments({ steps, total, threadsRoot, workDir, blurIdentity
     webPreferences: { offscreen: true, backgroundThrottling: false, contextIsolation: true, sandbox: true },
   });
   try {
+    // Giữ CSS pixel = output pixel trên mọi DPI. Đặc biệt Windows có thể
+    // kế thừa scale 125%/150% của màn hình dù BrowserWindow đang offscreen.
+    win.webContents.setZoomFactor(1);
+    await win.webContents.setVisualZoomLevelLimits(1, 1);
+    win.setContentSize(WIDTH, HEIGHT);
     const url = new URL(`file://${path.join(threadsRoot, 'export_render.html')}`);
     url.searchParams.set('w', String(WIDTH));
     url.searchParams.set('blur', blurIdentity ? '1' : '0');
     await win.loadURL(url.toString());
+    win.webContents.setZoomFactor(1);
+    win.setContentSize(WIDTH, HEIGHT);
     await win.webContents.executeJavaScript(`setSteps(${JSON.stringify(steps)})`);
+    const geometry = await win.webContents.executeJavaScript(`(() => {
+      const r=document.getElementById('preview-frame').getBoundingClientRect();
+      return {x:r.x,y:r.y,width:r.width,height:r.height,innerWidth,innerHeight,
+        scrollWidth:document.documentElement.scrollWidth,scrollHeight:document.documentElement.scrollHeight};
+    })()`);
+    if (Math.round(geometry.x) !== 0 || Math.round(geometry.y) !== 0 ||
+        Math.round(geometry.width) !== WIDTH || Math.round(geometry.height) !== HEIGHT ||
+        geometry.scrollWidth > WIDTH || geometry.scrollHeight > HEIGHT) {
+      throw new Error(`Renderer export sai kích thước: ${JSON.stringify(geometry)}`);
+    }
     const points = visualBreakpoints(steps, total), segments = [];
     for (let i = 0; i < points.length - 1; i++) {
       const t0 = points[i], t1 = points[i + 1];
@@ -56,8 +73,9 @@ async function renderSegments({ steps, total, threadsRoot, workDir, blurIdentity
       const state = await win.webContents.executeJavaScript(`renderStackAt(${(t0 + t1) / 2})`);
       let imagePath = null;
       if ((state.stackIds || []).length || (state.hasMeme && !state.dynamicMeme)) {
-        const rect = await win.webContents.executeJavaScript(`(() => { const r=document.getElementById('preview-frame').getBoundingClientRect(); return {x:Math.round(r.x),y:Math.round(r.y),width:Math.round(r.width),height:Math.round(r.height)} })()`);
-        const captured = await win.webContents.capturePage(rect);
+        // Canvas đã được kiểm tra đúng 0,0 → 1080,1920 ở trên; dùng rect cố
+        // định để scrollbar/DPI của hệ điều hành không thể thay đổi vùng chụp.
+        const captured = await win.webContents.capturePage({x:0,y:0,width:WIDTH,height:HEIGHT});
         // capturePage trả pixel vật lý trên màn hình Retina (thường 2x), dù
         // rect và BrowserWindow dùng pixel CSS. Nếu đưa PNG 2160x3840 đó vào
         // canvas video 1080x1920, FFmpeg sẽ giữ nguyên kích thước và chỉ hiện
