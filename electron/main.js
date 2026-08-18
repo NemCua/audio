@@ -7,7 +7,6 @@ let mainWindow = null
 let serverProcess = null
 
 const PORT = 8005
-const AUTH_PORT = 8006
 
 // Tìm thư mục chứa server binaries / scripts
 function getScriptsDir() {
@@ -40,6 +39,7 @@ async function startServers() {
     const ext = process.platform === 'win32' ? '.exe' : ''
     serverCmd = path.join(scriptsDir, `translate_server${ext}`)
     serverArgs = []
+    env.FFMPEG_BIN = path.join(scriptsDir, process.platform === 'win32' ? 'ffmpeg.exe' : 'ffmpeg')
   } else {
     const python = process.platform === 'win32' ? 'python' : 'python3'
     serverCmd = python

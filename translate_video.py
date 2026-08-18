@@ -1051,13 +1051,15 @@ def render_video(
         vf_base = f"{base_vf}[vout]"
 
     if len(audio_labels) == 1:
-        filter_complex = f"{vf_base};[{tts_idx}:a]volume={tts_volume}[aout]"
+        # Pad silence after the last TTS cue so -shortest follows the source
+        # video duration instead of cutting the exported video at the TTS end.
+        filter_complex = f"{vf_base};[{tts_idx}:a]volume={tts_volume},apad[aout]"
     else:
         n = len(audio_labels)
         filter_complex = (
             f"{vf_base};"
             + ";".join(audio_parts)
-            + f";{''.join(audio_labels)}amix=inputs={n}:duration=first:dropout_transition=0[aout]"
+            + f";{''.join(audio_labels)}amix=inputs={n}:duration=longest:dropout_transition=0,apad[aout]"
         )
 
     cmd = [

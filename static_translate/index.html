@@ -11,11 +11,6 @@ body{font-family:'Segoe UI',system-ui,sans-serif;background:#0a0c14;color:#e2e8f
 header{background:#12152a;border-bottom:1px solid #1e2340;padding:14px 28px;display:flex;align-items:center;gap:12px}
 header h1{font-size:18px;font-weight:700;color:#a78bfa}
 header span{font-size:12px;color:#4b5563;flex:1}
-.balance-pill{background:#1e1b4b;border:1px solid #4c1d95;border-radius:999px;padding:5px 14px;display:flex;align-items:center;gap:8px;cursor:default}
-.balance-pill .bal-val{font-size:15px;font-weight:800;color:#a78bfa}
-.balance-pill .bal-lbl{font-size:11px;color:#6b7280}
-.balance-pill .top-up{font-size:11px;font-weight:700;color:#7c3aed;cursor:pointer;text-decoration:underline;text-underline-offset:2px}
-.balance-pill .top-up:hover{color:#a78bfa}
 
 .layout{display:grid;grid-template-columns:300px 1fr;flex:1;overflow:hidden}
 
@@ -97,110 +92,14 @@ td.vi-cell textarea:focus{background:#1e1b4b44}
 .empty{text-align:center;padding:60px 20px;color:#1e2340}
 .empty .icon{font-size:48px;margin-bottom:12px}
 
-/* Nạp tiền */
-.topup-wrap{max-width:480px;margin:0 auto;padding:8px 0}
-.topup-wrap h2{font-size:16px;font-weight:700;color:#a78bfa;margin-bottom:16px}
-.pkg-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:20px}
-.pkg{border:2px solid #1e2340;border-radius:10px;padding:14px 10px;text-align:center;cursor:pointer;transition:border-color .15s,background .15s}
-.pkg:hover{border-color:#7c3aed;background:#1e1b4b22}
-.pkg.selected{border-color:#7c3aed;background:#1e1b4b}
-.pkg .amount{font-size:18px;font-weight:800;color:#e2e8f0}
-.pkg .price{font-size:12px;color:#4b5563;margin-top:2px}
-.pkg .bonus{font-size:11px;color:#4ade80;font-weight:700;margin-top:3px}
-.bank-box{background:#12152a;border:1px solid #1e2340;border-radius:10px;padding:16px;margin-bottom:16px}
-.bank-box .bank-name{font-size:13px;font-weight:700;color:#e2e8f0;margin-bottom:10px}
-.bank-row{display:flex;justify-content:space-between;align-items:center;padding:5px 0;border-bottom:1px solid #0a0c14}
-.bank-row:last-child{border-bottom:none}
-.bank-row .lbl{font-size:11px;color:#4b5563}
-.bank-row .val{font-size:13px;font-weight:700;color:#e2e8f0;display:flex;align-items:center;gap:6px}
-.copy-btn{font-size:10px;padding:2px 7px;border-radius:4px;border:1px solid #1e2340;background:#0a0c14;color:#6b7280;cursor:pointer}
-.copy-btn:hover{color:#a78bfa;border-color:#7c3aed}
-.qr-wrap{text-align:center;margin:12px 0}
-.qr-wrap img{width:160px;height:160px;border-radius:8px;background:#fff;padding:6px}
-.topup-note{font-size:11px;color:#4b5563;line-height:1.6;background:#0a0c14;border-radius:8px;padding:10px 12px}
-.topup-note b{color:#a78bfa}
-
-/* ── Auth overlay ───────────────────────────────────────────────── */
-#auth-overlay{position:fixed;inset:0;background:#0a0c14;z-index:999;display:flex;align-items:center;justify-content:center}
-#auth-overlay.hidden{display:none}
-.auth-card{background:#12152a;border:1px solid #1e2340;border-radius:16px;padding:36px 32px;width:100%;max-width:380px}
-.auth-card h2{font-size:20px;font-weight:800;color:#a78bfa;margin-bottom:4px}
-.auth-card .sub{font-size:12px;color:#4b5563;margin-bottom:24px}
-.auth-field{display:flex;flex-direction:column;gap:5px;margin-bottom:14px}
-.auth-field label{font-size:11px;color:#6b7280;font-weight:600;text-transform:uppercase;letter-spacing:.5px}
-.auth-field input{background:#0a0c14;border:1px solid #1e2340;border-radius:8px;padding:10px 12px;color:#e2e8f0;font-size:14px;outline:none;transition:border-color .15s}
-.auth-field input:focus{border-color:#7c3aed}
-.auth-err{font-size:12px;color:#f87171;margin-bottom:10px;min-height:16px}
-.auth-submit{width:100%;padding:11px;border:none;border-radius:8px;background:#7c3aed;color:#fff;font-size:14px;font-weight:700;cursor:pointer;margin-top:4px;transition:background .15s}
-.auth-submit:hover{background:#6d28d9}
-.auth-submit:disabled{background:#1e2340;color:#4b5563;cursor:default}
-.auth-switch{text-align:center;font-size:12px;color:#4b5563;margin-top:14px}
-.auth-switch a{color:#a78bfa;cursor:pointer;text-decoration:underline}
-.auth-logo{text-align:center;font-size:28px;margin-bottom:16px}
-.auth-user-menu{display:flex;align-items:center;gap:8px;cursor:pointer}
-.auth-user-menu .uname{font-size:12px;color:#a78bfa;font-weight:700}
-.auth-user-menu .logout-btn{font-size:11px;color:#4b5563;background:none;border:none;cursor:pointer;padding:2px 6px;border-radius:4px}
-.auth-user-menu .logout-btn:hover{color:#f87171}
 </style>
 </head>
 <body>
 
-<!-- Auth overlay -->
-<div id="auth-overlay">
-  <div class="auth-card">
-    <div class="auth-logo">🎬</div>
-
-    <!-- Login form -->
-    <div id="auth-login-form">
-      <h2>Đăng nhập</h2>
-      <p class="sub">Dịch video Trung → Việt với AI</p>
-      <div class="auth-field">
-        <label>Email</label>
-        <input type="email" id="login-email" placeholder="you@example.com" autocomplete="email"/>
-      </div>
-      <div class="auth-field">
-        <label>Mật khẩu</label>
-        <input type="password" id="login-pw" placeholder="••••••••" autocomplete="current-password"/>
-      </div>
-      <div class="auth-err" id="login-err"></div>
-      <button class="auth-submit" id="login-btn" onclick="doLogin()">Đăng nhập</button>
-      <div class="auth-switch">Chưa có tài khoản? <a onclick="showRegister()">Đăng ký ngay</a></div>
-    </div>
-
-    <!-- Register form -->
-    <div id="auth-register-form" style="display:none">
-      <h2>Tạo tài khoản</h2>
-      <p class="sub">Miễn phí · Không cần thẻ</p>
-      <div class="auth-field">
-        <label>Tên hiển thị</label>
-        <input type="text" id="reg-name" placeholder="Tên của bạn"/>
-      </div>
-      <div class="auth-field">
-        <label>Email</label>
-        <input type="email" id="reg-email" placeholder="you@example.com" autocomplete="email"/>
-      </div>
-      <div class="auth-field">
-        <label>Mật khẩu (tối thiểu 6 ký tự)</label>
-        <input type="password" id="reg-pw" placeholder="••••••••" autocomplete="new-password"/>
-      </div>
-      <div class="auth-err" id="reg-err"></div>
-      <button class="auth-submit" id="reg-btn" onclick="doRegister()">Tạo tài khoản</button>
-      <div class="auth-switch">Đã có tài khoản? <a onclick="showLogin()">Đăng nhập</a></div>
-    </div>
-  </div>
-</div>
-
 <header>
   <h1>🎬 Dịch Video Tiếng Trung → Tiếng Việt</h1>
   <span>AI dịch · CapCut TTS · FFmpeg render</span>
-  <div class="balance-pill" title="Số dư tài khoản">
-    <span class="bal-lbl">Số dư</span>
-    <span class="bal-val" id="bal-val">0đ</span>
-  </div>
-  <div class="auth-user-menu" id="user-menu" style="display:none">
-    <span class="uname" id="user-display"></span>
-    <button class="logout-btn" onclick="doLogout()">Đăng xuất</button>
-  </div>
+  <span style="flex:0;color:#4ade80">● Chạy local · Không cần tài khoản</span>
 </header>
 
 <div class="layout">
@@ -381,191 +280,17 @@ td.vi-cell textarea:focus{background:#1e1b4b44}
       </div>
     </div>
 
-    <!-- TAB NẠP TIỀN -->
-    <div class="tab-content" id="tab-topup" style="display:none">
-      <div class="topup-wrap">
-        <h2>💰 Nạp tiền vào tài khoản</h2>
-
-        <!-- Gói nạp -->
-        <div style="font-size:12px;color:#6b7280;margin-bottom:8px">Chọn gói nạp</div>
-        <div class="pkg-grid">
-          <div class="pkg selected" onclick="selectPkg(this,20000)">
-            <div class="amount">20.000đ</div>
-            <div class="price">≈ 20 phút video</div>
-          </div>
-          <div class="pkg" onclick="selectPkg(this,50000)">
-            <div class="amount">50.000đ</div>
-            <div class="price">≈ 55 phút video</div>
-            <div class="bonus">+10% bonus</div>
-          </div>
-          <div class="pkg" onclick="selectPkg(this,100000)">
-            <div class="amount">100.000đ</div>
-            <div class="price">≈ 120 phút video</div>
-            <div class="bonus">+20% bonus</div>
-          </div>
-          <div class="pkg" onclick="selectPkg(this,200000)">
-            <div class="amount">200.000đ</div>
-            <div class="price">≈ 260 phút video</div>
-            <div class="bonus">+30% bonus</div>
-          </div>
-          <div class="pkg" onclick="selectPkg(this,500000)">
-            <div class="amount">500.000đ</div>
-            <div class="price">≈ 700 phút video</div>
-            <div class="bonus">+40% bonus</div>
-          </div>
-          <div class="pkg" onclick="selectPkg(this,1000000)">
-            <div class="amount">1.000.000đ</div>
-            <div class="price">≈ 1500 phút video</div>
-            <div class="bonus">+50% bonus</div>
-          </div>
-        </div>
-
-        <!-- Thông tin chuyển khoản -->
-        <div class="bank-box">
-          <div class="bank-name">🏦 Chuyển khoản ngân hàng</div>
-          <div class="bank-row">
-            <span class="lbl">Ngân hàng</span>
-            <span class="val">MB Bank (MBBank)</span>
-          </div>
-          <div class="bank-row">
-            <span class="lbl">Số tài khoản</span>
-            <span class="val">
-              <span id="bank-acct">0123456789</span>
-              <button class="copy-btn" onclick="copyText('bank-acct')">Copy</button>
-            </span>
-          </div>
-          <div class="bank-row">
-            <span class="lbl">Tên tài khoản</span>
-            <span class="val">NGUYEN QUOC HUY</span>
-          </div>
-          <div class="bank-row">
-            <span class="lbl">Số tiền</span>
-            <span class="val" id="transfer-amount" style="color:#a78bfa">20.000đ</span>
-          </div>
-          <div class="bank-row">
-            <span class="lbl">Nội dung CK</span>
-            <span class="val">
-              <span id="transfer-note">NAPTIEN nemcuaa1</span>
-              <button class="copy-btn" onclick="copyText('transfer-note')">Copy</button>
-            </span>
-          </div>
-        </div>
-
-        <!-- QR code placeholder -->
-        <div class="qr-wrap">
-          <div style="width:160px;height:160px;background:#1e1b4b;border-radius:8px;border:2px dashed #4c1d95;display:flex;align-items:center;justify-content:center;margin:0 auto">
-            <span style="font-size:11px;color:#4b5563;text-align:center;padding:10px">QR sẽ hiện<br>sau khi tích hợp</span>
-          </div>
-        </div>
-
-        <div class="topup-note">
-          <b>Lưu ý:</b> Sau khi chuyển khoản, số dư sẽ được cộng tự động trong vòng <b>1–5 phút</b>.<br>
-          Ghi đúng nội dung chuyển khoản để hệ thống nhận diện tự động.<br>
-          Liên hệ hỗ trợ nếu sau 10 phút chưa nhận được tiền.
-        </div>
-      </div>
-    </div>
-
   </div>
 </div>
 
 <script>
 const API     = '';
-const AUTH_API = '';
 let currentJobId = null;
 let pollTimer    = null;
 let subtitleRows = [];
-let _authToken   = null;
-
-// ── Auth helpers ────────────────────────────────────────────────
-function authHeaders() {
-  return _authToken ? { 'Authorization': 'Bearer ' + _authToken } : {};
-}
-
-function showLogin()    { document.getElementById('auth-login-form').style.display=''; document.getElementById('auth-register-form').style.display='none'; document.getElementById('login-err').textContent=''; }
-function showRegister() { document.getElementById('auth-register-form').style.display=''; document.getElementById('auth-login-form').style.display='none'; document.getElementById('reg-err').textContent=''; }
-
-function onAuthSuccess(data) {
-  _authToken = data.token;
-  localStorage.setItem('auth_token', data.token);
-  localStorage.setItem('auth_user', JSON.stringify(data.user));
-  document.getElementById('auth-overlay').classList.add('hidden');
-  document.getElementById('user-menu').style.display = 'flex';
-  document.getElementById('user-display').textContent = data.user.display_name || data.user.email;
-  document.getElementById('bal-val').textContent = (data.user.balance || 0).toLocaleString('vi-VN') + 'đ';
-  // Sync balance từ server (token mới có thể đã stale)
-  setTimeout(refreshBalance, 500);
-}
-
-async function doLogin() {
-  const email = document.getElementById('login-email').value.trim();
-  const pw    = document.getElementById('login-pw').value;
-  const errEl = document.getElementById('login-err');
-  const btn   = document.getElementById('login-btn');
-  if (!email || !pw) { errEl.textContent = 'Vui long nhap day du thong tin'; return; }
-  btn.disabled = true; btn.textContent = 'Đang nhập...';
-  try {
-    const r = await fetch(AUTH_API + '/auth/login', {
-      method: 'POST', headers: {'Content-Type':'application/json'},
-      body: JSON.stringify({email, password: pw})
-    });
-    const d = await r.json();
-    if (!r.ok) { errEl.textContent = d.detail || 'Lỗi đăng nhập'; return; }
-    onAuthSuccess(d);
-  } catch(e) { errEl.textContent = 'Lỗi: ' + (e.message || e); }
-  finally { btn.disabled = false; btn.textContent = 'Đăng nhập'; }
-}
-
-async function doRegister() {
-  const name  = document.getElementById('reg-name').value.trim();
-  const email = document.getElementById('reg-email').value.trim();
-  const pw    = document.getElementById('reg-pw').value;
-  const errEl = document.getElementById('reg-err');
-  const btn   = document.getElementById('reg-btn');
-  if (!email || !pw) { errEl.textContent = 'Vui long nhap day du thong tin'; return; }
-  btn.disabled = true; btn.textContent = 'Đang ký...';
-  try {
-    const r = await fetch(AUTH_API + '/auth/register', {
-      method: 'POST', headers: {'Content-Type':'application/json'},
-      body: JSON.stringify({email, password: pw, display_name: name})
-    });
-    const d = await r.json();
-    if (!r.ok) { errEl.textContent = d.detail || 'Lỗi đăng ký'; return; }
-    onAuthSuccess(d);
-  } catch(e) { errEl.textContent = 'Lỗi: ' + (e.message || e); }
-  finally { btn.disabled = false; btn.textContent = 'Tạo tài khoản'; }
-}
-
-function doLogout() {
-  _authToken = null;
-  localStorage.removeItem('auth_token');
-  localStorage.removeItem('auth_user');
-  document.getElementById('auth-overlay').classList.remove('hidden');
-  document.getElementById('user-menu').style.display = 'none';
-  showLogin();
-}
-
-// ── Restore session on load ─────────────────────────────────────
-async function restoreSession() {
-  const token = localStorage.getItem('auth_token');
-  if (!token) return;
-  try {
-    const r = await fetch(AUTH_API + '/auth/me', {
-      headers: {'Authorization': 'Bearer ' + token}
-    });
-    if (!r.ok) { localStorage.removeItem('auth_token'); localStorage.removeItem('auth_user'); return; }
-    const user = await r.json();
-    onAuthSuccess({ token, user });
-  } catch(e) { /* auth server offline — keep overlay */ }
-}
-
-// Enter on password fields
-document.getElementById('login-pw').addEventListener('keydown', e => { if(e.key==='Enter') doLogin(); });
-document.getElementById('reg-pw').addEventListener('keydown', e => { if(e.key==='Enter') doRegister(); });
 
 // ── Load saved key ──────────────────────────────────────────────
-window.addEventListener('load', async () => {
-  await restoreSession();
+window.addEventListener('load', () => {
   const saved = localStorage.getItem('groq_key');
   if (saved) document.getElementById('groq-key').value = saved;
 });
@@ -573,12 +298,8 @@ document.getElementById('groq-key').addEventListener('change', e => {
   localStorage.setItem('groq_key', e.target.value.trim());
 });
 
-// ── Authenticated fetch wrapper ─────────────────────────────────
 async function apiFetch(url, opts = {}) {
-  opts.headers = { ...authHeaders(), ...(opts.headers || {}) };
-  const r = await fetch(url, opts);
-  if (r.status === 401) { doLogout(); throw new Error('Phien dang nhap het han'); }
-  return r;
+  return fetch(url, opts);
 }
 
 // ── Drag & Drop video ───────────────────────────────────────────
@@ -644,29 +365,11 @@ async function useSrt() {
 
 // ── Switch tabs ─────────────────────────────────────────────────
 function switchTab(name) {
-  const names = ['output','subs','topup'];
+  const names = ['output','subs'];
   document.querySelectorAll('.tab').forEach((t,i) =>
     t.classList.toggle('active', names[i] === name));
   document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
   document.getElementById('tab-'+name).classList.add('active');
-}
-
-let _selectedPkg = 20000;
-function selectPkg(el, amount) {
-  document.querySelectorAll('.pkg').forEach(p => p.classList.remove('selected'));
-  el.classList.add('selected');
-  _selectedPkg = amount;
-  document.getElementById('transfer-amount').textContent = amount.toLocaleString('vi-VN') + 'đ';
-}
-
-function copyText(elId) {
-  const txt = document.getElementById(elId).textContent.trim();
-  navigator.clipboard.writeText(txt).then(() => {
-    const btn = document.querySelector(`#${elId} ~ .copy-btn`) || document.querySelector(`[onclick="copyText('${elId}')"]`);
-    const orig = btn.textContent;
-    btn.textContent = '✓';
-    setTimeout(() => btn.textContent = orig, 1200);
-  });
 }
 
 // ── STEP 1: Upload + Dich ───────────────────────────────────────
@@ -693,10 +396,8 @@ async function startJob() {
   try {
     const res  = await apiFetch(`${API}/api/upload`, { method: 'POST', body: fd });
     let data; try { data = await res.json(); } catch { data = { error: `Server lỗi ${res.status}: ${res.statusText}` }; }
-    if (res.status === 402) { showError(data.error); document.getElementById('btn-start').disabled = false; return; }
     if (!res.ok) throw new Error(data.error || res.statusText);
     currentJobId = data.job_id;
-    if (data.cost > 0) updateBalanceDisplay(data.cost);
     pollTimer = setInterval(pollTranslate, 2000);
   } catch(e) {
     showError(e.message);
@@ -764,12 +465,10 @@ async function pollRender() {
       document.getElementById('btn-render').disabled = false;
       document.getElementById('btn-rerender').style.display = 'inline-block';
       await showVideo(currentJobId);
-      refreshBalance();
     } else if (data.status === 'error') {
       clearPoll();
       document.getElementById('btn-render').disabled = false;
       showError(data.message || 'Lỗi render');
-      refreshBalance();
     }
   } catch(e) {}
 }
@@ -795,26 +494,11 @@ function escHtml(s) {
   return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
 }
 
-async function refreshBalance() {
-  try {
-    const r = await apiFetch(`${API}/api/me/balance`);
-    if (!r.ok) return;
-    const d = await r.json();
-    document.getElementById('bal-val').textContent = (d.balance || 0).toLocaleString('vi-VN') + 'đ';
-  } catch(e) {}
-}
-
-function updateBalanceDisplay(deducted) {
-  const el  = document.getElementById('bal-val');
-  const cur = parseInt(el.textContent.replace(/\D/g,'')) || 0;
-  el.textContent = Math.max(0, cur - deducted).toLocaleString('vi-VN') + 'đ';
-}
-
 // ── Show video ──────────────────────────────────────────────────
 async function showVideo(jobId) {
   switchTab('output');
 
-  // Fetch video as blob (cần auth header)
+  // Fetch video as blob
   const vRes  = await apiFetch(`${API}/api/download/${jobId}`);
   const vBlob = await vRes.blob();
   const vUrl  = URL.createObjectURL(vBlob);

@@ -20,92 +20,28 @@ for _s in ("stdout", "stderr"):
 
 import asyncio
 import json
-import math
 import os
 import shutil
 import subprocess
 import tempfile
 import uuid
-import httpx
-from contextlib import contextmanager
 from pathlib import Path
 from typing import Optional
 
-import psycopg2
-import psycopg2.extras
 from dotenv import load_dotenv
 from fastapi import FastAPI, BackgroundTasks, UploadFile, File, Form, Request
-from starlette import status as http_status
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse, JSONResponse, Response
 from fastapi.staticfiles import StaticFiles
-from jose import JWTError, jwt
 from pydantic import BaseModel
 
 # Khi frozen (PyInstaller), load .env cạnh exe; khi dev, load từ thư mục script
 _env_base = Path(sys.executable).parent if getattr(sys, 'frozen', False) else Path(__file__).parent
 load_dotenv(_env_base / ".env")
 
-AUTH_SECRET_KEY = os.getenv("AUTH_SECRET_KEY", "")
-DATABASE_URL    = os.getenv("DATABASE_URL", "")
-AUTH_ALGORITHM  = "HS256"
+RUNTIME_DIR = Path(sys.executable).resolve().parent if getattr(sys, "frozen", False) else Path(__file__).resolve().parent
 FFMPEG_BIN      = os.getenv("FFMPEG_BIN", "ffmpeg")
 FFPROBE_BIN     = str(Path(FFMPEG_BIN).parent / "ffprobe")
-
-PRICE_PER_MIN   = 85    # đồng / phút
-FREE_THRESHOLD  = 3 * 60  # ≤ 3 phút → miễn phí
-
-# Routes that don't require auth
-_PUBLIC_PATHS = {"/", "/auth/login", "/auth/register"}
-
-# ── DB helpers ───────────────────────────────────────────────────
-@contextmanager
-def get_db():
-    conn = psycopg2.connect(DATABASE_URL, cursor_factory=psycopg2.extras.RealDictCursor)
-    try:
-        yield conn
-        conn.commit()
-    except Exception:
-        conn.rollback()
-        raise
-    finally:
-        conn.close()
-
-def db_get_balance(user_id: int) -> int:
-    with get_db() as conn:
-        with conn.cursor() as cur:
-            cur.execute("SELECT balance FROM users WHERE id=%s", (user_id,))
-            row = cur.fetchone()
-    return row["balance"] if row else 0
-
-def db_deduct(user_id: int, amount: int, note: str) -> bool:
-    """Trừ tiền, trả False nếu không đủ số dư."""
-    with get_db() as conn:
-        with conn.cursor() as cur:
-            cur.execute(
-                "UPDATE users SET balance = balance - %s "
-                "WHERE id = %s AND balance >= %s RETURNING balance",
-                (amount, user_id, amount)
-            )
-            ok = cur.fetchone() is not None
-            if ok:
-                cur.execute(
-                    "INSERT INTO topup_txns(user_id,amount,note,status) VALUES(%s,%s,%s,'completed')",
-                    (user_id, -amount, note)
-                )
-    return ok
-
-def db_refund(user_id: int, amount: int, note: str):
-    """Hoàn tiền khi job lỗi."""
-    if amount <= 0:
-        return
-    with get_db() as conn:
-        with conn.cursor() as cur:
-            cur.execute("UPDATE users SET balance = balance + %s WHERE id=%s", (amount, user_id))
-            cur.execute(
-                "INSERT INTO topup_txns(user_id,amount,note,status) VALUES(%s,%s,%s,'refunded')",
-                (user_id, amount, note)
-            )
 
 # ── Billing helpers ──────────────────────────────────────────────
 def get_video_duration(path: str | Path) -> float:
@@ -120,21 +56,6 @@ def get_video_duration(path: str | Path) -> float:
     except ValueError:
         return 0.0
 
-def calc_cost(duration_secs: float) -> int:
-    """Tính tiền VND. Video ≤ 5 phút miễn phí."""
-    if duration_secs <= FREE_THRESHOLD:
-        return 0
-    minutes = math.ceil(duration_secs / 60)
-    return minutes * PRICE_PER_MIN
-
-# ── JWT decode helper ────────────────────────────────────────────
-def decode_user_id(token: str) -> int | None:
-    try:
-        payload = jwt.decode(token, AUTH_SECRET_KEY, algorithms=[AUTH_ALGORITHM])
-        return int(payload["sub"])
-    except (JWTError, KeyError, ValueError):
-        return None
-
 app = FastAPI()
 app.add_middleware(CORSMiddleware, allow_origins=["*"], allow_methods=["*"], allow_headers=["*"])
 
@@ -143,24 +64,6 @@ async def ngrok_skip_warning(request: Request, call_next):
     response = await call_next(request)
     response.headers["ngrok-skip-browser-warning"] = "1"
     return response
-
-@app.middleware("http")
-async def auth_guard(request: Request, call_next):
-    path = request.url.path
-    if (path.startswith("/static") or path in _PUBLIC_PATHS
-            or request.method == "OPTIONS"):
-        return await call_next(request)
-    if path.startswith("/api/"):
-        token = request.headers.get("Authorization", "").removeprefix("Bearer ").strip()
-        if not token or not AUTH_SECRET_KEY:
-            return JSONResponse(status_code=http_status.HTTP_401_UNAUTHORIZED,
-                                content={"detail": "Chua dang nhap"})
-        uid = decode_user_id(token)
-        if uid is None:
-            return JSONResponse(status_code=http_status.HTTP_401_UNAUTHORIZED,
-                                content={"detail": "Token khong hop le"})
-        request.state.user_id = uid
-    return await call_next(request)
 
 jobs: dict[str, dict] = {}   # job_id -> {status, progress, message, output, ...}
 
@@ -184,7 +87,6 @@ class TranslateRequest(BaseModel):
 def _prog(job_id: str, pct: float, msg: str):
     jobs[job_id]["progress"] = int(pct * 100)
     jobs[job_id]["message"]  = msg
-    _save_jobs()
 
 def _job_log(job_id: str, msg: str):
     if "logs" not in jobs[job_id]:
@@ -264,7 +166,8 @@ def _run_render(job_id: str, voice: str, bg_volume: float, tts_volume: float,
                 logo_fontsize: int = 28, logo_color: str = "#ffffff"):
     """Bước 2: TTS CapCut + render video."""
     from translate_video import (
-        build_srt, build_tts_track, render_video, get_audio_duration, CAPCUT_VOICES_VI,
+        build_srt, build_tts_track, render_video, get_audio_duration,
+        CAPCUT_DEVICE_ID, CAPCUT_VOICES_VI,
     )
 
     job = jobs[job_id]
@@ -280,7 +183,7 @@ def _run_render(job_id: str, voice: str, bg_volume: float, tts_volume: float,
         _prog(job_id, 0.1, "Tạo TTS (CapCut)...")
         jobs[job_id]["logs"] = []
         capcut_info        = next((v for v in CAPCUT_VOICES_VI if v[1] == voice), None)
-        capcut_device_id   = os.environ.get("CAPCUT_DEVICE_ID", "") if capcut_info else None
+        capcut_device_id   = os.environ.get("CAPCUT_DEVICE_ID", CAPCUT_DEVICE_ID) if capcut_info else None
         capcut_voice_type  = capcut_info[1] if capcut_info else None
         capcut_resource_id = capcut_info[2] if capcut_info else None
 
@@ -323,50 +226,12 @@ def _run_render(job_id: str, voice: str, bg_volume: float, tts_volume: float,
     except Exception as e:
         import traceback; traceback.print_exc()
         jobs[job_id].update(status="error", message=str(e))
-        _maybe_refund(job_id)
-
-
-def _maybe_refund(job_id: str):
-    """Hoàn tiền nếu job bị lỗi và đã trừ tiền."""
-    job = jobs.get(job_id, {})
-    user_id = job.get("user_id")
-    cost    = job.get("cost", 0)
-    if user_id and cost > 0 and not job.get("refunded"):
-        job["refunded"] = True
-        db_refund(user_id, cost, f"Hoan tien job {job_id[:8]} that bai")
+        return
 
 
 # ---------------------------------------------------------------------------
 # Endpoints
 # ---------------------------------------------------------------------------
-
-@app.post("/api/video-cost")
-async def video_cost(request: Request, file: UploadFile = File(...)):
-    """Tính giá video trước khi upload thật. Trả về duration + cost + balance."""
-    user_id = request.state.user_id
-    suffix  = Path(file.filename).suffix or ".mp4"
-    tmp     = tempfile.NamedTemporaryFile(delete=False, suffix=suffix)
-    tmp.write(await file.read())
-    tmp.close()
-    try:
-        duration = get_video_duration(tmp.name)
-        cost     = calc_cost(duration)
-        balance  = db_get_balance(user_id)
-        return {
-            "duration_secs": round(duration, 1),
-            "duration_min":  round(duration / 60, 1),
-            "cost":          cost,
-            "balance":       balance,
-            "can_afford":    balance >= cost,
-            "free":          cost == 0,
-        }
-    except Exception as e:
-        import traceback; traceback.print_exc()
-        return JSONResponse({"error": f"Loi server: {e}"}, status_code=500)
-    finally:
-        try: os.unlink(tmp.name)
-        except Exception: pass
-
 
 @app.post("/api/upload")
 async def upload_video(
@@ -378,7 +243,6 @@ async def upload_video(
     tts_volume: float = Form(1.8),
     groq_key: str = Form(""),
 ):
-    user_id = request.state.user_id
     suffix  = Path(file.filename).suffix or ".mp4"
     tmp     = tempfile.NamedTemporaryFile(delete=False, suffix=suffix)
     tmp.write(await file.read())
@@ -386,18 +250,6 @@ async def upload_video(
 
     try:
         duration = get_video_duration(tmp.name)
-        cost     = calc_cost(duration)
-
-        if cost > 0:
-            ok = db_deduct(user_id, cost, f"Dich video: {file.filename} ({round(duration/60,1)} phut)")
-            if not ok:
-                os.unlink(tmp.name)
-                balance = db_get_balance(user_id)
-                return JSONResponse(
-                    {"error": f"So du khong du. Can {cost:,}d, hien co {balance:,}d"},
-                    status_code=402
-                )
-
         job_id = str(uuid.uuid4())
         req    = TranslateRequest(job_id=job_id, voice=voice,
                                   bg_volume=bg_volume, tts_volume=tts_volume,
@@ -405,10 +257,10 @@ async def upload_video(
         jobs[job_id] = {
             "status": "pending", "progress": 0, "message": "Dang cho...",
             "filename": file.filename,
-            "user_id": user_id, "cost": cost, "duration_secs": round(duration, 1),
+            "duration_secs": round(duration, 1),
         }
         background_tasks.add_task(_run_translate_pipeline, job_id, tmp.name, req)
-        return {"job_id": job_id, "cost": cost, "duration_secs": round(duration, 1)}
+        return {"job_id": job_id, "duration_secs": round(duration, 1)}
     except Exception as e:
         import traceback; traceback.print_exc()
         try: os.unlink(tmp.name)
@@ -428,34 +280,20 @@ async def upload_with_srt(
     """Upload video + SRT sẵn có, bỏ qua STT + dịch AI."""
     from translate_video import parse_srt, build_srt
 
-    user_id = request.state.user_id
     suffix  = Path(file.filename).suffix or ".mp4"
     tmp     = tempfile.NamedTemporaryFile(delete=False, suffix=suffix)
     tmp.write(await file.read())
     tmp.close()
 
     duration = get_video_duration(tmp.name)
-    cost     = calc_cost(duration)
-
-    if cost > 0:
-        ok = db_deduct(user_id, cost, f"Dich video (SRT): {file.filename} ({round(duration/60,1)} phut)")
-        if not ok:
-            os.unlink(tmp.name)
-            balance = db_get_balance(user_id)
-            return JSONResponse(
-                {"error": f"So du khong du. Can {cost:,}d, hien co {balance:,}d"},
-                status_code=402
-            )
 
     srt_content = (await srt.read()).decode("utf-8", errors="replace")
     try:
         vi_cues = parse_srt(srt_content)
     except Exception as e:
-        if cost > 0: db_refund(user_id, cost, "Hoan tien SRT khong hop le")
         os.unlink(tmp.name)
         return JSONResponse({"error": f"SRT khong hop le: {e}"}, status_code=400)
     if not vi_cues:
-        if cost > 0: db_refund(user_id, cost, "Hoan tien SRT rong")
         os.unlink(tmp.name)
         return JSONResponse({"error": "SRT rong hoac sai dinh dang"}, status_code=400)
 
@@ -481,42 +319,32 @@ async def upload_with_srt(
         "voice":        voice,
         "bg_volume":    bg_volume,
         "tts_volume":   tts_volume,
-        "user_id":      user_id,
-        "cost":         cost,
         "duration_secs": round(duration, 1),
     }
 
     rows = [{"idx": c["idx"], "start": c["start"], "end": c["end"],
              "zh": "", "vi": c.get("text", "")} for c in vi_cues]
-    return {"job_id": job_id, "rows": rows, "cost": cost, "duration_secs": round(duration, 1)}
+    return {"job_id": job_id, "rows": rows, "duration_secs": round(duration, 1)}
 
 
-@app.get("/api/me/balance")
-async def my_balance(request: Request):
-    balance = db_get_balance(request.state.user_id)
-    return {"balance": balance}
-
-
-def _get_job(job_id: str, user_id: int):
-    """Lấy job, trả None nếu không tồn tại hoặc không phải của user này."""
+def _get_job(job_id: str):
+    """Lấy job local trong tiến trình hiện tại."""
     job = jobs.get(job_id)
     if not job:
         return None, JSONResponse({"error": "Khong tim thay"}, status_code=404)
-    if job.get("user_id") != user_id:
-        return None, JSONResponse({"error": "Khong co quyen"}, status_code=403)
     return job, None
 
 
 @app.get("/api/status/{job_id}")
 async def status(job_id: str, request: Request):
-    job, err = _get_job(job_id, request.state.user_id)
+    job, err = _get_job(job_id)
     if err: return err
     return {k: v for k, v in job.items() if k not in ("vi_cues", "zh_cues")}
 
 
 @app.get("/api/logs/{job_id}")
 async def get_logs(job_id: str, request: Request):
-    job, err = _get_job(job_id, request.state.user_id)
+    job, err = _get_job(job_id)
     if err: return err
     return JSONResponse({"logs": job.get("logs", [])})
 
@@ -524,7 +352,7 @@ async def get_logs(job_id: str, request: Request):
 @app.get("/api/cues/{job_id}")
 async def get_cues(job_id: str, request: Request):
     """Trả về bảng phụ đề để hiển thị/edit."""
-    job, err = _get_job(job_id, request.state.user_id)
+    job, err = _get_job(job_id)
     if err: return err
     vi_cues = job.get("vi_cues", [])
     zh_cues = job.get("zh_cues", [])
@@ -538,7 +366,7 @@ async def get_cues(job_id: str, request: Request):
 @app.post("/api/save-cues/{job_id}")
 async def save_cues(job_id: str, body: dict, request: Request):
     """Lưu bản dịch đã edit vào memory."""
-    job, err = _get_job(job_id, request.state.user_id)
+    job, err = _get_job(job_id)
     if err: return err
     if job.get("status") not in ("translated", "done", "error", "rendering"):
         return JSONResponse({"error": "Job chua dich xong"}, status_code=400)
@@ -573,7 +401,7 @@ async def render(
     bg_music:     Optional[UploadFile] = File(None),
     logo:         Optional[UploadFile] = File(None),
 ):
-    job, err = _get_job(job_id, request.state.user_id)
+    job, err = _get_job(job_id)
     if err: return err
     if job.get("status") not in ("translated", "done", "error"):
         return JSONResponse({"error": "Job chua san sang render"}, status_code=400)
@@ -628,7 +456,7 @@ async def rerender(
 
 @app.get("/api/download/{job_id}")
 async def download(job_id: str, request: Request):
-    job, err = _get_job(job_id, request.state.user_id)
+    job, err = _get_job(job_id)
     if err: return err
     if job.get("status") != "done":
         return JSONResponse({"error": "Video chua san sang"}, status_code=404)
@@ -642,7 +470,7 @@ async def download(job_id: str, request: Request):
 
 @app.get("/api/download-srt/{job_id}")
 async def download_srt(job_id: str, request: Request):
-    job, err = _get_job(job_id, request.state.user_id)
+    job, err = _get_job(job_id)
     if err: return err
     srt = job.get("srt_path")
     if not srt or not Path(srt).exists():
@@ -654,7 +482,7 @@ async def download_srt(job_id: str, request: Request):
 @app.post("/api/load-srt/{job_id}")
 async def load_srt(job_id: str, request: Request, file: UploadFile = File(...)):
     """Nạp file SRT bên ngoài vào job, ghi đè bản dịch hiện tại."""
-    job, err = _get_job(job_id, request.state.user_id)
+    job, err = _get_job(job_id)
     if err: return err
     if job.get("status") not in ("translated", "done", "error"):
         return JSONResponse({"error": "Job chua dich xong"}, status_code=400)
@@ -682,48 +510,11 @@ async def load_srt(job_id: str, request: Request, file: UploadFile = File(...)):
     return {"ok": True, "rows": rows}
 
 
-# ── Proxy /auth/* → auth_server :8006 ───────────────────────────────────────
-AUTH_ORIGIN = os.getenv("AUTH_ORIGIN", "https://audio-hdtf.onrender.com")
-
-@app.api_route("/auth/{path:path}", methods=["GET","POST","PUT","DELETE","OPTIONS"])
-async def auth_proxy(path: str, request: Request):
-    import asyncio as _asyncio, ssl as _ssl
-    import urllib.request as _urllib_req, urllib.error as _urllib_err
-    from urllib.parse import urlencode as _urlencode
-
-    url = f"{AUTH_ORIGIN}/auth/{path}"
-    if request.query_params:
-        url += "?" + _urlencode(dict(request.query_params))
-
-    body = await request.body()
-    _skip = {"host", "content-length", "transfer-encoding", "accept-encoding", "connection"}
-    fwd_headers = {k: v for k, v in request.headers.items() if k.lower() not in _skip}
-
-    def _sync_request():
-        ctx = _ssl.create_default_context()
-        req = _urllib_req.Request(url, data=body or None, headers=fwd_headers, method=request.method)
-        try:
-            with _urllib_req.urlopen(req, context=ctx, timeout=30) as r:
-                return r.read(), r.status, r.headers.get("Content-Type", "application/json")
-        except _urllib_err.HTTPError as e:
-            return e.read(), e.code, e.headers.get("Content-Type", "application/json")
-
-    try:
-        loop = _asyncio.get_event_loop()
-        raw, status_code, content_type = await loop.run_in_executor(None, _sync_request)
-        return Response(content=raw, status_code=status_code, media_type=content_type)
-    except Exception as e:
-        return JSONResponse(status_code=502,
-                            content={"detail": f"Không kết nối được auth server: {e}"})
-
-
 # Serve static — phải đặt cuối
-# Khi PyInstaller --onefile, __file__ trỏ vào temp dir. Dùng sys.executable để lấy đúng thư mục exe.
-_base = Path(sys.executable).parent if getattr(sys, 'frozen', False) else Path(__file__).parent
-static_dir = _base / "static_translate"
+static_dir = RUNTIME_DIR / "static_translate"
 static_dir.mkdir(exist_ok=True)
 app.mount("/", StaticFiles(directory=str(static_dir), html=True), name="static")
 
 if __name__ == "__main__":
     import uvicorn
-    uvicorn.run(app, host="0.0.0.0", port=8005)
+    uvicorn.run(app, host="127.0.0.1", port=8005)
