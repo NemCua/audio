@@ -9,6 +9,9 @@ on:
 jobs:
   build-windows:
     runs-on: windows-latest
+    defaults:
+      run:
+        shell: pwsh
 
     steps:
       - name: Checkout code
@@ -21,12 +24,17 @@ jobs:
 
       - name: Install Python dependencies
         run: |
-          pip install --upgrade pip
-          pip install fastapi uvicorn python-dotenv pydantic python-multipart groq openai requests pyinstaller
+          python -m pip install --upgrade pip
+          if (Test-Path requirements.txt) {
+            pip install -r requirements.txt
+          } else {
+            pip install fastapi uvicorn python-dotenv pydantic python-multipart groq openai requests
+          }
+          pip install pyinstaller
 
       - name: Build translate_server.exe
         run: |
-          pyinstaller --onefile --name translate_server `
+          pyinstaller --noconfirm --clean --onefile --name translate_server `
             --hidden-import=uvicorn.logging `
             --hidden-import=uvicorn.loops `
             --hidden-import=uvicorn.loops.auto `
@@ -40,31 +48,43 @@ jobs:
             --hidden-import=starlette `
             --collect-all=groq `
             --collect-all=openai `
-            --add-data "capcut-tts-api-main;capcut-tts-api-main" `
+            --collect-all=requests `
             --paths capcut-tts-api-main `
             --hidden-import=translate_video `
             --hidden-import=capcut_common_task_client `
             translate_server.py
 
-      - name: Download FFmpeg for Windows
-        shell: cmd
+      - name: Install FFmpeg
         run: |
-          curl -L https://github.com/BtbN/FFmpeg-Builds/releases/download/latest/ffmpeg-master-latest-win64-gpl.zip -o ffmpeg.zip
-          tar -xf ffmpeg.zip
-          move ffmpeg-master-latest-win64-gpl\bin\ffmpeg.exe ffmpeg.exe
-          move ffmpeg-master-latest-win64-gpl\bin\ffprobe.exe ffprobe.exe
+          choco install ffmpeg -y --no-progress
 
-      - name: Copy binaries to electron resources
-        shell: cmd
+      - name: Prepare Electron resources
+        env:
+          BEEKNOEE_API_KEY: ${{ secrets.BEEKNOEE_API_KEY }}
+          CAPCUT_DEVICE_ID: ${{ secrets.CAPCUT_DEVICE_ID }}
+          CAPCUT_IID: ${{ secrets.CAPCUT_IID }}
         run: |
-          mkdir electron\resources\python
-          copy dist\translate_server.exe electron\resources\python\
-          copy ffmpeg.exe electron\resources\python\
-          copy ffprobe.exe electron\resources\python\
-          xcopy static_translate electron\resources\python\static_translate\ /E /I /Y
+          $resourceDir = "electron\resources\python"
+          New-Item -ItemType Directory -Force $resourceDir | Out-Null
+          Copy-Item dist\translate_server.exe "$resourceDir\translate_server.exe" -Force
+          Copy-Item (Get-Command ffmpeg.exe).Source "$resourceDir\ffmpeg.exe" -Force
+          Copy-Item (Get-Command ffprobe.exe).Source "$resourceDir\ffprobe.exe" -Force
+          Copy-Item static_translate "$resourceDir\static_translate" -Recurse -Force
+          Copy-Item capcut-tts-api-main "$resourceDir\capcut-tts-api-main" -Recurse -Force
+          if (Test-Path voice_previews) {
+            Copy-Item voice_previews "$resourceDir\voice_previews" -Recurse -Force
+          }
+
+          $envLines = @(
+            "FFMPEG_BIN=ffmpeg.exe",
+            "FFPROBE_BIN=ffprobe.exe"
+          )
+          if ($env:BEEKNOEE_API_KEY) { $envLines += "BEEKNOEE_API_KEY=$env:BEEKNOEE_API_KEY" }
+          if ($env:CAPCUT_DEVICE_ID) { $envLines += "CAPCUT_DEVICE_ID=$env:CAPCUT_DEVICE_ID" }
+          if ($env:CAPCUT_IID) { $envLines += "CAPCUT_IID=$env:CAPCUT_IID" }
+          $envLines | Set-Content "$resourceDir\.env" -Encoding UTF8
 
       - name: Create local debug launcher
-        shell: pwsh
         run: |
           $batContent = "@echo off`ncd /d `"%~dp0`"`ntranslate_server.exe`npause"
           $batContent | Set-Content -Path "electron\resources\python\run_server.bat" -Encoding ASCII
@@ -73,13 +93,19 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: '22'
+          cache: npm
+          cache-dependency-path: electron/package-lock.json
 
       - name: Install Electron dependencies
         working-directory: electron
-        run: npm install --ignore-scripts
+        run: |
+          if (Test-Path package-lock.json) {
+            npm ci --ignore-scripts
+          } else {
+            npm install --ignore-scripts
+          }
 
       - name: Set version from git tag
-        shell: pwsh
         run: |
           $tag = "${{ github.ref_name }}"
           $version = $tag.TrimStart('v')
@@ -102,5 +128,8 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: DichVideo-Windows
-          path: electron/dist/*.exe
+          path: |
+            electron/dist/*.exe
+            electron/dist/*.blockmap
+            electron/dist/latest*.yml
           retention-days: 30

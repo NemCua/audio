@@ -39,7 +39,7 @@ from pathlib import Path
 # ---------------------------------------------------------------------------
 # CONFIG
 # ---------------------------------------------------------------------------
-BASE_DIR   = Path(__file__).parent
+BASE_DIR   = Path(sys.executable).resolve().parent if getattr(sys, "frozen", False) else Path(__file__).parent
 
 # Load .env
 _env_file = BASE_DIR / ".env"
@@ -603,7 +603,7 @@ async def tts_segment(text: str, voice: str, out_path: Path,
                       **_ignored):
     """Tạo file TTS cho 1 đoạn text dùng CapCut TTS, retry vô hạn + đổi device_id khi bị block."""
     import random as _random
-    clean = re.sub(r"[^\w\sÀ-ɏḀ-ỿ.,!?;:()\-–\"']", " ", text).strip() or "."
+    clean = re.sub(r"[^\w\s\u00c0-\u024f\u1e00-\u1eff.,!?;:()\"'\u2013-]", " ", text).strip() or "."
     current_did = capcut_device_id
     attempt = 0
     while True:
@@ -755,7 +755,7 @@ async def build_tts_track(cues: list[dict], work_dir: Path, video_duration: floa
             text = cue["text"].strip()
             if not text:
                 continue
-            clean = re.sub(r"[^\w\sÀ-ɏḀ-ỿ.,!?;:()\-–\"']", " ", text).strip() or "."
+            clean = re.sub(r"[^\w\s\u00c0-\u024f\u1e00-\u1eff.,!?;:()\"'\u2013-]", " ", text).strip() or "."
             raw_path = seg_dir / f"raw_{cue['idx']:04d}.mp3"
             raw_paths[cue["idx"]] = raw_path
             pending_idxs.append(cue["idx"])

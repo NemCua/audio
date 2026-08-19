@@ -16,4 +16,6 @@ workdir/
 *.mp4
 *.wav
 *.srt
+!voice_previews/
+!voice_previews/*.mp3
 electron/node_modules/
