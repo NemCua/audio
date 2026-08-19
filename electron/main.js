@@ -66,6 +66,7 @@ async function startServers() {
     }
     env.FFMPEG_BIN = path.join(scriptsDir, process.platform === 'win32' ? 'ffmpeg.exe' : 'ffmpeg')
     env.FFPROBE_BIN = path.join(scriptsDir, process.platform === 'win32' ? 'ffprobe.exe' : 'ffprobe')
+    env.PYTHONPATH = scriptsDir
   } else {
     const venvPython = process.platform === 'win32'
       ? path.join(scriptsDir, '.venv', 'Scripts', 'python.exe')
