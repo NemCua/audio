@@ -25,39 +25,9 @@ jobs:
       - name: Install Python dependencies
         run: |
           python -m pip install --upgrade pip
-          if (Test-Path requirements.txt) {
-            pip install -r requirements.txt
-          } else {
-            pip install fastapi uvicorn python-dotenv pydantic python-multipart groq openai requests
-          }
-          pip install pyinstaller
-
-      - name: Build translate_server.exe
-        run: |
-          pyinstaller --noconfirm --clean --onefile --name translate_server `
-            --hidden-import=uvicorn.logging `
-            --hidden-import=uvicorn.loops `
-            --hidden-import=uvicorn.loops.auto `
-            --hidden-import=uvicorn.protocols `
-            --hidden-import=uvicorn.protocols.http `
-            --hidden-import=uvicorn.protocols.http.auto `
-            --hidden-import=uvicorn.protocols.websockets `
-            --hidden-import=uvicorn.protocols.websockets.auto `
-            --hidden-import=uvicorn.lifespan `
-            --hidden-import=uvicorn.lifespan.off `
-            --hidden-import=starlette `
-            --collect-all=fastapi `
-            --collect-all=starlette `
-            --collect-all=pydantic `
-            --collect-all=uvicorn `
-            --collect-all=dotenv `
-            --collect-all=groq `
-            --collect-all=openai `
-            --collect-all=requests `
-            --paths capcut-tts-api-main `
-            --hidden-import=translate_video `
-            --hidden-import=capcut_common_task_client `
-            translate_server.py
+          python -m venv electron\resources\python\python_env
+          electron\resources\python\python_env\Scripts\python.exe -m pip install --upgrade pip
+          electron\resources\python\python_env\Scripts\pip.exe install -r requirements.txt
 
       - name: Install FFmpeg
         run: |
@@ -71,7 +41,9 @@ jobs:
         run: |
           $resourceDir = "electron\resources\python"
           New-Item -ItemType Directory -Force $resourceDir | Out-Null
-          Copy-Item dist\translate_server.exe "$resourceDir\translate_server.exe" -Force
+          Copy-Item translate_server.py "$resourceDir\translate_server.py" -Force
+          Copy-Item translate_video.py "$resourceDir\translate_video.py" -Force
+          Copy-Item requirements.txt "$resourceDir\requirements.txt" -Force
           Copy-Item (Get-Command ffmpeg.exe).Source "$resourceDir\ffmpeg.exe" -Force
           Copy-Item (Get-Command ffprobe.exe).Source "$resourceDir\ffprobe.exe" -Force
           Copy-Item static_translate "$resourceDir\static_translate" -Recurse -Force
@@ -91,15 +63,18 @@ jobs:
 
       - name: Create local debug launcher
         run: |
-          $batContent = "@echo off`ncd /d `"%~dp0`"`ntranslate_server.exe`npause"
+          $batContent = "@echo off`ncd /d `"%~dp0`"`nset FFMPEG_BIN=%~dp0ffmpeg.exe`nset FFPROBE_BIN=%~dp0ffprobe.exe`npython_env\Scripts\python.exe translate_server.py`npause"
           $batContent | Set-Content -Path "electron\resources\python\run_server.bat" -Encoding ASCII
 
-      - name: Smoke test packaged Python server
+      - name: Smoke test bundled Python server
         run: |
           $resourceDir = Resolve-Path "electron\resources\python"
           $logOut = Join-Path $env:RUNNER_TEMP "translate_server.out.log"
           $logErr = Join-Path $env:RUNNER_TEMP "translate_server.err.log"
-          $proc = Start-Process -FilePath (Join-Path $resourceDir "translate_server.exe") `
+          $env:FFMPEG_BIN = Join-Path $resourceDir "ffmpeg.exe"
+          $env:FFPROBE_BIN = Join-Path $resourceDir "ffprobe.exe"
+          $proc = Start-Process -FilePath (Join-Path $resourceDir "python_env\Scripts\python.exe") `
+            -ArgumentList (Join-Path $resourceDir "translate_server.py") `
             -WorkingDirectory $resourceDir `
             -PassThru `
             -RedirectStandardOutput $logOut `
@@ -109,7 +84,7 @@ jobs:
             $ready = $false
             for ($i = 0; $i -lt 180; $i++) {
               if ($proc.HasExited) {
-                throw "translate_server.exe exited with code $($proc.ExitCode)"
+                throw "translate_server.py exited with code $($proc.ExitCode)"
               }
               try {
                 $root = Invoke-WebRequest "http://127.0.0.1:8005/" -UseBasicParsing -TimeoutSec 2
@@ -121,7 +96,7 @@ jobs:
               Start-Sleep -Seconds 1
             }
             if (-not $ready) {
-              throw "translate_server.exe did not become ready in 180 seconds"
+              throw "translate_server.py did not become ready in 180 seconds"
             }
             $voices = Invoke-RestMethod "http://127.0.0.1:8005/api/voices" -TimeoutSec 10
             if (-not $voices.voices -or $voices.voices.Count -lt 5) {
