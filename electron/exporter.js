@@ -8,6 +8,11 @@ const { fileURLToPath } = require('node:url');
 const WIDTH = 1080;
 const HEIGHT = 1920;
 
+function lockVisualZoom(webContents) {
+  const result = webContents.setVisualZoomLevelLimits(1, 1);
+  if (result && typeof result.catch === 'function') result.catch(() => {});
+}
+
 function visualBreakpoints(steps, total) {
   const points = new Set([0, total]);
   for (const step of steps) {
@@ -47,7 +52,7 @@ async function renderSegments({ steps, total, threadsRoot, workDir, blurIdentity
     // Giữ CSS pixel = output pixel trên mọi DPI. Đặc biệt Windows có thể
     // kế thừa scale 125%/150% của màn hình dù BrowserWindow đang offscreen.
     win.webContents.setZoomFactor(1);
-    await win.webContents.setVisualZoomLevelLimits(1, 1);
+    lockVisualZoom(win.webContents);
     win.setContentSize(WIDTH, HEIGHT);
     const url = new URL(`file://${path.join(threadsRoot, 'export_render.html')}`);
     url.searchParams.set('w', String(WIDTH));

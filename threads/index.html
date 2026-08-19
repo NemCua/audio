@@ -3694,23 +3694,35 @@ document.addEventListener('keydown',event=>{
   if(top){event.preventDefault();top.click();}
 });
 
-// Trên Windows, ancestor draggable=true đôi khi nuốt mousedown của input.
-// Tạm tắt native drag của card trong suốt một thao tác bắt đầu từ control;
-// khôi phục ngay khi nhả chuột để việc kéo/sắp xếp card vẫn dùng được.
-document.addEventListener('pointerdown',event=>{
-  if(!event.target.closest('input,textarea,select,button,label,[contenteditable="true"]'))return;
-  const draggable=event.target.closest('[draggable="true"]');
+// Trên Windows, ancestor draggable=true đôi khi nuốt cả hover/focus của input.
+// Tắt drag ngay khi trỏ chuột hoặc focus đi vào form control, khôi phục sau khi
+// control không còn hover/focus để kéo/sắp xếp card vẫn dùng được.
+const FORM_CONTROL_SELECTOR='input,textarea,select,button,label,[contenteditable="true"]';
+function suspendAncestorDrag(target){
+  const control=target?.closest?.(FORM_CONTROL_SELECTOR);
+  if(!control)return;
+  const draggable=control.closest('[draggable="true"]');
   if(!draggable)return;
   draggable.dataset.restoreDraggable='true';
   draggable.draggable=false;
-  const restore=()=>{
-    if(draggable.dataset.restoreDraggable==='true'){
-      draggable.draggable=true;
-      delete draggable.dataset.restoreDraggable;
-    }
-  };
-  window.addEventListener('pointerup',restore,{once:true});
-  window.addEventListener('pointercancel',restore,{once:true});
+}
+function restoreSuspendedDrags(){
+  document.querySelectorAll('[data-restore-draggable="true"]').forEach(el=>{
+    if(el.matches(':hover')||el.contains(document.activeElement))return;
+    el.draggable=true;
+    delete el.dataset.restoreDraggable;
+  });
+}
+document.addEventListener('pointerover',event=>suspendAncestorDrag(event.target),{capture:true});
+document.addEventListener('pointerdown',event=>suspendAncestorDrag(event.target),{capture:true});
+document.addEventListener('focusin',event=>suspendAncestorDrag(event.target),{capture:true});
+document.addEventListener('pointerout',()=>setTimeout(restoreSuspendedDrags,0),{capture:true});
+document.addEventListener('focusout',()=>setTimeout(restoreSuspendedDrags,0),{capture:true});
+document.addEventListener('dragstart',event=>{
+  if(event.target.closest(FORM_CONTROL_SELECTOR)){
+    event.preventDefault();
+    event.stopPropagation();
+  }
 },{capture:true});
 
 async function loadStickerLibrary(preferredPackId = null) {
