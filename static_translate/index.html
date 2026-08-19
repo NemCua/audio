@@ -1,9 +1,9 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="vi">
 <head>
 <meta charset="UTF-8"/>
 <meta name="viewport" content="width=device-width,initial-scale=1"/>
-<title>Dịch Video Tiếng Trung</title>
+<title>Dich Video</title>
 <style>
 *{box-sizing:border-box;margin:0;padding:0}
 body{font-family:'Segoe UI',system-ui,sans-serif;background:#0a0c14;color:#e2e8f0;min-height:100vh;display:flex;flex-direction:column}
@@ -26,6 +26,19 @@ select:focus,input:focus{border-color:#7c3aed}
 .slider-row{display:flex;align-items:center;gap:8px}
 input[type=range]{flex:1;accent-color:#7c3aed}
 .sv{min-width:36px;text-align:right;font-size:12px;color:#a78bfa;font-weight:700}
+.setting-block{margin-bottom:10px}
+.setting-toggle{display:flex;align-items:center;gap:8px;margin:2px 0 8px;color:#d1d5db}
+.setting-toggle input{width:auto}
+.advanced-box{border-top:1px solid #1e2340;margin-top:10px;padding-top:10px}
+.voice-picker{position:relative;margin-bottom:10px}
+.voice-current{width:100%;border:1px solid #1e2340;background:#0a0c14;color:#e5e7eb;border-radius:8px;padding:9px 10px;font-size:13px;display:flex;justify-content:space-between;align-items:center;cursor:pointer}
+.voice-current.active{border-color:#22c55e;background:#052e1a}
+.voice-menu{display:none;position:absolute;left:0;right:0;top:calc(100% + 6px);z-index:40;background:#0a0c14;border:1px solid #1e2340;border-radius:8px;max-height:260px;overflow:auto;box-shadow:0 18px 36px #0009}
+.voice-menu.on{display:block}
+.voice-row{display:grid;grid-template-columns:1fr auto auto;gap:6px;align-items:center;padding:8px;border-bottom:1px solid #111827}
+.voice-row:last-child{border-bottom:none}
+.voice-row.active,.voice-row.previewing{outline:1px solid #22c55e;background:#052e1a}
+.voice-row-name{font-size:12px;font-weight:700;color:#e5e7eb;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 
 /* Upload zone */
 .drop-zone{border:2px dashed #1e2340;border-radius:10px;padding:32px 16px;text-align:center;cursor:pointer;transition:border-color .2s,background .2s;position:relative}
@@ -70,11 +83,23 @@ table{width:100%;border-collapse:collapse;font-size:12px}
 th{background:#12152a;padding:8px 10px;text-align:left;color:#4b5563;font-weight:700;position:sticky;top:0;border-bottom:1px solid #1e2340}
 td{padding:6px 10px;border-bottom:1px solid #0a0c14;vertical-align:top}
 tr:hover td{background:#12152a44}
+tr.cjk-hit td{background:#3b1d1d88}
+tr.cjk-hit:hover td{background:#4a2424aa}
 td.zh{color:#6b7280}
 td.vi-cell{min-width:260px}
 td.vi-cell textarea{width:100%;background:transparent;border:none;color:#e2e8f0;font-size:12px;font-family:inherit;resize:vertical;min-height:36px;outline:none;line-height:1.5}
 td.vi-cell textarea:focus{background:#1e1b4b44}
 .ts{color:#4b5563;white-space:nowrap;font-family:monospace;font-size:11px}
+.mini-btn{border:1px solid #334155;background:#111827;color:#cbd5e1;border-radius:6px;padding:5px 8px;font-size:11px;font-weight:700;cursor:pointer;white-space:nowrap}
+.mini-btn:hover{background:#1f2937}
+.mini-btn:disabled{opacity:.4;cursor:not-allowed}
+.cjk-badge{display:none;margin-top:4px;color:#fca5a5;font-size:11px;font-weight:700}
+tr.cjk-hit .cjk-badge{display:block}
+.cjk-report{display:none;margin-bottom:10px;border:1px solid #7f1d1d;background:#3b1d1d55;color:#fecaca;border-radius:8px;padding:10px 12px;font-size:12px;line-height:1.45}
+.cjk-report.on{display:block}
+.cjk-report strong{color:#fff}
+.float-next{position:fixed;right:18px;bottom:22px;z-index:30;display:none;width:auto;margin:0;padding:10px 14px;border-radius:999px;background:#7f1d1d;color:#fff;border:1px solid #ef4444;box-shadow:0 10px 28px #0008}
+.float-next.on{display:block}
 
 /* Video output */
 .video-wrap{background:#0a0c14;border:1px solid #1e2340;border-radius:10px;overflow:hidden;aspect-ratio:16/9;display:flex;align-items:center;justify-content:center;margin-bottom:12px;max-height:480px}
@@ -97,9 +122,9 @@ td.vi-cell textarea:focus{background:#1e1b4b44}
 <body>
 
 <header>
-  <h1>🎬 Dịch Video Tiếng Trung → Tiếng Việt</h1>
-  <span>AI dịch · CapCut TTS · FFmpeg render</span>
-  <span style="flex:0;color:#4ade80">● Chạy local · Không cần tài khoản</span>
+  <h1>Dich Video Trung sang Viet</h1>
+  <span>AI dich · CapCut TTS · FFmpeg render</span>
+  <span style="flex:0;color:#4ade80">Local · Khong can tai khoan</span>
 </header>
 
 <div class="layout">
@@ -107,49 +132,46 @@ td.vi-cell textarea:focus{background:#1e1b4b44}
   <!-- SIDEBAR -->
   <div class="sidebar">
 
-    <!-- BƯỚC 1: Upload + Dịch -->
+    <!-- BÆ¯á»C 1: Upload + Dá»‹ch -->
     <div class="sec">
-      <h3>1. Chọn video</h3>
+      <h3>1. Chon video</h3>
       <div class="drop-zone" id="drop-zone">
         <input type="file" id="file-input" accept="video/*"/>
-        <div class="icon">🎞️</div>
-        <p>Kéo thả hoặc nhấn để chọn video</p>
+        <div class="icon">Video</div>
+        <p>Keo tha hoac nhan de chon video</p>
         <div class="fname" id="fname"></div>
       </div>
     </div>
 
     <div class="sec">
-      <h3>2. Lấy bản dịch</h3>
+      <h3>2. Lay ban dich</h3>
 
-      <!-- Nhánh A: STT + AI -->
+      <!-- NhĂ¡nh A: STT + AI -->
       <div id="branch-ai">
-        <label style="font-size:11px;color:#6b7280">Groq API Key (STT)</label>
-        <input type="password" id="groq-key" placeholder="gsk_..." autocomplete="off"
-               style="margin-bottom:8px"/>
-        <button class="btn btn-purple" id="btn-start" onclick="startJob()">▶ STT + Dịch AI</button>
+        <button class="btn btn-purple" id="btn-start" onclick="startJob()">STT + Dich AI</button>
       </div>
 
       <!-- Divider -->
       <div style="display:flex;align-items:center;gap:8px;margin:8px 0">
         <div style="flex:1;height:1px;background:#1e2340"></div>
-        <span style="font-size:11px;color:#4b5563">hoặc</span>
+        <span style="font-size:11px;color:#4b5563">hoac</span>
         <div style="flex:1;height:1px;background:#1e2340"></div>
       </div>
 
-      <!-- Nhánh B: Nạp SRT sẵn -->
+      <!-- Nhanh B: Nap JSON san co -->
       <div style="position:relative">
-        <button class="btn" id="btn-pick-srt"
+        <button class="btn" id="btn-pick-json-pre"
                 style="background:#1c2b3a;color:#67e8f9;border:1px solid #164e63;margin-top:0">
-          📂 Nạp SRT sẵn có
+          Nap JSON san co
         </button>
-        <input type="file" id="srt-pre-input" accept=".srt,.txt"
+        <input type="file" id="json-pre-input" accept=".json,application/json"
                style="position:absolute;inset:0;opacity:0;cursor:pointer"
-               onchange="pickSrtFile(this)"/>
+               onchange="pickJsonFile(this)"/>
       </div>
-      <div class="fname" id="srt-fname" style="margin-top:4px"></div>
-      <button class="btn" id="btn-use-srt" onclick="useSrt()"
+      <div class="fname" id="json-pre-fname" style="margin-top:4px"></div>
+      <button class="btn" id="btn-use-json-pre" onclick="useJson()"
               style="background:#164e63;color:#67e8f9;border:1px solid #0e7490;display:none;margin-top:6px">
-        ✓ Dùng SRT này
+        Dung JSON nay
       </button>
     </div>
 
@@ -167,69 +189,83 @@ td.vi-cell textarea:focus{background:#1e1b4b44}
       <div id="log-panel" style="display:none;margin-top:8px;background:#0d1117;border:1px solid #30363d;border-radius:6px;padding:8px 10px;max-height:180px;overflow-y:auto;font-family:monospace;font-size:11px;color:#8b949e;line-height:1.5"></div>
     </div>
 
-    <!-- BƯỚC 2: Tạo video (ẩn cho đến khi có bản dịch) -->
+    <!-- BÆ¯á»C 2: Táº¡o video (áº©n cho Ä‘áº¿n khi cĂ³ báº£n dá»‹ch) -->
     <div class="sec" id="sec-render" style="display:none">
-      <h3>3. Tạo video</h3>
-      <button class="btn btn-green" id="btn-render" onclick="startRender()">🎬 Tạo video</button>
-      <a class="btn btn-blue" id="dl-srt-early"
+      <h3>3. Tao video</h3>
+      <button class="btn btn-green" id="btn-render" onclick="startRender()">Tao video</button>
+      <div class="setting-block" style="margin-top:10px">
+        <label>Thoi luong preview tu 0s</label>
+        <div class="slider-row">
+          <input type="range" id="preview-duration" min="30" max="300" step="30" value="30"
+                 oninput="document.getElementById('previewv').textContent=previewDurationLabel(this.value)"/>
+          <span class="sv" id="previewv">30s</span>
+        </div>
+      </div>
+      <button class="btn btn-purple" id="btn-preview" onclick="startPreview()">Xem preview</button>
+      <a class="btn btn-blue" id="dl-json-early"
          style="display:block;text-align:center;text-decoration:none;margin-top:6px">
-        ⬇ Tải bản dịch (.srt)
+        Tai ban dich (.json)
       </a>
     </div>
 
-    <!-- Tùy chỉnh video (luôn hiển thị nhưng ở dưới) -->
+    <!-- TĂ¹y chá»‰nh video (luĂ´n hiá»ƒn thá»‹ nhÆ°ng á»Ÿ dÆ°á»›i) -->
     <div class="sec">
-      <h3>Tùy chỉnh video</h3>
+      <h3>Tuy chinh video</h3>
 
       <label>Giong doc TTS</label>
-      <select id="voice" style="margin-bottom:10px">
-        <option value="BV421_vivn_streaming" selected>Nhỏ Ngọt Ngào</option>
-        <option value="BV074_streaming">Cô Gái Hoạt Ngôn</option>
-        <option value="vi_female_huong">Giọng Nữ Phổ Thông</option>
-        <option value="BV562_streaming">Mai</option>
-        <option value="BV075_streaming">Thanh Niên Tự Tin</option>
-        <option value="multi_male_felipe_uranus_bigtts">Giọng Nam Trầm</option>
-        <option value="BV560_streaming">Alex Đại Đế</option>
-        <option value="multi_female_peiqi_uranus_bigtts">Gái Mới Lớn</option>
-        <option value="multi_female_yangguangnv_uranus_bigtts">Bình Minh</option>
-        <option value="multi_female_sisi_uranus_bigtts">Bản Tin Nữ</option>
-      </select>
-
-      <label>Nhạc nền (tùy chọn)</label>
-      <div style="position:relative;margin-bottom:4px">
-        <button class="btn" style="background:#1c1a2e;color:#c4b5fd;border:1px solid #4c1d95;margin-top:0">
-          🎵 Chon file nhac
+      <input type="hidden" id="voice" value="BV421_vivn_streaming"/>
+      <div class="voice-picker" id="voice-picker">
+        <button type="button" class="voice-current" id="voice-current" onclick="toggleVoiceMenu()">
+          <span id="voice-current-name">Nho Ngot Ngao</span>
+          <span>v</span>
         </button>
-        <input type="file" id="bg-music-input" accept="audio/*"
-               style="position:absolute;inset:0;opacity:0;cursor:pointer"
-               onchange="document.getElementById('bg-music-fname').textContent=this.files[0]?this.files[0].name:''"/>
+        <div class="voice-menu" id="voice-menu"></div>
       </div>
-      <div class="fname" id="bg-music-fname" style="margin-bottom:10px"></div>
 
-      <label>Watermark (để trống = không có)</label>
-      <input type="text" id="logo-text" placeholder="tên kênh, @handle..."
+      <label>Watermark (bo trong = khong co)</label>
+      <input type="text" id="logo-text" placeholder="ten kenh, @handle..."
              style="margin-bottom:10px"/>
 
-      <label>Tốc độ đọc TTS</label>
+      <label>Toc do doc TTS</label>
       <div class="slider-row" style="margin-bottom:8px">
         <input type="range" id="tts-rate" min="0.5" max="2.0" step="0.05" value="1.0"
                oninput="document.getElementById('ttsrv').textContent=parseFloat(this.value).toFixed(2)+'x'"/>
         <span class="sv" id="ttsrv">1.00x</span>
       </div>
 
-      <label>Âm lượng lồng tiếng</label>
+      <label>Am luong long tieng</label>
       <div class="slider-row" style="margin-bottom:8px">
-        <input type="range" id="tts-vol" min="0" max="3" step="0.05" value="1.8"
+        <input type="range" id="tts-vol" min="0" max="3" step="0.05" value="1.0"
                oninput="document.getElementById('ttsv').textContent=parseFloat(this.value).toFixed(2)"/>
-        <span class="sv" id="ttsv">1.80</span>
+        <span class="sv" id="ttsv">1.00</span>
       </div>
 
-      <label>Âm lượng nhạc nền</label>
-      <div class="slider-row">
+      <label class="setting-toggle">
+        <input type="checkbox" id="keep-orig-audio" onchange="toggleOriginalAudioSettings()" />
+        <span>Giu am thanh goc</span>
+      </label>
+      <div class="slider-row" id="orig-vol-wrap" style="display:none;margin-bottom:10px">
+        <input type="range" id="orig-vol" min="0" max="2" step="0.05" value="0.25"
+               oninput="document.getElementById('origv').textContent=parseFloat(this.value).toFixed(2)"/>
+        <span class="sv" id="origv">0.25</span>
+      </div>
+
+      <label>Nhac nen</label>
+      <div style="position:relative;margin-bottom:4px">
+        <button class="btn" style="background:#1c1a2e;color:#c4b5fd;border:1px solid #4c1d95;margin-top:0">
+          Chon file nhac
+        </button>
+        <input type="file" id="bg-music-input" accept="audio/*"
+               style="position:absolute;inset:0;opacity:0;cursor:pointer"
+               onchange="onBgMusicPicked(this)"/>
+      </div>
+      <div class="fname" id="bg-music-fname" style="margin-bottom:6px"></div>
+      <div class="slider-row" id="bg-vol-wrap" style="display:none;margin-bottom:10px">
         <input type="range" id="bg-vol" min="0" max="2" step="0.05" value="0.3"
                oninput="document.getElementById('bgv').textContent=parseFloat(this.value).toFixed(2)"/>
         <span class="sv" id="bgv">0.30</span>
       </div>
+
     </div>
 
   </div>
@@ -237,41 +273,55 @@ td.vi-cell textarea:focus{background:#1e1b4b44}
   <!-- MAIN -->
   <div class="main">
     <div class="tabs">
-      <div class="tab active" onclick="switchTab('output')">📺 Video kết quả</div>
-      <div class="tab" onclick="switchTab('subs')">📝 Chỉnh phụ đề</div>
+      <div class="tab active" onclick="switchTab('output')">Video ket qua</div>
+      <div class="tab" onclick="switchTab('subs')">Chinh phu de</div>
+      <div class="tab" onclick="switchTab('settings')">Setting</div>
     </div>
 
     <!-- TAB OUTPUT -->
     <div class="tab-content active" id="tab-output">
       <div class="video-wrap" id="video-wrap">
-        <div class="vph"><div class="icon">🎬</div><div>Video dịch sẽ hiện ở đây</div></div>
+        <div class="vph"><div class="icon">Video</div><div>Video dich se hien o day</div></div>
       </div>
       <div class="dl-row">
-        <a class="dl-btn dl-video" id="dl-video" download>⬇️ Tải video</a>
-        <a class="dl-btn dl-srt"   id="dl-srt"   download>📄 Tải SRT</a>
+        <a class="dl-btn dl-video" id="dl-video" download>Tai video</a>
+        <a class="dl-btn dl-srt"   id="dl-json"   download>Tai JSON</a>
       </div>
     </div>
 
-    <!-- TAB PHỤ ĐỀ -->
+    <!-- TAB PHá»¤ Äá»€ -->
     <div class="tab-content" id="tab-subs">
       <div class="empty" id="subs-empty">
-        <div class="icon">📝</div>
-        <div>Dịch xong sẽ hiện bảng phụ đề để xem và sửa</div>
+        <div class="icon">Sub</div>
+        <div>Dich xong se hien bang phu de de xem va sua</div>
       </div>
       <div id="subs-panel" style="display:none">
         <div style="display:flex;gap:8px;margin-bottom:12px;align-items:center">
           <span style="font-size:13px;color:#6b7280;flex:1" id="subs-info"></span>
+          <button class="btn" style="width:auto;margin:0;padding:8px 16px;background:#3b1d1d;color:#fca5a5;border:1px solid #7f1d1d"
+                  onclick="detectChinese()" id="btn-detect-cjk">Do tieng Trung</button>
+          <button class="btn" style="width:auto;margin:0;padding:8px 16px;background:#3b2f1d;color:#fde68a;border:1px solid #854d0e;display:none"
+                  onclick="fixAllChinese()" id="btn-fix-all-cjk">Sua tat ca</button>
+          <button class="btn" style="width:auto;margin:0;padding:8px 16px;background:#1c2b3a;color:#bfdbfe;border:1px solid #1d4ed8"
+                  onclick="splitLongCues()" id="btn-split-long">Tach dong dai</button>
           <button class="btn btn-blue" style="width:auto;margin:0;padding:8px 16px"
-                  onclick="saveAndRerender()" id="btn-rerender" style="display:none">🔄 Lưu & Render lại</button>
+                  onclick="downloadJson()" id="btn-download-json">Tai JSON</button>
+          <button class="btn" style="width:auto;margin:0;padding:8px 16px;background:#1c2b3a;color:#67e8f9;border:1px solid #164e63"
+                  onclick="document.getElementById('json-input').click()" id="btn-load-json">Nap JSON</button>
+          <input type="file" id="json-input" accept=".json,application/json" style="display:none" onchange="loadJsonFile(this)"/>
+          <button class="btn btn-green" style="width:auto;margin:0;padding:8px 16px"
+                  onclick="saveSubtitles()" id="btn-save-json">Luu lai</button>
         </div>
+        <div id="cjk-report" class="cjk-report"></div>
         <div class="table-wrap">
           <table>
             <thead>
               <tr>
                 <th style="width:40px">#</th>
-                <th style="width:100px">Thời gian</th>
-                <th>Tiếng Trung</th>
-                <th>Bản dịch (có thể sửa)</th>
+                <th style="width:100px">Thoi gian</th>
+                <th>Tieng Trung</th>
+                <th>Ban dich (co the sua)</th>
+                <th style="width:110px">Kiem tra</th>
               </tr>
             </thead>
             <tbody id="subs-body"></tbody>
@@ -280,19 +330,58 @@ td.vi-cell textarea:focus{background:#1e1b4b44}
       </div>
     </div>
 
+    <div class="tab-content" id="tab-settings">
+      <div style="max-width:520px">
+        <div class="sec" style="border:1px solid #1e2340;border-radius:8px;margin-bottom:12px">
+          <h3>API</h3>
+          <label>Groq API Key (STT)</label>
+          <input type="password" id="groq-key" placeholder="gsk_..." autocomplete="off"/>
+        </div>
+        <div class="sec" style="border:1px solid #1e2340;border-radius:8px;margin-bottom:12px">
+          <h3>Render</h3>
+          <label>Toc do render</label>
+          <select id="render-preset" style="margin-bottom:10px">
+            <option value="ultrafast">ultrafast</option>
+            <option value="veryfast" selected>veryfast</option>
+            <option value="fast">fast</option>
+            <option value="medium">balanced</option>
+          </select>
+          <label>Do tre TTS/sub</label>
+          <div class="slider-row">
+            <input type="range" id="sync-offset" min="-3" max="6" step="0.1" value="1.0"
+                   oninput="document.getElementById('syncv').textContent=(parseFloat(this.value)>=0?'+':'')+parseFloat(this.value).toFixed(1)+'s'"/>
+            <span class="sv" id="syncv">+1.0s</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
   </div>
 </div>
+
+<button class="float-next" id="btn-next-cjk" onclick="goNextChinese()">Loi tiep theo</button>
 
 <script>
 const API     = '';
 let currentJobId = null;
 let pollTimer    = null;
 let subtitleRows = [];
+let cjkHits = new Set();
+let cjkHitsOrdered = [];
+let cjkCursor = -1;
+let activeRenderMode = 'full';
+let voices = [];
+let selectedVoice = 'BV421_vivn_streaming';
+let previewVoice = '';
+let voiceAudio = new Audio();
 
-// ── Load saved key ──────────────────────────────────────────────
+// â”€â”€ Load saved key â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 window.addEventListener('load', () => {
   const saved = localStorage.getItem('groq_key');
   if (saved) document.getElementById('groq-key').value = saved;
+  toggleOriginalAudioSettings();
+  onBgMusicPicked(document.getElementById('bg-music-input'));
+  loadVoices();
 });
 document.getElementById('groq-key').addEventListener('change', e => {
   localStorage.setItem('groq_key', e.target.value.trim());
@@ -302,7 +391,66 @@ async function apiFetch(url, opts = {}) {
   return fetch(url, opts);
 }
 
-// ── Drag & Drop video ───────────────────────────────────────────
+async function loadVoices() {
+  try {
+    const res = await apiFetch(`${API}/api/voices`);
+    const data = await res.json();
+    voices = data.voices || [];
+  } catch(e) {
+    voices = [
+      {name:'Nho Ngot Ngao', voice_type:'BV421_vivn_streaming'},
+      {name:'Co Gai Hoat Ngon', voice_type:'BV074_streaming'},
+      {name:'Mai', voice_type:'BV562_streaming'},
+    ];
+  }
+  renderVoices();
+}
+
+function renderVoices() {
+  const menu = document.getElementById('voice-menu');
+  const currentName = document.getElementById('voice-current-name');
+  const current = document.getElementById('voice-current');
+  if (!menu) return;
+  const selected = voices.find(v => v.voice_type === selectedVoice);
+  if (currentName) currentName.textContent = selected ? selected.name : selectedVoice;
+  if (current) current.classList.toggle('active', !!selectedVoice);
+  menu.innerHTML = voices.map(v => `
+    <div class="voice-row ${v.voice_type === selectedVoice ? 'active' : ''} ${v.voice_type === previewVoice ? 'previewing' : ''}"
+         onclick="previewVoiceCard('${escAttr(v.voice_type)}')">
+      <div class="voice-row-name">${esc(v.name)}</div>
+      <button class="mini-btn" onclick="event.stopPropagation(); previewVoiceCard('${escAttr(v.voice_type)}')">Nghe</button>
+      <button class="mini-btn" onclick="event.stopPropagation(); chooseVoice('${escAttr(v.voice_type)}')">Chon</button>
+    </div>
+  `).join('');
+}
+
+function toggleVoiceMenu() {
+  document.getElementById('voice-menu').classList.toggle('on');
+}
+
+function chooseVoice(voiceType) {
+  selectedVoice = voiceType;
+  document.getElementById('voice').value = voiceType;
+  document.getElementById('voice-menu').classList.remove('on');
+  renderVoices();
+}
+
+async function previewVoiceCard(voiceType) {
+  previewVoice = voiceType;
+  renderVoices();
+  try {
+    voiceAudio.pause();
+    voiceAudio = new Audio(`${API}/voice_previews/${encodeURIComponent(voiceType)}.mp3`);
+    voiceAudio.onended = () => { previewVoice = ''; renderVoices(); };
+    await voiceAudio.play();
+  } catch(e) {
+    previewVoice = '';
+    renderVoices();
+    showError(e.message || 'Khong phat duoc giong thu');
+  }
+}
+
+// â”€â”€ Drag & Drop video â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 const dz = document.getElementById('drop-zone');
 dz.addEventListener('dragover', e => { e.preventDefault(); dz.classList.add('over'); });
 dz.addEventListener('dragleave', () => dz.classList.remove('over'));
@@ -319,34 +467,53 @@ function setFile(f) {
   dz._file = f;
 }
 
-// ── Pick SRT truoc ──────────────────────────────────────────────
-let preSrtFile = null;
-function pickSrtFile(input) {
-  preSrtFile = input.files[0] || null;
-  document.getElementById('srt-fname').textContent = preSrtFile ? preSrtFile.name : '';
-  document.getElementById('btn-use-srt').style.display = preSrtFile ? 'block' : 'none';
+function previewDurationLabel(value) {
+  const secs = Number(value || 30);
+  return secs < 60 ? `${secs}s` : `${Math.round(secs / 60)}p`;
 }
 
-async function useSrt() {
+function toggleOriginalAudioSettings() {
+  const checked = document.getElementById('keep-orig-audio').checked;
+  document.getElementById('orig-vol-wrap').style.display = checked ? 'flex' : 'none';
+}
+
+function onBgMusicPicked(input) {
+  const file = input && input.files ? input.files[0] : null;
+  document.getElementById('bg-music-fname').textContent = file ? file.name : '';
+  document.getElementById('bg-vol-wrap').style.display = file ? 'flex' : 'none';
+}
+
+// Nap JSON truoc
+let preJsonFile = null;
+function pickJsonFile(input) {
+  preJsonFile = input.files[0] || null;
+  document.getElementById('json-pre-fname').textContent = preJsonFile ? preJsonFile.name : '';
+  document.getElementById('btn-use-json-pre').style.display = preJsonFile ? 'block' : 'none';
+}
+
+async function useJson() {
   const file = dz._file || document.getElementById('file-input').files[0];
   if (!file) { alert('Chon video truoc!'); return; }
-  if (!preSrtFile) { alert('Chon file SRT truoc!'); return; }
+  if (!preJsonFile) { alert('Chon file JSON truoc!'); return; }
 
   clearPoll();
-  setStatus('running', 'Đang upload...', 0);
+  setStatus('running', 'Dang upload...', 0);
   document.getElementById('btn-start').disabled   = true;
-  document.getElementById('btn-use-srt').disabled = true;
+  document.getElementById('btn-use-json-pre').disabled = true;
   document.getElementById('errmsg').classList.remove('on');
 
   const fd = new FormData();
   fd.append('file',       file);
-  fd.append('srt',        preSrtFile);
+  fd.append('captions',   preJsonFile);
   fd.append('voice',      document.getElementById('voice').value);
   fd.append('bg_volume',  document.getElementById('bg-vol').value);
   fd.append('tts_volume', document.getElementById('tts-vol').value);
+  fd.append('original_volume', document.getElementById('orig-vol').value);
+  fd.append('keep_original_audio', document.getElementById('keep-orig-audio').checked ? 'true' : 'false');
+  fd.append('sync_offset', document.getElementById('sync-offset').value);
 
   try {
-    const res  = await apiFetch(`${API}/api/upload-with-srt`, { method: 'POST', body: fd });
+    const res  = await apiFetch(`${API}/api/upload-with-json`, { method: 'POST', body: fd });
     const data = await res.json();
     if (!res.ok) throw new Error(data.error || res.statusText);
     currentJobId = data.job_id;
@@ -354,25 +521,25 @@ async function useSrt() {
     renderTable();
     showSrtPanel(currentJobId);
     document.getElementById('btn-start').disabled         = false;
-    document.getElementById('btn-use-srt').disabled       = false;
-    setStatus('translated', 'SRT đã nạp — nhấn Tạo video', 100);
+    document.getElementById('btn-use-json-pre').disabled       = false;
+    setStatus('translated', 'JSON da nap - nhan Tao video', 100);
     switchTab('subs');
   } catch(e) {
     showError(e.message);
-    document.getElementById('btn-use-srt').disabled = false;
+    document.getElementById('btn-use-json-pre').disabled = false;
   }
 }
 
-// ── Switch tabs ─────────────────────────────────────────────────
+// â”€â”€ Switch tabs â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 function switchTab(name) {
-  const names = ['output','subs'];
+  const names = ['output','subs','settings'];
   document.querySelectorAll('.tab').forEach((t,i) =>
     t.classList.toggle('active', names[i] === name));
   document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
   document.getElementById('tab-'+name).classList.add('active');
 }
 
-// ── STEP 1: Upload + Dich ───────────────────────────────────────
+// â”€â”€ STEP 1: Upload + Dich â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 async function startJob() {
   const file = dz._file || document.getElementById('file-input').files[0];
   if (!file) { alert('Chua chon video!'); return; }
@@ -380,22 +547,24 @@ async function startJob() {
   if (!groqKey) { alert('Nhap Groq API Key truoc!'); return; }
 
   clearPoll();
-  setStatus('running', 'Đang upload...', 0);
+  setStatus('running', 'Dang upload...', 0);
   document.getElementById('btn-start').disabled  = true;
   document.getElementById('sec-render').style.display = 'none';
   document.getElementById('errmsg').classList.remove('on');
-  document.getElementById('btn-rerender').style.display = 'none';
 
   const fd = new FormData();
   fd.append('file',       file);
   fd.append('voice',      document.getElementById('voice').value);
   fd.append('bg_volume',  document.getElementById('bg-vol').value);
   fd.append('tts_volume', document.getElementById('tts-vol').value);
+  fd.append('original_volume', document.getElementById('orig-vol').value);
+  fd.append('keep_original_audio', document.getElementById('keep-orig-audio').checked ? 'true' : 'false');
+  fd.append('sync_offset', document.getElementById('sync-offset').value);
   fd.append('groq_key',   groqKey);
 
   try {
     const res  = await apiFetch(`${API}/api/upload`, { method: 'POST', body: fd });
-    let data; try { data = await res.json(); } catch { data = { error: `Server lỗi ${res.status}: ${res.statusText}` }; }
+    let data; try { data = await res.json(); } catch { data = { error: `Server loi ${res.status}: ${res.statusText}` }; }
     if (!res.ok) throw new Error(data.error || res.statusText);
     currentJobId = data.job_id;
     pollTimer = setInterval(pollTranslate, 2000);
@@ -421,28 +590,79 @@ async function pollTranslate() {
       switchTab('subs');
     } else if (data.status === 'error') {
       clearPoll();
-      showError(data.message || 'Lỗi không xác định');
+      showError(data.message || 'Loi khong xac dinh');
     }
   } catch(e) {}
 }
 
-// ── STEP 2: Tạo video ───────────────────────────────────────────
+// â”€â”€ STEP 2: Táº¡o video â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 async function startRender() {
   if (!currentJobId) return;
+  if (subtitleRows.some(r => hasCjk(r.vi))) {
+    await detectChinese();
+    alert('Ban dich van con tieng Trung. Hay bam Dich lai/Sua tat ca truoc khi tao video.');
+    return;
+  }
+  activeRenderMode = 'full';
+  await saveSubtitles(false);
   document.getElementById('btn-render').disabled   = true;
-  document.getElementById('btn-rerender').style.display = 'none';
-  setStatus('rendering', 'Bắt đầu TTS...', 0);
+  setStatus('rendering', 'Bat dau TTS...', 0);
 
   const fd = new FormData();
   fd.append('voice',       document.getElementById('voice').value);
   fd.append('bg_volume',   document.getElementById('bg-vol').value);
   fd.append('tts_volume',  document.getElementById('tts-vol').value);
+  fd.append('original_volume', document.getElementById('orig-vol').value);
+  fd.append('keep_original_audio', document.getElementById('keep-orig-audio').checked ? 'true' : 'false');
+  fd.append('sync_offset', document.getElementById('sync-offset').value);
   fd.append('speed_ratio', document.getElementById('tts-rate').value);
+  fd.append('render_preset', document.getElementById('render-preset').value);
   fd.append('logo_text', document.getElementById('logo-text').value);
   const bgFile = document.getElementById('bg-music-input').files[0];
   if (bgFile) fd.append('bg_music', bgFile);
 
   await apiFetch(`${API}/api/render/${currentJobId}`, { method: 'POST', body: fd });
+
+  pollTimer = setInterval(pollRender, 2000);
+}
+
+async function startPreview() {
+  if (!currentJobId) return;
+  if (subtitleRows.some(r => hasCjk(r.vi))) {
+    await detectChinese();
+    alert('Ban dich van con tieng Trung. Hay bam Dich lai/Sua tat ca truoc khi xem preview.');
+    return;
+  }
+  activeRenderMode = 'preview';
+  await saveSubtitles(false);
+  const btn = document.getElementById('btn-preview');
+  btn.disabled = true;
+  setStatus('rendering', 'Bat dau preview...', 0);
+
+  const fd = new FormData();
+  fd.append('voice',       document.getElementById('voice').value);
+  fd.append('bg_volume',   document.getElementById('bg-vol').value);
+  fd.append('tts_volume',  document.getElementById('tts-vol').value);
+  fd.append('original_volume', document.getElementById('orig-vol').value);
+  fd.append('keep_original_audio', document.getElementById('keep-orig-audio').checked ? 'true' : 'false');
+  fd.append('sync_offset', document.getElementById('sync-offset').value);
+  fd.append('speed_ratio', document.getElementById('tts-rate').value);
+  fd.append('render_preset', document.getElementById('render-preset').value);
+  const previewStart = 0;
+  const previewDuration = Math.max(30, Math.min(300, parseFloat(document.getElementById('preview-duration').value || '30')));
+  fd.append('preview_start', String(previewStart));
+  fd.append('preview_duration', String(previewDuration));
+  fd.append('logo_text', document.getElementById('logo-text').value);
+  const bgFile = document.getElementById('bg-music-input').files[0];
+  if (bgFile) fd.append('bg_music', bgFile);
+
+  const res = await apiFetch(`${API}/api/preview/${currentJobId}`, { method: 'POST', body: fd });
+  if (!res.ok) {
+    const data = await res.json().catch(() => ({}));
+    btn.disabled = false;
+    showError(data.error || res.statusText);
+    return;
+  }
 
   pollTimer = setInterval(pollRender, 2000);
 }
@@ -454,21 +674,30 @@ async function pollRender() {
     const data = await res.json();
     setStatus(data.status, data.message || '', data.progress || 0);
 
-    // Hiện log panel khi đang render TTS
+    // Hiá»‡n log panel khi Ä‘ang render TTS
     if (data.status === 'rendering') {
       fetchJobLogs(currentJobId);
     }
 
-    if (data.status === 'done') {
+    if (data.status === 'translated' && activeRenderMode === 'preview' && data.preview_output) {
       clearPoll();
       document.getElementById('log-panel').style.display = 'none';
       document.getElementById('btn-render').disabled = false;
-      document.getElementById('btn-rerender').style.display = 'inline-block';
+      document.getElementById('btn-preview').disabled = false;
+      await showPreview(currentJobId);
+      activeRenderMode = 'idle';
+    } else if (data.status === 'done') {
+      clearPoll();
+      document.getElementById('log-panel').style.display = 'none';
+      document.getElementById('btn-render').disabled = false;
+      document.getElementById('btn-preview').disabled = false;
       await showVideo(currentJobId);
+      activeRenderMode = 'idle';
     } else if (data.status === 'error') {
       clearPoll();
       document.getElementById('btn-render').disabled = false;
-      showError(data.message || 'Lỗi render');
+      document.getElementById('btn-preview').disabled = false;
+      showError(data.message || 'Loi render');
     }
   } catch(e) {}
 }
@@ -483,7 +712,7 @@ async function fetchJobLogs(jobId) {
     const panel = document.getElementById('log-panel');
     panel.style.display = 'block';
     panel.innerHTML = logs.map(l => {
-      const col = l.includes('⚠') ? '#f85149' : l.includes('✓') ? '#3fb950' : '#8b949e';
+      const col = l.includes('!') ? '#f85149' : l.includes('OK') ? '#3fb950' : '#8b949e';
       return `<div style="color:${col}">${escHtml(l)}</div>`;
     }).join('');
     panel.scrollTop = panel.scrollHeight;
@@ -494,7 +723,7 @@ function escHtml(s) {
   return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
 }
 
-// ── Show video ──────────────────────────────────────────────────
+// â”€â”€ Show video â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 async function showVideo(jobId) {
   switchTab('output');
 
@@ -508,24 +737,41 @@ async function showVideo(jobId) {
   const dlv = document.getElementById('dl-video');
   dlv.href = vUrl;
   dlv.setAttribute('download', `video_vi.mp4`);
+  dlv.textContent = 'Tai video';
   dlv.classList.add('on');
 
-  // Fetch SRT as blob
-  const sRes  = await apiFetch(`${API}/api/download-srt/${jobId}`);
-  const sBlob = await sRes.blob();
-  const sUrl  = URL.createObjectURL(sBlob);
-  const dls   = document.getElementById('dl-srt');
-  dls.href = sUrl;
-  dls.setAttribute('download', `captions_vi.srt`);
-  dls.classList.add('on');
+  const jRes  = await apiFetch(`${API}/api/download-json/${jobId}`);
+  const jBlob = await jRes.blob();
+  const jUrl  = URL.createObjectURL(jBlob);
+  const dlj   = document.getElementById('dl-json');
+  dlj.href = jUrl;
+  dlj.setAttribute('download', `captions_vi.json`);
+  dlj.classList.add('on');
 }
 
-// ── Subtitles ───────────────────────────────────────────────────
+async function showPreview(jobId) {
+  switchTab('output');
+
+  const vRes  = await apiFetch(`${API}/api/download-preview/${jobId}`);
+  const vBlob = await vRes.blob();
+  const vUrl  = URL.createObjectURL(vBlob);
+  document.getElementById('video-wrap').innerHTML =
+    `<video controls autoplay src="${vUrl}" style="width:100%;height:100%"></video>`;
+
+  const dlv = document.getElementById('dl-video');
+  dlv.href = vUrl;
+  dlv.setAttribute('download', `preview_vi.mp4`);
+  dlv.textContent = 'Tai preview';
+  dlv.classList.add('on');
+}
+
+// â”€â”€ Subtitles â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 async function loadSubtitles(jobId) {
   try {
     const res  = await apiFetch(`${API}/api/cues/${jobId}`);
     const data = await res.json();
     subtitleRows = data.rows || [];
+    setChineseHits([]);
     renderTable();
   } catch(e) {}
 }
@@ -534,16 +780,20 @@ function renderTable() {
   document.getElementById('subs-empty').style.display = 'none';
   document.getElementById('subs-panel').style.display = 'block';
   document.getElementById('subs-info').textContent =
-    `${subtitleRows.length} đoạn — có thể sửa bản dịch trước khi tạo video`;
+    `${subtitleRows.length} doan - co the sua ban dich truoc khi tao video`;
 
   const tbody = document.getElementById('subs-body');
   tbody.innerHTML = subtitleRows.map((r, i) => `
-    <tr>
+    <tr data-idx="${r.idx}" class="${cjkHits.has(Number(r.idx)) ? 'cjk-hit' : ''}">
       <td class="ts">${r.idx}</td>
       <td class="ts">${r.start}<br>${r.end}</td>
       <td class="zh">${esc(r.zh)}</td>
       <td class="vi-cell">
         <textarea data-idx="${r.idx}" oninput="onViEdit(${i},this.value)">${esc(r.vi)}</textarea>
+        <div class="cjk-badge">Con tieng Trung trong ban dich</div>
+      </td>
+      <td>
+        <button class="mini-btn" onclick="fixChineseRow(${i})">Dich lai</button>
       </td>
     </tr>
   `).join('');
@@ -552,28 +802,234 @@ function renderTable() {
 function esc(s) {
   return (s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
 }
-function onViEdit(i, val) { subtitleRows[i].vi = val; }
+function escAttr(s) {
+  return (s||'').replace(/\\/g,'\\\\').replace(/'/g,"\\'").replace(/"/g,'&quot;');
+}
+function hasCjk(s) {
+  return /[\u3400-\u4dbf\u4e00-\u9fff\uf900-\ufaff]/.test(s || '');
+}
+function onViEdit(i, val) {
+  subtitleRows[i].vi = val;
+  cjkHits.delete(Number(subtitleRows[i].idx));
+  cjkHitsOrdered = cjkHitsOrdered.filter(idx => idx !== Number(subtitleRows[i].idx));
+  const row = document.querySelector(`tr[data-idx="${subtitleRows[i].idx}"]`);
+  if (row) row.classList.remove('cjk-hit');
+  updateChineseReport();
+}
+
+function setChineseHits(hits) {
+  cjkHitsOrdered = (hits || []).map(h => Number(h.idx)).filter(Boolean);
+  cjkHits = new Set(cjkHitsOrdered);
+  cjkCursor = -1;
+  updateChineseReport();
+}
+
+function updateChineseReport() {
+  const fixAll = document.getElementById('btn-fix-all-cjk');
+  const nextBtn = document.getElementById('btn-next-cjk');
+  const report = document.getElementById('cjk-report');
+  if (fixAll) fixAll.style.display = cjkHits.size ? 'inline-block' : 'none';
+  if (nextBtn) nextBtn.classList.toggle('on', cjkHits.size > 0);
+  if (!report) return;
+  if (!cjkHits.size) {
+    report.classList.remove('on');
+    report.innerHTML = '';
+    return;
+  }
+  const indexes = cjkHitsOrdered.join(', ');
+  report.classList.add('on');
+  report.innerHTML = `<strong>Phat hien ${cjkHits.size} doan con tieng Trung.</strong> Index: ${esc(indexes)}. Bam "Loi tiep theo" de nhay toi tung dong.`;
+}
+
+function goNextChinese() {
+  if (!cjkHitsOrdered.length) return;
+  cjkCursor = (cjkCursor + 1) % cjkHitsOrdered.length;
+  const idx = cjkHitsOrdered[cjkCursor];
+  const row = document.querySelector(`tr[data-idx="${idx}"]`);
+  if (!row) return;
+  row.scrollIntoView({ behavior: 'smooth', block: 'center' });
+  row.style.outline = '2px solid #facc15';
+  setTimeout(() => { row.style.outline = ''; }, 1400);
+}
+
+async function detectChinese() {
+  if (!currentJobId) return;
+  await saveSubtitles(false);
+  const btn = document.getElementById('btn-detect-cjk');
+  btn.disabled = true;
+  btn.textContent = 'Dang do...';
+  try {
+    const res = await apiFetch(`${API}/api/detect-chinese/${currentJobId}`, {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({
+        rows: subtitleRows,
+        groq_key: document.getElementById('groq-key').value.trim(),
+      }),
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || res.statusText);
+    setChineseHits(data.hits || []);
+    renderTable();
+    const indexText = cjkHitsOrdered.join(', ');
+    const msg = cjkHits.size
+      ? `Phat hien ${cjkHits.size} doan con tieng Trung. Index: ${indexText}`
+      : 'Khong thay doan nao con tieng Trung';
+    setStatus('translated', msg, 100);
+    alert(msg);
+  } catch(e) {
+    showError(e.message);
+  } finally {
+    btn.disabled = false;
+    btn.textContent = 'Do tieng Trung';
+  }
+}
+
+async function fixChineseRow(rowIndex) {
+  if (!currentJobId || rowIndex < 0 || rowIndex >= subtitleRows.length) return;
+  const row = subtitleRows[rowIndex];
+  await saveSubtitles(false);
+  const buttons = document.querySelectorAll('.mini-btn');
+  if (buttons[rowIndex]) {
+    buttons[rowIndex].disabled = true;
+    buttons[rowIndex].textContent = 'Dang sua...';
+  }
+  try {
+    const res = await apiFetch(`${API}/api/fix-chinese/${currentJobId}`, {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({
+        idx: Number(row.idx),
+        rows: subtitleRows,
+        groq_key: document.getElementById('groq-key').value.trim(),
+      }),
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || res.statusText);
+    subtitleRows[rowIndex].vi = data.vi || subtitleRows[rowIndex].vi;
+    if (data.has_chinese) cjkHits.add(Number(row.idx));
+    else cjkHits.delete(Number(row.idx));
+    cjkHitsOrdered = cjkHitsOrdered.filter(idx => idx !== Number(row.idx));
+    if (data.has_chinese && !cjkHitsOrdered.includes(Number(row.idx))) cjkHitsOrdered.push(Number(row.idx));
+    await saveSubtitles(false);
+    renderTable();
+    updateChineseReport();
+    setStatus('translated', cjkHits.size ? `Con ${cjkHits.size} dong can kiem tra` : 'Da sua sach cac dong phat hien', 100);
+  } catch(e) {
+    showError(e.message);
+    if (buttons[rowIndex]) {
+      buttons[rowIndex].disabled = false;
+      buttons[rowIndex].textContent = 'Dich lai';
+    }
+  }
+}
+
+async function fixAllChinese() {
+  const ids = Array.from(cjkHits);
+  for (const idx of ids) {
+    const rowIndex = subtitleRows.findIndex(r => Number(r.idx) === idx);
+    if (rowIndex >= 0) await fixChineseRow(rowIndex);
+  }
+  await saveSubtitles(false);
+  await detectChinese();
+}
+
+async function splitLongCues() {
+  if (!currentJobId) return;
+  await saveSubtitles(false);
+  const btn = document.getElementById('btn-split-long');
+  btn.disabled = true;
+  btn.textContent = 'Dang tach...';
+  try {
+    const res = await apiFetch(`${API}/api/split-long-cues/${currentJobId}`, {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({
+        rows: subtitleRows,
+        max_duration: 7.0,
+        max_chars: 95,
+      }),
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || res.statusText);
+    if (!data.changed) {
+      setStatus('translated', 'Khong co dong nao qua dai can tach', 100);
+      alert('Khong co dong nao qua dai can tach.');
+      return;
+    }
+    subtitleRows = data.rows || subtitleRows;
+    setChineseHits([]);
+    renderTable();
+    const details = (data.split_items || []).map(x => `${x.idx}->${x.parts}`).join(', ');
+    const msg = `Da tach ${data.count} dong dai. Chi tiet: ${details}. Index da duoc danh lai va da luu.`;
+    setStatus('translated', msg, 100);
+    alert(msg);
+  } catch(e) {
+    showError(e.message);
+  } finally {
+    btn.disabled = false;
+    btn.textContent = 'Tach dong dai';
+  }
+}
 
 async function showSrtPanel(jobId) {
   const sec = document.getElementById('sec-render');
   sec.style.display = 'block';
-  const dl = document.getElementById('dl-srt-early');
+  const dl = document.getElementById('dl-json-early');
   dl.onclick = async (e) => {
     e.preventDefault();
-    const r    = await apiFetch(`${API}/api/download-srt/${jobId}`);
+    const r    = await apiFetch(`${API}/api/download-json/${jobId}`);
     const blob = await r.blob();
     const url  = URL.createObjectURL(blob);
     const a    = document.createElement('a');
-    a.href = url; a.download = 'captions_vi.srt';
+    a.href = url; a.download = 'captions_vi.json';
     a.click(); URL.revokeObjectURL(url);
   };
+}
+
+async function downloadJson() {
+  if (!currentJobId) return;
+  await saveSubtitles(false);
+  const r    = await apiFetch(`${API}/api/download-json/${currentJobId}`);
+  const blob = await r.blob();
+  const url  = URL.createObjectURL(blob);
+  const a    = document.createElement('a');
+  a.href = url; a.download = 'captions_vi.json';
+  a.click(); URL.revokeObjectURL(url);
+}
+
+async function loadJsonFile(input) {
+  if (!currentJobId || !input.files[0]) return;
+  const btn = document.getElementById('btn-load-json');
+  btn.disabled = true;
+  btn.textContent = 'Dang nap...';
+
+  const fd = new FormData();
+  fd.append('file', input.files[0]);
+
+  try {
+    const res  = await apiFetch(`${API}/api/load-json/${currentJobId}`, { method: 'POST', body: fd });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || res.statusText);
+    subtitleRows = data.rows || [];
+    setChineseHits([]);
+    renderTable();
+    switchTab('subs');
+    btn.textContent = 'Da nap';
+  } catch(e) {
+    alert('Loi: ' + e.message);
+    btn.textContent = 'Nap JSON';
+  } finally {
+    btn.disabled = false;
+    input.value = '';
+  }
 }
 
 async function loadSrtFile(input) {
   if (!currentJobId || !input.files[0]) return;
   const btn = document.getElementById('btn-load-srt');
   btn.disabled = true;
-  btn.textContent = 'Đang nạp...';
+  btn.textContent = 'Dang nap...';
 
   const fd = new FormData();
   fd.append('file', input.files[0]);
@@ -583,43 +1039,57 @@ async function loadSrtFile(input) {
     const data = await res.json();
     if (!res.ok) throw new Error(data.error || res.statusText);
     subtitleRows = data.rows || [];
+    setChineseHits([]);
     renderTable();
     switchTab('subs');
-    btn.textContent = 'Đã nạp xong!';
+    btn.textContent = 'Da nap xong!';
   } catch(e) {
-    alert('Lỗi: ' + e.message);
-    btn.textContent = 'Nạp SRT từ máy';
+    alert('Loi: ' + e.message);
+    btn.textContent = 'Nap SRT tu may';
   } finally {
     btn.disabled = false;
     input.value = '';
   }
 }
 
-async function saveAndRerender() {
+async function saveSubtitles(showOk = true) {
   if (!currentJobId) return;
-  const btn = document.getElementById('btn-rerender');
+  const btn = document.getElementById('btn-save-json');
   btn.disabled = true;
+  try {
+    const res = await apiFetch(`${API}/api/save-cues/${currentJobId}`, {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({ rows: subtitleRows }),
+    });
+    if (!res.ok) {
+      const data = await res.json().catch(() => ({}));
+      throw new Error(data.error || res.statusText);
+    }
 
-  await apiFetch(`${API}/api/save-cues/${currentJobId}`, {
-    method: 'POST',
-    headers: {'Content-Type': 'application/json'},
-    body: JSON.stringify({ rows: subtitleRows }),
-  });
-
-  await startRender();
-
-  btn.disabled = false;
+    if (showOk) {
+      btn.textContent = 'Da luu';
+      setTimeout(() => { btn.textContent = 'Luu lai'; }, 1200);
+    }
+  } finally {
+    btn.disabled = false;
+  }
 }
 
-// ── Helpers ─────────────────────────────────────────────────────
+async function saveAndRerender() {
+  await saveSubtitles(false);
+  await startRender();
+}
+
+// â”€â”€ Helpers â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 function setStatus(status, msg, pct) {
   document.getElementById('prog-box').classList.add('on');
   document.getElementById('pmsg').textContent = msg;
   document.getElementById('pbar').style.width = pct + '%';
   const tag = document.getElementById('stag');
   const labels = {
-    pending:'Chờ', running:'Đang chạy', translated:'Đã dịch',
-    rendering:'Render', done:'Hoàn tất', error:'Lỗi'
+    pending:'Cho', running:'Dang chay', translated:'Da dich',
+    rendering:'Render', done:'Hoan tat', error:'Loi'
   };
   tag.textContent = labels[status] || status;
   tag.className   = 'stag ' + (status==='done'||status==='translated'?'done':status==='error'?'error':'running');
@@ -632,7 +1102,7 @@ function showError(msg) {
   el.textContent = '! ' + msg;
   el.classList.add('on');
   document.getElementById('stag').className   = 'stag error';
-  document.getElementById('stag').textContent = 'Lỗi';
+  document.getElementById('stag').textContent = 'Loi';
 }
 
 function clearPoll() {

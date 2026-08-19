@@ -1,14 +1,14 @@
-#!/usr/bin/env python3
+﻿#!/usr/bin/env python3
 """
 translate_video.py
-Nhận video tiếng Trung từ thư mục input/, tự động:
-  1. Tách audio đầy đủ (FFmpeg) + tách vocals/background (Demucs)
-  2. STT tiếng Trung -> SRT (Groq Whisper)
-  3. Dịch Trung -> Việt (Groq LLM)
-  4. TTS tiếng Việt đồng bộ theo timestamp (Edge TTS + FFmpeg atempo)
-  5. Mix TTS + nhạc nền gốc -> burn subtitle -> output/
+Nháº­n video tiáº¿ng Trung tá»« thÆ° má»¥c input/, tá»± Ä‘á»™ng:
+  1. TĂ¡ch audio Ä‘áº§y Ä‘á»§ (FFmpeg) + tĂ¡ch vocals/background (Demucs)
+  2. STT tiáº¿ng Trung -> SRT (Groq Whisper)
+  3. Dá»‹ch Trung -> Viá»‡t (Groq LLM)
+  4. TTS tiáº¿ng Viá»‡t Ä‘á»“ng bá»™ theo timestamp (Edge TTS + FFmpeg atempo)
+  5. Mix TTS + nháº¡c ná»n gá»‘c -> burn subtitle -> output/
 
-Cách dùng:
+CĂ¡ch dĂ¹ng:
   python3 translate_video.py
   python3 translate_video.py --input path/to/video.mp4
   python3 translate_video.py --key YOUR_GROQ_KEY  (override .env)
@@ -54,13 +54,20 @@ OUTPUT_DIR = BASE_DIR / "output"
 WORK_DIR   = BASE_DIR / "workdir"
 
 FFMPEG_BIN       = os.environ.get("FFMPEG_BIN", "ffmpeg")
+FFPROBE_BIN      = os.environ.get("FFPROBE_BIN") or (
+    str(Path(FFMPEG_BIN).with_name("ffprobe.exe"))
+    if sys.platform == "win32" and Path(FFMPEG_BIN).suffix.lower() == ".exe"
+    else str(Path(FFMPEG_BIN).with_name("ffprobe"))
+)
 
 def _best_video_codec() -> tuple[list[str], list[str]]:
-    """Trả về (encode_flags, decode_flags) tối ưu theo platform/GPU."""
+    """Tráº£ vá» (encode_flags, decode_flags) tá»‘i Æ°u theo platform/GPU."""
     import subprocess as _sp
     if sys.platform == "darwin":
         return ["-c:v", "h264_videotoolbox", "-q:v", "50"], []
-    # Windows/Linux: thử NVENC trước
+    if sys.platform == "win32":
+        return ["-c:v", "libx264", "-preset", "veryfast", "-crf", "18"], []
+    # Windows/Linux: thá»­ NVENC trÆ°á»›c
     _test_input = [FFMPEG_BIN, "-f", "lavfi", "-i", "color=black:size=1280x720:rate=30", "-t", "0.1"]
     try:
         r = _sp.run(
@@ -68,11 +75,11 @@ def _best_video_codec() -> tuple[list[str], list[str]]:
             capture_output=True, timeout=10
         )
         if r.returncode == 0:
-            print("[codec] h264_nvenc OK -> dùng NVENC (GPU)")
+            print("[codec] h264_nvenc OK -> dĂ¹ng NVENC (GPU)")
             return ["-c:v", "h264_nvenc", "-preset", "p4", "-rc", "constqp", "-qp", "23"], ["-hwaccel", "cuda"]
     except Exception:
         pass
-    # Thử Windows Media Foundation (hardware via DirectX/GPU)
+    # Thá»­ Windows Media Foundation (hardware via DirectX/GPU)
     if sys.platform == "win32":
         try:
             r = _sp.run(
@@ -80,23 +87,23 @@ def _best_video_codec() -> tuple[list[str], list[str]]:
                 capture_output=True, timeout=10
             )
             if r.returncode == 0:
-                print("[codec] h264_mf OK -> dùng Media Foundation (GPU hardware)")
+                print("[codec] h264_mf OK -> dĂ¹ng Media Foundation (GPU hardware)")
                 return ["-c:v", "h264_mf", "-q:v", "25"], []
         except Exception:
             pass
-    print("[codec] fallback -> libx264 (CPU), preset ultrafast")
-    return ["-c:v", "libx264", "-preset", "ultrafast", "-crf", "23"], []
+    print("[codec] fallback -> libx264 (CPU)")
+    return ["-c:v", "libx264", "-preset", "veryfast", "-crf", "18"], []
 
 _VIDEO_ENC, _VIDEO_DEC = _best_video_codec()
 TTS_VOICE        = "vi-VN-HoaiMyNeural"
-TTS_SPEED_BOOST  = 1.00   # không tăng tốc mặc định, tự khớp theo window
-ATEMPO_MAX       = 2.0    # FFmpeg atempo tối đa 2.0x mỗi filter
+TTS_SPEED_BOOST  = 1.00   # khĂ´ng tÄƒng tá»‘c máº·c Ä‘á»‹nh, tá»± khá»›p theo window
+ATEMPO_MAX       = 2.0    # FFmpeg atempo tá»‘i Ä‘a 2.0x má»—i filter
 ATEMPO_MIN       = 0.5
-CHUNK_BLOCKS     = 30     # số block SRT mỗi lần gửi dịch
-CONTEXT_BLOCKS   = 5      # số block context giữ lại giữa các chunk
-PARALLEL_CHUNKS  = 3      # số chunk gửi song song cùng lúc
-DEMUCS_MODEL     = "htdemucs"   # model Demucs tách vocals
-BG_VOLUME        = 0.9    # âm lượng nhạc nền so với gốc (0.0-1.0)
+CHUNK_BLOCKS     = 30     # sá»‘ block SRT má»—i láº§n gá»­i dá»‹ch
+CONTEXT_BLOCKS   = 5      # sá»‘ block context giá»¯ láº¡i giá»¯a cĂ¡c chunk
+PARALLEL_CHUNKS  = 3      # sá»‘ chunk gá»­i song song cĂ¹ng lĂºc
+DEMUCS_MODEL     = "htdemucs"   # model Demucs tĂ¡ch vocals
+BG_VOLUME        = 0.9    # Ă¢m lÆ°á»£ng nháº¡c ná»n so vá»›i gá»‘c (0.0-1.0)
 
 # ---------------------------------------------------------------------------
 # HELPERS
@@ -175,12 +182,12 @@ def atempo_chain(ratio: float) -> list[str]:
 
 
 # ---------------------------------------------------------------------------
-# STEP 1: Extract audio + tách vocals/background (Demucs)
+# STEP 1: Extract audio + tĂ¡ch vocals/background (Demucs)
 # ---------------------------------------------------------------------------
 
 def extract_audio_for_stt(video_path: Path, audio_path: Path):
-    """Tách audio chất lượng thấp tối ưu cho Whisper STT (16kHz mono 32kbps)."""
-    print("  -> Tách audio cho STT (16kHz mono 32kbps)...")
+    """TĂ¡ch audio cháº¥t lÆ°á»£ng tháº¥p tá»‘i Æ°u cho Whisper STT (16kHz mono 32kbps)."""
+    print("  -> TĂ¡ch audio cho STT (16kHz mono 32kbps)...")
     run([
         FFMPEG_BIN, "-y", "-i", str(video_path),
         "-vn", "-acodec", "libmp3lame",
@@ -199,8 +206,8 @@ def extract_audio_for_stt(video_path: Path, audio_path: Path):
 
 
 def separate_background(video_path: Path, work_dir: Path) -> Path:
-    """Dùng Demucs tách vocals, giữ lại nhạc nền (no_vocals)."""
-    print("  -> Tách audio nền (Demucs)...")
+    """DĂ¹ng Demucs tĂ¡ch vocals, giá»¯ láº¡i nháº¡c ná»n (no_vocals)."""
+    print("  -> TĂ¡ch audio ná»n (Demucs)...")
 
     full_audio = work_dir / "full_audio.wav"
     run([
@@ -229,7 +236,7 @@ def separate_background(video_path: Path, work_dir: Path) -> Path:
 
     no_vocals = list(demucs_out.rglob("no_vocals.wav"))
     if not no_vocals:
-        raise RuntimeError("Demucs không tạo ra file no_vocals.wav")
+        raise RuntimeError("Demucs khĂ´ng táº¡o ra file no_vocals.wav")
 
     bg_path = work_dir / "background.wav"
     no_vocals[0].rename(bg_path)
@@ -245,21 +252,58 @@ def stt_groq(audio_path: Path, groq_key: str) -> list[dict]:
     from groq import Groq
     client = Groq(api_key=groq_key)
     with open(audio_path, "rb") as f:
-        resp = client.audio.transcriptions.create(
-            file=("audio.mp3", f, "audio/mpeg"),
-            model="whisper-large-v3",
-            language="zh",
-            response_format="verbose_json",
-        )
+        try:
+            resp = client.audio.transcriptions.create(
+                file=("audio.mp3", f, "audio/mpeg"),
+                model="whisper-large-v3",
+                language="zh",
+                response_format="verbose_json",
+                timestamp_granularities=["word", "segment"],
+                temperature=0,
+            )
+        except TypeError:
+            f.seek(0)
+            resp = client.audio.transcriptions.create(
+                file=("audio.mp3", f, "audio/mpeg"),
+                model="whisper-large-v3",
+                language="zh",
+                response_format="verbose_json",
+                temperature=0,
+            )
     segments = resp.segments or []
     if not segments:
-        raise RuntimeError("Groq STT không trả về segments. Kiểm tra API key và file audio.")
+        raise RuntimeError("Groq STT khong tra ve segments. Kiem tra API key va file audio.")
+
+    words = getattr(resp, "words", None) or []
+
+    def _field(obj, name, default=None):
+        if hasattr(obj, name):
+            return getattr(obj, name)
+        if isinstance(obj, dict):
+            return obj.get(name, default)
+        return default
 
     cues = []
     for i, seg in enumerate(segments, 1):
-        s = seg.start if hasattr(seg, "start") else seg["start"]
-        e = seg.end   if hasattr(seg, "end")   else seg["end"]
-        t = seg.text  if hasattr(seg, "text")  else seg["text"]
+        s = float(_field(seg, "start", 0.0))
+        e = float(_field(seg, "end", s))
+        t = _field(seg, "text", "") or ""
+
+        seg_words = []
+        for w in words:
+            ws = _field(w, "start")
+            we = _field(w, "end")
+            if ws is None or we is None:
+                continue
+            ws = float(ws)
+            we = float(we)
+            mid = (ws + we) / 2
+            if s - 0.05 <= mid <= e + 0.05:
+                seg_words.append((ws, we))
+        if seg_words:
+            s = min(w[0] for w in seg_words)
+            e = max(w[1] for w in seg_words)
+
         cues.append({
             "idx":       i,
             "start":     sec_to_srt_time(s),
@@ -268,6 +312,17 @@ def stt_groq(audio_path: Path, groq_key: str) -> list[dict]:
             "end_sec":   e,
             "text":      t.strip(),
         })
+    if cues and cues[0]["start_sec"] <= 0.1 and cues[0]["end_sec"] - cues[0]["start_sec"] > 3.0:
+        first = cues[0]
+        cjk_chars = len(re.findall(r"[\u4e00-\u9fff]", first["text"]))
+        if cjk_chars:
+            estimated_duration = max(1.0, min(4.0, cjk_chars / 5.5))
+        else:
+            estimated_duration = max(1.0, min(4.0, len(first["text"].split()) / 2.5))
+        new_start = max(0.0, first["end_sec"] - estimated_duration)
+        if new_start > 0.5:
+            first["start_sec"] = new_start
+            first["start"] = sec_to_srt_time(new_start)
     return cues
 
 
@@ -275,37 +330,37 @@ def stt_groq(audio_path: Path, groq_key: str) -> list[dict]:
 # STEP 3: Translate via Groq LLM
 # ---------------------------------------------------------------------------
 
-SYSTEM_PROMPT = """Bạn là dịch giả phụ đề tiếng Việt chuyên nghiệp, dịch từ BẤT KỲ ngôn ngữ nào sang tiếng Việt để đọc thành tiếng (TTS).
+SYSTEM_PROMPT = """Báº¡n lĂ  dá»‹ch giáº£ phá»¥ Ä‘á» tiáº¿ng Viá»‡t chuyĂªn nghiá»‡p, dá»‹ch tá»« Báº¤T Ká»² ngĂ´n ngá»¯ nĂ o sang tiáº¿ng Viá»‡t Ä‘á»ƒ Ä‘á»c thĂ nh tiáº¿ng (TTS).
 
-=== ĐỊNH DẠNG ĐẦU RA — VI PHẠM = SAI HOÀN TOÀN ===
-- Trả về đúng SRT thuần túy, KHÔNG markdown, KHÔNG giải thích.
-- Mỗi block đầu vào phải có ĐÚNG MỘT block đầu ra tương ứng, giữ nguyên số thứ tự và timestamp.
-- TUYỆT ĐỐI KHÔNG gộp 2 block thành 1, KHÔNG bỏ block, KHÔNG tách 1 block thành nhiều block.
-- Nếu một câu gốc ngắn, dịch ngắn tương ứng — đừng bù thêm cho dài.
+=== Äá»NH Dáº NG Äáº¦U RA â€” VI PHáº M = SAI HOĂ€N TOĂ€N ===
+- Tráº£ vá» Ä‘Ăºng SRT thuáº§n tĂºy, KHĂ”NG markdown, KHĂ”NG giáº£i thĂ­ch.
+- Má»—i block Ä‘áº§u vĂ o pháº£i cĂ³ ÄĂNG Má»˜T block Ä‘áº§u ra tÆ°Æ¡ng á»©ng, giá»¯ nguyĂªn sá»‘ thá»© tá»± vĂ  timestamp.
+- TUYá»†T Äá»I KHĂ”NG gá»™p 2 block thĂ nh 1, KHĂ”NG bá» block, KHĂ”NG tĂ¡ch 1 block thĂ nh nhiá»u block.
+- Náº¿u má»™t cĂ¢u gá»‘c ngáº¯n, dá»‹ch ngáº¯n tÆ°Æ¡ng á»©ng â€” Ä‘á»«ng bĂ¹ thĂªm cho dĂ i.
 
-=== XƯNG HÔ — BẮT BUỘC NHẤT QUÁN TOÀN BỘ VIDEO ===
-- Xác định ngôi xưng từ chunk đầu tiên và GIỮ NGUYÊN đến hết, KHÔNG tự ý đổi giữa chừng.
-- Chọn MỘT cặp xưng hô và lock cứng cả cặp đó suốt video:
-    thông thường:  tôi ↔ bạn
-    thân mật:      tao ↔ mày
-    kính trọng:    tôi ↔ anh / tôi ↔ chị
-    cổ trang/võ hiệp: ta ↔ ngươi
-    gia đình/phim: anh ↔ em, chú ↔ cháu, v.v.
-- Ngôi thứ 2 số ít chỉ được dùng MỘT từ duy nhất: "bạn" HOẶC "ngươi" HOẶC "mày" — không trộn lẫn dù chỉ một lần.
-- Video dạng "what if / giả sử / nếu bạn là..." (narrator nói với khán giả): luôn dùng "bạn", KHÔNG dùng cậu/mày/ngươi dù câu có vẻ thân mật.
-- Ngôi thứ nhất số nhiều: "chúng tôi / chúng ta / bọn tao" — chọn một, không đổi.
-- Nếu ngữ cảnh đã dịch cho thấy xưng hô cụ thể -> bắt buộc dùng đúng theo.
+=== XÆ¯NG HĂ” â€” Báº®T BUá»˜C NHáº¤T QUĂN TOĂ€N Bá»˜ VIDEO ===
+- XĂ¡c Ä‘á»‹nh ngĂ´i xÆ°ng tá»« chunk Ä‘áº§u tiĂªn vĂ  GIá»® NGUYĂN Ä‘áº¿n háº¿t, KHĂ”NG tá»± Ă½ Ä‘á»•i giá»¯a chá»«ng.
+- Chá»n Má»˜T cáº·p xÆ°ng hĂ´ vĂ  lock cá»©ng cáº£ cáº·p Ä‘Ă³ suá»‘t video:
+    thĂ´ng thÆ°á»ng:  tĂ´i â†” báº¡n
+    thĂ¢n máº­t:      tao â†” mĂ y
+    kĂ­nh trá»ng:    tĂ´i â†” anh / tĂ´i â†” chá»‹
+    cá»• trang/vĂµ hiá»‡p: ta â†” ngÆ°Æ¡i
+    gia Ä‘Ă¬nh/phim: anh â†” em, chĂº â†” chĂ¡u, v.v.
+- NgĂ´i thá»© 2 sá»‘ Ă­t chá»‰ Ä‘Æ°á»£c dĂ¹ng Má»˜T tá»« duy nháº¥t: "báº¡n" HOáº¶C "ngÆ°Æ¡i" HOáº¶C "mĂ y" â€” khĂ´ng trá»™n láº«n dĂ¹ chá»‰ má»™t láº§n.
+- Video dáº¡ng "what if / giáº£ sá»­ / náº¿u báº¡n lĂ ..." (narrator nĂ³i vá»›i khĂ¡n giáº£): luĂ´n dĂ¹ng "báº¡n", KHĂ”NG dĂ¹ng cáº­u/mĂ y/ngÆ°Æ¡i dĂ¹ cĂ¢u cĂ³ váº» thĂ¢n máº­t.
+- NgĂ´i thá»© nháº¥t sá»‘ nhiá»u: "chĂºng tĂ´i / chĂºng ta / bá»n tao" â€” chá»n má»™t, khĂ´ng Ä‘á»•i.
+- Náº¿u ngá»¯ cáº£nh Ä‘Ă£ dá»‹ch cho tháº¥y xÆ°ng hĂ´ cá»¥ thá»ƒ -> báº¯t buá»™c dĂ¹ng Ä‘Ăºng theo.
 
-=== CHẤT LƯỢNG DỊCH ===
-- Tự động nhận diện ngôn ngữ nguồn (Anh, Trung, Nhật, Hàn, Tây Ban Nha, Pháp...) và dịch sang tiếng Việt.
-- Dịch tự nhiên như người Việt nói chuyện thực sự, không cứng nhắc, không dịch từng chữ.
-- Câu phải đủ chủ ngữ và vị ngữ để người nghe hiểu ngay lần đầu khi nghe TTS.
-- Dùng từ thuần Việt, hạn chế Hán Việt: "cá voi sát thủ" không phải "hổ kình", "nổ tung" không phải "bùng phát".
-- Giữ văn phong gốc: khoa học thì rõ ràng, hài hước thì thoải mái, kịch tính thì mạnh mẽ.
-- Tên riêng và thuật ngữ khoa học: giữ nguyên hoặc dùng cách phiên âm phổ biến nhất ở Việt Nam.
+=== CHáº¤T LÆ¯á»¢NG Dá»CH ===
+- Tá»± Ä‘á»™ng nháº­n diá»‡n ngĂ´n ngá»¯ nguá»“n (Anh, Trung, Nháº­t, HĂ n, TĂ¢y Ban Nha, PhĂ¡p...) vĂ  dá»‹ch sang tiáº¿ng Viá»‡t.
+- Dá»‹ch tá»± nhiĂªn nhÆ° ngÆ°á»i Viá»‡t nĂ³i chuyá»‡n thá»±c sá»±, khĂ´ng cá»©ng nháº¯c, khĂ´ng dá»‹ch tá»«ng chá»¯.
+- CĂ¢u pháº£i Ä‘á»§ chá»§ ngá»¯ vĂ  vá»‹ ngá»¯ Ä‘á»ƒ ngÆ°á»i nghe hiá»ƒu ngay láº§n Ä‘áº§u khi nghe TTS.
+- DĂ¹ng tá»« thuáº§n Viá»‡t, háº¡n cháº¿ HĂ¡n Viá»‡t: "cĂ¡ voi sĂ¡t thá»§" khĂ´ng pháº£i "há»• kĂ¬nh", "ná»• tung" khĂ´ng pháº£i "bĂ¹ng phĂ¡t".
+- Giá»¯ vÄƒn phong gá»‘c: khoa há»c thĂ¬ rĂµ rĂ ng, hĂ i hÆ°á»›c thĂ¬ thoáº£i mĂ¡i, ká»‹ch tĂ­nh thĂ¬ máº¡nh máº½.
+- TĂªn riĂªng vĂ  thuáº­t ngá»¯ khoa há»c: giá»¯ nguyĂªn hoáº·c dĂ¹ng cĂ¡ch phiĂªn Ă¢m phá»• biáº¿n nháº¥t á»Ÿ Viá»‡t Nam.
 
-=== KÝ TỰ BỊ CẤM (TTS sẽ đọc sai) ===
-Không dùng: - _ / ( ) ... và dấu chấm hỏi cuối câu thay bằng dấu chấm."""
+=== KĂ Tá»° Bá» Cáº¤M (TTS sáº½ Ä‘á»c sai) ===
+KhĂ´ng dĂ¹ng: - _ / ( ) ... vĂ  dáº¥u cháº¥m há»i cuá»‘i cĂ¢u thay báº±ng dáº¥u cháº¥m."""
 
 
 BEEKNOEE_BASE_URL = "https://platform.beeknoee.com/api/v1"
@@ -313,7 +368,7 @@ BEEKNOEE_MODEL    = "gemini-2.5-flash-lite"
 
 
 def _make_chat_client(groq_key: str, beeknoee_key: str | None):
-    """Trả về (client, model). Ưu tiên Beeknoee nếu có key."""
+    """Tráº£ vá» (client, model). Æ¯u tiĂªn Beeknoee náº¿u cĂ³ key."""
     if beeknoee_key:
         from openai import OpenAI
         client = OpenAI(api_key=beeknoee_key, base_url=BEEKNOEE_BASE_URL)
@@ -330,13 +385,13 @@ def translate_chunk(cues: list[dict], context_cues: list[dict],
     prompt = ""
     if context_cues:
         ctx_srt = build_srt(context_cues)
-        prompt += f"[NGỮ CẢNH ĐÃ DỊCH - chỉ tham chiếu xưng hô/tên, KHÔNG dịch lại]:\n{ctx_srt}\n\n"
+        prompt += f"[NGá»® Cáº¢NH ÄĂƒ Dá»CH - chá»‰ tham chiáº¿u xÆ°ng hĂ´/tĂªn, KHĂ”NG dá»‹ch láº¡i]:\n{ctx_srt}\n\n"
 
     src_srt = build_srt(cues)
-    prompt += f"Dịch ĐÚNG {len(cues)} block sau, đầu ra phải có ĐÚNG {len(cues)} block, không hơn không kém:\n\n{src_srt}"
+    prompt += f"Dá»‹ch ÄĂNG {len(cues)} block sau, Ä‘áº§u ra pháº£i cĂ³ ÄĂNG {len(cues)} block, khĂ´ng hÆ¡n khĂ´ng kĂ©m:\n\n{src_srt}"
 
     max_attempts = 5
-    backoff = 5  # giây, tăng dần khi gặp 429
+    backoff = 5  # giĂ¢y, tÄƒng dáº§n khi gáº·p 429
     for attempt in range(max_attempts):
         try:
             resp = client.chat.completions.create(
@@ -351,7 +406,7 @@ def translate_chunk(cues: list[dict], context_cues: list[dict],
             err = str(e)
             if "429" in err or "rate_limit" in err or "too_many_requests" in err:
                 wait = backoff * (2 ** attempt)
-                print(f"     Rate limit, chờ {wait}s rồi thử lại...")
+                print(f"     Rate limit, chá» {wait}s rá»“i thá»­ láº¡i...")
                 time.sleep(wait)
                 continue
             raise
@@ -361,6 +416,7 @@ def translate_chunk(cues: list[dict], context_cues: list[dict],
         translated = parse_srt(raw)
         if len(translated) == len(cues):
             for src, tgt in zip(cues, translated):
+                tgt["idx"]       = src["idx"]
                 tgt["start"]     = src["start"]
                 tgt["end"]       = src["end"]
                 tgt["start_sec"] = src["start_sec"]
@@ -368,11 +424,11 @@ def translate_chunk(cues: list[dict], context_cues: list[dict],
             return translated
         best_partial = translated
         if attempt < max_attempts - 1:
-            prompt += f"\n\n[LỖI: cần đúng {len(cues)} block, nhận được {len(translated)}. KHÔNG gộp/bỏ block nào.]"
+            prompt += f"\n\n[Lá»–I: cáº§n Ä‘Ăºng {len(cues)} block, nháº­n Ä‘Æ°á»£c {len(translated)}. KHĂ”NG gá»™p/bá» block nĂ o.]"
             time.sleep(3)
 
     # Fallback: align by SRT index, fill missing with source text
-    print(f"     ⚠ Dùng fallback: căn chỉnh theo index, bổ sung block thiếu bằng text gốc")
+    print(f"     â  DĂ¹ng fallback: cÄƒn chá»‰nh theo index, bá»• sung block thiáº¿u báº±ng text gá»‘c")
     by_idx = {t["idx"]: t for t in best_partial}
     result = []
     for i, src in enumerate(cues, 1):
@@ -393,11 +449,11 @@ def translate_chunk(cues: list[dict], context_cues: list[dict],
 
 def _translate_single_shot(cues: list[dict], groq_key: str,
                            beeknoee_key: str | None = None) -> list[dict] | None:
-    """Ném toàn bộ cues vào 1 request. Trả về None nếu output lệch."""
+    """NĂ©m toĂ n bá»™ cues vĂ o 1 request. Tráº£ vá» None náº¿u output lá»‡ch."""
     client, model = _make_chat_client(groq_key, beeknoee_key)
     src_srt = build_srt(cues)
-    prompt = (f"Dịch ĐÚNG {len(cues)} block sau, đầu ra phải có ĐÚNG {len(cues)} block, "
-              f"không hơn không kém:\n\n{src_srt}")
+    prompt = (f"Dá»‹ch ÄĂNG {len(cues)} block sau, Ä‘áº§u ra pháº£i cĂ³ ÄĂNG {len(cues)} block, "
+              f"khĂ´ng hÆ¡n khĂ´ng kĂ©m:\n\n{src_srt}")
 
     backoff = 5
     for attempt in range(4):
@@ -414,10 +470,10 @@ def _translate_single_shot(cues: list[dict], groq_key: str,
             err = str(e)
             if "429" in err or "rate_limit" in err or "too_many_requests" in err:
                 wait = backoff * (2 ** attempt)
-                print(f"     [single-shot] Rate limit, chờ {wait}s...")
+                print(f"     [single-shot] Rate limit, chá» {wait}s...")
                 time.sleep(wait)
                 continue
-            print(f"     [single-shot] Lỗi: {e}")
+            print(f"     [single-shot] Lá»—i: {e}")
             return None
 
         raw = resp.choices[0].message.content or ""
@@ -425,14 +481,15 @@ def _translate_single_shot(cues: list[dict], groq_key: str,
         translated = parse_srt(raw)
         if len(translated) == len(cues):
             for src, tgt in zip(cues, translated):
+                tgt["idx"]       = src["idx"]
                 tgt["start"]     = src["start"]
                 tgt["end"]       = src["end"]
                 tgt["start_sec"] = src["start_sec"]
                 tgt["end_sec"]   = src["end_sec"]
-            print(f"     [single-shot] OK — {len(translated)} blocks")
+            print(f"     [single-shot] OK â€” {len(translated)} blocks")
             return translated
 
-        print(f"     [single-shot] Lệch block: cần {len(cues)}, nhận {len(translated)} — fallback chunked")
+        print(f"     [single-shot] Lá»‡ch block: cáº§n {len(cues)}, nháº­n {len(translated)} â€” fallback chunked")
         return None
 
     return None
@@ -442,8 +499,8 @@ def translate_srt(cues: list[dict], groq_key: str,
                   beeknoee_key: str | None = None,
                   chunk_cb=None) -> list[dict]:
     """
-    Dịch song song PARALLEL_CHUNKS chunk cùng lúc.
-    chunk_cb(done, total, partial_result): gọi sau mỗi batch xong.
+    Dá»‹ch song song PARALLEL_CHUNKS chunk cĂ¹ng lĂºc.
+    chunk_cb(done, total, partial_result): gá»i sau má»—i batch xong.
     """
     import concurrent.futures
 
@@ -453,21 +510,21 @@ def translate_srt(cues: list[dict], groq_key: str,
     chunks = [cues[i:i + CHUNK_BLOCKS] for i in range(0, len(cues), CHUNK_BLOCKS)]
     total  = len(chunks)
 
-    # Chia thành các batch song song, mỗi batch PARALLEL_CHUNKS chunk
-    # Trong cùng batch: các chunk độc lập nhau nên gửi song song được.
-    # Context của chunk[i] dùng kết quả batch trước (sequential giữa các batch).
+    # Chia thĂ nh cĂ¡c batch song song, má»—i batch PARALLEL_CHUNKS chunk
+    # Trong cĂ¹ng batch: cĂ¡c chunk Ä‘á»™c láº­p nhau nĂªn gá»­i song song Ä‘Æ°á»£c.
+    # Context cá»§a chunk[i] dĂ¹ng káº¿t quáº£ batch trÆ°á»›c (sequential giá»¯a cĂ¡c batch).
     result: list[dict] = []
     done_count = 0
 
     for batch_start in range(0, total, PARALLEL_CHUNKS):
         batch_indices = range(batch_start, min(batch_start + PARALLEL_CHUNKS, total))
 
-        # Context cho chunk đầu batch lấy từ kết quả đã có
+        # Context cho chunk Ä‘áº§u batch láº¥y tá»« káº¿t quáº£ Ä‘Ă£ cĂ³
         batch_context = result[-CONTEXT_BLOCKS:] if result else []
 
         def _translate_one(idx):
-            # Context: chunk đầu batch dùng batch_context, các chunk sau không có
-            # (chúng chạy song song nên chưa biết kết quả nhau)
+            # Context: chunk Ä‘áº§u batch dĂ¹ng batch_context, cĂ¡c chunk sau khĂ´ng cĂ³
+            # (chĂºng cháº¡y song song nĂªn chÆ°a biáº¿t káº¿t quáº£ nhau)
             ctx = batch_context if idx == batch_start else []
             print(f"     chunk {idx+1}/{total} ({len(chunks[idx])} blocks)...")
             return idx, translate_chunk(chunks[idx], ctx, groq_key, beeknoee_key)
@@ -479,14 +536,14 @@ def translate_srt(cues: list[dict], groq_key: str,
                 idx, translated = f.result()
                 batch_results[idx] = translated
 
-        # Ghép theo đúng thứ tự
+        # GhĂ©p theo Ä‘Ăºng thá»© tá»±
         for idx in batch_indices:
             result.extend(batch_results[idx])
             done_count += 1
             if chunk_cb:
                 chunk_cb(done_count, total, list(result))
 
-        # Delay ngắn giữa các batch tránh burst
+        # Delay ngáº¯n giá»¯a cĂ¡c batch trĂ¡nh burst
         if batch_start + PARALLEL_CHUNKS < total:
             time.sleep(0.3 if beeknoee_key else 1.0)
 
@@ -501,22 +558,22 @@ CAPCUT_DEVICE_ID = os.environ.get("CAPCUT_DEVICE_ID", "7581502458217252368")
 CAPCUT_IID       = os.environ.get("CAPCUT_IID",       "7581504179703056144")
 
 CAPCUT_VOICES_VI = [
-    ("Nhỏ Ngọt Ngào",       "BV421_vivn_streaming",                   "7252594014782755330"),
-    ("Cô Gái Hoạt Ngôn",    "BV074_streaming",                        "7102355709945188865"),
-    ("Giọng Nữ Phổ Thông",  "vi_female_huong",                        "7264854897953083905"),
-    ("Giọng Bé",             "BV074_streaming_dsp",                    "7550087831092251920"),
-    ("Mai",                  "BV562_streaming",                        "7483736254694035984"),
-    ("Giọng Gái Mới Lớn",   "multi_female_peiqi_uranus_bigtts",       "7637458789033151751"),
-    ("Ban Mai",              "multi_female_yangguangnv_uranus_bigtts", "7637456432522218773"),
-    ("Bản Tin Nữ",           "multi_female_sisi_uranus_bigtts",        "7637455857285860629"),
-    ("Thanh Niên Tự Tin",   "BV075_streaming",                        "7102355803792740865"),
-    ("Giọng Nam Trầm",      "multi_male_felipe_uranus_bigtts",        "7637456729696996628"),
-    ("Alex Đại Đế",          "BV560_streaming",                        "7483736167565758992"),
+    ("Nho Ngot Ngao",       "BV421_vivn_streaming",                   "7252594014782755330"),
+    ("Co Gai Hoat Ngon",    "BV074_streaming",                        "7102355709945188865"),
+    ("Giong Nu Pho Thong",  "vi_female_huong",                        "7264854897953083905"),
+    ("Giong Be",            "BV074_streaming_dsp",                    "7550087831092251920"),
+    ("Mai",                 "BV562_streaming",                        "7483736254694035984"),
+    ("Gai Moi Lon",         "multi_female_peiqi_uranus_bigtts",       "7637458789033151751"),
+    ("Ban Mai",             "multi_female_yangguangnv_uranus_bigtts", "7637456432522218773"),
+    ("Ban Tin Nu",          "multi_female_sisi_uranus_bigtts",        "7637455857285860629"),
+    ("Thanh Nien Tu Tin",   "BV075_streaming",                        "7102355803792740865"),
+    ("Giong Nam Tram",      "multi_male_felipe_uranus_bigtts",        "7637456729696996628"),
+    ("Alex Dai De",         "BV560_streaming",                        "7483736167565758992"),
 ]
 
 
 def _capcut_session(device_id: str):
-    """Tạo session + device dict dùng chung cho CapCut API."""
+    """Táº¡o session + device dict dĂ¹ng chung cho CapCut API."""
     import sys
     sys.path.insert(0, str(BASE_DIR / "capcut-tts-api-main"))
     from capcut_common_task_client import DEFAULT_DEVICE
@@ -533,7 +590,7 @@ def _capcut_session(device_id: str):
 
 def capcut_tts_batch(texts: list[str], voice_type: str, resource_id: str,
                      out_paths: list[Path], device_id: str, rate: str = "1.0"):
-    """Gửi nhiều text trong 1 request CapCut TTS, lưu từng MP3 vào out_paths tương ứng."""
+    """Gá»­i nhiá»u text trong 1 request CapCut TTS, lÆ°u tá»«ng MP3 vĂ o out_paths tÆ°Æ¡ng á»©ng."""
     import sys
     sys.path.insert(0, str(BASE_DIR / "capcut-tts-api-main"))
     from capcut_common_task_client import (
@@ -555,7 +612,7 @@ def capcut_tts_batch(texts: list[str], voice_type: str, resource_id: str,
     r = _session.post(url, headers=headers, data=body_text.encode(), timeout=30)
     d = r.json()
     if d.get("ret") != "0":
-        raise RuntimeError(f"CapCut TTS submit lỗi: {d.get('errmsg')}")
+        raise RuntimeError(f"CapCut TTS submit lá»—i: {d.get('errmsg')}")
     task = d["data"]["tasks"][0]
     task_id, token = task["id"], task["token"]
 
@@ -573,12 +630,12 @@ def capcut_tts_batch(texts: list[str], voice_type: str, resource_id: str,
         if t2["status"] == "succeed":
             payload = _json.loads(t2["payload"])
             audio_list = payload["audio_subtitles"]
-            # Map theo field "text" để tránh lệch thứ tự
+            # Map theo field "text" Ä‘á»ƒ trĂ¡nh lá»‡ch thá»© tá»±
             by_text = {item["text"]: item["speech_url"] for item in audio_list}
             for text, out_path in zip(texts, out_paths):
                 url = by_text.get(text)
                 if not url:
-                    # fallback theo index nếu text không khớp (CapCut có thể normalize)
+                    # fallback theo index náº¿u text khĂ´ng khá»›p (CapCut cĂ³ thá»ƒ normalize)
                     idx = texts.index(text)
                     url = audio_list[idx]["speech_url"] if idx < len(audio_list) else None
                 if url:
@@ -592,7 +649,7 @@ def capcut_tts_batch(texts: list[str], voice_type: str, resource_id: str,
 
 
 def capcut_tts_sync(text: str, voice_type: str, resource_id: str, out_path: Path, device_id: str):
-    """Gọi CapCut TTS API đồng bộ, lưu MP3 vào out_path."""
+    """Gá»i CapCut TTS API Ä‘á»“ng bá»™, lÆ°u MP3 vĂ o out_path."""
     capcut_tts_batch([text], voice_type, resource_id, [out_path], device_id)
 
 
@@ -601,7 +658,7 @@ async def tts_segment(text: str, voice: str, out_path: Path,
                       capcut_voice_type: str | None = None,
                       capcut_resource_id: str | None = None,
                       **_ignored):
-    """Tạo file TTS cho 1 đoạn text dùng CapCut TTS, retry vô hạn + đổi device_id khi bị block."""
+    """Táº¡o file TTS cho 1 Ä‘oáº¡n text dĂ¹ng CapCut TTS, retry vĂ´ háº¡n + Ä‘á»•i device_id khi bá»‹ block."""
     import random as _random
     clean = re.sub(r"[^\w\s\u00c0-\u024f\u1e00-\u1eff.,!?;:()\"'\u2013-]", " ", text).strip() or "."
     current_did = capcut_device_id
@@ -616,25 +673,25 @@ async def tts_segment(text: str, voice: str, out_path: Path,
             return
         except Exception as e:
             attempt += 1
-            print(f"  ⚠ CapCut TTS lần {attempt}: '{clean[:60]}' — {e}, đổi device_id và thử lại...")
+            print(f"  â  CapCut TTS láº§n {attempt}: '{clean[:60]}' â€” {e}, Ä‘á»•i device_id vĂ  thá»­ láº¡i...")
             current_did = str(_random.randint(7000000000000000000, 7999999999999999999))
             await asyncio.sleep(min(2 * attempt, 10))
 
 
 def get_audio_duration(path: Path) -> float:
     r = run([
-        "ffprobe", "-v", "error",
+        FFPROBE_BIN, "-v", "error",
         "-show_entries", "stream=duration",
         "-of", "default=noprint_wrappers=1:nokey=1",
         str(path),
     ])
-    # Lấy max của tất cả stream (video + audio) để tránh thiếu nếu 1 stream ngắn hơn
+    # Láº¥y max cá»§a táº¥t cáº£ stream (video + audio) Ä‘á»ƒ trĂ¡nh thiáº¿u náº¿u 1 stream ngáº¯n hÆ¡n
     vals = [float(x) for x in r.stdout.strip().splitlines() if x.strip()]
     return max(vals) if vals else 0.0
 
 
 def stretch_audio(src: Path, dst: Path, ratio: float):
-    """Kéo/nén audio theo ratio dùng atempo. ratio > 1 = nhanh hơn."""
+    """KĂ©o/nĂ©n audio theo ratio dĂ¹ng atempo. ratio > 1 = nhanh hÆ¡n."""
     filters = ",".join(atempo_chain(ratio))
     extra = ["-ar", "44100", "-ac", "1"] if dst.suffix.lower() == ".wav" else []
     run([
@@ -646,7 +703,7 @@ def stretch_audio(src: Path, dst: Path, ratio: float):
 
 
 def make_silent(duration: float, dst: Path):
-    """Tạo file âm thanh im lặng duration giây. Dùng WAV nếu dst.suffix=.wav."""
+    """Táº¡o file Ă¢m thanh im láº·ng duration giĂ¢y. DĂ¹ng WAV náº¿u dst.suffix=.wav."""
     ext = dst.suffix.lower()
     if ext == ".wav":
         run([
@@ -679,10 +736,10 @@ async def build_tts_track(cues: list[dict], work_dir: Path, video_duration: floa
                           progress_cb=None,
                           log_cb=None) -> Path:
     """
-    Build track TTS đồng bộ:
-    - Mỗi cue: TTS -> atempo để khớp đúng window [start_sec, end_sec]
-    - Ghép tất cả cue + khoảng lặng giữa chúng thành 1 file mp3
-    - Ưu tiên: CapCut TTS -> Beeknoee TTS -> Edge TTS
+    Build track TTS Ä‘á»“ng bá»™:
+    - Má»—i cue: TTS -> atempo Ä‘á»ƒ khá»›p Ä‘Ăºng window [start_sec, end_sec]
+    - GhĂ©p táº¥t cáº£ cue + khoáº£ng láº·ng giá»¯a chĂºng thĂ nh 1 file mp3
+    - Æ¯u tiĂªn: CapCut TTS -> Beeknoee TTS -> Edge TTS
     """
     def _log(msg: str):
         print(msg, flush=True)
@@ -692,18 +749,18 @@ async def build_tts_track(cues: list[dict], work_dir: Path, video_duration: floa
     if capcut_device_id and capcut_voice_type:
         label = f"CapCut TTS batch ({capcut_voice_type})"
     else:
-        label = "CapCut TTS (thiếu device_id)"
-    _log(f"  -> TTS {len(cues)} đoạn ({label})...")
+        label = "CapCut TTS (thiáº¿u device_id)"
+    _log(f"  -> TTS {len(cues)} Ä‘oáº¡n ({label})...")
     seg_dir = work_dir / "tts_segs"
     seg_dir.mkdir(exist_ok=True)
 
     # --- Pre-fetch CapCut batch -------------------------------------------
-    # Gom tất cả cue có text, gửi theo batch 10 đoạn/request thay vì từng cái
+    # Gom cue co text, gui theo batch 50 doan/request thay vi tung cai.
     raw_paths: dict[int, Path] = {}   # idx -> raw mp3 path
     total_cues = len([c for c in cues if c["text"].strip()])
 
     if capcut_device_id and capcut_voice_type and capcut_resource_id:
-        BATCH = 10
+        BATCH = 50
         pending_idxs  : list[int]  = []
         pending_texts : list[str]  = []
         pending_paths : list[Path] = []
@@ -714,7 +771,7 @@ async def build_tts_track(cues: list[dict], work_dir: Path, video_duration: floa
         def _new_device_id() -> str:
             import random
             new_id = str(random.randint(7000000000000000000, 7999999999999999999))
-            # Cập nhật .env để lần sau dùng luôn
+            # Cáº­p nháº­t .env Ä‘á»ƒ láº§n sau dĂ¹ng luĂ´n
             env_path = BASE_DIR / ".env"
             if env_path.exists():
                 lines = env_path.read_text().splitlines()
@@ -722,14 +779,14 @@ async def build_tts_track(cues: list[dict], work_dir: Path, video_duration: floa
                 if not any(l.startswith("CAPCUT_DEVICE_ID=") for l in lines):
                     new_lines.append(f"CAPCUT_DEVICE_ID={new_id}")
                 env_path.write_text("\n".join(new_lines) + "\n")
-            print(f"  -> Đổi device_id mới: {new_id}")
+            print(f"  -> Äá»•i device_id má»›i: {new_id}")
             return new_id
 
         def _flush_batch():
             nonlocal current_device_id, done_cues
             if not pending_texts:
                 return
-            _log(f"CapCut batch {pending_idxs[0]}–{pending_idxs[-1]} ({len(pending_texts)} đoạn)...")
+            _log(f"CapCut batch {pending_idxs[0]}â€“{pending_idxs[-1]} ({len(pending_texts)} Ä‘oáº¡n)...")
             if progress_cb:
                 progress_cb(done_cues, total_cues)
             attempt = 0
@@ -740,11 +797,13 @@ async def build_tts_track(cues: list[dict], work_dir: Path, video_duration: floa
                     done_cues += len(pending_texts)
                     if progress_cb:
                         progress_cb(done_cues, total_cues)
-                    _log(f"✓ Batch xong — {done_cues}/{total_cues} đoạn")
+                    _log(f"âœ“ Batch xong â€” {done_cues}/{total_cues} Ä‘oáº¡n")
                     return
                 except Exception as e:
+                    if isinstance(e, ModuleNotFoundError):
+                        raise RuntimeError(f"Missing Python dependency for CapCut TTS: {e.name}") from e
                     attempt += 1
-                    msg = f"⚠ CapCut batch lỗi lần {attempt}: {str(e)[:80]} — đổi device_id..."
+                    msg = f"â  CapCut batch lá»—i láº§n {attempt}: {str(e)[:80]} â€” Ä‘á»•i device_id..."
                     _log(msg)
                     if progress_cb:
                         progress_cb(done_cues, total_cues)
@@ -765,11 +824,11 @@ async def build_tts_track(cues: list[dict], work_dir: Path, video_duration: floa
                 _flush_batch()
                 pending_idxs.clear(); pending_texts.clear(); pending_paths.clear()
                 await asyncio.sleep(capcut_delay)
-        _flush_batch()  # flush batch cuối
+        _flush_batch()  # flush batch cuá»‘i
 
 
-    # Dùng adelay để pin từng segment vào timestamp tuyệt đối start_sec
-    # -> không có sai số tích lũy dù trim/stretch có lệch nhỏ
+    # DĂ¹ng adelay Ä‘á»ƒ pin tá»«ng segment vĂ o timestamp tuyá»‡t Ä‘á»‘i start_sec
+    # -> khĂ´ng cĂ³ sai sá»‘ tĂ­ch lÅ©y dĂ¹ trim/stretch cĂ³ lá»‡ch nhá»
     WAV_SR = 44100
 
     # segments: list of (start_sec, end_sec, wav_path)
@@ -786,7 +845,7 @@ async def build_tts_track(cues: list[dict], work_dir: Path, video_duration: floa
         if not text:
             continue
 
-        # Lấy raw TTS
+        # Láº¥y raw TTS
         raw_path = raw_paths.get(cue["idx"]) or seg_dir / f"raw_{cue['idx']:04d}.mp3"
         if not raw_path.exists():
             await tts_segment(text, TTS_VOICE, raw_path,
@@ -794,7 +853,7 @@ async def build_tts_track(cues: list[dict], work_dir: Path, video_duration: floa
                               capcut_voice_type=capcut_voice_type,
                               capcut_resource_id=capcut_resource_id)
 
-        # Convert sang WAV + apply speed_ratio đồng đều (atempo)
+        # Convert sang WAV + apply speed_ratio Ä‘á»“ng Ä‘á»u (atempo)
         seg_wav = seg_dir / f"seg_{cue['idx']:04d}.wav"
         if speed_ratio and abs(speed_ratio - 1.0) > 0.01:
             tmp_mp3 = seg_dir / f"spd_{cue['idx']:04d}.mp3"
@@ -816,14 +875,14 @@ async def build_tts_track(cues: list[dict], work_dir: Path, video_duration: floa
         segments.append((start, end, seg_wav))
 
     if not segments:
-        raise RuntimeError("Không tạo được segment TTS nào.")
+        raise RuntimeError("KhĂ´ng táº¡o Ä‘Æ°á»£c segment TTS nĂ o.")
 
-    # Dùng FFmpeg filter_complex với adelay để pin mỗi segment vào start_sec tuyệt đối
-    # Giới hạn 200 inputs/filter_complex của FFmpeg -> chia batch nếu cần
+    # DĂ¹ng FFmpeg filter_complex vá»›i adelay Ä‘á»ƒ pin má»—i segment vĂ o start_sec tuyá»‡t Ä‘á»‘i
+    # Giá»›i háº¡n 200 inputs/filter_complex cá»§a FFmpeg -> chia batch náº¿u cáº§n
     ADELAY_BATCH = 150
 
     def _mix_batch(batch: list[tuple[float, float, Path]], total_dur: float, out_wav: Path):
-        """Mix một batch segments bằng adelay+amix -> 1 WAV."""
+        """Mix má»™t batch segments báº±ng adelay+amix -> 1 WAV."""
         inputs = []
         filter_parts = []
         labels = []
@@ -850,7 +909,7 @@ async def build_tts_track(cues: list[dict], work_dir: Path, video_duration: floa
         tts_track_wav = work_dir / "tts_track.wav"
         _mix_batch(segments, total_dur, tts_track_wav)
     else:
-        # Chia thành nhiều batch, mỗi batch mix riêng rồi amix lại
+        # Chia thĂ nh nhiá»u batch, má»—i batch mix riĂªng rá»“i amix láº¡i
         batch_wavs: list[Path] = []
         for bi in range(0, len(segments), ADELAY_BATCH):
             batch = segments[bi:bi + ADELAY_BATCH]
@@ -858,7 +917,7 @@ async def build_tts_track(cues: list[dict], work_dir: Path, video_duration: floa
             _mix_batch(batch, total_dur, bwav)
             batch_wavs.append(bwav)
 
-        # Final amix các batch
+        # Final amix cĂ¡c batch
         tts_track_wav = work_dir / "tts_track.wav"
         inputs = []
         labels = []
@@ -895,15 +954,15 @@ async def build_tts_track(cues: list[dict], work_dir: Path, video_duration: floa
 
 
 # ---------------------------------------------------------------------------
-# STEP 5 (optional): Kéo dãn video chậm lại
+# STEP 5 (optional): KĂ©o dĂ£n video cháº­m láº¡i
 # ---------------------------------------------------------------------------
 
 def slowdown_video(video_path: Path, out_path: Path, factor: float) -> Path:
     """
-    Kéo dãn video factor lần (vd factor=1.2 -> chậm hơn 20%).
-    setpts=factor*PTS cho video, atempo=1/factor cho audio gốc.
+    KĂ©o dĂ£n video factor láº§n (vd factor=1.2 -> cháº­m hÆ¡n 20%).
+    setpts=factor*PTS cho video, atempo=1/factor cho audio gá»‘c.
     """
-    print(f"  -> Kéo dãn video {factor}x (chậm lại {(factor-1)*100:.0f}%)...")
+    print(f"  -> KĂ©o dĂ£n video {factor}x (cháº­m láº¡i {(factor-1)*100:.0f}%)...")
     atempo = 1.0 / factor
     af_filters = ",".join(atempo_chain(atempo))
     run([
@@ -918,7 +977,7 @@ def slowdown_video(video_path: Path, out_path: Path, factor: float) -> Path:
 
 
 def scale_cues(cues: list[dict], factor: float) -> list[dict]:
-    """Nhân tất cả timestamp trong SRT theo factor."""
+    """NhĂ¢n táº¥t cáº£ timestamp trong SRT theo factor."""
     scaled = []
     for c in cues:
         s = c["start_sec"] * factor
@@ -942,6 +1001,7 @@ def render_video(
     tts_volume: float = 1.8,
     original_audio: Path | None = None,
     original_volume: float = 0.3,
+    subtitle_backdrop: bool = True,
     logo: Path | None = None,
     logo_pos: str = "topright",
     logo_size: int = 100,
@@ -950,8 +1010,9 @@ def render_video(
     logo_fontsize: int = 28,
     logo_color: str = "#ffffff",
     watermark: str = "nem_vietsub",
+    render_preset: str = "veryfast",
 ):
-    print("  -> Render video (burn sub + mix TTS + nhạc nền)...")
+    print("  -> Render video (burn sub + mix TTS + nháº¡c ná»n)...")
 
     # On Windows, FFmpeg subtitles filter cannot parse drive-letter paths (C:\...).
     # Fix: run ffmpeg with cwd=work_dir and use just the filename (relative).
@@ -984,7 +1045,7 @@ def render_video(
         f"y=abs(mod(t*51\\,2*(h-th))-(h-th))"
     ) if wm_text else ""
 
-    # Xây danh sách inputs
+    # XĂ¢y danh sĂ¡ch inputs
     inputs = ["-i", str(video_path)]
     inputs += ["-i", str(tts_track)]   # idx 1
     tts_idx = 1
@@ -1016,10 +1077,14 @@ def render_video(
     if wm_filter:
         vf_chain += f",{wm_filter}"
 
-    base_vf = (
-        f"[0:v]crop=iw:ih*0.15:0:ih*0.85,boxblur=10:5[blurred];"
-        f"[0:v][blurred]overlay=0:H*0.85,{vf_chain}"
-    )
+    if subtitle_backdrop:
+        base_vf = (
+            f"[0:v]split[vmain][vblur];"
+            f"[vblur]crop=iw:ih*0.18:0:ih*0.82,boxblur=8:2[blurred];"
+            f"[vmain][blurred]overlay=0:H*0.82,{vf_chain}"
+        )
+    else:
+        base_vf = f"[0:v]{vf_chain}"
 
     _has_img_logo  = logo_tab == "img"  and logo and Path(logo).exists()
     _has_text_logo = logo_tab == "text" and logo_text.strip()
@@ -1053,14 +1118,19 @@ def render_video(
     if len(audio_labels) == 1:
         # Pad silence after the last TTS cue so -shortest follows the source
         # video duration instead of cutting the exported video at the TTS end.
-        filter_complex = f"{vf_base};[{tts_idx}:a]volume={tts_volume},apad[aout]"
+        filter_complex = f"{vf_base};[{tts_idx}:a]volume={tts_volume},alimiter=limit=0.95,apad[aout]"
     else:
         n = len(audio_labels)
         filter_complex = (
             f"{vf_base};"
             + ";".join(audio_parts)
-            + f";{''.join(audio_labels)}amix=inputs={n}:duration=longest:dropout_transition=0,apad[aout]"
+            + f";{''.join(audio_labels)}amix=inputs={n}:duration=longest:dropout_transition=0,alimiter=limit=0.95,apad[aout]"
         )
+
+    video_enc = list(_VIDEO_ENC)
+    if "-preset" in video_enc and "-c:v" in video_enc and "libx264" in video_enc:
+        preset_i = video_enc.index("-preset") + 1
+        video_enc[preset_i] = render_preset if render_preset in {"ultrafast", "superfast", "veryfast", "fast", "medium"} else "veryfast"
 
     cmd = [
         FFMPEG_BIN, "-y",
@@ -1068,7 +1138,7 @@ def render_video(
         "-filter_complex", filter_complex,
         "-map", "[vout]",
         "-map", "[aout]",
-        *_VIDEO_ENC,
+        *video_enc,
         "-c:a", "aac", "-b:a", "192k",
         "-shortest",
         str(output_path),
@@ -1079,7 +1149,7 @@ def render_video(
     except subprocess.CalledProcessError as e:
         print("=== FFmpeg stderr ===")
         print(e.stderr[-3000:] if e.stderr else "(no stderr)")
-        raise RuntimeError(f"FFmpeg lỗi (exit {e.returncode}):\n{e.stderr[-1000:] if e.stderr else ''}") from e
+        raise RuntimeError(f"FFmpeg lá»—i (exit {e.returncode}):\n{e.stderr[-1000:] if e.stderr else ''}") from e
 
 
 # ---------------------------------------------------------------------------
@@ -1091,30 +1161,30 @@ def find_input_video(input_dir: Path) -> Path:
         files = sorted(input_dir.glob(ext))
         if files:
             return files[0]
-    raise FileNotFoundError(f"Không tìm thấy video nào trong {input_dir}")
+    raise FileNotFoundError(f"KhĂ´ng tĂ¬m tháº¥y video nĂ o trong {input_dir}")
 
 
 def main():
-    parser = argparse.ArgumentParser(description="Dịch video tiếng Trung -> tiếng Việt")
-    parser.add_argument("--key",   default=None,  help="Groq API key (mặc định: đọc từ .env)")
-    parser.add_argument("--input", default=None,  help="Đường dẫn video (mặc định: lấy từ input/)")
+    parser = argparse.ArgumentParser(description="Dá»‹ch video tiáº¿ng Trung -> tiáº¿ng Viá»‡t")
+    parser.add_argument("--key",   default=None,  help="Groq API key (máº·c Ä‘á»‹nh: Ä‘á»c tá»« .env)")
+    parser.add_argument("--input", default=None,  help="ÄÆ°á»ng dáº«n video (máº·c Ä‘á»‹nh: láº¥y tá»« input/)")
     parser.add_argument("--slow",  type=float, default=1.0,
-                        help="Kéo dãn video chậm lại X lần trước khi xử lý (vd: --slow 1.2)")
+                        help="KĂ©o dĂ£n video cháº­m láº¡i X láº§n trÆ°á»›c khi xá»­ lĂ½ (vd: --slow 1.2)")
     args = parser.parse_args()
 
     groq_key = args.key or os.environ.get("GROQ_API_KEY", "")
     if not groq_key or groq_key == "your_groq_key_here":
-        print("Lỗi: chưa có Groq API key. Điền vào .env hoặc dùng --key YOUR_KEY")
+        print("Lá»—i: chÆ°a cĂ³ Groq API key. Äiá»n vĂ o .env hoáº·c dĂ¹ng --key YOUR_KEY")
         raise SystemExit(1)
 
-    # Tìm video input
+    # TĂ¬m video input
     if args.input:
         video_path = Path(args.input).expanduser().resolve()
     else:
         video_path = find_input_video(INPUT_DIR)
     print(f"\n[VIDEO] {video_path.name}")
 
-    # Chuẩn bị thư mục
+    # Chuáº©n bá»‹ thÆ° má»¥c
     OUTPUT_DIR.mkdir(exist_ok=True)
     job_id   = f"job_{int(time.time())}"
     work_dir = WORK_DIR / job_id
@@ -1128,18 +1198,18 @@ def main():
     output_path    = OUTPUT_DIR / f"{video_path.stem}_vi{suffix}.mp4"
 
     try:
-        # 1. Kéo dãn video nếu có --slow
+        # 1. KĂ©o dĂ£n video náº¿u cĂ³ --slow
         if slow_factor != 1.0:
-            print(f"\n[0/6] Kéo dãn video {slow_factor}x")
+            print(f"\n[0/6] KĂ©o dĂ£n video {slow_factor}x")
             slowed_path = work_dir / "slowed.mp4"
             video_path  = slowdown_video(video_path, slowed_path, slow_factor)
 
-        # 1. Tách audio
-        print("\n[1/6] Tách audio")
+        # 1. TĂ¡ch audio
+        print("\n[1/6] TĂ¡ch audio")
         extract_audio_for_stt(video_path, audio_stt_path)
 
-        # 2. Demucs tách nhạc nền
-        print("\n[2/6] Tách nhạc nền (Demucs)")
+        # 2. Demucs tĂ¡ch nháº¡c ná»n
+        print("\n[2/6] TĂ¡ch nháº¡c ná»n (Demucs)")
         bg_track = separate_background(video_path, work_dir)
 
         # 3. STT
@@ -1148,24 +1218,24 @@ def main():
         srt_zh_path.write_text(build_srt(zh_cues), encoding="utf-8")
         print(f"       {len(zh_cues)} segments")
 
-        # 4. Dịch
-        print("\n[4/6] Dịch Trung -> Việt (Groq LLM)")
+        # 4. Dá»‹ch
+        print("\n[4/6] Dá»‹ch Trung -> Viá»‡t (Groq LLM)")
         vi_cues = translate_srt(zh_cues, groq_key)
         srt_vi_path.write_text(build_srt(vi_cues), encoding="utf-8")
 
         # 5. TTS
-        print("\n[5/6] TTS tiếng Việt + đồng bộ thời gian")
+        print("\n[5/6] TTS tiáº¿ng Viá»‡t + Ä‘á»“ng bá»™ thá»i gian")
         video_dur = get_audio_duration(video_path)
         tts_track = asyncio.run(build_tts_track(vi_cues, work_dir, video_dur))
 
         # 6. Render
-        print("\n[6/6] Render video cuối")
+        print("\n[6/6] Render video cuá»‘i")
         render_video(video_path, tts_track, bg_track, srt_vi_path, output_path)
 
-        print(f"\n✓ Xong! Output: {output_path}")
+        print(f"\nâœ“ Xong! Output: {output_path}")
 
     finally:
-        # Dọn workdir
+        # Dá»n workdir
         import shutil
         try:
             shutil.rmtree(work_dir)
@@ -1175,3 +1245,4 @@ def main():
 
 if __name__ == "__main__":
     main()
+
