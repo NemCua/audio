@@ -94,6 +94,51 @@ jobs:
           $batContent = "@echo off`ncd /d `"%~dp0`"`ntranslate_server.exe`npause"
           $batContent | Set-Content -Path "electron\resources\python\run_server.bat" -Encoding ASCII
 
+      - name: Smoke test packaged Python server
+        run: |
+          $resourceDir = Resolve-Path "electron\resources\python"
+          $logOut = Join-Path $env:RUNNER_TEMP "translate_server.out.log"
+          $logErr = Join-Path $env:RUNNER_TEMP "translate_server.err.log"
+          $proc = Start-Process -FilePath (Join-Path $resourceDir "translate_server.exe") `
+            -WorkingDirectory $resourceDir `
+            -PassThru `
+            -RedirectStandardOutput $logOut `
+            -RedirectStandardError $logErr `
+            -WindowStyle Hidden
+          try {
+            $ready = $false
+            for ($i = 0; $i -lt 180; $i++) {
+              if ($proc.HasExited) {
+                throw "translate_server.exe exited with code $($proc.ExitCode)"
+              }
+              try {
+                $root = Invoke-WebRequest "http://127.0.0.1:8005/" -UseBasicParsing -TimeoutSec 2
+                if ($root.StatusCode -lt 500) {
+                  $ready = $true
+                  break
+                }
+              } catch {}
+              Start-Sleep -Seconds 1
+            }
+            if (-not $ready) {
+              throw "translate_server.exe did not become ready in 180 seconds"
+            }
+            $voices = Invoke-RestMethod "http://127.0.0.1:8005/api/voices" -TimeoutSec 10
+            if (-not $voices.voices -or $voices.voices.Count -lt 5) {
+              throw "Voice list is missing or too small"
+            }
+            Invoke-WebRequest "http://127.0.0.1:8005/voice_previews/vi_female_huong.mp3" -UseBasicParsing -TimeoutSec 10 | Out-Null
+            Invoke-RestMethod "http://127.0.0.1:8005/api/app-settings" -TimeoutSec 10 | Out-Null
+          } finally {
+            if (-not $proc.HasExited) {
+              Stop-Process -Id $proc.Id -Force
+            }
+            Write-Host "--- server stdout ---"
+            if (Test-Path $logOut) { Get-Content $logOut -Tail 200 }
+            Write-Host "--- server stderr ---"
+            if (Test-Path $logErr) { Get-Content $logErr -Tail 200 }
+          }
+
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:

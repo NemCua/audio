@@ -83,7 +83,7 @@ async function startServers() {
   })
 }
 
-function waitForServer(retries = 30) {
+function waitForServer(retries = 180) {
   return new Promise((resolve, reject) => {
     const check = (n) => {
       http.get(`http://127.0.0.1:${PORT}/`, res => {
