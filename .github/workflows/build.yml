@@ -28,9 +28,22 @@ jobs:
       - name: Install Python dependencies
         run: |
           python -m pip install --upgrade pip
-          python -m venv electron\resources\python\python_env
-          electron\resources\python\python_env\Scripts\python.exe -m pip install --upgrade pip
-          electron\resources\python\python_env\Scripts\pip.exe install -r requirements.txt
+          $resourceDir = "electron\resources\python"
+          $runtimeDir = "$resourceDir\python_runtime"
+          New-Item -ItemType Directory -Force $runtimeDir | Out-Null
+          $pyUrl = "https://www.python.org/ftp/python/3.11.9/python-3.11.9-embed-amd64.zip"
+          $pyZip = Join-Path $env:RUNNER_TEMP "python-embed.zip"
+          Invoke-WebRequest -Uri $pyUrl -OutFile $pyZip
+          Expand-Archive $pyZip -DestinationPath $runtimeDir -Force
+          New-Item -ItemType Directory -Force "$runtimeDir\Lib\site-packages" | Out-Null
+          $pth = Join-Path $runtimeDir "python311._pth"
+          @(
+            "python311.zip",
+            ".",
+            "Lib\site-packages",
+            "import site"
+          ) | Set-Content $pth -Encoding ASCII
+          pip install -r requirements.txt --target "$runtimeDir\Lib\site-packages"
 
       - name: Install FFmpeg
         run: |
@@ -66,7 +79,7 @@ jobs:
 
       - name: Create local debug launcher
         run: |
-          $batContent = "@echo off`ncd /d `"%~dp0`"`nset FFMPEG_BIN=%~dp0ffmpeg.exe`nset FFPROBE_BIN=%~dp0ffprobe.exe`npython_env\Scripts\python.exe translate_server.py`npause"
+          $batContent = "@echo off`ncd /d `"%~dp0`"`nset FFMPEG_BIN=%~dp0ffmpeg.exe`nset FFPROBE_BIN=%~dp0ffprobe.exe`npython_runtime\python.exe translate_server.py`npause"
           $batContent | Set-Content -Path "electron\resources\python\run_server.bat" -Encoding ASCII
 
       - name: Smoke test bundled Python server
@@ -76,7 +89,7 @@ jobs:
           $logErr = Join-Path $env:RUNNER_TEMP "translate_server.err.log"
           $env:FFMPEG_BIN = Join-Path $resourceDir "ffmpeg.exe"
           $env:FFPROBE_BIN = Join-Path $resourceDir "ffprobe.exe"
-          $proc = Start-Process -FilePath (Join-Path $resourceDir "python_env\Scripts\python.exe") `
+          $proc = Start-Process -FilePath (Join-Path $resourceDir "python_runtime\python.exe") `
             -ArgumentList (Join-Path $resourceDir "translate_server.py") `
             -WorkingDirectory $resourceDir `
             -PassThru `

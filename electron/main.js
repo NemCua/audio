@@ -53,12 +53,9 @@ async function startServers() {
   let serverCmd, serverArgs
   if (app.isPackaged) {
     const ext = process.platform === 'win32' ? '.exe' : ''
-    const bundledEnv = fs.existsSync(path.join(scriptsDir, 'python_env'))
-      ? 'python_env'
-      : '.venv'
     const bundledPython = process.platform === 'win32'
-      ? path.join(scriptsDir, bundledEnv, 'Scripts', 'python.exe')
-      : path.join(scriptsDir, bundledEnv, 'bin', 'python')
+      ? path.join(scriptsDir, 'python_runtime', 'python.exe')
+      : path.join(scriptsDir, 'python_env', 'bin', 'python')
     const serverScript = path.join(scriptsDir, 'translate_server.py')
     if (fs.existsSync(bundledPython) && fs.existsSync(serverScript)) {
       serverCmd = bundledPython
