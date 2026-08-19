@@ -190,7 +190,7 @@ class GenerateThreadsScriptRequest(BaseModel):
 
 
 AI_FEMALE_VOICES = ("Nhỏ Ngọt Ngào", "Giọng Nữ Phổ Thông", "Giọng Bé", "Cô Gái Hoạt Ngôn", "Mai")
-AI_MALE_VOICES = ("Thanh Niên Tự Tin", "Alex Đại Đế", "Nam Minh")
+AI_MALE_VOICES = ("Thanh Niên Tự Tin", "Alex Đại Đế")
 AI_ALLOWED_VOICES = set(AI_FEMALE_VOICES + AI_MALE_VOICES)
 
 
@@ -344,6 +344,12 @@ def _is_edge_voice(voice_type: str | None) -> bool:
     return str(voice_type or "").lower().endswith("neural")
 
 
+def _reject_edge_voice(voice_type: str | None) -> None:
+    """Threads chỉ dùng CapCut TTS; Edge từng làm treo cả project batch."""
+    if _is_edge_voice(voice_type):
+        raise HTTPException(400, "Giọng Microsoft Edge TTS đã bị ngừng hỗ trợ. Hãy chọn giọng CapCut.")
+
+
 async def _edge_tts_files(texts: list[str], voice_type: str, paths: list[Path]) -> None:
     import edge_tts
 
@@ -446,10 +452,16 @@ def _apply_speed(path: Path, speed: float) -> None:
 def list_voices():
     voices = _voice_json_by_lang("vi")
     if voices:
-        return voices
+        return [
+            {**voice, "legacy_index": index}
+            for index, voice in enumerate(voices)
+            if voice.get("engine") != "edge"
+        ]
     return [
-        {"label": label, "voice_type": voice_type, "resource_id": resource_id}
-        for label, voice_type, resource_id in tv.CAPCUT_VOICES_VI
+        {"label": label, "voice_type": voice_type, "resource_id": resource_id,
+         "engine": "capcut", "legacy_index": index}
+        for index, (label, voice_type, resource_id) in enumerate(tv.CAPCUT_VOICES_VI)
+        if not _is_edge_voice(voice_type)
     ]
 
 
@@ -472,30 +484,16 @@ def generate_tts(req: TTSRequest, _identity: dict = Depends(tts_identity)):
         raise HTTPException(400, "text rỗng")
     if len(text) > int(os.getenv("TTS_MAX_CHARS", "5000")):
         raise HTTPException(400, "Nội dung TTS quá dài")
-    consume_tts_quota(_identity, len(text))
-
     voice_type = req.voice_type or tv.CAPCUT_VOICES_VI[1][1]
     resource_id = req.resource_id or tv.CAPCUT_VOICES_VI[1][2]
+    _reject_edge_voice(voice_type)
+    consume_tts_quota(_identity, len(text))
     device_id = os.environ.get("CAPCUT_DEVICE_ID")
     if not device_id:
         raise HTTPException(500, "Thiếu CAPCUT_DEVICE_ID trong .env")
 
     out_name = f"{uuid.uuid4().hex}.mp3"
     out_path = AUDIO_DIR / out_name
-
-    if _is_edge_voice(voice_type):
-        try:
-            asyncio.run(_edge_tts_files([text], voice_type, [out_path]))
-            _apply_speed(out_path, req.speed)
-            if req.echo:
-                _apply_echo(out_path)
-            duration = _probe_duration(out_path)
-            if duration <= 0:
-                raise RuntimeError("File Edge TTS trả về rỗng/0 giây")
-            return {"audio_url": f"/audio/{out_name}", "duration": duration}
-        except Exception as e:
-            out_path.unlink(missing_ok=True)
-            raise HTTPException(502, f"Edge TTS lỗi: {e}")
 
     current_did = device_id
     last_err = None
@@ -528,49 +526,20 @@ def generate_tts_batch(req: TTSBatchRequest, _identity: dict = Depends(tts_ident
     total_chars = sum(map(len, texts))
     if total_chars > int(os.getenv("TTS_BATCH_MAX_CHARS", "20000")):
         raise HTTPException(400, "Tổng nội dung TTS batch quá dài")
-    if not _identity.get("_quota_consumed"):
-        consume_tts_quota(_identity, total_chars)
-
     voice_type = req.voice_type or tv.CAPCUT_VOICES_VI[1][1]
     resource_id = req.resource_id or tv.CAPCUT_VOICES_VI[1][2]
+    _reject_edge_voice(voice_type)
+    if not _identity.get("_quota_consumed"):
+        consume_tts_quota(_identity, total_chars)
     device_id = os.environ.get("CAPCUT_DEVICE_ID")
     if not device_id:
         raise HTTPException(500, "Thiếu CAPCUT_DEVICE_ID trong .env")
 
     names = [f"{uuid.uuid4().hex}.mp3" for _ in texts]
     paths = [AUDIO_DIR / name for name in names]
-    _tts_log("batch_start", engine="edge" if _is_edge_voice(voice_type) else "capcut",
+    _tts_log("batch_start", engine="capcut",
              voice_type=voice_type, resource_id=resource_id, count=len(texts),
              chars=total_chars, speed=req.speed, echo=req.echo)
-    if _is_edge_voice(voice_type):
-        try:
-            provider_started = time.perf_counter()
-            asyncio.run(_edge_tts_files(texts, voice_type, paths))
-            _tts_log("provider_success", engine="edge", voice_type=voice_type,
-                     count=len(texts), elapsed_ms=round((time.perf_counter() - provider_started) * 1000, 1))
-            effects_started = time.perf_counter()
-            for path in paths:
-                _apply_speed(path, req.speed)
-            if req.echo:
-                for path in paths:
-                    _apply_echo(path)
-            items = []
-            for name, path in zip(names, paths):
-                duration = _probe_duration(path)
-                if duration <= 0:
-                    raise RuntimeError(f"File Edge TTS {name} rỗng/0 giây")
-                items.append({"audio_url": f"/audio/{name}", "duration": duration})
-            _tts_log("batch_success", engine="edge", voice_type=voice_type, count=len(items),
-                     effects_ms=round((time.perf_counter() - effects_started) * 1000, 1),
-                     elapsed_ms=round((time.perf_counter() - batch_started) * 1000, 1))
-            return {"items": items}
-        except Exception as e:
-            _tts_log("batch_error", engine="edge", voice_type=voice_type,
-                     elapsed_ms=round((time.perf_counter() - batch_started) * 1000, 1),
-                     error_type=type(e).__name__, error=str(e)[:1000])
-            for path in paths:
-                path.unlink(missing_ok=True)
-            raise HTTPException(502, f"Edge TTS batch lỗi: {e}")
     current_did = device_id
     last_err = None
     for _attempt in range(5):
@@ -632,6 +601,8 @@ def generate_project_tts_batch(req: ProjectTTSBatchRequest, identity: dict = Dep
     total_chars = sum(len(item.text) for item in req.items)
     if total_chars > int(os.getenv("TTS_PROJECT_MAX_CHARS", "200000")):
         raise HTTPException(400, "Tổng nội dung TTS project quá dài")
+    if any(_is_edge_voice(item.voice_type) for item in req.items):
+        raise HTTPException(400, "Project chứa giọng Microsoft Edge TTS đã ngừng hỗ trợ. Hãy chọn giọng CapCut.")
     consume_tts_quota(identity, total_chars)
     batch_identity = {**identity, "_quota_consumed": True}
 
@@ -889,7 +860,7 @@ GIỌNG ĐƯỢC PHÉP (phải chép đúng nhãn):
 SCHEMA DUY NHẤT:
 {{"title":"...","cards":[
   {{"type":"post","text":"...","ttsText":"...","voice":"Mai","echo":false,"progressiveReveal":false,"clearBefore":true}},
-  {{"type":"comment","platform":"threads|tiktok","text":"...","ttsText":"...","voice":"Nam Minh","echo":false,"progressiveReveal":false,"clearBefore":true}},
+  {{"type":"comment","platform":"threads|tiktok","text":"...","ttsText":"...","voice":"Thanh Niên Tự Tin","echo":false,"progressiveReveal":false,"clearBefore":true}},
   {{"type":"reply","platform":"threads|tiktok","text":"...","ttsText":"...","voice":"Giọng Bé","echo":false,"progressiveReveal":false,"clearBefore":false}},
   {{"type":"mess","platform":"messenger","partnerName":"...","mineGender":"male|female","theirsGender":"male|female","mineVoice":"...","theirsVoice":"...","messages":[{{"side":"mine|theirs","text":"...","ttsText":"...","echo":false}}]}}
 ]}}

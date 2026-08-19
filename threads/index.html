@@ -1826,12 +1826,9 @@ function voiceOptionHtml(v, i, selected) {
   return `<option value="${i}" ${selected ? 'selected' : ''}>${esc(v.label)}</option>`;
 }
 function voiceOptionsHtml(selected) {
-  const groups = [
-    ['🎙 CapCut TTS', 'capcut'],
-    ['🔊 Edge TTS', 'edge'],
-  ];
+  const groups = [['🎙 CapCut TTS', 'capcut']];
   return groups.map(([label, engine]) => {
-    const options = ttsVoices.map((v, i) => ({v, i})).filter(x => (x.v.engine || 'capcut') === engine);
+    const options = ttsVoices.map((v, i) => ({v, i})).filter(x => x.v && (x.v.engine || 'capcut') === engine);
     return options.length ? `<optgroup label="${label}">${options.map(x => voiceOptionHtml(x.v, x.i, String(x.i) === String(selected))).join('')}</optgroup>` : '';
   }).join('');
 }
@@ -1843,16 +1840,16 @@ function bundledVoicePreviewUrl(index) {
   return new URL(`voice-previews/voice-${String(index).padStart(2, '0')}.mp3`, window.location.href).href;
 }
 function voicePickerRowsHtml(selected) {
-  const groups=[['CapCut TTS','capcut'],['Edge TTS','edge']];
+  const groups=[['CapCut TTS','capcut']];
   return groups.map(([label,engine])=>{
-    const rows=ttsVoices.map((voice,index)=>({voice,index})).filter(item=>(item.voice.engine||'capcut')===engine);
+    const rows=ttsVoices.map((voice,index)=>({voice,index})).filter(item=>item.voice&&(item.voice.engine||'capcut')===engine);
     if(!rows.length)return '';
     return `<div class="voice-picker-group">${label}</div>${rows.map(({voice,index})=>`<div class="voice-picker-row ${String(index)===String(selected)?'selected':''}" data-voice-index="${index}"><button type="button" class="voice-picker-select" onclick="selectCustomVoice(this.closest('.voice-picker'),${index});event.stopPropagation()">${esc(voice.label)}</button><button type="button" class="voice-picker-preview" onclick="previewCustomVoice(${index},this,event)">▶ Thử</button></div>`).join('')}`;
   }).join('');
 }
 function voicePickerHtml(inputId,selected){
   const index=Number.isFinite(Number(selected))?Number(selected):0,voice=ttsVoices[index]||ttsVoices[0];
-  return `<div class="voice-picker"><input type="hidden" id="${inputId}" value="${index}"/><button type="button" class="voice-picker-trigger" onclick="toggleCustomVoicePicker(this.parentElement,event)">${esc(voice?.label||'Chọn giọng đọc')}</button><div class="voice-picker-menu" onclick="event.stopPropagation()"><div class="voice-picker-tools"><span>${ttsVoices.length} giọng đọc · mẫu thử có sẵn</span></div>${voicePickerRowsHtml(index)}</div></div>`;
+  return `<div class="voice-picker"><input type="hidden" id="${inputId}" value="${voice?index:(ttsVoices.findIndex(Boolean)>=0?ttsVoices.findIndex(Boolean):0)}"/><button type="button" class="voice-picker-trigger" onclick="toggleCustomVoicePicker(this.parentElement,event)">${esc(voice?.label||ttsVoices.find(Boolean)?.label||'Chọn giọng đọc')}</button><div class="voice-picker-menu" onclick="event.stopPropagation()"><div class="voice-picker-tools"><span>${ttsVoices.filter(Boolean).length} giọng đọc · mẫu thử có sẵn</span></div>${voicePickerRowsHtml(index)}</div></div>`;
 }
 function toggleCustomVoicePicker(picker,event){event?.stopPropagation();document.querySelectorAll('.voice-picker.open').forEach(item=>{if(item!==picker)item.classList.remove('open')});picker.classList.toggle('open');}
 function selectCustomVoice(picker,index){
@@ -1949,9 +1946,15 @@ async function loadTtsVoices() {
     });
     const res = await fetch(ttsServerUrl() + '/voices');
     if (!res.ok) throw new Error('HTTP ' + res.status);
-    ttsVoices = await res.json();
+    const availableVoices = await res.json();
+    // legacy_index giữ voiceIdx của project cũ ổn định dù backend đã loại
+    // Edge khỏi response. Hai slot Edge trở thành rỗng và được fallback về
+    // Thanh Niên Tự Tin khi project cũ được mở.
+    const maxVoiceIndex=Math.max(-1,...availableVoices.map((voice,index)=>Number.isInteger(voice.legacy_index)?voice.legacy_index:index));
+    ttsVoices=Array(maxVoiceIndex+1).fill(null);
+    availableVoices.forEach((voice,index)=>{ttsVoices[Number.isInteger(voice.legacy_index)?voice.legacy_index:index]=voice;});
     document.getElementById('tts-voice').value = '0';
-    statusEl.textContent = `✓ Kết nối OK — ${ttsVoices.length} giọng`;
+    statusEl.textContent = `✓ Kết nối OK — ${availableVoices.length} giọng`;
     document.getElementById('feat-tts').classList.add('done');
   } catch (e) {
     statusEl.textContent = '✗ Không kết nối được TTS server (' + e.message + '). Chạy: python3 threads/tts_server.py';
@@ -1965,7 +1968,7 @@ loadTtsVoices();
 // đang chọn ở sidebar; truyền idx cụ thể = dùng giọng riêng của step/khối đó.
 function selectedVoice(idx) {
   const i = idx != null ? idx : parseInt(document.getElementById('tts-voice').value, 10);
-  return ttsVoices[i] || null;
+  return ttsVoices[i] || ttsVoices.find(Boolean) || null;
 }
 
 // Ô chọn giọng cho từng step/khối trong modal soạn — mặc định theo giọng
@@ -2274,7 +2277,7 @@ let messPartnerAvatar = MESS_DEFAULT_AVATAR;
 let messPlatform = 'messenger';
 let messShowFooter = false;
 let messPendingImage = null;
-let messSideVoiceIdx = { theirs: 0, mine: 8 };
+let messSideVoiceIdx = { theirs: 0, mine: 22 };
 let messTtsSpeed = 1;
 let messDraftEditIndex = null;
 let messInsertAt = null;
@@ -2319,7 +2322,8 @@ function openMessengerModal(stepId = null, conversationMode = false) {
   messPartnerAvatar = (s && s.messPartnerAvatar) || MESS_DEFAULT_AVATAR;
   messPlatform = s?.messPlatform === 'zalo' ? 'zalo' : 'messenger';
   messShowFooter = !!s?.messShowFooter;
-  messSideVoiceIdx = s && s.messSideVoices ? { ...s.messSideVoices } : { theirs: messengerVoiceIndexByLabel('Nhỏ Ngọt Ngào',0), mine: messengerVoiceIndexByLabel('Nam Minh',5) };
+  messSideVoiceIdx = s && s.messSideVoices ? { ...s.messSideVoices } : { theirs: messengerVoiceIndexByLabel('Nhỏ Ngọt Ngào',0), mine: messengerVoiceIndexByLabel('Thanh Niên Tự Tin',22) };
+  for(const side of ['theirs','mine'])if(!ttsVoices[messSideVoiceIdx[side]])messSideVoiceIdx[side]=side==='mine'?messengerVoiceIndexByLabel('Thanh Niên Tự Tin',0):messengerVoiceIndexByLabel('Nhỏ Ngọt Ngào',0);
   messTtsSpeed = Math.max(.5, Math.min(1.5, Number(s?.messTtsSpeed || 1)));
   messPendingImage = null;
   messDrafts = s ? (s.messHistory || []).map(x => ({...x, voiceOverride:x.voiceOverride ?? true})) : [];
@@ -2360,7 +2364,8 @@ function onMessSideInput(side) {
   if (!messVoiceTouched) document.getElementById('mess-voice').value = '';
 }
 function messengerDefaultVoice(side) {
-  return messSideVoiceIdx[side] ?? (side === 'mine' ? 8 : 0);
+  const selected=messSideVoiceIdx[side];
+  return ttsVoices[selected]?selected:(side==='mine'?messengerVoiceIndexByLabel('Thanh Niên Tự Tin',0):messengerVoiceIndexByLabel('Nhỏ Ngọt Ngào',0));
 }
 function messengerServerSpeed(displaySpeed){return Math.max(.65,Math.min(1.95,Number(displaySpeed||1)*1.3));}
 function setMessengerSideVoice(side, value) {
@@ -2372,7 +2377,7 @@ function setMessengerSideVoice(side, value) {
   }
   renderMessengerDrafts();
 }
-function messengerVoiceIndexByLabel(label,fallback){const idx=ttsVoices.findIndex(v=>v.label===label);return idx>=0?idx:fallback;}
+function messengerVoiceIndexByLabel(label,fallback){const idx=ttsVoices.findIndex(v=>v?.label===label);return idx>=0?idx:fallback;}
 function messengerHistoryMessage(msg){const {parallelAudios,...clean}=msg;return clean;}
 function readMessengerComposer() {
   const theirs = document.getElementById('mess-theirs').value.trim();
@@ -4997,7 +5002,7 @@ function openAiScriptModal(){
   setTimeout(()=>document.getElementById('ai-script-prompt').focus(),50);
 }
 function closeAiScriptModal(){document.getElementById('ai-script-overlay').classList.remove('open');}
-function aiVoiceIndex(label){const index=ttsVoices.findIndex(voice=>voice.label===label);if(index<0)throw new Error(`Không tìm thấy giọng AI cho phép: ${label}`);return index;}
+function aiVoiceIndex(label){const index=ttsVoices.findIndex(voice=>voice?.label===label);if(index<0)throw new Error(`Không tìm thấy giọng AI cho phép: ${label}`);return index;}
 function aiBaseStep(type){return {id:stepIdCounter++,type,duration:DEFAULT_DUR[type],gap:0,clearBefore:false,hue:Math.floor(Math.random()*360),offsetX:0,offsetY:0,rotation:0};}
 function compileAiTextCard(card){
   const step=aiBaseStep(card.type),identity=randomFakeIdentity(step.id+':m'),voiceIdx=aiVoiceIndex(card.voice),visibleParts=String(card.text||'').split(/\r?\n+/).map(v=>v.trim()).filter(Boolean),spokenParts=String(card.ttsText||'').split(/\r?\n+/).map(v=>v.trim()).filter(Boolean),progressive=!!card.progressiveReveal&&visibleParts.length>1;
