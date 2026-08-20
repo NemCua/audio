@@ -112,10 +112,11 @@ BG_VOLUME        = 0.9    # Ă¢m lÆ°á»£ng nháº¡c ná»n so vá»›i 
 def run(cmd: list[str], timeout: int = 300, check: bool = True, cwd=None) -> subprocess.CompletedProcess:
     result = subprocess.run(cmd, capture_output=True, text=True, timeout=timeout, check=False, cwd=cwd)
     if check and result.returncode != 0:
-        raise subprocess.CalledProcessError(
-            result.returncode, result.args,
-            output=result.stdout,
-            stderr=result.stderr,
+        stderr = (result.stderr or "").strip()
+        stdout = (result.stdout or "").strip()
+        detail = stderr[-2000:] or stdout[-2000:] or "no ffmpeg output"
+        raise RuntimeError(
+            f"Command failed with exit {result.returncode}: {' '.join(map(str, cmd))}\n{detail}"
         )
     return result
 

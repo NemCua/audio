@@ -48,7 +48,15 @@ jobs:
 
       - name: Install FFmpeg
         run: |
-          choco install ffmpeg -y --no-progress
+          $ffmpegZip = Join-Path $env:RUNNER_TEMP "ffmpeg.zip"
+          $ffmpegDir = Join-Path $env:RUNNER_TEMP "ffmpeg"
+          Invoke-WebRequest `
+            -Uri "https://github.com/BtbN/FFmpeg-Builds/releases/download/latest/ffmpeg-master-latest-win64-gpl.zip" `
+            -OutFile $ffmpegZip
+          Expand-Archive $ffmpegZip -DestinationPath $ffmpegDir -Force
+          $binDir = Get-ChildItem $ffmpegDir -Recurse -Directory -Filter bin | Select-Object -First 1
+          if (-not $binDir) { throw "Cannot find FFmpeg bin directory" }
+          "FFMPEG_BIN_DIR=$($binDir.FullName)" | Out-File -FilePath $env:GITHUB_ENV -Append
 
       - name: Prepare Electron resources
         env:
@@ -61,8 +69,9 @@ jobs:
           Copy-Item translate_server.py "$resourceDir\translate_server.py" -Force
           Copy-Item translate_video.py "$resourceDir\translate_video.py" -Force
           Copy-Item requirements.txt "$resourceDir\requirements.txt" -Force
-          Copy-Item (Get-Command ffmpeg.exe).Source "$resourceDir\ffmpeg.exe" -Force
-          Copy-Item (Get-Command ffprobe.exe).Source "$resourceDir\ffprobe.exe" -Force
+          Copy-Item "$env:FFMPEG_BIN_DIR\ffmpeg.exe" "$resourceDir\ffmpeg.exe" -Force
+          Copy-Item "$env:FFMPEG_BIN_DIR\ffprobe.exe" "$resourceDir\ffprobe.exe" -Force
+          Copy-Item "$env:FFMPEG_BIN_DIR\*.dll" $resourceDir -Force -ErrorAction SilentlyContinue
           Copy-Item static_translate "$resourceDir\static_translate" -Recurse -Force
           Copy-Item capcut-tts-api-main "$resourceDir\capcut-tts-api-main" -Recurse -Force
           if (Test-Path voice_previews) {
@@ -91,6 +100,12 @@ jobs:
           $env:FFMPEG_BIN = Join-Path $resourceDir "ffmpeg.exe"
           $env:FFPROBE_BIN = Join-Path $resourceDir "ffprobe.exe"
           $env:PYTHONPATH = $resourceDir
+          $testVideo = Join-Path $env:RUNNER_TEMP "ffmpeg-test.mp4"
+          $testAudio = Join-Path $env:RUNNER_TEMP "ffmpeg-test.mp3"
+          & $env:FFMPEG_BIN -y -f lavfi -i testsrc2=size=320x180:rate=24 -f lavfi -i sine=frequency=1000:sample_rate=44100 -t 1 -c:v libx264 -preset ultrafast -c:a aac $testVideo
+          if ($LASTEXITCODE -ne 0) { throw "Bundled FFmpeg failed to create test video" }
+          & $env:FFMPEG_BIN -y -i $testVideo -vn -acodec libmp3lame -ac 1 -ar 16000 -b:a 32k $testAudio
+          if ($LASTEXITCODE -ne 0 -or -not (Test-Path $testAudio)) { throw "Bundled FFmpeg failed STT audio extraction test" }
           $proc = Start-Process -FilePath (Join-Path $resourceDir "python_runtime\python.exe") `
             -ArgumentList (Join-Path $resourceDir "translate_server.py") `
             -WorkingDirectory $resourceDir `
