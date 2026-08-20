@@ -336,6 +336,76 @@ header span { font-size: 12px; color: #4b5563; }
   outline: .35cqw solid rgba(167,139,250,.9);
   outline-offset: .35cqw;
 }
+/* Hiệu ứng xuất hiện tùy chọn của Post/Comment/Reply. Gắn animation vào
+   phần card con để không đụng transform vị trí trên .tcard-pos. */
+.thr-stack .appearance-fly-left > .tcard,
+.thr-stack .appearance-fly-left > .tk-comment { animation: card-fly-left .253s cubic-bezier(.16,.84,.28,1.08) both; }
+.thr-stack .appearance-fly-right > .tcard,
+.thr-stack .appearance-fly-right > .tk-comment { animation: card-fly-right .253s cubic-bezier(.16,.84,.28,1.08) both; }
+.thr-stack .appearance-fly-top > .tcard,
+.thr-stack .appearance-fly-top > .tk-comment { animation: card-fly-top .253s cubic-bezier(.16,.84,.28,1.08) both; }
+.thr-stack .appearance-fly-bottom > .tcard,
+.thr-stack .appearance-fly-bottom > .tk-comment { animation: card-fly-bottom .253s cubic-bezier(.16,.84,.28,1.08) both; }
+.thr-stack .appearance-drop-bounce > .tcard,
+.thr-stack .appearance-drop-bounce > .tk-comment { animation: card-drop-bounce .175s linear both; }
+.thr-stack .appearance-bounce-up > .tcard,
+.thr-stack .appearance-bounce-up > .tk-comment { animation: card-bounce-up .175s linear both; }
+.thr-stack .appearance-bounce-left > .tcard,
+.thr-stack .appearance-bounce-left > .tk-comment { animation: card-bounce-left .175s linear both; }
+.thr-stack .appearance-bounce-right > .tcard,
+.thr-stack .appearance-bounce-right > .tk-comment { animation: card-bounce-right .175s linear both; }
+@keyframes card-fly-left { from { opacity:0; transform:translateX(-105cqw) scale(.9) } to { opacity:1; transform:none } }
+@keyframes card-fly-right { from { opacity:0; transform:translateX(105cqw) scale(.9) } to { opacity:1; transform:none } }
+@keyframes card-fly-top { from { opacity:0; transform:translateY(-80cqw) scale(.9) } to { opacity:1; transform:none } }
+@keyframes card-fly-bottom { from { opacity:0; transform:translateY(110cqw) scale(.9) } to { opacity:1; transform:none } }
+@keyframes card-drop-bounce {
+  0% { opacity:0; transform:translateY(-170cqw) rotate(-2.5deg) }
+  28% { opacity:1; transform:translateY(28cqw) rotate(1.4deg) }
+  44% { transform:translateY(-15cqw) rotate(-.85deg) }
+  57% { transform:translateY(7.5cqw) rotate(.45deg) }
+  68% { transform:translateY(-4.5cqw) rotate(-.28deg) }
+  77% { transform:translateY(2.7cqw) rotate(.16deg) }
+  85% { transform:translateY(-1.5cqw) rotate(-.09deg) }
+  92% { transform:translateY(.7cqw) rotate(.04deg) }
+  97% { transform:translateY(-.25cqw) }
+  100% { opacity:1; transform:none }
+}
+@keyframes card-bounce-up {
+  0% { opacity:0; transform:translateY(170cqw) rotate(2.5deg) }
+  28% { opacity:1; transform:translateY(-28cqw) rotate(-1.4deg) }
+  44% { transform:translateY(15cqw) rotate(.85deg) }
+  57% { transform:translateY(-7.5cqw) rotate(-.45deg) }
+  68% { transform:translateY(4.5cqw) rotate(.28deg) }
+  77% { transform:translateY(-2.7cqw) rotate(-.16deg) }
+  85% { transform:translateY(1.5cqw) rotate(.09deg) }
+  92% { transform:translateY(-.7cqw) rotate(-.04deg) }
+  97% { transform:translateY(.25cqw) }
+  100% { opacity:1; transform:none }
+}
+@keyframes card-bounce-left {
+  0% { opacity:0; transform:translateX(-170cqw) rotate(-2.5deg) }
+  28% { opacity:1; transform:translateX(28cqw) rotate(1.4deg) }
+  44% { transform:translateX(-15cqw) rotate(-.85deg) }
+  57% { transform:translateX(7.5cqw) rotate(.45deg) }
+  68% { transform:translateX(-4.5cqw) rotate(-.28deg) }
+  77% { transform:translateX(2.7cqw) rotate(.16deg) }
+  85% { transform:translateX(-1.5cqw) rotate(-.09deg) }
+  92% { transform:translateX(.7cqw) rotate(.04deg) }
+  97% { transform:translateX(-.25cqw) }
+  100% { opacity:1; transform:none }
+}
+@keyframes card-bounce-right {
+  0% { opacity:0; transform:translateX(170cqw) rotate(2.5deg) }
+  28% { opacity:1; transform:translateX(-28cqw) rotate(-1.4deg) }
+  44% { transform:translateX(15cqw) rotate(.85deg) }
+  57% { transform:translateX(-7.5cqw) rotate(-.45deg) }
+  68% { transform:translateX(4.5cqw) rotate(.28deg) }
+  77% { transform:translateX(-2.7cqw) rotate(-.16deg) }
+  85% { transform:translateX(1.5cqw) rotate(.09deg) }
+  92% { transform:translateX(-.7cqw) rotate(-.04deg) }
+  97% { transform:translateX(.25cqw) }
+  100% { opacity:1; transform:none }
+}
 .tcard {
   background: #ffffff;
   color: #000;
@@ -3507,6 +3577,23 @@ function progressiveRevealFieldHtml(editing) {
   </label>`;
 }
 
+function appearanceFieldHtml(editing) {
+  const value = editing?.appearance || 'normal';
+  const option = (key, label) => `<option value="${key}" ${value===key?'selected':''}>${label}</option>`;
+  return `<label style="margin-top:12px">Cách xuất hiện</label>
+    <select id="m-appearance">
+      ${option('normal','Bình thường')}
+      ${option('fly-left','Bay vào từ trái')}
+      ${option('fly-right','Bay vào từ phải')}
+      ${option('fly-top','Bay vào từ trên')}
+      ${option('fly-bottom','Bay vào từ dưới')}
+      ${option('drop-bounce','Rơi xuống rồi nảy')}
+      ${option('bounce-up','Bay từ dưới lên rồi nảy')}
+      ${option('bounce-left','Bay từ trái qua rồi nảy')}
+      ${option('bounce-right','Bay từ phải qua rồi nảy')}
+    </select>`;
+}
+
 function setModalPlatform(platform) {
   modalPlatform = platform;
   // renderCommentReplyFields() rebuild toàn bộ #step-modal-fields (kể cả
@@ -3532,6 +3619,7 @@ function renderCommentReplyFields() {
              <input type="checkbox" id="m-author" style="width:auto" ${editing&&editing.isAuthor?'checked':''}/> ${authorLabel}</label>`;
   html += `<label>Nội dung</label>
            <textarea id="m-text" placeholder="Nội dung...">${esc(editing?editing.text:'')}</textarea>`;
+  html += appearanceFieldHtml(editing);
   html += progressiveRevealFieldHtml(editing);
   html += ttsFieldHtml('m', editing ? (editing.ttsText ?? editing.text) : '', editing ? editing.echo : false);
   html += voiceFieldHtml('m', editing ? editing.voiceIdx : null);
@@ -3581,6 +3669,7 @@ function openStepModal(type, stepId = null, targetGroupId = null) {
   if (type === 'post') {
     html += `<label>Nội dung</label>
              <textarea id="m-text" placeholder="Nội dung...">${esc(editing?editing.text:'')}</textarea>`;
+    html += appearanceFieldHtml(editing);
     html += progressiveRevealFieldHtml(editing);
     html += ttsFieldHtml('m', editing ? (editing.ttsText ?? editing.text) : '', editing ? editing.echo : false);
     html += voiceFieldHtml('m', editing ? editing.voiceIdx : null);
@@ -4089,6 +4178,7 @@ async function submitStepModal() {
 
   if (t === 'post' || t === 'comment' || t === 'reply') {
     data.text = document.getElementById('m-text').value.trim();
+    data.appearance = document.getElementById('m-appearance')?.value || 'normal';
     data.progressiveReveal = !!document.getElementById('m-progressive-reveal')?.checked;
     if (t === 'comment' || t === 'reply') data.isAuthor = document.getElementById('m-author').checked;
     // Cho phép BỎ TRỐNG nội dung — vẫn tạo được step (theo yêu cầu người
@@ -5321,7 +5411,7 @@ function ttsClipAt(t) {
       const clip = clips[i];
       if (!clip.audioUrl) continue;
       const dur = clip.duration || 0;
-      const localT = t - s._start - acc;
+      const localT = t - s._start - appearanceDelay(s) - acc;
       if (localT < -1e-6) return null; // đang ở khoảng nghỉ trước đoạn này
       if (localT < dur - 1e-6 || i === clips.length - 1) {
         return { url: clip.audioUrl, offset: localT, stepId: s.id, part: i + 1 };
@@ -5757,6 +5847,17 @@ function setPreviewMediaTime(el, t) {
   try { el.currentTime = Math.max(0, target); } catch (_) {}
 }
 
+function resetPreviewCardAnimations() {
+  // CSS animation chỉ chạy khi node card được gắn mới vào DOM. Khi xem lại,
+  // cache diff của renderAtTime vẫn giữ node từ lượt trước nên card đứng yên.
+  const stackEl = document.getElementById('thr-stack');
+  stackEl.innerHTML = '';
+  _lastStackKey = null;
+  _lastStackIds = [];
+  _lastStackRevisions = [];
+  _lastStackRevealStages = [];
+}
+
 async function togglePlay() {
   if (playing) { stopPlay(); return; }
   if(ttsPreparing)return;
@@ -5765,7 +5866,10 @@ async function togglePlay() {
   const total = totalDuration();
   if (total <= 0) return;
 
-  if (playheadT >= total - 1e-6) playheadT = 0;
+  if (playheadT >= total - 1e-6) {
+    playheadT = 0;
+    resetPreviewCardAnimations();
+  }
   playing = true;
   document.getElementById('play-btn').textContent = '⏸ Tạm dừng';
 
@@ -5827,6 +5931,7 @@ function seekPreview(value) {
 function replayPreview() {
   if (!steps.length) return;
   if (playing) stopPlay();
+  resetPreviewCardAnimations();
   seekPreview(0);
   togglePlay();
 }

@@ -54,7 +54,14 @@ function safeMediaUrl(value) {
 function fmt(t) { return t.toFixed(1) + 's'; }
 
 // ---------- Tính timeline tương đối ----------
-function effectiveDuration(s) { return s.duration || 0; } // duration = độ dài TTS thật (post/comment/reply) hoặc số chỉnh tay (meme/audio)
+function appearanceDelay(s) {
+  if (!s || !['post', 'comment', 'reply'].includes(s.type)) return 0;
+  if (['drop-bounce', 'bounce-up', 'bounce-left', 'bounce-right'].includes(s.appearance)) return .175;
+  return ['fly-left', 'fly-right', 'fly-top', 'fly-bottom'].includes(s.appearance) ? .253 : 0;
+}
+function effectiveDuration(s) {
+  return (s.duration || 0) + appearanceDelay(s);
+} // duration = phần nội dung; hiệu ứng xuất hiện được cộng trước TTS
 
 // Step `audio` (hiệu ứng âm thanh) chạy SONG SONG — không chiếm chỗ trên
 // track chính (post/comment/reply/meme). Nó tự bắt đầu cùng lúc với step
@@ -114,7 +121,7 @@ function progressiveRevealStage(s, t) {
   const clipDurations = [Number(s.ttsDuration || 0), ...(s.extraTtsSegments || []).map(seg => Number(seg.duration || 0))].slice(0, parts.length);
   if (clipDurations.length === parts.length && clipDurations.every(duration => duration > 0)) {
     const pause = Math.max(0, Number(s.progressivePause ?? .3));
-    const localT = Math.max(0, Number(t) - Number(s._start));
+    const localT = Math.max(0, Number(t) - Number(s._start) - appearanceDelay(s));
     let stage = 1, nextStart = clipDurations[0] + pause;
     while (stage < parts.length && localT >= nextStart - 1e-6) {
       stage++;
@@ -124,8 +131,9 @@ function progressiveRevealStage(s, t) {
   }
   const weights = parts.map(part => Math.max(1, [...part].length));
   const totalWeight = weights.reduce((sum, value) => sum + value, 0);
-  const duration = Math.max(.001, Number(s._end) - Number(s._start));
-  const elapsedWeight = Math.max(0, Math.min(1, (Number(t) - Number(s._start)) / duration)) * totalWeight;
+  const delay = appearanceDelay(s);
+  const duration = Math.max(.001, Number(s._end) - Number(s._start) - delay);
+  const elapsedWeight = Math.max(0, Math.min(1, (Number(t) - Number(s._start) - delay) / duration)) * totalWeight;
   let stage = 1, boundary = weights[0];
   while (stage < parts.length && elapsedWeight >= boundary - 1e-6) {
     stage++;
@@ -303,7 +311,9 @@ function posTransform(s) {
 function buildCardHtml(s) {
   const posAttr = posTransform(s);
   const stepAttr = ` data-step-id="${esc(s.id)}"`;
-  const posClass = s.progressiveReveal ? 'tcard-pos progressive-reveal-card' : 'tcard-pos';
+  const allowedAppearances = new Set(['fly-left', 'fly-right', 'fly-top', 'fly-bottom', 'drop-bounce', 'bounce-up', 'bounce-left', 'bounce-right']);
+  const appearanceClass = allowedAppearances.has(s.appearance) ? ` appearance-${s.appearance}` : '';
+  const posClass = (s.progressiveReveal ? 'tcard-pos progressive-reveal-card' : 'tcard-pos') + appearanceClass;
   if (s.type === 'mess') return `<div class="${posClass}"${stepAttr}${posAttr}>${buildMessengerHtml(s)}</div>`;
   if (s.type === 'post') {
     const id1 = displayIdentity(s.id + ':m', s.uname, s.avatarUrl, (s.stats&&s.stats.timeLabel)||'vừa xong');

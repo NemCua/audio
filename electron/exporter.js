@@ -8,6 +8,12 @@ const { fileURLToPath } = require('node:url');
 const WIDTH = 1080;
 const HEIGHT = 1920;
 
+function appearanceDelay(step) {
+  if (!step || !['post', 'comment', 'reply'].includes(step.type)) return 0;
+  if (['drop-bounce', 'bounce-up', 'bounce-left', 'bounce-right'].includes(step.appearance)) return .175;
+  return ['fly-left', 'fly-right', 'fly-top', 'fly-bottom'].includes(step.appearance) ? .253 : 0;
+}
+
 function lockVisualZoom(webContents) {
   const result = webContents.setVisualZoomLevelLimits(1, 1);
   if (result && typeof result.catch === 'function') result.catch(() => {});
@@ -18,10 +24,17 @@ function visualBreakpoints(steps, total) {
   for (const step of steps) {
     if (['post', 'comment', 'reply', 'image', 'sticker', 'mess'].includes(step.type)) {
       points.add(Number(step._start)); points.add(Number(step._end));
+      const delay = appearanceDelay(step);
+      if (delay > 0) {
+        for (let elapsed = 1 / 30; elapsed < delay - 1e-6; elapsed += 1 / 30) {
+          points.add(Number(step._start) + elapsed);
+        }
+        points.add(Number(step._start) + delay);
+      }
       if (step.progressiveReveal) {
         const clips = [{ duration: step.ttsDuration || 0 }, ...(step.extraTtsSegments || [])];
         const pause = Math.max(0, Number(step.progressivePause ?? .3));
-        let offset = 0;
+        let offset = appearanceDelay(step);
         for (let i = 0; i < clips.length - 1; i++) {
           offset += Number(clips[i].duration || 0) + pause;
           if (offset > 0) points.add(Number(step._start) + offset);
@@ -132,6 +145,7 @@ async function collectAudio(steps, workDir) {
     if (['post', 'comment', 'reply', 'image', 'mess'].includes(step.type) && step.audioUrl) {
       const clips = [{ audioUrl: step.audioUrl, duration: step.ttsDuration || 0 }, ...(step.extraTtsSegments || [])];
       const pause = step.progressiveReveal ? Math.max(0, Number(step.progressivePause ?? .3)) : 0;
+      const delay = appearanceDelay(step);
       let offset = 0;
       for (let clipIndex = 0; clipIndex < clips.length; clipIndex++) {
         const clip = clips[clipIndex];
@@ -140,7 +154,7 @@ async function collectAudio(steps, workDir) {
           const remaining = Math.max(0, Number(step.duration || 0) - offset);
           const clipDuration = Number(clip.duration || 0);
           const maxDuration = Math.min(clipDuration, remaining);
-          if (maxDuration > 0) tracks.push({ path: file, start: Number(step._start) + offset, volume: 1, maxDuration });
+          if (maxDuration > 0) tracks.push({ path: file, start: Number(step._start) + delay + offset, volume: 1, maxDuration });
         }
         offset += Number(clip.duration || 0) + (clipIndex < clips.length - 1 ? pause : 0);
       }

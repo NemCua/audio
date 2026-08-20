@@ -100,6 +100,14 @@ def compute_breakpoints(steps: list[dict], total_duration: float) -> list[float]
         if s.get("type") in ("post", "comment", "reply", "image", "mess"):
             points.add(round(s["_start"], 6))
             points.add(round(s["_end"], 6))
+            appearance = s.get("appearance")
+            appearance_delay = 0.175 if appearance in ("drop-bounce", "bounce-up", "bounce-left", "bounce-right") else (0.253 if appearance in ("fly-left", "fly-right", "fly-top", "fly-bottom") else 0.0)
+            if appearance_delay > 0:
+                elapsed = 1 / 30
+                while elapsed < appearance_delay - 1e-6:
+                    points.add(round(s["_start"] + elapsed, 6))
+                    elapsed += 1 / 30
+                points.add(round(s["_start"] + appearance_delay, 6))
             if s.get("progressiveReveal"):
                 clips = [{"duration": s.get("ttsDuration") or 0}, *(s.get("extraTtsSegments") or [])]
                 pause = max(0.0, float(s.get("progressivePause", 0.3)))
@@ -107,7 +115,7 @@ def compute_breakpoints(steps: list[dict], total_duration: float) -> list[float]
                 for clip in clips[:-1]:
                     acc += float(clip.get("duration") or 0) + pause
                     if acc > 0:
-                        points.add(round(s["_start"] + acc, 6))
+                        points.add(round(s["_start"] + appearance_delay + acc, 6))
     return sorted(points)
 
 
@@ -356,6 +364,8 @@ async def run_export_job(job_id: str, req: ExportRequest):
                 clips = [{"audioUrl": s["audioUrl"], "duration": s.get("ttsDuration") or 0}]
                 clips.extend(s.get("extraTtsSegments") or [])
                 pause = max(0.0, float(s.get("progressivePause", 0.3))) if s.get("progressiveReveal") else 0.0
+                appearance = s.get("appearance")
+                appearance_delay = 0.175 if appearance in ("drop-bounce", "bounce-up", "bounce-left", "bounce-right") else (0.253 if appearance in ("fly-left", "fly-right", "fly-top", "fly-bottom") else 0.0)
                 acc = 0.0
                 for clip_index, clip in enumerate(clips):
                     url = clip.get("audioUrl")
@@ -368,7 +378,7 @@ async def run_export_job(job_id: str, req: ExportRequest):
                         fname = url.rstrip("/").split("/")[-1]
                         fpath = TTS_AUDIO_DIR / fname
                         if fpath.exists():
-                            audio_tracks.append((str(fpath), s["_start"] + acc, 1.0, allowed_duration))
+                            audio_tracks.append((str(fpath), s["_start"] + appearance_delay + acc, 1.0, allowed_duration))
                     acc += clip_duration
                     if clip_index < len(clips) - 1:
                         acc += pause

@@ -300,6 +300,76 @@ header span { font-size: 12px; color: #4b5563; }
   z-index: 5;
   pointer-events: none;
 }
+/* Đồng bộ hiệu ứng xuất hiện với preview. Renderer xuất sẽ đợi animation
+   hoàn tất trước khi chụp scene tĩnh, nên trạng thái cuối luôn đúng vị trí. */
+.thr-stack .appearance-fly-left > .tcard,
+.thr-stack .appearance-fly-left > .tk-comment { animation: card-fly-left .253s cubic-bezier(.16,.84,.28,1.08) both; }
+.thr-stack .appearance-fly-right > .tcard,
+.thr-stack .appearance-fly-right > .tk-comment { animation: card-fly-right .253s cubic-bezier(.16,.84,.28,1.08) both; }
+.thr-stack .appearance-fly-top > .tcard,
+.thr-stack .appearance-fly-top > .tk-comment { animation: card-fly-top .253s cubic-bezier(.16,.84,.28,1.08) both; }
+.thr-stack .appearance-fly-bottom > .tcard,
+.thr-stack .appearance-fly-bottom > .tk-comment { animation: card-fly-bottom .253s cubic-bezier(.16,.84,.28,1.08) both; }
+.thr-stack .appearance-drop-bounce > .tcard,
+.thr-stack .appearance-drop-bounce > .tk-comment { animation: card-drop-bounce .175s linear both; }
+.thr-stack .appearance-bounce-up > .tcard,
+.thr-stack .appearance-bounce-up > .tk-comment { animation: card-bounce-up .175s linear both; }
+.thr-stack .appearance-bounce-left > .tcard,
+.thr-stack .appearance-bounce-left > .tk-comment { animation: card-bounce-left .175s linear both; }
+.thr-stack .appearance-bounce-right > .tcard,
+.thr-stack .appearance-bounce-right > .tk-comment { animation: card-bounce-right .175s linear both; }
+@keyframes card-fly-left { from { opacity:0; transform:translateX(-105cqw) scale(.9) } to { opacity:1; transform:none } }
+@keyframes card-fly-right { from { opacity:0; transform:translateX(105cqw) scale(.9) } to { opacity:1; transform:none } }
+@keyframes card-fly-top { from { opacity:0; transform:translateY(-80cqw) scale(.9) } to { opacity:1; transform:none } }
+@keyframes card-fly-bottom { from { opacity:0; transform:translateY(110cqw) scale(.9) } to { opacity:1; transform:none } }
+@keyframes card-drop-bounce {
+  0% { opacity:0; transform:translateY(-170cqw) rotate(-2.5deg) }
+  28% { opacity:1; transform:translateY(28cqw) rotate(1.4deg) }
+  44% { transform:translateY(-15cqw) rotate(-.85deg) }
+  57% { transform:translateY(7.5cqw) rotate(.45deg) }
+  68% { transform:translateY(-4.5cqw) rotate(-.28deg) }
+  77% { transform:translateY(2.7cqw) rotate(.16deg) }
+  85% { transform:translateY(-1.5cqw) rotate(-.09deg) }
+  92% { transform:translateY(.7cqw) rotate(.04deg) }
+  97% { transform:translateY(-.25cqw) }
+  100% { opacity:1; transform:none }
+}
+@keyframes card-bounce-up {
+  0% { opacity:0; transform:translateY(170cqw) rotate(2.5deg) }
+  28% { opacity:1; transform:translateY(-28cqw) rotate(-1.4deg) }
+  44% { transform:translateY(15cqw) rotate(.85deg) }
+  57% { transform:translateY(-7.5cqw) rotate(-.45deg) }
+  68% { transform:translateY(4.5cqw) rotate(.28deg) }
+  77% { transform:translateY(-2.7cqw) rotate(-.16deg) }
+  85% { transform:translateY(1.5cqw) rotate(.09deg) }
+  92% { transform:translateY(-.7cqw) rotate(-.04deg) }
+  97% { transform:translateY(.25cqw) }
+  100% { opacity:1; transform:none }
+}
+@keyframes card-bounce-left {
+  0% { opacity:0; transform:translateX(-170cqw) rotate(-2.5deg) }
+  28% { opacity:1; transform:translateX(28cqw) rotate(1.4deg) }
+  44% { transform:translateX(-15cqw) rotate(-.85deg) }
+  57% { transform:translateX(7.5cqw) rotate(.45deg) }
+  68% { transform:translateX(-4.5cqw) rotate(-.28deg) }
+  77% { transform:translateX(2.7cqw) rotate(.16deg) }
+  85% { transform:translateX(-1.5cqw) rotate(-.09deg) }
+  92% { transform:translateX(.7cqw) rotate(.04deg) }
+  97% { transform:translateX(-.25cqw) }
+  100% { opacity:1; transform:none }
+}
+@keyframes card-bounce-right {
+  0% { opacity:0; transform:translateX(170cqw) rotate(2.5deg) }
+  28% { opacity:1; transform:translateX(-28cqw) rotate(-1.4deg) }
+  44% { transform:translateX(15cqw) rotate(.85deg) }
+  57% { transform:translateX(-7.5cqw) rotate(-.45deg) }
+  68% { transform:translateX(4.5cqw) rotate(.28deg) }
+  77% { transform:translateX(-2.7cqw) rotate(-.16deg) }
+  85% { transform:translateX(1.5cqw) rotate(.09deg) }
+  92% { transform:translateX(-.7cqw) rotate(-.04deg) }
+  97% { transform:translateX(.25cqw) }
+  100% { opacity:1; transform:none }
+}
 .tcard {
   background: #ffffff;
   color: #000;
@@ -897,10 +967,22 @@ function waitImagesLoaded(container) {
 // bị mờ/trong suốt xấu và overlay lên video nhìn lem nhem. getAnimations()
 // trả animation đang chạy trên chính phần tử (không đệ quy con) — .tcard là
 // phần tử áp animation (mục 5.5 index.html), lặp qua từng .tcard trực tiếp.
-function waitAnimationsDone(container) {
-  const els = Array.from(container.querySelectorAll('.tcard'));
-  const anims = els.flatMap(el => el.getAnimations());
-  return Promise.all(anims.map(a => a.finished.catch(() => {})));
+function setAppearanceAnimationsAt(stack, t, container) {
+  stack.forEach(step => {
+    const duration = appearanceDelay(step);
+    const wrapper = container.querySelector(`.tcard-pos[data-step-id="${step.id}"]`);
+    if (!wrapper) return;
+    wrapper.querySelectorAll('.tcard,.tk-comment').forEach(card => {
+      card.getAnimations().forEach(animation => {
+        const animationMs = Number(animation.effect?.getTiming().duration) || 0;
+        const elapsedMs = duration > 0
+          ? Math.max(0, Math.min(duration, Number(t) - Number(step._start))) * 1000
+          : animationMs;
+        animation.pause();
+        animation.currentTime = Math.min(animationMs, elapsedMs);
+      });
+    });
+  });
 }
 
 // Bug đã gặp (mục 5.32 CONTEXT.md): waitImagesLoaded() chỉ đợi <img>, không
@@ -945,6 +1027,7 @@ async function renderStackAt(t) {
   const { stack, memeStep, memeSteps=[] } = computeSceneAt(t);
   const stackEl = document.getElementById('thr-stack');
   stackEl.innerHTML = stack.map(s => buildCardHtml(stepForRenderAtTime(s, t))).join('');
+  setAppearanceAnimationsAt(stack, t, stackEl);
   autoScrollStack();
   autoScrollMessenger(stackEl);
 
@@ -973,7 +1056,6 @@ async function renderStackAt(t) {
     waitImagesLoaded(memeEl),
     waitVideosMetadata(retainedMemeLayer),
     waitVideosMetadata(memeEl),
-    waitAnimationsDone(stackEl),
   ]);
   // Cho Chromium thêm hai frame để commit ảnh vừa decode vào compositor
   // trước khi Playwright screenshot, tránh avatar chỉ xuất hiện từ ~0.3s.
