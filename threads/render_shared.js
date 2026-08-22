@@ -55,7 +55,7 @@ function fmt(t) { return t.toFixed(1) + 's'; }
 
 // ---------- Tính timeline tương đối ----------
 function appearanceDelay(s) {
-  if (!s || !['post', 'comment', 'reply'].includes(s.type)) return 0;
+  if (!s || !['post', 'comment', 'reply', 'text', 'note'].includes(s.type)) return 0;
   if (['drop-bounce', 'bounce-up', 'bounce-left', 'bounce-right'].includes(s.appearance)) return .175;
   return ['fly-left', 'fly-right', 'fly-top', 'fly-bottom'].includes(s.appearance) ? .253 : 0;
 }
@@ -77,7 +77,8 @@ function effectiveDuration(s) {
 // khoảng thời gian riêng trong kịch bản, song song chỉ dùng khi cố ý.
 function isParallelAudio(s) { return s.type === 'audio' && s.parallel; }
 function isParallelVisual(s) { return (s.type === 'image' || s.type === 'sticker') && s.parallel; }
-function isParallelMedia(s) { return isParallelAudio(s) || isParallelVisual(s); }
+function isParallelText(s) { return s.type === 'text' && s.parallel; }
+function isParallelMedia(s) { return isParallelAudio(s) || isParallelVisual(s) || isParallelText(s); }
 
 function computeTimeline() {
   let t = 0;
@@ -94,7 +95,8 @@ function computeTimeline() {
   let parallelEnd = 0;
   for (const s of steps) {
     if (!isParallelMedia(s)) { lastMainStep = s; continue; }
-    s._start = lastMainStep ? lastMainStep._start : 0;
+    const contentAnchor = s.parallelAnchorStepId != null ? steps.find(step => step.id === s.parallelAnchorStepId) : null;
+    s._start = contentAnchor ? contentAnchor._start + progressiveContentOffset(contentAnchor, s.parallelAnchorPartIndex || 0) : (lastMainStep ? lastMainStep._start : 0);
     // Media song song có thời lượng riêng và không đẩy lùi track chính.
     // Ví dụ card chính 0–3s, media 0–5s thì card chính kế vẫn bắt đầu ở 3s;
     // media tiếp tục phủ/phát chồng cho tới giây 5.
@@ -120,12 +122,11 @@ function progressiveRevealStage(s, t) {
   if (parts.length < 2) return 0;
   const clipDurations = [Number(s.ttsDuration || 0), ...(s.extraTtsSegments || []).map(seg => Number(seg.duration || 0))].slice(0, parts.length);
   if (clipDurations.length === parts.length && clipDurations.every(duration => duration > 0)) {
-    const pause = Math.max(0, Number(s.progressivePause ?? .3));
     const localT = Math.max(0, Number(t) - Number(s._start) - appearanceDelay(s));
-    let stage = 1, nextStart = clipDurations[0] + pause;
+    let stage = 1, nextStart = clipDurations[0] + progressiveGapAfter(s, 0);
     while (stage < parts.length && localT >= nextStart - 1e-6) {
       stage++;
-      nextStart += clipDurations[stage - 1] + (stage < parts.length ? pause : 0);
+      nextStart += clipDurations[stage - 1] + (stage < parts.length ? progressiveGapAfter(s, stage - 1) : 0);
     }
     return stage;
   }
@@ -146,6 +147,23 @@ function stepForRenderAtTime(s, t) {
   if (!stage) return s;
   const parts = progressiveTextParts(s);
   return { ...s, text: parts.slice(0, stage).join('\n'), _progressiveFinal: stage === parts.length };
+}
+
+function progressiveGapAfter(s, clipIndex) {
+  if (!s || !s.progressiveReveal) return 0;
+  if (clipIndex === 0 && s.progressiveGapAfterFirst != null) return Math.max(0, Number(s.progressiveGapAfterFirst) || 0);
+  const seg = (s.extraTtsSegments || [])[clipIndex - 1];
+  if (seg && seg.gapAfter != null) return Math.max(0, Number(seg.gapAfter) || 0);
+  return Math.max(0, Number(s.progressivePause ?? .3));
+}
+
+function progressiveContentOffset(s, partIndex) {
+  if (!s || !s.progressiveReveal) return 0;
+  const index = Math.max(0, Number(partIndex) || 0);
+  const durations = [Number(s.ttsDuration || 0), ...(s.extraTtsSegments || []).map(seg => Number(seg.duration || 0))];
+  let offset = appearanceDelay(s);
+  for (let i = 0; i < index; i++) offset += (durations[i] || 0) + progressiveGapAfter(s, i);
+  return offset;
 }
 
 // ---------- Build 1 thẻ post/comment/reply cho stack ----------
@@ -308,12 +326,38 @@ function posTransform(s) {
   return ` style="transform:${parts.join(' ')}"`;
 }
 
+function safeCardColor(value, fallback) {
+  const raw=String(value||'').trim();
+  return /^#[0-9a-f]{3,8}$/i.test(raw)?raw:fallback;
+}
+function textCardFontClass(value) {
+  return ['serif','rounded','mono','display'].includes(value)?` font-${value}`:'';
+}
+function buildPlainTextCardHtml(s,posClass,stepAttr,posAttr){
+  const size=Math.max(2,Math.min(12,Number(s.textFontSize)||6));
+  const legacyStroke=s.textStrokeWidth??s.cardBorderWidth,stroke=Math.max(0,Math.min(1.5,Number.isFinite(Number(legacyStroke))?Number(legacyStroke):.18));
+  const style=`--text-size:${size}cqw;--text-color:${safeCardColor(s.textColor,'#ffffff')};--text-stroke-color:${safeCardColor(s.textStrokeColor||s.cardBorderColor,'#000000')};--text-stroke-width:${stroke}cqw`;
+  return `<div class="${posClass}"${stepAttr}${posAttr}><div class="plain-text-card${textCardFontClass(s.textFont)}" style="${style}">${esc(s.text||'')}</div></div>`;
+}
+function buildNoteCardHtml(s,posClass,stepAttr,posAttr){
+  const preset=['black','paper','sunset','ocean','lavender','glass','custom'].includes(s.noteBgPreset)?s.noteBgPreset:'black';
+  const size=Math.max(2,Math.min(12,Number(s.textFontSize)||5.2));
+  const bgUrl=safeMediaUrl(s.noteBgUrl);
+  const radius=Math.max(0,Math.min(10,Number.isFinite(Number(s.cardRadius))?Number(s.cardRadius):1.2)),padding=Math.max(0,Math.min(14,Number.isFinite(Number(s.notePadding))?Number(s.notePadding):6.2));
+  const weight=Math.max(200,Math.min(900,Number(s.textFontWeight)||560));
+  const style=`--text-size:${size}cqw;--text-color:${safeCardColor(s.textColor,'#ffffff')};--note-padding:${padding}cqw;font-weight:${weight};border-radius:${radius}cqw;${preset==='custom'||preset==='black'?`--note-bg:${safeCardColor(s.cardBgColor,'#050505')};`:''}${bgUrl?'--note-overlay:linear-gradient(#0005,#0009)':''}`;
+  const bg=bgUrl?`<img class="note-card-bg-image" src="${esc(bgUrl)}" alt="" referrerpolicy="no-referrer"/>`:'';
+  return `<div class="${posClass}"${stepAttr}${posAttr}><div class="note-card note-bg-${preset}${textCardFontClass(s.textFont)}" style="${style}">${bg}<div class="note-card-text">${esc(s.text||'')}</div></div></div>`;
+}
+
 function buildCardHtml(s) {
   const posAttr = posTransform(s);
   const stepAttr = ` data-step-id="${esc(s.id)}"`;
   const allowedAppearances = new Set(['fly-left', 'fly-right', 'fly-top', 'fly-bottom', 'drop-bounce', 'bounce-up', 'bounce-left', 'bounce-right']);
   const appearanceClass = allowedAppearances.has(s.appearance) ? ` appearance-${s.appearance}` : '';
   const posClass = (s.progressiveReveal ? 'tcard-pos progressive-reveal-card' : 'tcard-pos') + appearanceClass;
+  if (s.type === 'text') return buildPlainTextCardHtml(s,posClass,stepAttr,posAttr);
+  if (s.type === 'note') return buildNoteCardHtml(s,posClass,stepAttr,posAttr);
   if (s.type === 'mess') return `<div class="${posClass}"${stepAttr}${posAttr}>${buildMessengerHtml(s)}</div>`;
   if (s.type === 'post') {
     const id1 = displayIdentity(s.id + ':m', s.uname, s.avatarUrl, (s.stats&&s.stats.timeLabel)||'vừa xong');
@@ -548,23 +592,24 @@ let _lastRetainedMemeKey = null;
 const stepRevision = new Map();
 function bumpStepRevision(id) { stepRevision.set(id, (stepRevision.get(id) || 0) + 1); }
 
-// Cảnh tại thời điểm t: nội dung (post/comment/reply) KHÔNG tồn tại xuyên
-// suốt — mỗi step chỉ "sống" trong đúng cửa sổ [_start, _end) của nó (thời
-// gian TTS đọc). Bước sang "gap" (khoảng lặng sau _end), nội dung của step
-// đó biến mất khỏi màn hình hoàn toàn cho tới khi step kế bắt đầu.
+// Cảnh tại thời điểm t: nội dung post/comment/reply tồn tại trong cả cửa sổ
+// đọc lẫn "gap sau" của chính nó. Gap là thời gian CHỜ trên trạng thái cuối
+// của card trước, không phải khoảng màn hình trống. Bước sang step kế tiếp
+// mới đổi stack/clearBefore theo luật của step kế.
 // Stack tại t = duyệt NGƯỢC từ step hiện tại (step mà t đang nằm trong nó),
 // cộng dồn các step post/comment/reply liền kề TRƯỚC nó mà giữa chúng không
 // có khoảng gap nào chưa kết thúc — tức chuỗi step "dính liền nhau" tính đến
 // t. Gặp step gap > 0 đã trôi qua (đang ở giữa 2 step) → dừng, hoặc gặp
 // clearBefore → dừng (không cộng dồn qua ranh giới "xoá nội dung cũ").
 function computeSceneAt(t) {
-  // Tìm step track-chính (post/comment/reply/image + audio TUẦN TỰ) đang
-  // "sống" tại t — chỉ audio SONG SONG (isParallelAudio) mới bị loại khỏi
-  // track chính (xem syncSfxAudio cho phần phát tiếng của track song song).
+  // Tìm step track-chính đang "giữ màn" tại t. Khác _end: nếu t đang nằm
+  // trong gap sau step, vẫn chọn step đó để nó đứng yên chờ step sau.
   const mainSteps = steps.filter(s => !isParallelMedia(s));
   let curIdx = -1;
   for (let i = 0; i < mainSteps.length; i++) {
-    if (t >= mainSteps[i]._start - 1e-6 && t < mainSteps[i]._end - 1e-6) { curIdx = i; break; }
+    const s = mainSteps[i];
+    const holdEnd = Math.max(Number(s._end || 0), Number(s._end || 0) + Math.max(0, Number(s.gap || 0)));
+    if (t >= s._start - 1e-6 && t < holdEnd - 1e-6) { curIdx = i; break; }
   }
 
   let stack = [];
@@ -584,12 +629,20 @@ function computeSceneAt(t) {
           stack.unshift(s);
           visibleMessengerConversations.add(conversationKey);
         }
-      } else if (s.type === 'post' || s.type === 'comment' || s.type === 'reply') stack.unshift(s);
+      } else if (['post','comment','reply','text','note'].includes(s.type)) stack.unshift(s);
       if (s.clearBefore) break;
       const prev = mainSteps[i - 1];
       if (!prev || Math.abs(prev._end + (prev.gap || 0) - s._start) > 1e-6) break;
       i--;
     }
+  }
+
+  // TEXT có thể được kéo vào một card khác để chạy song song. Nó không chiếm
+  // thời gian trên track chính nhưng vẫn được render như card chữ đầy đủ trong
+  // stack đúng cửa sổ _start/_end riêng của nó.
+  for(const s of steps){
+    if(!isParallelText(s)||t<s._start-1e-6||t>=s._end-1e-6)continue;
+    if(!stack.some(item=>item.id===s.id))stack.push(s);
   }
 
   // Ảnh/sticker tuần tự tồn tại tiếp cho tới khi một step sau bật

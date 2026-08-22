@@ -415,6 +415,10 @@ header span { font-size: 12px; color: #4b5563; }
   font-family: "SFPro", -apple-system, sans-serif;
   animation: tcard-in .35s cubic-bezier(.2,.8,.2,1);
 }
+.plain-text-card,.note-card{width:min(88cqw,950px);margin:0 auto;box-sizing:border-box;white-space:pre-wrap;overflow-wrap:anywhere}.plain-text-card{padding:5cqw 5.5cqw;border:.38cqw solid var(--card-border,#6d5bd0);border-radius:4cqw;background:var(--card-bg,#111827);color:var(--text-color,#fff);font-family:var(--text-font,Arial,sans-serif);font-size:var(--text-size,6cqw);font-weight:650;line-height:1.32;box-shadow:0 2cqw 5cqw #0003}.note-card{position:relative;min-height:28cqw;padding:6.2cqw 6.5cqw;border:.3cqw solid var(--card-border,#000);border-radius:1.2cqw;background:var(--note-bg,#050505);background-size:cover;background-position:center;color:var(--text-color,#fff);font-family:var(--text-font,Arial,sans-serif);font-size:var(--text-size,5.2cqw);font-weight:560;line-height:1.48;box-shadow:0 2.4cqw 7cqw #0005}.note-card::before{content:"";position:absolute;inset:0;border-radius:inherit;background:var(--note-overlay,transparent);pointer-events:none}.note-card-text{position:relative;z-index:1}.note-bg-paper{--note-bg:linear-gradient(135deg,#fff8e8,#e8d5b5);--text-color:#2b2118}.note-bg-sunset{--note-bg:linear-gradient(135deg,#fd746c,#ff9068 45%,#6a3093);--note-overlay:linear-gradient(#0001,#0004)}.note-bg-ocean{--note-bg:linear-gradient(145deg,#081b33,#0d6b8d 55%,#35b8b0)}.note-bg-lavender{--note-bg:linear-gradient(145deg,#24133f,#7549a8 55%,#d8a7e8)}.note-bg-glass{--note-bg:linear-gradient(145deg,#171923dd,#05060bdd);backdrop-filter:blur(12px);border-color:#ffffff55}.font-serif{--text-font:Georgia,'Times New Roman',serif}.font-rounded{--text-font:'Arial Rounded MT Bold','Nunito',Arial,sans-serif}.font-mono{--text-font:'SFMono-Regular',Consolas,monospace}.font-display{--text-font:Impact,'Arial Black',Arial,sans-serif}
+.note-card-bg-image{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;border-radius:inherit;z-index:0}
+.plain-text-card{width:fit-content;max-width:88cqw;padding:1cqw 1.5cqw;border:0!important;border-radius:0!important;background:transparent!important;box-shadow:none;text-align:center;-webkit-text-stroke:var(--text-stroke-width,.18cqw) var(--text-stroke-color,#000);paint-order:stroke fill}.note-card{width:fit-content;max-width:88cqw;min-height:0;padding:var(--note-padding,6.2cqw);border:0!important}
+.note-card::before{z-index:1}.note-card-text{z-index:2}
 @keyframes tcard-in {
   from { opacity: 0; transform: translateY(3cqw) scale(.97); }
   to   { opacity: 1; transform: translateY(0) scale(1); }
@@ -913,6 +917,7 @@ header span { font-size: 12px; color: #4b5563; }
 .mess-box{overflow:hidden;border:1px solid #234a75;border-radius:12px;background:linear-gradient(145deg,#101b31,#0f172a)}.mess-box.active-now{border-color:#7c3aed;box-shadow:0 0 0 1px #7c3aed}.mess-box.dragging{opacity:.45}.mess-box.drag-over{border-color:#4ade80;box-shadow:0 0 0 1px #4ade80}.mess-box-head{display:flex;align-items:center;gap:8px;padding:10px 12px;border-bottom:1px solid #20304d}.mess-box-drag{display:flex;align-items:center;gap:4px;margin-left:auto;padding:4px 7px;border:1px solid #2d4770;border-radius:6px;background:#14223a;color:#8da8cd;font-size:9px;cursor:grab;user-select:none}.mess-box-drag:hover{border-color:#4d6f9f;color:#dbeafe}.mess-box-drag:active{cursor:grabbing}.mess-box-head .sc-idx{width:20px;height:20px;border-radius:50%;display:grid;place-items:center;background:#1e1b4b;color:#a78bfa;font-size:10px;font-weight:800}.mess-box-head .sc-type{padding:3px 8px;border-radius:5px;background:#123e69;color:#60a5fa;font-size:10px;font-weight:700}.mess-box-head .sc-time{color:#6b7280;font-size:10px;font-variant-numeric:tabular-nums}.mess-box-summary{display:flex;align-items:center;gap:10px;padding:10px 12px}.mess-box-avatar{position:relative;width:34px;height:34px;flex:0 0 34px}.mess-box-avatar img{width:100%;height:100%;border-radius:50%;object-fit:cover}.mess-box-avatar::after{content:"";position:absolute;right:-1px;bottom:1px;width:8px;height:8px;border:2px solid #101b31;border-radius:50%;background:#31a24c}.mess-box-copy{min-width:0;flex:1}.mess-box-name{color:#f8fafc;font-size:13px;font-weight:700}.mess-box-meta{margin-top:3px;color:#94a3b8;font-size:10px}.mess-box-steps{display:flex;flex-direction:column;gap:7px;padding:9px;border-top:1px dashed #2a4161;background:#090e1a}.mess-box-steps .step-card{background:#0f1220}.mess-box-add-actions,.mess-box-actions{display:flex;gap:6px;padding:9px 12px;border-top:1px solid #20304d}.mess-box-add-actions{padding-bottom:0}.mess-box-add-actions button{flex:1;padding:7px 8px;border:1px dashed #3b5d89;border-radius:7px;background:#111f36;color:#bfdbfe;cursor:pointer;font-size:10px;font-weight:700}.mess-box-add-actions button:hover{border-color:#60a5fa;background:#172b49}.mess-box-actions button{padding:7px 9px;border:0;border-radius:7px;cursor:pointer;font-size:10px;font-weight:700}.mess-box-open{flex:1;background:#1877f2;color:#fff}.mess-box-open:hover{background:#0d6fe5}.mess-box-ungroup{background:#202d43;color:#cbd5e1}.mess-box-ungroup:hover{background:#2a3a55}.mess-box-delete{background:#351725;color:#f87171}.mess-box-delete:hover{background:#4b1d2e}
 .mess-box-clear-toggle{display:flex;align-items:center;gap:5px;padding:0 5px;color:#cbd5e1;font-size:10px;white-space:nowrap}.mess-box-clear-toggle input{width:auto;margin:0;accent-color:#8b5cf6}
 .mess-box>.mess-box-actions{border-top:0;border-bottom:1px solid #20304d}.mess-box-position{margin:0 12px 10px;border:1px solid #20304d;border-radius:9px;background:#0b1323}.mess-box-position .sc-position{border-top:0}.mess-box-position-label{padding:7px 10px 0;color:#8da8cd;font-size:10px;font-weight:700}
+.progressive-box .sc-type{background:#3b0764;color:#d8b4fe}.progressive-content-unit{min-width:0;transition:transform 190ms ease}.progressive-content-unit>.step-row{align-items:stretch}.progressive-content-unit>.step-row>.progressive-content-card:only-child{grid-column:1/-1}.progressive-content-card{border:1px solid #27324f;border-radius:9px;background:#0f1220;overflow:hidden;cursor:grab}.progressive-content-card:active{cursor:grabbing}.progressive-content-card.dragging{opacity:.45}.progressive-content-card.drag-over{border-color:#4ade80;box-shadow:0 0 0 1px #4ade80}.progressive-content-card.reorder-over{border-color:#a78bfa;box-shadow:0 0 0 1px #8b5cf6}.progressive-content-card .sc-head{display:flex;align-items:center;gap:8px;padding:8px 10px;border-bottom:1px solid #1e2340;user-select:none}.progressive-content-card .sc-idx{width:18px;height:18px;border-radius:50%;display:grid;place-items:center;background:#312e81;color:#c4b5fd;font-size:9px;font-weight:800}.progressive-content-card .sc-type{padding:3px 7px;border-radius:5px;background:#2e1065;color:#d8b4fe;font-size:9px;font-weight:800}.progressive-content-card .sc-time{margin-left:auto;color:#6b7280;font-size:10px;font-variant-numeric:tabular-nums}.progressive-content-card .sc-summary{padding:9px 10px;color:#cbd5e1;font-size:11px;line-height:1.35;white-space:pre-wrap}.progressive-content-card .sc-voice{display:block;padding:0 10px 8px;color:#a5b4fc;font-size:10px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.progressive-content-card .sc-ctrls{display:flex;flex-wrap:wrap;align-items:center;gap:8px;padding:9px 10px;border-top:1px solid #1e2340;cursor:default}.progressive-content-card .sc-ctrls label{font-size:10px;color:#9ca3af;display:flex;align-items:center;gap:4px}.progressive-content-card .sc-ctrls input[type=number]{width:66px;padding:5px 7px;border:1px solid #2a3050;border-radius:6px;background:#0a0c14;color:#e2e8f0;font-size:11px}.progressive-content-card .sc-actions{margin-left:auto;display:flex;gap:4px;flex-wrap:wrap}.progressive-content-card .sc-actions button{padding:5px 8px;border:0;border-radius:6px;background:#202746;color:#cbd5e1;cursor:pointer;font-size:10px}.progressive-content-card .sc-actions button:hover{background:#2d365c;color:#fff}.progressive-content-parallel{height:auto;padding:0}.progressive-content-parallel .step-card{margin:0}
 .script-empty { color: #4b5563; font-size: 12px; padding: 16px 4px; text-align: center; }
 
 /* Modal soạn nội dung step */
@@ -935,10 +940,14 @@ header span { font-size: 12px; color: #4b5563; }
 }
 .step-modal select { cursor: pointer; }
 .step-modal input[type=checkbox] { width: 17px; height: 17px; cursor: pointer; accent-color: #7c3aed; }
+.step-modal input[type=color]{width:100%;cursor:pointer;background:#0a0c14;border:1px solid #1e2340;border-radius:8px}
 .step-modal textarea { min-height: 90px; resize: vertical; }
 .step-modal input:focus, .step-modal textarea:focus { border-color: #7c3aed; }
 .step-modal .row2 { display: flex; gap: 12px; }
 .step-modal .row2 > div { flex: 1; }
+.note-modal-preview-card{width:fit-content!important;max-width:100%}
+.step-modal.note-editor-open{width:min(1050px,96vw);max-height:94vh;overflow:hidden;display:flex;flex-direction:column}.note-editor-open #step-modal-fields{flex:1;min-height:0;overflow:hidden}.note-editor-open>#step-modal-tts-status{flex:0 0 auto}.note-editor-open>.modal-actions{flex:0 0 auto;margin-top:14px}.note-editor-layout{display:grid;grid-template-columns:minmax(0,1.15fr) minmax(300px,.85fr);gap:18px;height:min(68vh,680px);max-height:100%}.note-editor-controls{min-width:0;overflow-y:auto;padding-right:8px}.note-editor-preview-pane{position:sticky;top:0;align-self:start;min-width:0;padding:16px;border:1px solid #2b3151;border-radius:12px;background:#090c18}.note-editor-preview-pane h4{margin:0 0 12px;color:#c4b5fd;font-size:13px}.note-modal-preview-stage{display:grid;place-items:center;min-height:480px;padding:18px;border-radius:10px;background:linear-gradient(145deg,#1a2035,#0b0d17);overflow:hidden}.note-modal-preview-card{position:relative;width:100%;max-height:440px;overflow:auto;box-sizing:border-box;padding:28px 30px;border-style:solid;background:var(--note-bg,#050505);background-position:center;background-size:cover;color:var(--text-color,#fff);font-family:var(--text-font,Arial,sans-serif);font-size:var(--preview-size,24px);font-weight:var(--preview-weight,560);line-height:1.48;white-space:pre-wrap;overflow-wrap:anywhere;box-shadow:0 14px 38px #0007}.note-modal-preview-card::before{content:"";position:absolute;inset:0;border-radius:inherit;background:var(--note-overlay,transparent);z-index:0}.note-modal-preview-text{position:relative;z-index:1}@media(max-width:800px){.note-editor-layout{grid-template-columns:1fr;height:70vh;max-height:70vh}.note-editor-preview-pane{position:static;grid-row:1}.note-modal-preview-stage{min-height:250px}.note-editor-controls{grid-row:2}}
+.progressive-editor-modal{width:min(980px,96vw);overflow:hidden}.progressive-editor-head{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:16px}.progressive-editor-head h3{margin:0}.progressive-editor-grid{display:grid;grid-template-columns:minmax(0,1.25fr) minmax(260px,.75fr);gap:16px;min-height:430px;max-height:70vh}.progressive-editor-pane{min-width:0;overflow:auto;border:1px solid #252b49;border-radius:12px;background:#0b0e1b;padding:16px}.progressive-editor-pane h4{margin:0 0 12px;color:#d8b4fe;font-size:14px}.progressive-editor-list{display:flex;flex-direction:column;gap:8px}.progressive-editor-item{width:100%;display:flex;align-items:center;gap:9px;padding:11px;border:1px solid #29304f;border-radius:9px;background:#11162a;color:#cbd5e1;text-align:left;cursor:pointer}.progressive-editor-item:hover{border-color:#6046a8}.progressive-editor-item.active{border-color:#8b5cf6;background:#20163d;box-shadow:0 0 0 1px #8b5cf6}.progressive-editor-item-index{display:grid;place-items:center;width:24px;height:24px;flex:0 0 24px;border-radius:50%;background:#312e81;color:#ddd6fe;font-size:11px;font-weight:800}.progressive-editor-item-copy{min-width:0}.progressive-editor-item-copy strong{display:block;color:#f3e8ff;font-size:11px}.progressive-editor-item-copy span{display:block;margin-top:3px;overflow:hidden;color:#94a3b8;font-size:11px;text-overflow:ellipsis;white-space:nowrap}.progressive-editor-tools{display:flex;gap:8px;align-items:center;margin-bottom:12px;padding-bottom:12px;border-bottom:1px solid #252b49}.progressive-editor-tools label{display:flex;align-items:center;gap:7px;margin:0;font-size:11px}.progressive-editor-danger{border:0;border-radius:8px;background:#401725;color:#fda4af;padding:10px 12px;cursor:pointer}.progressive-editor-danger:hover{background:#5b1b2d}@media(max-width:760px){.progressive-editor-grid{grid-template-columns:1fr;max-height:75vh}.progressive-editor-list-pane{max-height:220px;grid-row:1}.progressive-editor-edit-pane{grid-row:2}}
 .media-dropzone {
   border: 2px dashed #2d2b45; border-radius: 10px; padding: 30px 14px;
   text-align: center; cursor: pointer; background: #0a0c14;
@@ -1341,6 +1350,8 @@ header span { font-size: 12px; color: #4b5563; }
       <button onclick="openStepModal('post')">＋ Post</button>
       <button onclick="openStepModal('comment')">＋ Comment</button>
       <button onclick="openStepModal('reply')">＋ Reply</button>
+      <button onclick="openStepModal('text')">＋ Text</button>
+      <button onclick="openStepModal('note')">＋ Note</button>
       <button onclick="openStepModal('image')">＋ Ảnh</button>
       <button onclick="openStepModal('audio')">＋ Âm thanh</button>
       <button onclick="openMessengerModal()">＋ Tin nhắn</button>
@@ -1398,6 +1409,16 @@ header span { font-size: 12px; color: #4b5563; }
     <div class="modal-actions">
       <button type="button" class="btn-cancel" onclick="closeStepModal()">Huỷ</button>
       <button type="button" class="btn-ok" id="step-modal-submit-btn" onclick="submitStepModal()">Thêm vào kịch bản</button>
+    </div>
+  </div>
+</div>
+
+<div class="step-modal-overlay" id="progressive-editor-overlay" onclick="if(event.target===this) closeProgressiveBoxEditor()">
+  <div class="step-modal progressive-editor-modal">
+    <div class="progressive-editor-head"><h3 id="progressive-editor-title">Edit Box Post</h3><button type="button" class="btn-cancel" onclick="closeProgressiveBoxEditor()">Đóng</button></div>
+    <div class="progressive-editor-grid">
+      <section class="progressive-editor-pane progressive-editor-edit-pane" id="progressive-editor-fields"></section>
+      <aside class="progressive-editor-pane progressive-editor-list-pane"><h4>CONTENT trong Box</h4><div class="progressive-editor-list" id="progressive-editor-list"></div></aside>
     </div>
   </div>
 </div>
@@ -2194,7 +2215,8 @@ async function generateAllTtsLegacy() {
   // text cố ý (duration=0) không tính là thiếu.
   const hasMissingExtraSegment = s => (s.extraTtsSegments || []).some(seg => !seg.audioUrl && seg.text && seg.text.trim());
   let targets = steps.filter(s =>
-    (s.type === 'post' || s.type === 'comment' || s.type === 'reply' || s.type === 'image' || s.type === 'mess')
+    (s.type === 'post' || s.type === 'comment' || s.type === 'reply' || s.type === 'text' || s.type === 'note' || s.type === 'image' || s.type === 'mess')
+    && !((s.type==='text'||s.type==='note')&&s.hasVoice===false)
     && (!s.audioUrl || hasMissingExtraSegment(s))
     && ((s.ttsText && s.ttsText.trim()) || (s.text && s.text.trim()) || hasMissingExtraSegment(s))
   );
@@ -2268,7 +2290,7 @@ async function generateAllTtsLegacy() {
         seg.duration = rSeg.duration;
         totalDuration += rSeg.duration;
       }
-      s.duration = totalDuration + Math.max(0, stepTtsClips(s).filter(clip=>clip.text||clip.audioUrl).length-1) * stepTtsPause(s);
+      s.duration = stepTtsTotalDuration(s) || totalDuration;
       bumpStepRevision(s.id);
       ok++;
     } catch (e) {
@@ -2289,14 +2311,15 @@ async function generateAllTts() {
   const statusEl=document.getElementById('gen-all-tts-status');
   const btn=document.getElementById('gen-all-tts-btn');
   const jobs=[];
-  const supported=new Set(['post','comment','reply','image','mess']);
+  const supported=new Set(['post','comment','reply','text','note','image','mess']);
   for(const step of steps){
     if(!supported.has(step.type))continue;
+    if((step.type==='text'||step.type==='note')&&step.hasVoice===false)continue;
     const mainText=((step.ttsText&&step.ttsText.trim())||(step.text&&step.text.trim())||'');
     if(!step.audioUrl&&mainText)jobs.push({step,segment:null,text:mainText,voiceIdx:step.voiceIdx!=null?step.voiceIdx:(step.type==='mess'?messengerDefaultVoice(step.messHistory?.[step.messHistory.length-1]?.side||'theirs'):null),speed:step.type==='mess'?messengerServerSpeed(step.messTtsSpeed):1,echo:!!step.echo});
     for(const segment of (step.extraTtsSegments||[])){
       const text=(segment.text||'').trim();
-      if(!segment.audioUrl&&text)jobs.push({step,segment,text,voiceIdx:segment.voiceIdx!=null?segment.voiceIdx:null,speed:1,echo:!!segment.echo});
+      if(!segment.audioUrl&&text)jobs.push({step,segment,text,voiceIdx:segment.voiceIdx!=null?segment.voiceIdx:(step.voiceIdx!=null?step.voiceIdx:null),speed:1,echo:!!segment.echo});
     }
   }
   if(!jobs.length){statusEl.textContent='✓ Tất cả step đã có giọng đọc.';return true;}
@@ -2339,8 +2362,8 @@ let modalPlatform = 'threads';
 // nếu đang sửa step cũ đã có sẵn nhiều đoạn.
 let modalExtraTts = [];
 
-const TYPE_LABEL = { post:'POST', comment:'COMMENT', reply:'REPLY', audio:'ÂM THANH', image:'ẢNH', sticker:'STICKER', mess:'TIN NHẮN' };
-const DEFAULT_DUR = { post:3, comment:2.5, reply:2.5, audio:1, image:3, sticker:2, mess:2 };
+const TYPE_LABEL = { post:'POST', comment:'COMMENT', reply:'REPLY', text:'TEXT', note:'NOTE', audio:'ÂM THANH', image:'ẢNH', sticker:'STICKER', mess:'TIN NHẮN' };
+const DEFAULT_DUR = { post:3, comment:2.5, reply:2.5, text:3, note:4, audio:1, image:3, sticker:2, mess:2 };
 let messDrafts = [];
 let messEditingStepId = null;
 let messEditingConversationId = null;
@@ -3480,10 +3503,16 @@ function stepTtsClips(s) {
 function stepTtsPause(s) {
   return s.progressiveReveal ? Math.max(0, Number(s.progressivePause ?? .3)) : 0;
 }
+function stepTtsGapAfter(s, clipIndex) {
+  if (!s?.progressiveReveal) return 0;
+  if (clipIndex === 0 && s.progressiveGapAfterFirst != null) return Math.max(0, Number(s.progressiveGapAfterFirst) || 0);
+  const seg = (s.extraTtsSegments || [])[clipIndex - 1];
+  if (seg && seg.gapAfter != null) return Math.max(0, Number(seg.gapAfter) || 0);
+  return stepTtsPause(s);
+}
 function stepTtsTotalDuration(s) {
   const clips = stepTtsClips(s).filter(clip => clip.text || clip.audioUrl);
-  return clips.reduce((sum, clip) => sum + (Number(clip.duration) || 0), 0)
-    + Math.max(0, clips.length - 1) * stepTtsPause(s);
+  return clips.reduce((sum, clip, index) => sum + (Number(clip.duration) || 0) + (index < clips.length - 1 ? stepTtsGapAfter(s, index) : 0), 0);
 }
 
 // Khối UI cho các đoạn TTS THÊM (sau đoạn #1) trong modal soạn step — mỗi
@@ -3531,6 +3560,25 @@ function removeExtraTtsSegment(i) {
   modalExtraTts.splice(i, 1);
   renderExtraTtsSegmentsUI();
 }
+function progressiveSegmentSetting(editingStep, index, fallbackVoiceIdx, fallbackEcho) {
+  const fallback = { voiceIdx: fallbackVoiceIdx, echo: !!fallbackEcho, gapAfter: .3, duration: 0 };
+  if (!editingStep || !editingStep.progressiveReveal) return fallback;
+  if (index === 0) {
+    return {
+      voiceIdx: editingStep.voiceIdx ?? fallbackVoiceIdx,
+      echo: !!editingStep.echo,
+      gapAfter: editingStep.progressiveGapAfterFirst ?? editingStep.progressivePause ?? .3,
+      duration: editingStep.ttsDuration || 0,
+    };
+  }
+  const seg = (editingStep.extraTtsSegments || [])[index - 1] || {};
+  return {
+    voiceIdx: seg.voiceIdx ?? fallbackVoiceIdx,
+    echo: !!seg.echo,
+    gapAfter: seg.gapAfter ?? editingStep.progressivePause ?? .3,
+    duration: seg.duration || 0,
+  };
+}
 
 function onModalImgUrlChange(prefix) {
   const url = document.getElementById(prefix + '-img').value.trim();
@@ -3575,10 +3623,19 @@ function platformPickerHtml() {
 }
 
 function progressiveRevealFieldHtml(editing) {
+  const mode = editing?.progressiveRevealMode || 'basic';
   return `<label style="display:flex;align-items:flex-start;gap:7px;margin-top:10px;padding:10px;border:1px solid #2a3050;border-radius:8px;background:#11152a">
     <input type="checkbox" id="m-progressive-reveal" style="width:auto;margin-top:2px" ${editing&&editing.progressiveReveal?'checked':''}/>
     <span><b style="color:#c4b5fd">Hiện nội dung tăng dần theo đoạn xuống hàng</b><br/><small style="color:#6b7280;font-weight:400">Vẫn là một card; TTS tự tách từng đoạn và nghỉ 0,3 giây trước đoạn kế.</small></span>
-  </label>`;
+  </label>
+  <div id="m-progressive-mode-wrap" style="margin-top:8px;padding:10px;border:1px dashed #2a3050;border-radius:8px;background:#0c1020">
+    <label style="margin:0 0 6px">Kiểu chia đoạn</label>
+    <select id="m-progressive-mode">
+      <option value="basic" ${mode==='basic'?'selected':''}>Cơ bản — 1 card tự hiện dần</option>
+      <option value="advanced" ${mode==='advanced'?'selected':''}>Nâng cao — Box bài nhiều đoạn</option>
+    </select>
+    <small style="display:block;margin-top:6px;color:#6b7280;font-weight:400">Nâng cao hiển thị thành Box CONTENT trong kịch bản để chuẩn bị gắn audio/sticker/gap riêng cho từng đoạn.</small>
+  </div>`;
 }
 
 function appearanceFieldHtml(editing) {
@@ -3653,12 +3710,47 @@ function insertStepByGroup(step,groupId){
   step.groupId=groupId;let last=-1;for(let i=0;i<steps.length;i++)if(stepGroupId(steps[i])===groupId)last=i;steps.splice(last<0?steps.length:last+1,0,step);
 }
 function openStepModalInBox(type,groupId){openStepModal(type,null,groupId);}
+function toggleTextCardVoiceFields(){
+  const fields=document.getElementById('m-text-voice-fields'),enabled=!!document.getElementById('m-has-voice')?.checked;
+  if(fields)fields.style.display=enabled?'':'none';
+}
+function updateTextStyleSliderLabels(){
+  const pairs=[['m-text-size','m-text-size-value'],['m-border-width','m-border-width-value'],['m-font-weight','m-font-weight-value'],['m-note-padding','m-note-padding-value'],['m-card-radius','m-card-radius-value']];
+  for(const [inputId,valueId] of pairs){const input=document.getElementById(inputId),value=document.getElementById(valueId);if(input&&value)value.textContent=input.value;}
+}
+function onNotePresetChanged(){
+  const preset=document.getElementById('m-note-bg-preset')?.value,color=document.getElementById('m-text-color'),bg=document.getElementById('m-card-bg-color');
+  if(!color||!bg)return;
+  const defaults={black:['#ffffff','#050505'],paper:['#2b2118','#f3e3c2'],sunset:['#ffffff','#8f3d62'],ocean:['#ffffff','#0d6b8d'],lavender:['#ffffff','#7549a8'],glass:['#ffffff','#10121a'],custom:[color.value,bg.value]};
+  const values=defaults[preset]||defaults.black;color.value=values[0];bg.value=values[1];
+  updateNoteModalPreview();
+}
+function updateNoteModalPreview(){
+  const card=document.getElementById('note-modal-preview-card'),copy=document.getElementById('note-modal-preview-text');if(!card||!copy)return;
+  const text=document.getElementById('m-text')?.value||'Nội dung NOTE sẽ hiển thị ở đây...';
+  const preset=document.getElementById('m-note-bg-preset')?.value||'black',bgUrl=safeMediaUrl(document.getElementById('m-note-bg-url')?.value||'');
+  const font=document.getElementById('m-text-font')?.value||'system',fontMap={system:'Arial, sans-serif',serif:'Georgia, serif',rounded:'Arial Rounded MT Bold, Arial, sans-serif',mono:'SFMono-Regular, Consolas, monospace',display:'Impact, Arial Black, sans-serif'};
+  const size=Math.max(2,Math.min(12,Number(document.getElementById('m-text-size')?.value)||5.2)),weight=Math.max(200,Math.min(900,Number(document.getElementById('m-font-weight')?.value)||560));
+  const padding=Math.max(0,Math.min(14,Number(document.getElementById('m-note-padding')?.value)||0)),radius=Math.max(0,Math.min(10,Number(document.getElementById('m-card-radius')?.value)||0));
+  card.className=`note-modal-preview-card note-bg-${preset}`;
+  card.style.setProperty('--text-color',document.getElementById('m-text-color')?.value||'#fff');card.style.setProperty('--text-font',fontMap[font]||fontMap.system);card.style.setProperty('--preview-size',`${size*5}px`);card.style.setProperty('--preview-weight',String(weight));
+  card.style.border='0';card.style.borderRadius=`${radius*4}px`;card.style.padding=`${padding*5}px`;
+  if(preset==='black'||preset==='custom')card.style.setProperty('--note-bg',document.getElementById('m-card-bg-color')?.value||'#050505');else card.style.removeProperty('--note-bg');
+  card.style.backgroundImage=bgUrl?`linear-gradient(#0005,#0009), url("${bgUrl.replace(/["\\]/g,'')}")`:'';
+  copy.textContent=text;
+  const weightValue=document.getElementById('m-font-weight-value');if(weightValue)weightValue.textContent=String(weight);
+  const sizeValue=document.getElementById('m-text-size-value');if(sizeValue)sizeValue.textContent=String(size);
+  const paddingValue=document.getElementById('m-note-padding-value');if(paddingValue)paddingValue.textContent=String(padding);
+  const radiusValue=document.getElementById('m-card-radius-value');if(radiusValue)radiusValue.textContent=String(radius);
+  const strokeValue=document.getElementById('m-border-width-value');if(strokeValue)strokeValue.textContent=String(Number(document.getElementById('m-border-width')?.value)||0);
+}
 function openStepModal(type, stepId = null, targetGroupId = null) {
   modalType = type;
   editingStepId = stepId;
   modalTargetGroupId = stepId!=null?stepGroupId(steps.find(s=>s.id===stepId)):targetGroupId;
   ttsFieldDirty.m = false;
   const editing = stepId != null ? steps.find(s => s.id === stepId) : null;
+  document.querySelector('#step-modal-overlay .step-modal')?.classList.toggle('note-editor-open',type==='note');
   // Nếu step đã có ttsText lưu khác với text hiển thị (user từng tự sửa), giữ nguyên cờ dirty khi sửa lại.
   if (editing && editing.ttsText != null && editing.ttsText !== editing.text) ttsFieldDirty.m = true;
   // Đoạn giọng đọc THÊM (mục "nhiều đoạn TTS") — điền lại từ step đang sửa
@@ -3668,6 +3760,7 @@ function openStepModal(type, stepId = null, targetGroupId = null) {
 
   document.getElementById('step-modal-title').textContent =
     (editing ? 'Sửa' : 'Thêm') + ' step — ' + TYPE_LABEL[type];
+  document.getElementById('step-modal-submit-btn').textContent=(editing?'Lưu ':'Tạo ')+TYPE_LABEL[type];
 
   let html = '';
   if (type === 'post') {
@@ -3680,6 +3773,27 @@ function openStepModal(type, stepId = null, targetGroupId = null) {
     html += `<div id="m-extra-tts-box"></div>`;
     html += imgFieldHtml('m', editing ? editing.imgUrl : null);
     html += statsFieldsHtml('m', editing ? editing.stats : null, 'post');
+  } else if (type === 'text' || type === 'note') {
+    const isNote=type==='note',hasVoice=editing?editing.hasVoice!==false:true;
+    const font=editing?.textFont||'system',fontSize=Number(editing?.textFontSize)||(isNote?5.2:6),textColor=editing?.textColor||'#ffffff';
+    const bgPreset=editing?.noteBgPreset||'black',bgColor=editing?.cardBgColor||'#050505';
+    const borderColor=isNote?(editing?.cardBorderColor||'#000000'):(editing?.textStrokeColor||editing?.cardBorderColor||'#000000');
+    html += `<div style="font-size:12px;color:#7f8aa5;margin-bottom:10px">${isNote?'Card ghi chú gồm background và chữ, phù hợp kể chuyện dài.':'Card chữ độc lập, tối giản như một comment chỉ có nội dung.'}</div>
+      <label>Nội dung chữ</label><textarea id="m-text" placeholder="Nhập nội dung...">${esc(editing?.text||'')}</textarea>
+      ${appearanceFieldHtml(editing)}
+      <div class="row2"><div><label>Font chữ</label><select id="m-text-font"><option value="system" ${font==='system'?'selected':''}>Mặc định</option><option value="serif" ${font==='serif'?'selected':''}>Serif kể chuyện</option><option value="rounded" ${font==='rounded'?'selected':''}>Rounded mềm</option><option value="mono" ${font==='mono'?'selected':''}>Mono</option><option value="display" ${font==='display'?'selected':''}>Display đậm</option></select></div><div><label>Cỡ chữ: <strong id="m-text-size-value">${fontSize}</strong></label><input id="m-text-size" type="range" min="2" max="12" step="0.1" value="${fontSize}" style="width:100%" oninput="updateTextStyleSliderLabels()"/></div></div>
+      <div class="row2"><div><label>Màu chữ</label><input id="m-text-color" type="color" value="${esc(textColor)}" style="height:45px;padding:4px"/></div>${isNote?'':`<div><label>Màu viền chữ</label><input id="m-border-color" type="color" value="${esc(borderColor)}" style="height:45px;padding:4px"/></div>`}</div>`;
+    if(isNote)html+=`<label>Độ đậm font: <strong id="m-font-weight-value">${Number(editing?.textFontWeight??560)}</strong></label><input id="m-font-weight" type="range" min="200" max="900" step="50" value="${Number(editing?.textFontWeight??560)}" style="width:100%"/>
+      <label>Padding nền: <strong id="m-note-padding-value">${Number(editing?.notePadding??6.2)}</strong></label><input id="m-note-padding" type="range" min="0" max="14" step="0.2" value="${Number(editing?.notePadding??6.2)}" style="width:100%"/>
+      <label>Bo góc nền: <strong id="m-card-radius-value">${Number(editing?.cardRadius??1.2)}</strong></label><input id="m-card-radius" type="range" min="0" max="10" step="0.1" value="${Number(editing?.cardRadius??1.2)}" style="width:100%"/>
+      <label>Màu nền card</label><input id="m-card-bg-color" type="color" value="${esc(bgColor)}" style="height:45px;padding:4px"/>
+      <label>Mẫu background</label><select id="m-note-bg-preset" onchange="onNotePresetChanged()"><option value="black" ${bgPreset==='black'?'selected':''}>Đen kể chuyện</option><option value="paper" ${bgPreset==='paper'?'selected':''}>Giấy ấm</option><option value="sunset" ${bgPreset==='sunset'?'selected':''}>Hoàng hôn</option><option value="ocean" ${bgPreset==='ocean'?'selected':''}>Đại dương</option><option value="lavender" ${bgPreset==='lavender'?'selected':''}>Tím lavender</option><option value="glass" ${bgPreset==='glass'?'selected':''}>Kính tối</option><option value="custom" ${bgPreset==='custom'?'selected':''}>Màu/ảnh tùy chỉnh</option></select>
+      <label>Ảnh background từ URL (tuỳ chọn)</label><input id="m-note-bg-url" type="text" placeholder="https://..." value="${esc(editing?.noteBgUrl||'')}"/>`;
+    else html+=`<label>Độ dày viền chữ: <strong id="m-border-width-value">${Number(editing?.textStrokeWidth??editing?.cardBorderWidth??.18)}</strong></label><input id="m-border-width" type="range" min="0" max="1.5" step="0.05" value="${Number(editing?.textStrokeWidth??editing?.cardBorderWidth??.18)}" style="width:100%" oninput="updateTextStyleSliderLabels()"/>
+      <div style="font-size:11px;color:#7f8aa5;margin-top:6px">Viền ôm sát từng ký tự; đặt 0 để tắt viền chữ.</div>`;
+    html+=`<label style="display:flex;align-items:center;gap:9px"><input id="m-has-voice" type="checkbox" ${hasVoice?'checked':''} onchange="toggleTextCardVoiceFields()"/> Tạo giọng đọc cho card này</label>
+      <div id="m-text-voice-fields" style="${hasVoice?'':'display:none'}">${ttsFieldHtml('m',editing?(editing.ttsText??editing.text):'',editing?.echo||false)}${voiceFieldHtml('m',editing?.voiceIdx??null)}</div>`;
+    if(isNote)html=`<div class="note-editor-layout"><div class="note-editor-controls" oninput="updateNoteModalPreview()" onchange="updateNoteModalPreview()">${html}</div><aside class="note-editor-preview-pane"><h4>Preview NOTE</h4><div class="note-modal-preview-stage"><div id="note-modal-preview-card" class="note-modal-preview-card"><div id="note-modal-preview-text" class="note-modal-preview-text"></div></div></div></aside></div>`;
   } else if (type === 'comment' || type === 'reply') {
     // Chọn platform + field 1-khối chung — mục 5.39 CONTEXT.md (thay hẳn step
     // 'reply' cũ kiểu gộp 2 khối comment gốc + reply). modalPlatform lấy theo
@@ -3757,7 +3871,8 @@ function openStepModal(type, stepId = null, targetGroupId = null) {
   // renderCommentReplyFields() ở nhánh phía trên — KHÔNG ghi đè lại ở đây.
   if (type !== 'comment' && type !== 'reply') {
     document.getElementById('step-modal-fields').innerHTML = html;
-    if (type === 'post') bindTtsAutoSync('m', 'm-text');
+    if (type === 'post' || type === 'text' || type === 'note') bindTtsAutoSync('m', 'm-text');
+    if (type === 'note') requestAnimationFrame(updateNoteModalPreview);
     if (type === 'post' || type === 'image') renderExtraTtsSegmentsUI();
   }
   if (type === 'image' || type === 'sticker') loadLibraryOptions('meme');
@@ -3790,7 +3905,7 @@ document.addEventListener('keydown',event=>{
 // Trên Windows, ancestor draggable=true đôi khi nuốt cả hover/focus của input.
 // Tắt drag ngay khi trỏ chuột hoặc focus đi vào form control, khôi phục sau khi
 // control không còn hover/focus để kéo/sắp xếp card vẫn dùng được.
-const FORM_CONTROL_SELECTOR='input,textarea,select,button,label,[contenteditable="true"]';
+const FORM_CONTROL_SELECTOR='input,textarea,select,[contenteditable="true"]';
 function suspendAncestorDrag(target){
   const control=target?.closest?.(FORM_CONTROL_SELECTOR);
   if(!control)return;
@@ -3801,7 +3916,8 @@ function suspendAncestorDrag(target){
 }
 function restoreSuspendedDrags(){
   document.querySelectorAll('[data-restore-draggable="true"]').forEach(el=>{
-    if(el.matches(':hover')||el.contains(document.activeElement))return;
+    const hoveredControl=[...el.querySelectorAll(FORM_CONTROL_SELECTOR)].some(control=>control.matches(':hover'));
+    if(hoveredControl||el.querySelector(FORM_CONTROL_SELECTOR)?.contains(document.activeElement)||[...el.querySelectorAll(FORM_CONTROL_SELECTOR)].some(control=>control===document.activeElement||control.contains(document.activeElement)))return;
     el.draggable=true;
     delete el.dataset.restoreDraggable;
   });
@@ -4184,6 +4300,7 @@ async function submitStepModal() {
     data.text = document.getElementById('m-text').value.trim();
     data.appearance = document.getElementById('m-appearance')?.value || 'normal';
     data.progressiveReveal = !!document.getElementById('m-progressive-reveal')?.checked;
+    data.progressiveRevealMode = data.progressiveReveal ? (document.getElementById('m-progressive-mode')?.value || 'basic') : 'basic';
     if (t === 'comment' || t === 'reply') data.isAuthor = document.getElementById('m-author').checked;
     // Cho phép BỎ TRỐNG nội dung — vẫn tạo được step (theo yêu cầu người
     // dùng). Nội dung rỗng thì bỏ qua gọi TTS (giống image/meme cho phép
@@ -4218,6 +4335,26 @@ async function submitStepModal() {
       data.uname = fake.uname;
       data.avatarUrl = fake.avatarUrl;
       data.stats.timeLabel = fake.timeLabel;
+    }
+  } else if (t === 'text' || t === 'note') {
+    data.text=document.getElementById('m-text').value.trim();
+    data.appearance=document.getElementById('m-appearance')?.value||'normal';
+    data.hasVoice=!!document.getElementById('m-has-voice')?.checked;
+    data.textFont=document.getElementById('m-text-font')?.value||'system';
+    data.textFontSize=Math.max(2,Math.min(12,Number(document.getElementById('m-text-size')?.value)||(t==='note'?5.2:6)));
+    data.textColor=document.getElementById('m-text-color')?.value||'#ffffff';
+    if(t==='note'){
+      const cardRadius=Number(document.getElementById('m-card-radius')?.value);
+      data.textFontWeight=Math.max(200,Math.min(900,Number(document.getElementById('m-font-weight')?.value)||560));
+      data.notePadding=Math.max(0,Math.min(14,Number(document.getElementById('m-note-padding')?.value)||0));
+      data.cardBgColor=document.getElementById('m-card-bg-color')?.value||'#050505';
+      data.cardRadius=Math.max(0,Math.min(10,Number.isFinite(cardRadius)?cardRadius:1.2));
+      data.noteBgPreset=document.getElementById('m-note-bg-preset')?.value||'black';
+      data.noteBgUrl=document.getElementById('m-note-bg-url')?.value.trim()||null;
+    }else{
+      const borderWidth=Number(document.getElementById('m-border-width')?.value);
+      data.textStrokeColor=document.getElementById('m-border-color')?.value||'#000000';
+      data.textStrokeWidth=Math.max(0,Math.min(1.5,Number.isFinite(borderWidth)?borderWidth:.18));
     }
   } else if (t === 'audio' || t === 'image' || t === 'sticker') {
     // Ưu tiên: (1) URL ảnh ngoài nhập tay (chỉ step 'image', mục 5.41
@@ -4279,22 +4416,36 @@ async function submitStepModal() {
   // yêu cầu người dùng) → bỏ qua gọi TTS hoàn toàn, dùng DEFAULT_DUR[t] làm
   // thời lượng mặc định, tránh gọi /tts với text rỗng (tts_server.py trả
   // lỗi 400 "text rỗng" — xem generate_tts()).
-  const skipTts = !data.text;
-  if (!skipTts && (t === 'post' || t === 'comment' || t === 'reply' || t === 'image')) {
+  const isVoiceCard=['post','comment','reply','image','text','note'].includes(t);
+  const skipTts = !data.text || ((t==='text'||t==='note')&&!data.hasVoice);
+  if (!skipTts && isVoiceCard) {
     data.voiceIdx = readVoiceIdx('m');
     data.echo = document.getElementById('m-echo')?.checked || false;
     const revealParts = progressiveTextParts(data);
     if (revealParts.length > 1) {
+      const firstSetting = progressiveSegmentSetting(editingNow, 0, data.voiceIdx, data.echo);
       data.ttsText = revealParts[0];
+      data.voiceIdx = firstSetting.voiceIdx;
+      data.echo = firstSetting.echo;
       data.progressivePause = .3;
-      data.extraTtsSegments = revealParts.slice(1).map(text => ({text,voiceIdx:data.voiceIdx,echo:data.echo,audioUrl:null,audioDesktopPath:null,duration:0}));
+      data.progressiveGapAfterFirst = firstSetting.gapAfter;
+      data.ttsDuration = firstSetting.duration || null;
+      data.audioUrl = editingNow?.progressiveReveal && editingNow?.ttsText === revealParts[0] ? (editingNow.audioUrl || null) : null;
+      data.audioDesktopPath = editingNow?.progressiveReveal && editingNow?.ttsText === revealParts[0] ? (editingNow.audioDesktopPath || null) : null;
+      data.extraTtsSegments = revealParts.slice(1).map((text, index) => {
+        const setting = progressiveSegmentSetting(editingNow, index + 1, data.voiceIdx, data.echo);
+        const oldSeg = editingNow?.progressiveReveal ? (editingNow.extraTtsSegments || [])[index] : null;
+        const keepAudio = oldSeg && oldSeg.text === text;
+        return {text,voiceIdx:setting.voiceIdx,echo:setting.echo,gapAfter:setting.gapAfter,audioUrl:keepAudio?(oldSeg.audioUrl||null):null,audioDesktopPath:keepAudio?(oldSeg.audioDesktopPath||null):null,duration:keepAudio?(oldSeg.duration||0):(setting.duration||0)};
+      });
     } else {
       data.ttsText = editingNow?.progressiveReveal ? data.text : readTtsText('m', 'm-text');
       data.extraTtsSegments = editingNow?.progressiveReveal ? [] : modalExtraTts.map(seg=>({text:(seg.text||'').trim(),voiceIdx:seg.voiceIdx,echo:!!seg.echo,audioUrl:null,audioDesktopPath:null,duration:0}));
+      data.progressiveGapAfterFirst = null;
     }
-    data.audioUrl = null; data.audioDesktopPath = null; data.ttsDuration = null;
+    if (!data.progressiveReveal || revealParts.length < 2) { data.audioUrl = null; data.audioDesktopPath = null; data.ttsDuration = null; }
     statusEl.textContent='✓ Đã lưu card; TTS sẽ tạo khi nhấn Play.';
-  } else if (t === 'post' || t === 'comment' || t === 'reply' || t === 'image') {
+  } else if (isVoiceCard) {
     data.audioUrl=null;data.audioDesktopPath=null;data.ttsDuration=null;data.extraTtsSegments=[];
   }
 
@@ -4313,7 +4464,7 @@ async function submitStepModal() {
       // hợp meme/ảnh phủ giữa khung nên xoá nội dung Threads phía trước, chỉ
       // BỎ tick lúc nào muốn cố tình cho card cũ + meme/ảnh cùng hiện). Các
       // loại step khác (post/comment/reply/audio) vẫn mặc định false như cũ.
-      clearBefore: (t === 'post' || t === 'comment' || t === 'image' || t === 'sticker'),
+      clearBefore: (t === 'post' || t === 'comment' || t === 'text' || t === 'note' || t === 'image' || t === 'sticker'),
       hue: Math.floor(Math.random() * 360),
       offsetX: 0, offsetY: 0, rotation: 0, // vị trí/xoay tuỳ chỉnh (mục 5.21) — chỉ post/comment/reply/meme có UI chỉnh, audio bỏ qua không dùng tới
       ...data,
@@ -4356,6 +4507,8 @@ function stepSummary(s) {
     const replyNote = s.hasReplyCount ? ` (Xem ${s.replyCount} câu trả lời)` : '';
     return `@${s.uname}: ${s.text}${replyNote}`;
   }
+  if (s.type === 'text') return `🔤 ${s.text||'(chưa có nội dung)'}${s.hasVoice===false?' · không voice':''}`;
+  if (s.type === 'note') return `📝 ${s.text||'(chưa có nội dung)'} · nền ${s.noteBgPreset||'black'}${s.hasVoice===false?' · không voice':''}`;
   if (s.type === 'image') return (s.mediaName ? '🖼️ ' + s.mediaName : '🖼️ (chưa chọn ảnh)') + (s.text ? ' — ' + s.text : '');
   if (s.type === 'sticker') return s.mediaName ? '🏷️ ' + s.mediaName : '🏷️ (chưa chọn sticker)';
   if (s.type === 'audio') return s.mediaName ? '🔊 ' + s.mediaName : '🔊 (chưa chọn file — test thời gian)';
@@ -4364,7 +4517,7 @@ function stepSummary(s) {
 
 // Điều chỉnh vị trí/xoay (mục 5.21 CONTEXT.md) — chỉ post/comment/reply/
 // meme/image có hình để dịch/xoay, audio bỏ qua (không hiển thị gì trên khung).
-const POSITIONABLE_TYPES = ['post', 'comment', 'reply', 'mess'];
+const POSITIONABLE_TYPES = ['post', 'comment', 'reply', 'text', 'note', 'mess'];
 const DRAGGABLE_OVERLAY_TYPES = ['image', 'sticker'];
 let selectedOverlayStepId = null;
 let focusedScriptStepId = null;
@@ -4397,7 +4550,7 @@ function stepCardHtml(s, idx) {
       <input type="number" min="0" step="0.1" value="${s.duration.toFixed(2)}" onchange="updateStepField(${s.id},'duration',this.value)"/>
     </label>`;
     const playControl = s.type==='image'&&s.mediaIsVideo ? `<button class="media-video-toggle" onclick="toggleCardVideoPlayback(${s.id})" title="Phát video đúng một lượt">▶</button>` : '';
-    const canResetTime = (s.type==='audio'&&s.mediaUrl) || (s.type==='image'&&s.mediaIsVideo);
+    const canResetTime = (s.type==='audio'&&s.mediaUrl) || (s.type==='image'&&s.mediaIsVideo) || (s.type==='text'&&s.audioUrl);
     const resetControl = canResetTime ? `<button class="parallel-reset-time" onclick="resetStepTime(${s.id})" title="Đưa thời lượng về đúng độ dài file gốc">⟲ Reset time</button>` : '';
     return `
       <div class="step-card${cardCls}" data-id="${s.id}" tabindex="-1" draggable="true" ondragstart="onStepDragStart(event,${s.id})" ondragend="onStepDragEnd(event)" ondragover="onStepDragOver(event)" ondragleave="onStepDragLeave(event)" ondrop="onStepDrop(event,${s.id})">
@@ -4405,6 +4558,7 @@ function stepCardHtml(s, idx) {
           <span class="sc-type ${typeCls}">${stepTypeLabel(s)} ⏱</span>
           <span class="sc-time">${fmt(s._start)} → ${fmt(s._end)}</span>
         </div>
+        ${s.type==='text'?`<div class="sc-summary" onclick="jumpToStep(${s.id})">${esc(stepSummary(s))}</div>${voiceLabelHtml(s)}${stepPositionCtrlsHtml(s)}`:''}
         <div class="sc-ctrls">
           ${durationControl}
           <div class="sc-actions">
@@ -4447,6 +4601,7 @@ function stepCardHtml(s, idx) {
 function stepRowsForOrdered(ordered){
   const rows=[];
   for(const s of ordered){
+    if(isProgressiveContentParallel(s))continue;
     if(isParallelMedia(s)&&rows.length)rows[rows.length-1].push(s);
     else rows.push([s]);
   }
@@ -4465,6 +4620,188 @@ function stepRowsHtml(ordered){
       </div>
     </div>`;
   }).join('');
+}
+function isAdvancedProgressiveStep(s){
+  return !!s && s.progressiveReveal && s.progressiveRevealMode === 'advanced' && ['post','comment','reply'].includes(s.type);
+}
+function isProgressiveContentParallel(s){
+  return isParallelMedia(s) && s.parallelAnchorStepId != null;
+}
+function progressiveBoxHtml(s,idx){
+  const parts=progressiveTextParts(s);
+  const clips=stepTtsClips(s);
+  const contentParallelSteps=partIndex=>steps.filter(media=>isProgressiveContentParallel(media)&&media.parallelAnchorStepId===s.id&&Number(media.parallelAnchorPartIndex||0)===partIndex);
+  const childCards=(parts.length?parts:[s.text||'']).map((text,i)=>{
+    const clip=clips[i]||{};
+    const voice=selectedVoice(clip.voiceIdx ?? s.voiceIdx)?.label || 'Giọng mặc định';
+    const dur=Number(clip.duration||0);
+    const gap=i < (parts.length||1)-1 ? stepTtsGapAfter(s,i) : 0;
+    const parallelCards=contentParallelSteps(i);
+    const contentCard=`<div class="step-card progressive-content-card" data-progressive-step-id="${s.id}" data-progressive-part-index="${i}" draggable="true" title="Nắm card để kéo và chèn sang vị trí khác" ondragstart="onProgressiveContentDragStart(event,${s.id},${i})" ondragend="onProgressiveContentDragEnd(event)" ondragover="onProgressiveContentDragOver(event,${s.id},${i})" ondragleave="onProgressiveContentDragLeave(event)" ondrop="dropOnProgressiveContent(event,${s.id},${i})">
+      <div class="sc-head" onclick="jumpToProgressiveContent(${s.id},${i})"><span class="sc-idx">${i+1}</span><span class="sc-type">CONTENT</span><span class="sc-time">${fmt(s._start)} + ${fmt(stepTtsContentOffset(s,i))}</span></div>
+      <div class="sc-summary">${esc(text)}</div>
+      <div class="sc-voice">🔊 ${esc(voice)}${clip.echo?' · vang':''}</div>
+      <div class="sc-ctrls">
+        <label>Thời lượng${clip.audioUrl?' 🔊':''}
+          <input type="number" min="0" step="0.1" value="${dur.toFixed(2)}" title="Độ dài riêng của CONTENT này" onchange="updateProgressiveContentField(${s.id},${i},'duration',this.value)"/>
+        </label>
+        ${i < (parts.length||1)-1 ? `<label>Gap sau
+          <input type="number" min="0" step="0.1" value="${gap}" onchange="updateProgressiveContentField(${s.id},${i},'gapAfter',this.value)"/>
+        </label>` : ''}
+        <div class="sc-actions">
+          <button type="button" onclick="resetProgressiveContentTime(${s.id},${i})" title="Đưa thời lượng về đúng file TTS nếu đã có">⟲ Reset time</button>
+          <button type="button" onclick="event.stopPropagation();editProgressiveContent(${s.id},${i})" title="Sửa chi tiết giọng/echo">✎</button>
+          <button type="button" onclick="deleteProgressiveContent(${s.id},${i})" title="Xóa đoạn này">🗑</button>
+        </div>
+      </div>
+    </div>`;
+    return `<div class="step-row-wrap progressive-content-unit" data-progressive-part-index="${i}"><div class="step-row">${contentCard}${parallelCards.length?`<div class="parallel-media-stack progressive-content-parallel">${parallelCards.map(media=>stepCardHtml(media,steps.indexOf(media))).join('')}</div>`:''}</div></div>`;
+  }).join('');
+  const kind=s.type==='post'?'POST':s.type==='comment'?'COMMENT':'REPLY';
+  return `<div class="mess-box progressive-box${s.id===focusedScriptStepId?' preview-focused-card':''}" data-id="${s.id}" tabindex="-1" ondragover="onProgressiveBoxDragOver(event,${s.id})" ondragleave="onProgressiveBoxDragLeave(event)" ondrop="dropOnProgressiveBox(event,${s.id})">
+    <div class="mess-box-head" onclick="jumpToStep(${s.id})"><span class="sc-idx">${idx+1}</span><span class="sc-type">BOX ${kind}</span><span class="sc-time">${fmt(s._start)} → ${fmt(s._end)}</span><span class="mess-box-drag" draggable="true" onclick="event.stopPropagation()" ondragstart="event.stopPropagation();onStepDragStart(event,${s.id})" ondragend="onStepDragEnd(event)" title="Kéo cả Box bài nhiều đoạn">⠿ Kéo Box</span></div>
+    <div class="mess-box-actions"><label class="mess-box-clear-toggle" onclick="event.stopPropagation()"><input type="checkbox" ${s.clearBefore?'checked':''} onchange="updateStepField(${s.id},'clearBefore',this.checked)"/> Xóa nội dung cũ</label><button type="button" class="mess-box-open" onclick="event.stopPropagation();openProgressiveBoxEditor(${s.id},0)">✎ Edit Box ${kind}</button><button type="button" class="mess-box-open" onclick="event.stopPropagation();openStepModal('${s.type}',${s.id})">Thiết lập bài</button><button type="button" class="mess-box-delete" onclick="event.stopPropagation();deleteStep(${s.id})">Xóa Box</button></div>
+    <div class="mess-box-summary"><div class="mess-box-copy"><div class="mess-box-name">${kind} nhiều đoạn</div><div class="mess-box-meta">${parts.length||1} content · đang dùng render tích luỹ 1 card trên preview/export</div></div></div>
+    <div class="mess-box-steps">${childCards}</div>
+  </div>`;
+}
+function editProgressiveContent(stepId, partIndex){
+  openProgressiveBoxEditor(stepId,partIndex);
+}
+let progressiveEditorStepId=null,progressiveEditorPartIndex=0;
+function openProgressiveBoxEditor(stepId,partIndex=0){
+  const step=steps.find(s=>s.id===stepId);
+  if(!isAdvancedProgressiveStep(step))return;
+  progressiveEditorStepId=stepId;
+  progressiveEditorPartIndex=Math.max(0,Math.min(progressiveTextParts(step).length-1,Number(partIndex)||0));
+  renderProgressiveBoxEditor();
+  document.getElementById('progressive-editor-overlay').classList.add('open');
+}
+function closeProgressiveBoxEditor(){
+  document.getElementById('progressive-editor-overlay').classList.remove('open');
+  progressiveEditorStepId=null;progressiveEditorPartIndex=0;
+}
+function selectProgressiveEditorContent(partIndex){
+  const step=steps.find(s=>s.id===progressiveEditorStepId);
+  if(!step)return;
+  progressiveEditorPartIndex=Math.max(0,Math.min(progressiveTextParts(step).length-1,Number(partIndex)||0));
+  renderProgressiveBoxEditor();
+}
+function progressiveEditorVoiceOptions(selected){
+  return ttsVoices.map((voice,index)=>voice?`<option value="${index}" ${index===selected?'selected':''}>${esc(voice.label)}</option>`:'').join('');
+}
+function renderProgressiveBoxEditor(){
+  const step=steps.find(s=>s.id===progressiveEditorStepId);
+  if(!isAdvancedProgressiveStep(step)){closeProgressiveBoxEditor();return;}
+  const parts=progressiveTextParts(step),index=Math.max(0,Math.min(parts.length-1,progressiveEditorPartIndex));
+  progressiveEditorPartIndex=index;
+  const clip=progressiveContentClip(step,index)||{},voiceIdx=Number(index===0?(step.voiceIdx??0):(clip.voiceIdx??step.voiceIdx??0));
+  const duration=Number(index===0?step.ttsDuration:clip.duration)||0,gap=index<parts.length-1?stepTtsGapAfter(step,index):0;
+  const kind=step.type==='post'?'Post':step.type==='comment'?'Comment':'Reply';
+  document.getElementById('progressive-editor-title').textContent=`Edit Box ${kind}`;
+  document.getElementById('progressive-editor-list').innerHTML=parts.map((text,i)=>`<button type="button" class="progressive-editor-item ${i===index?'active':''}" onclick="selectProgressiveEditorContent(${i})"><span class="progressive-editor-item-index">${i+1}</span><span class="progressive-editor-item-copy"><strong>CONTENT ${i+1}</strong><span>${esc(text)}</span></span></button>`).join('');
+  document.getElementById('progressive-editor-fields').innerHTML=`
+    <div class="progressive-editor-tools"><label><input type="checkbox" ${step.clearBefore?'checked':''} onchange="updateStepField(${step.id},'clearBefore',this.checked)"/> Xóa nội dung cũ trước Box</label><button type="button" class="btn-cancel" style="margin-left:auto;padding:7px 9px;border:0;border-radius:7px;cursor:pointer" onclick="closeProgressiveBoxEditor();openStepModal('${step.type}',${step.id})">Thiết lập bài</button></div>
+    <h4>Chỉnh CONTENT ${index+1}</h4>
+    <label>Nội dung hiển thị</label><textarea id="progressive-edit-text" placeholder="Nhập nội dung...">${esc(parts[index]||'')}</textarea>
+    <div class="row2"><div><label>Giọng đọc</label><select id="progressive-edit-voice">${progressiveEditorVoiceOptions(voiceIdx)}</select></div><div><label>Thời lượng</label><input id="progressive-edit-duration" type="number" min="0" step="0.1" value="${duration.toFixed(2)}"/></div></div>
+    <div class="row2"><div><label>Gap sau</label><input id="progressive-edit-gap" type="number" min="0" step="0.1" value="${gap}" ${index===parts.length-1?'disabled title="CONTENT cuối không có gap sau"':''}/></div><div><label style="display:flex;align-items:center;gap:8px;margin-top:40px"><input id="progressive-edit-echo" type="checkbox" ${clip.echo?'checked':''}/> Giọng vang</label></div></div>
+    <div class="modal-actions"><button type="button" class="progressive-editor-danger" onclick="deleteProgressiveEditorContent()">🗑 Xóa CONTENT</button><button type="button" class="btn-ok" onclick="saveProgressiveEditorContent()">Lưu CONTENT</button></div>`;
+}
+function saveProgressiveEditorContent(){
+  const step=steps.find(s=>s.id===progressiveEditorStepId);
+  if(!isAdvancedProgressiveStep(step))return;
+  const index=progressiveEditorPartIndex,payloads=progressiveTextParts(step).map((_,i)=>progressiveContentMovePayload(step,i)),item=payloads[index];
+  if(!item)return;
+  const text=String(document.getElementById('progressive-edit-text')?.value||'').replace(/\r?\n+/g,' ').trim();
+  if(!text)return alert('Nội dung CONTENT không được để trống.');
+  const voiceIdx=Number(document.getElementById('progressive-edit-voice')?.value),echo=!!document.getElementById('progressive-edit-echo')?.checked;
+  const duration=Math.max(0,Number(document.getElementById('progressive-edit-duration')?.value)||0),gapAfter=Math.max(0,Number(document.getElementById('progressive-edit-gap')?.value)||0);
+  const oldVoice=Number(item.clip.voiceIdx??step.voiceIdx??0),oldEcho=!!item.clip.echo,textChanged=text!==item.text;
+  item.text=text;item.clip.voiceIdx=ttsVoices[voiceIdx]?voiceIdx:oldVoice;item.clip.echo=echo;item.clip.gapAfter=gapAfter;
+  if(index===0)item.clip.ttsDuration=duration;else item.clip.duration=duration;
+  if(textChanged||item.clip.voiceIdx!==oldVoice||echo!==oldEcho){item.clip.audioUrl=null;item.clip.audioDesktopPath=null;if(index===0)item.clip.ttsDuration=0;else item.clip.duration=0;}
+  applyProgressiveContentOrder(step,payloads);
+  renderStepList();renderIdleScene();renderProgressiveBoxEditor();
+}
+function deleteProgressiveEditorContent(){
+  const step=steps.find(s=>s.id===progressiveEditorStepId);if(!step)return;
+  const before=progressiveTextParts(step).length;
+  deleteProgressiveContent(step.id,progressiveEditorPartIndex);
+  const after=progressiveTextParts(step).length;
+  if(after===before)return;
+  progressiveEditorPartIndex=Math.min(progressiveEditorPartIndex,after-1);
+  renderProgressiveBoxEditor();
+}
+function progressiveContentClip(step, partIndex){
+  return partIndex===0 ? step : (step.extraTtsSegments||[])[partIndex-1];
+}
+function stepTtsContentOffset(step, partIndex){
+  const clips=stepTtsClips(step);
+  let offset=appearanceDelay(step);
+  for(let i=0;i<partIndex;i++)offset+=(Number(clips[i]?.duration||0)+stepTtsGapAfter(step,i));
+  return offset;
+}
+function updateProgressiveContentField(stepId, partIndex, field, rawValue){
+  const step=steps.find(s=>s.id===stepId);
+  if(!isAdvancedProgressiveStep(step))return;
+  const clip=progressiveContentClip(step,partIndex);
+  if(!clip)return;
+  const value=Math.max(0,Number(rawValue)||0);
+  if(field==='duration'){
+    if(partIndex===0)step.ttsDuration=value;else clip.duration=value;
+  }else if(field==='gapAfter'){
+    if(partIndex===0)step.progressiveGapAfterFirst=value;else clip.gapAfter=value;
+  }
+  step.duration=stepTtsTotalDuration(step)||step.duration;
+  bumpStepRevision(step.id);
+  renderStepList();
+  renderIdleScene();
+}
+function resetProgressiveContentTime(stepId, partIndex){
+  const step=steps.find(s=>s.id===stepId);
+  if(!isAdvancedProgressiveStep(step))return;
+  const clip=progressiveContentClip(step,partIndex);
+  if(!clip)return;
+  const duration=Number(partIndex===0?step.ttsDuration:clip.duration)||0;
+  if(!duration)return alert('CONTENT này chưa có file TTS để reset time.');
+  if(partIndex===0)step.ttsDuration=duration;else clip.duration=duration;
+  step.duration=stepTtsTotalDuration(step)||step.duration;
+  bumpStepRevision(step.id);
+  renderStepList();
+  renderIdleScene();
+}
+function deleteProgressiveContent(stepId, partIndex){
+  const step=steps.find(s=>s.id===stepId);
+  if(!isAdvancedProgressiveStep(step))return;
+  const parts=progressiveTextParts(step);
+  if(parts.length<=1)return alert('Box cần ít nhất 1 CONTENT.');
+  if(!confirm(`Xóa CONTENT #${partIndex+1}?`))return;
+  parts.splice(partIndex,1);
+  steps=steps.filter(media=>!(isProgressiveContentParallel(media)&&media.parallelAnchorStepId===step.id&&Number(media.parallelAnchorPartIndex||0)===partIndex));
+  for(const media of steps){
+    if(isProgressiveContentParallel(media)&&media.parallelAnchorStepId===step.id&&Number(media.parallelAnchorPartIndex||0)>partIndex)media.parallelAnchorPartIndex=Number(media.parallelAnchorPartIndex||0)-1;
+  }
+  const oldSegments=step.extraTtsSegments||[];
+  const oldSettings=[{voiceIdx:step.voiceIdx,echo:step.echo,gapAfter:step.progressiveGapAfterFirst,ttsDuration:step.ttsDuration,audioUrl:step.audioUrl,audioDesktopPath:step.audioDesktopPath},...oldSegments.map(seg=>({...seg}))];
+  oldSettings.splice(partIndex,1);
+  step.text=parts.join('\n');
+  step.ttsText=parts[0]||'';
+  const first=oldSettings[0]||{};
+  step.voiceIdx=first.voiceIdx??step.voiceIdx;
+  step.echo=!!first.echo;
+  step.progressiveGapAfterFirst=first.gapAfter??.3;
+  step.ttsDuration=first.ttsDuration||first.duration||0;
+  step.audioUrl=first.audioUrl||null;
+  step.audioDesktopPath=first.audioDesktopPath||null;
+  step.extraTtsSegments=parts.slice(1).map((text,index)=>{
+    const old=oldSettings[index+1]||{};
+    return {text,voiceIdx:old.voiceIdx??step.voiceIdx,echo:!!old.echo,gapAfter:old.gapAfter??.3,audioUrl:old.audioUrl||null,audioDesktopPath:old.audioDesktopPath||null,duration:old.duration||0};
+  });
+  step.duration=stepTtsTotalDuration(step)||step.duration;
+  bumpStepRevision(step.id);
+  renderStepList();
+  renderIdleScene();
 }
 function messengerBoxPositionCtrlsHtml(groupId,groupSteps){
   const key=encodeURIComponent(groupId),visual=groupSteps.find(s=>POSITIONABLE_TYPES.includes(s.type));
@@ -4547,6 +4884,7 @@ function renderStepList() {
     }
     if (row.length === 1) {
       const idx = steps.indexOf(row[0]);
+      if(isAdvancedProgressiveStep(row[0]))return progressiveBoxHtml(row[0],idx);
       return stepCardHtml(row[0], idx);
     }
     return stepRowsHtml(row);
@@ -4556,7 +4894,7 @@ function renderStepList() {
 }
 
 function exportTypeCounts() {
-  const counts = { post:0, comment:0, reply:0, image:0, sticker:0, mess:0, audio:0 };
+  const counts = { post:0, comment:0, reply:0, text:0, note:0, image:0, sticker:0, mess:0, audio:0 };
   for (const step of steps) if (Object.prototype.hasOwnProperty.call(counts, step.type)) counts[step.type]++;
   return counts;
 }
@@ -4595,6 +4933,7 @@ window.addEventListener('credit-balance-changed', updateCreditLabels);
 
 let _dragStepIds = null; // luôn là mảng — [id] khi kéo 1 card, [id1,id2] khi kéo cả cụm
 let _dragVisualOrigin=null,_dragVisualContainer=null,_dragPreviewTargetId=null,_dragPreviewAfter=false,_dragPreviewUnit=null;
+let _dragProgressiveContent=null,_dragProgressiveDestination=null;
 function clearDragPreview(){document.querySelectorAll('.drag-preview-origin,.drag-preview-shift,.drag-preview-target').forEach(el=>{el.classList.remove('drag-preview-origin','drag-preview-shift','drag-preview-target');el.style.transform='';});_dragVisualOrigin=null;_dragVisualContainer=null;_dragPreviewTargetId=null;_dragPreviewAfter=false;_dragPreviewUnit=null;}
 function resetDragShifts(){document.querySelectorAll('.drag-preview-shift,.drag-preview-target').forEach(el=>{el.classList.remove('drag-preview-shift','drag-preview-target');el.style.transform='';});_dragPreviewTargetId=null;_dragPreviewAfter=false;_dragPreviewUnit=null;}
 function startDragPreview(origin){clearDragPreview();_dragVisualOrigin=origin;_dragVisualContainer=origin.parentElement;origin.classList.add('drag-preview-origin');}
@@ -4609,7 +4948,7 @@ function untransformedDragRect(el){
   try{const matrix=new DOMMatrixReadOnly(transform);return {left:rect.left-matrix.m41,right:rect.right-matrix.m41,top:rect.top-matrix.m42,bottom:rect.bottom-matrix.m42,width:rect.width,height:rect.height};}catch(_){return rect;}
 }
 function updateDragPreview(ev,fallbackId=null,forcedUnit=null){
-  if(!_dragVisualOrigin||!_dragVisualContainer||!_dragStepIds)return;
+  if(!_dragVisualOrigin||!_dragVisualContainer||(!_dragStepIds&&!_dragProgressiveContent))return;
   const unit=forcedUnit||dragUnitForTarget(ev.currentTarget);if(!unit||unit===_dragVisualOrigin){resetDragShifts();return;}
   const units=[..._dragVisualContainer.children].filter(el=>el===_dragVisualOrigin||el.classList.contains('step-card')||el.classList.contains('mess-box')||el.classList.contains('step-row-wrap'));
   const sourceIndex=units.indexOf(_dragVisualOrigin),targetIndex=units.indexOf(unit);if(sourceIndex<0||targetIndex<0)return;
@@ -4659,10 +4998,188 @@ function dropParallelAudioOut(ev){
   ev.preventDefault();ev.stopPropagation();
   detachDraggedParallelMediaToContainer(ev.currentTarget);
 }
+function onProgressiveContentDragStart(ev,stepId,partIndex){
+  ev.stopPropagation();
+  _dragProgressiveContent={stepId,partIndex};
+  _dragProgressiveDestination=partIndex;
+  _dragStepIds=null;
+  const card=ev.currentTarget.closest('.progressive-content-card');
+  const unit=card?.closest('.progressive-content-unit');
+  card?.classList.add('dragging');
+  if(unit)startDragPreview(unit);
+  ev.dataTransfer.effectAllowed='move';
+  ev.dataTransfer.setData('text/plain',`content:${stepId}:${partIndex}`);
+}
+function onProgressiveContentDragEnd(ev){
+  ev.stopPropagation();
+  document.querySelectorAll('.progressive-content-card.dragging,.progressive-content-card.reorder-over,.progressive-content-card.drag-over').forEach(el=>el.classList.remove('dragging','reorder-over','drag-over'));
+  clearDragPreview();
+  _dragProgressiveContent=null;
+  _dragProgressiveDestination=null;
+}
+function progressiveContentMovePayload(step,partIndex){
+  const parts=progressiveTextParts(step);
+  const oldSegments=step.extraTtsSegments||[];
+  const clip=partIndex===0?{voiceIdx:step.voiceIdx,echo:step.echo,gapAfter:step.progressiveGapAfterFirst,ttsDuration:step.ttsDuration,audioUrl:step.audioUrl,audioDesktopPath:step.audioDesktopPath}:{...(oldSegments[partIndex-1]||{})};
+  const media=steps.filter(s=>isProgressiveContentParallel(s)&&s.parallelAnchorStepId===step.id&&Number(s.parallelAnchorPartIndex||0)===partIndex);
+  return {text:parts[partIndex]||'',clip,media};
+}
+function applyProgressiveContentOrder(step,payloads){
+  step.text=payloads.map(item=>item.text).join('\n');
+  const first=payloads[0]?.clip||{};
+  step.ttsText=payloads[0]?.text||'';
+  step.voiceIdx=first.voiceIdx??step.voiceIdx;
+  step.echo=!!first.echo;
+  step.progressiveGapAfterFirst=first.gapAfter??.3;
+  step.ttsDuration=first.ttsDuration||first.duration||0;
+  step.audioUrl=first.audioUrl||null;
+  step.audioDesktopPath=first.audioDesktopPath||null;
+  step.extraTtsSegments=payloads.slice(1).map(item=>({text:item.text,voiceIdx:item.clip.voiceIdx??step.voiceIdx,echo:!!item.clip.echo,gapAfter:item.clip.gapAfter??.3,audioUrl:item.clip.audioUrl||null,audioDesktopPath:item.clip.audioDesktopPath||null,duration:item.clip.duration||0}));
+  payloads.forEach((item,index)=>item.media.forEach(media=>{media.parallelAnchorStepId=step.id;media.parallelAnchorPartIndex=index;}));
+  step.duration=stepTtsTotalDuration(step)||step.duration;
+  bumpStepRevision(step.id);
+}
+function reorderProgressiveContent(stepId,fromIndex,toIndex){
+  const step=steps.find(s=>s.id===stepId);
+  if(!isAdvancedProgressiveStep(step))return;
+  const payloads=progressiveTextParts(step).map((_,index)=>progressiveContentMovePayload(step,index));
+  if(fromIndex<0||fromIndex>=payloads.length||toIndex<0||toIndex>=payloads.length||fromIndex===toIndex)return;
+  const [item]=payloads.splice(fromIndex,1);
+  payloads.splice(toIndex,0,item);
+  applyProgressiveContentOrder(step,payloads);
+  renderStepList();
+  renderIdleScene();
+}
+function onProgressiveContentDragOver(ev,stepId,partIndex){
+  if(_dragProgressiveContent){
+    if(_dragProgressiveContent.stepId!==stepId)return;
+    ev.preventDefault();ev.stopPropagation();ev.dataTransfer.dropEffect='move';
+    const targetUnit=ev.currentTarget.closest('.progressive-content-unit');
+    if(targetUnit&&targetUnit!==_dragVisualOrigin){
+      updateDragPreview(ev,null,targetUnit);
+      const from=_dragProgressiveContent.partIndex;
+      let destination=partIndex+(_dragPreviewAfter?1:0);
+      if(from<destination)destination--;
+      _dragProgressiveDestination=Math.max(0,destination);
+    }
+    return;
+  }
+  const media=_dragStepIds&&_dragStepIds.length===1?steps.find(s=>s.id===_dragStepIds[0]):null;
+  const target=steps.find(s=>s.id===stepId);
+  if(!canAttachMediaToProgressiveContent(media,target,partIndex))return;
+  ev.preventDefault();
+  ev.stopPropagation();
+  ev.currentTarget.classList.add('drag-over');
+  ev.dataTransfer.dropEffect='move';
+}
+function onProgressiveContentDragLeave(ev){
+  if(ev.currentTarget.contains(ev.relatedTarget))return;
+  ev.currentTarget.classList.remove('drag-over','reorder-over');
+}
+function progressiveContentTargetFromEvent(ev,boxEl){
+  const cards=[...boxEl.querySelectorAll('.progressive-content-card[data-progressive-part-index]')];
+  if(!cards.length)return null;
+  const direct=ev.target.closest?.('.progressive-content-card[data-progressive-part-index]');
+  if(direct&&boxEl.contains(direct))return direct;
+  const y=ev.clientY;
+  return cards.reduce((best,card)=>{
+    const rect=card.getBoundingClientRect();
+    const middle=rect.top+rect.height/2;
+    const distance=Math.abs(y-middle);
+    return !best||distance<best.distance?{card,distance}:best;
+  },null)?.card||cards[0];
+}
+function clearProgressiveBoxDropMarks(boxEl){
+  (boxEl||document).querySelectorAll('.progressive-content-card.drag-over').forEach(el=>el.classList.remove('drag-over'));
+}
+function onProgressiveBoxDragOver(ev,stepId){
+  if(_dragProgressiveContent){
+    ev.preventDefault();ev.stopPropagation();ev.dataTransfer.dropEffect='move';
+    const contentEl=progressiveContentTargetFromEvent(ev,ev.currentTarget);
+    const targetUnit=contentEl?.closest('.progressive-content-unit');
+    if(targetUnit&&targetUnit!==_dragVisualOrigin){
+      const partIndex=Number(contentEl.dataset.progressivePartIndex),from=_dragProgressiveContent.partIndex;
+      updateDragPreview(ev,null,targetUnit);
+      let destination=partIndex+(_dragPreviewAfter?1:0);
+      if(from<destination)destination--;
+      _dragProgressiveDestination=Math.max(0,destination);
+    }
+    return;
+  }
+  const media=_dragStepIds&&_dragStepIds.length===1?steps.find(s=>s.id===_dragStepIds[0]):null;
+  const target=steps.find(s=>s.id===stepId);
+  const contentEl=progressiveContentTargetFromEvent(ev,ev.currentTarget);
+  const partIndex=Number(contentEl?.dataset.progressivePartIndex);
+  if(!canAttachMediaToProgressiveContent(media,target,partIndex)){
+    onStepDragOver(ev,stepId);
+    return;
+  }
+  ev.preventDefault();
+  ev.stopPropagation();
+  ev.dataTransfer.dropEffect='move';
+  clearProgressiveBoxDropMarks(ev.currentTarget);
+  contentEl.classList.add('drag-over');
+  resetDragShifts();
+}
+function onProgressiveBoxDragLeave(ev){
+  if(ev.currentTarget.contains(ev.relatedTarget))return;
+  clearProgressiveBoxDropMarks(ev.currentTarget);
+  onStepDragLeave(ev);
+}
+function dropOnProgressiveBox(ev,stepId){
+  if(_dragProgressiveContent){
+    ev.preventDefault();ev.stopPropagation();
+    const from={..._dragProgressiveContent},destination=_dragProgressiveDestination;
+    _dragProgressiveContent=null;_dragProgressiveDestination=null;
+    clearProgressiveBoxDropMarks(ev.currentTarget);clearDragPreview();
+    if(from.stepId===stepId&&destination!=null)reorderProgressiveContent(stepId,from.partIndex,destination);
+    return;
+  }
+  const media=_dragStepIds&&_dragStepIds.length===1?steps.find(s=>s.id===_dragStepIds[0]):null;
+  const target=steps.find(s=>s.id===stepId);
+  const contentEl=progressiveContentTargetFromEvent(ev,ev.currentTarget);
+  const partIndex=Number(contentEl?.dataset.progressivePartIndex);
+  if(canAttachMediaToProgressiveContent(media,target,partIndex)){
+    clearProgressiveBoxDropMarks(ev.currentTarget);
+    dropOnProgressiveContent(ev,stepId,partIndex);
+    return;
+  }
+  clearProgressiveBoxDropMarks(ev.currentTarget);
+  onStepDrop(ev,stepId);
+}
+function dropOnProgressiveContent(ev,stepId,partIndex){
+  ev.preventDefault();
+  ev.stopPropagation();
+  ev.currentTarget.classList.remove('drag-over','reorder-over');
+  if(_dragProgressiveContent){
+    const from={..._dragProgressiveContent};
+    const destination=_dragProgressiveDestination??partIndex;
+    _dragProgressiveContent=null;_dragProgressiveDestination=null;
+    clearDragPreview();
+    reorderProgressiveContent(stepId,from.partIndex,destination);
+    return;
+  }
+  const media=_dragStepIds&&_dragStepIds.length===1?steps.find(s=>s.id===_dragStepIds[0]):null;
+  const target=steps.find(s=>s.id===stepId);
+  if(!canAttachMediaToProgressiveContent(media,target,partIndex)){clearDragPreview();return;}
+  const oldPositions=flipCapturePositions();
+  oldPositions.delete(String(media.id));
+  const idx=steps.findIndex(s=>s.id===media.id);
+  if(idx>=0)steps.splice(idx,1);
+  attachMediaToProgressiveContent(media,target,partIndex);
+  const anchorIdx=steps.findIndex(s=>s.id===target.id);
+  let insertAt=anchorIdx<0?steps.length:anchorIdx+1;
+  while(insertAt<steps.length&&isProgressiveContentParallel(steps[insertAt])&&steps[insertAt].parallelAnchorStepId===target.id)insertAt++;
+  steps.splice(insertAt,0,media);
+  clearDragPreview();
+  renderStepList();
+  renderIdleScene();
+  flipPlay(oldPositions);
+}
 function canAttachMediaTypeToStep(mediaStep,targetStep){
   if(!mediaStep||!targetStep||mediaStep.id===targetStep.id||isParallelMedia(targetStep))return false;
-  if(!['audio','image','sticker'].includes(mediaStep.type))return false;
-  if(['post','comment','reply','mess'].includes(targetStep.type))return true;
+  if(!['audio','image','sticker','text'].includes(mediaStep.type))return false;
+  if(['post','comment','reply','text','note','mess'].includes(targetStep.type))return true;
   // Ảnh/sticker độc lập cũng là card neo hợp lệ cho âm thanh. Chỉ audio
   // được ghép vào visual để tránh vô tình chồng thêm một visual lên visual.
   return mediaStep.type==='audio'&&['image','sticker'].includes(targetStep.type);
@@ -4678,8 +5195,25 @@ function canAttachMediaToStep(mediaStep,targetStep){
 }
 function attachMediaToStep(mediaStep,targetStep,destinationGroupId=null){
   mediaStep.parallel=true;
+  delete mediaStep.parallelAnchorStepId;
+  delete mediaStep.parallelAnchorPartIndex;
   mediaStep.groupId=destinationGroupId||stepGroupId(targetStep)||false;
   // Mọi media song song giữ thời lượng riêng; track chính không chờ media.
+  mediaStep.duration=mediaStep.intrinsicMediaDuration||mediaStep.duration||DEFAULT_DUR[mediaStep.type];
+}
+function canAttachMediaToProgressiveContent(mediaStep,targetStep,partIndex){
+  if(!mediaStep||!isAdvancedProgressiveStep(targetStep)||!['audio','image','sticker','text'].includes(mediaStep.type))return false;
+  if(isParallelMedia(mediaStep)&&mediaStep.parallelAnchorStepId===targetStep.id&&Number(mediaStep.parallelAnchorPartIndex||0)===Number(partIndex||0))return false;
+  return parallelMediaCountForProgressiveContent(targetStep,partIndex,mediaStep.id)<2;
+}
+function parallelMediaCountForProgressiveContent(targetStep,partIndex,excludedId=null){
+  return steps.filter(s=>isProgressiveContentParallel(s)&&s.parallelAnchorStepId===targetStep.id&&Number(s.parallelAnchorPartIndex||0)===Number(partIndex||0)&&s.id!==excludedId).length;
+}
+function attachMediaToProgressiveContent(mediaStep,targetStep,partIndex){
+  mediaStep.parallel=true;
+  mediaStep.parallelAnchorStepId=targetStep.id;
+  mediaStep.parallelAnchorPartIndex=Number(partIndex)||0;
+  mediaStep.groupId=stepGroupId(targetStep)||false;
   mediaStep.duration=mediaStep.intrinsicMediaDuration||mediaStep.duration||DEFAULT_DUR[mediaStep.type];
 }
 function detachDraggedParallelMediaToContainer(container){
@@ -4689,6 +5223,8 @@ function detachDraggedParallelMediaToContainer(container){
   const oldPositions=flipCapturePositions();
   steps.splice(idx,1);
   media.parallel=false;
+  delete media.parallelAnchorStepId;
+  delete media.parallelAnchorPartIndex;
   const destinationBox=container.closest?.('.mess-box');
   media.groupId=destinationBox?decodeURIComponent(destinationBox.dataset.groupId||''):false;
   let insertAt=steps.length;
@@ -4706,6 +5242,8 @@ function detachParallelMedia(id){
   if(!media||!isParallelMedia(media))return;
   const oldPositions=flipCapturePositions();
   media.parallel=false;
+  delete media.parallelAnchorStepId;
+  delete media.parallelAnchorPartIndex;
   normalizeMessengerConversationOrder();
   renderStepList();renderIdleScene();flipPlay(oldPositions);
 }
@@ -4871,7 +5409,7 @@ async function resetStepTime(id){
     const video=document.createElement('video');video.preload='metadata';
     video.onloadedmetadata=()=>resolve(Number(video.duration)||0);video.onerror=()=>resolve(0);video.src=s.mediaUrl;
   });
-  if(!duration&&['post','comment','reply','image','mess'].includes(s.type)){
+  if(!duration&&['post','comment','reply','text','note','image','mess'].includes(s.type)){
     duration=stepTtsClips(s).reduce((sum,clip)=>sum+(Number(clip.duration)||0),0)||Number(s.ttsDuration||0);
   }
   if(!duration)duration=DEFAULT_DUR[s.type]||1;
@@ -5016,6 +5554,23 @@ function jumpToStep(id) {
   focusScriptStep(s.id);
 }
 
+function jumpToProgressiveContent(stepId, partIndex) {
+  const s = steps.find(x => x.id === stepId);
+  if (!isAdvancedProgressiveStep(s) || playing) return;
+  computeTimeline();
+  focusedScriptStepId = s.id;
+  selectedOverlayStepId = null;
+  const offset = stepTtsContentOffset(s, Math.max(0, Number(partIndex) || 0));
+  playheadT = Math.min(s._end, s._start + offset + .01);
+  renderAtTime(playheadT);
+  updateProgress(playheadT, totalDuration());
+  document.querySelectorAll('.progressive-content-card').forEach(card => {
+    card.classList.toggle('preview-focused-card',
+      Number(card.dataset.progressiveStepId) === s.id &&
+      Number(card.dataset.progressivePartIndex) === Number(partIndex));
+  });
+}
+
 function nudgeStepOffset(id, dx, dy) {
   const s = steps.find(x => x.id === id);
   if (!s) return;
@@ -5069,6 +5624,14 @@ function resetMessengerBoxPosition(groupId){
 
 function deleteStep(id) {
   const deleting = steps.find(x => x.id === id);
+  if (deleting && isAdvancedProgressiveStep(deleting)) {
+    const removeIds = new Set(steps.filter(s => isProgressiveContentParallel(s) && s.parallelAnchorStepId === deleting.id).map(s => s.id));
+    removeIds.add(deleting.id);
+    steps = steps.filter(x => !removeIds.has(x.id));
+    renderStepList();
+    renderIdleScene();
+    return;
+  }
   if (deleting && deleting.type === 'mess') {
     const removedIndex = deleting.messIndex ?? ((deleting.messHistory || []).length - 1);
     for (const s of steps) {
@@ -5266,8 +5829,8 @@ async function importProjectJson(input) {
       input.value = '';
       return;
     }
-    const allowedTypes = new Set(['post', 'comment', 'reply', 'image', 'sticker', 'mess', 'audio']);
-    const urlFields = new Set(['mediaUrl', 'avatar', 'avatarUrl', 'partnerAvatar', 'audioUrl', 'audio2Url']);
+    const allowedTypes = new Set(['post', 'comment', 'reply', 'text', 'note', 'image', 'sticker', 'mess', 'audio']);
+    const urlFields = new Set(['mediaUrl', 'noteBgUrl', 'avatar', 'avatarUrl', 'partnerAvatar', 'audioUrl', 'audio2Url']);
     let stringChars = 0;
     const cleanImportedValue = (value, key = '', depth = 0) => {
       if (depth > 8) throw new Error('Dữ liệu lồng quá sâu');
@@ -5407,10 +5970,9 @@ function ttsClipAt(t) {
   // biết "tại thời điểm t (tính từ lúc step bắt đầu), đang ở đoạn nào, lùi
   // bao xa vào trong đoạn đó" — giống hệt nguyên lý ttsDuration/ttsDuration2
   // đã dùng cho reply 2-khối trước đây (giờ tổng quát hoá cho N đoạn).
-  if ((s.type === 'post' || s.type === 'comment' || s.type === 'reply' || s.type === 'image' || s.type === 'mess') && s.audioUrl) {
+  if ((s.type === 'post' || s.type === 'comment' || s.type === 'reply' || s.type === 'text' || s.type === 'note' || s.type === 'image' || s.type === 'mess') && s.audioUrl) {
     let acc = 0;
     const clips = stepTtsClips(s);
-    const pause = stepTtsPause(s);
     for (let i = 0; i < clips.length; i++) {
       const clip = clips[i];
       if (!clip.audioUrl) continue;
@@ -5420,7 +5982,7 @@ function ttsClipAt(t) {
       if (localT < dur - 1e-6 || i === clips.length - 1) {
         return { url: clip.audioUrl, offset: localT, stepId: s.id, part: i + 1 };
       }
-      acc += dur + (i < clips.length - 1 ? pause : 0);
+      acc += dur + (i < clips.length - 1 ? stepTtsGapAfter(s, i) : 0);
     }
   }
   return null;
