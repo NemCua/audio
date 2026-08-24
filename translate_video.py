@@ -126,6 +126,58 @@ def atempo_chain(ratio: float) -> list[str]:
     return filters
 
 
+def _groq_field(obj, name, default=None):
+    """Đọc field từ object SDK hoặc dict Groq trả về."""
+    if hasattr(obj, name):
+        return getattr(obj, name)
+    if isinstance(obj, dict):
+        return obj.get(name, default)
+    return default
+
+
+def _estimate_first_cue_start(text: str, end_sec: float, first_word_start: float | None = None) -> float:
+    """Ước lượng lại start cue đầu khi Whisper gán nhầm 0.0s.
+
+    Ưu tiên word timestamp đầu tiên nếu Groq trả về. Nếu không có, dùng độ dài
+    câu để ước lượng thời lượng lời nói rồi lùi từ end_sec. Công thức này chỉ
+    dùng cho cue đầu bị kéo dài bất thường, không đụng các cue bình thường.
+    """
+    if first_word_start is not None and first_word_start > 0.35 and first_word_start < end_sec:
+        return first_word_start
+    compact = re.sub(r"\s+", "", text or "")
+    # Tiếng Trung/Nhật/Hàn thường đọc khoảng 3.5-5 ký tự/giây; lấy mức hơi
+    # bảo thủ để không đẩy cue quá sát cuối câu.
+    estimated_speech = max(0.8, min(6.0, len(compact) / 4.2))
+    return max(0.0, end_sec - estimated_speech)
+
+
+def _fix_first_cue_zero_start(segments: list, words: list) -> list[tuple[float, float, str]]:
+    """Groq Whisper đôi khi trả segment đầu từ 0.0s dù audio thật im lặng đầu.
+
+    Nếu segment đầu bắt đầu gần 0 và dài bất thường (>3s), dùng word timestamp
+    hoặc độ dài câu để dời start tới gần thời điểm lời nói thật.
+    """
+    out: list[tuple[float, float, str]] = []
+    first_word_start = None
+    if words:
+        try:
+            first_word_start = float(_groq_field(words[0], "start", 0.0) or 0.0)
+        except Exception:
+            first_word_start = None
+    for i, seg in enumerate(segments):
+        s = float(_groq_field(seg, "start", 0.0) or 0.0)
+        e = float(_groq_field(seg, "end", s) or s)
+        t = str(_groq_field(seg, "text", "") or "").strip()
+        if i == 0 and s <= 0.15 and e - s > 3.0:
+            fixed = _estimate_first_cue_start(t, e, first_word_start)
+            if fixed > s + 0.25 and fixed < e - 0.15:
+                print(f"  → Sửa cue đầu: start {s:.2f}s → {fixed:.2f}s (Whisper segment 0.0s giả)")
+                s = fixed
+        if t:
+            out.append((s, e, t))
+    return out
+
+
 # ---------------------------------------------------------------------------
 # STEP 1: Extract audio + tách vocals/background (Demucs)
 # ---------------------------------------------------------------------------
@@ -231,14 +283,12 @@ def stt_groq(audio_path: Path, groq_key: str) -> list[dict]:
                 model="whisper-large-v3",
                 language="zh",
                 response_format="verbose_json",
+                timestamp_granularities=["word", "segment"],
             )
         segs = resp.segments or []
-        for seg in segs:
-            s = (seg.start if hasattr(seg, "start") else seg["start"]) + time_offset
-            e = (seg.end   if hasattr(seg, "end")   else seg["end"])   + time_offset
-            t = (seg.text  if hasattr(seg, "text")  else seg["text"]).strip()
-            if t:
-                all_segments.append((s, e, t))
+        words = _groq_field(resp, "words", []) or []
+        for s, e, t in _fix_first_cue_zero_start(segs, words):
+            all_segments.append((s + time_offset, e + time_offset, t))
 
     if not all_segments:
         raise RuntimeError("Groq STT không trả về segments. Kiểm tra API key và file audio.")
