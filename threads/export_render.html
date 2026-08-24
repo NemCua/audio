@@ -638,6 +638,7 @@ header span { font-size: 12px; color: #4b5563; }
   color: #ccc; font-size: 3cqw; font-weight: 700; text-align: center; padding: 4cqw;
 }
 .retained-meme-layer{position:absolute;inset:0;z-index:7;pointer-events:none}.retained-meme-layer .meme-overlay{z-index:auto}
+.note-subtitle-layer{display:none;position:absolute;z-index:18;left:7%;right:7%;bottom:14%;color:#fff;font-family:Arial,sans-serif;font-size:5.3cqw;font-weight:800;line-height:1.2;text-align:center;-webkit-text-stroke:.28cqw #000;paint-order:stroke fill;text-shadow:0 .45cqw 1.2cqw #000;pointer-events:none}.note-subtitle-layer.show{display:block}
 
 .preview-info {
   width: 100%;
@@ -919,6 +920,7 @@ header span { font-size: 12px; color: #4b5563; }
   <div class="thr-stack" id="thr-stack"></div>
   <div class="retained-meme-layer" id="retained-meme-layer"></div>
   <div class="meme-overlay" id="meme-overlay" style="display:none"></div>
+  <div class="note-subtitle-layer" id="note-subtitle-layer"></div>
 </div>
 <!-- Checkbox giả — displayIdentity()/blurIdentityOn() trong render_shared.js
      đọc #blur-identity-toggle qua getElementById, không tồn tại trang
@@ -1061,6 +1063,8 @@ function measureMemeBox() {
 
 async function renderStackAt(t) {
   const { stack, memeStep, memeSteps=[] } = computeSceneAt(t);
+  const noteSubtitle=document.getElementById('note-subtitle-layer'),noteSubtitleText=noteSubtitleTextAt(t,stack);
+  if(noteSubtitle){noteSubtitle.textContent=noteSubtitleText;noteSubtitle.classList.toggle('show',!!noteSubtitleText);}
   const stackEl = document.getElementById('thr-stack');
   stackEl.innerHTML = stack.map(s => buildCardHtml(stepForRenderAtTime(s, t))).join('');
   setAppearanceAnimationsAt(stack, t, stackEl);

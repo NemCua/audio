@@ -142,7 +142,7 @@ async function download(url, output) {
 async function collectAudio(steps, workDir) {
   const tracks = []; let index = 0;
   for (const step of steps) {
-    if (['post', 'comment', 'reply', 'image', 'mess'].includes(step.type) && step.audioUrl) {
+    if (['post', 'comment', 'reply', 'text', 'note', 'image', 'mess'].includes(step.type) && step.audioUrl) {
       const clips = [{ audioUrl: step.audioUrl, duration: step.ttsDuration || 0 }, ...(step.extraTtsSegments || [])];
       const pause = step.progressiveReveal ? Math.max(0, Number(step.progressivePause ?? .3)) : 0;
       const delay = appearanceDelay(step);

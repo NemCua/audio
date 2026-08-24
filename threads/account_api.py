@@ -42,6 +42,8 @@ DEFAULT_CREDIT_PRICING = {
     "post": 100,
     "comment": 100,
     "reply": 100,
+    "text": 100,
+    "note": 100,
     "image": 150,
     "sticker": 150,
     "mess": 20,

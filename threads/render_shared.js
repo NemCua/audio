@@ -166,6 +166,27 @@ function progressiveContentOffset(s, partIndex) {
   return offset;
 }
 
+function noteSubtitleTextAt(t, stack) {
+  const notes=(stack||[]).filter(step=>step.type==='note'&&step.noteSubtitles!==false);
+  for(let n=notes.length-1;n>=0;n--){
+    const step=notes[n],local=Math.max(0,Number(t)-Number(step._start)-appearanceDelay(step));
+    const clips=[{words:step.subtitleWords||[],duration:Number(step.ttsDuration||0)},...(step.extraTtsSegments||[]).map(seg=>({words:seg.subtitleWords||[],duration:Number(seg.duration||0),gapAfter:Number(seg.gapAfter||0)}))];
+    let offset=0;
+    for(let clipIndex=0;clipIndex<clips.length;clipIndex++){
+      const clip=clips[clipIndex],words=Array.isArray(clip.words)?clip.words:[],duration=Number(clip.duration||0);
+      if(words.length&&local>=offset-1e-6&&local<offset+duration-1e-6){
+        const clipLocal=local-offset;
+        for(let start=0;start<words.length;start+=14){
+          const group=words.slice(start,start+14),groupStart=Number(group[0]?.start||0),nextStart=start+14<words.length?Number(words[start+14]?.start||0):duration;
+          if(clipLocal>=groupStart-1e-6&&clipLocal<nextStart-1e-6)return group.map(item=>String(item.word||'').trim()).filter(Boolean).join(' ');
+        }
+      }
+      offset+=duration+(step.progressiveReveal&&clipIndex<clips.length-1?Number(clip.gapAfter||step.progressivePause||.3):0);
+    }
+  }
+  return '';
+}
+
 // ---------- Build 1 thẻ post/comment/reply cho stack ----------
 // ---------- Build HTML thẻ post/comment/reply — BÊ NGUYÊN SI cấu trúc từ
 // threads_ui_mock.html (mẫu 1/2/3): .thr-row > .avatar-wrap + .thr-main >
@@ -341,10 +362,10 @@ function buildPlainTextCardHtml(s,posClass,stepAttr,posAttr){
 }
 function buildNoteCardHtml(s,posClass,stepAttr,posAttr){
   const preset=['black','paper','sunset','ocean','lavender','glass','custom'].includes(s.noteBgPreset)?s.noteBgPreset:'black';
-  const size=Math.max(2,Math.min(12,Number(s.textFontSize)||5.2));
-  const bgUrl=safeMediaUrl(s.noteBgUrl);
+  const size=Math.max(2,Math.min(12,Number(s.textFontSize)||2.6));
+  const bgUrl=preset==='custom'?safeMediaUrl(s.noteBgUrl):'';
   const radius=Math.max(0,Math.min(10,Number.isFinite(Number(s.cardRadius))?Number(s.cardRadius):1.2)),padding=Math.max(0,Math.min(14,Number.isFinite(Number(s.notePadding))?Number(s.notePadding):6.2));
-  const weight=Math.max(200,Math.min(900,Number(s.textFontWeight)||560));
+  const weight=Math.max(200,Math.min(900,Number(s.textFontWeight)||200));
   const style=`--text-size:${size}cqw;--text-color:${safeCardColor(s.textColor,'#ffffff')};--note-padding:${padding}cqw;font-weight:${weight};border-radius:${radius}cqw;${preset==='custom'||preset==='black'?`--note-bg:${safeCardColor(s.cardBgColor,'#050505')};`:''}${bgUrl?'--note-overlay:linear-gradient(#0005,#0009)':''}`;
   const bg=bgUrl?`<img class="note-card-bg-image" src="${esc(bgUrl)}" alt="" referrerpolicy="no-referrer"/>`:'';
   return `<div class="${posClass}"${stepAttr}${posAttr}><div class="note-card note-bg-${preset}${textCardFontClass(s.textFont)}" style="${style}">${bg}<div class="note-card-text">${esc(s.text||'')}</div></div></div>`;

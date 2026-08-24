@@ -156,10 +156,56 @@ class ProjectTTSItem(BaseModel):
     resource_id: str | None = None
     speed: float = 1.0
     echo: bool = False
+    word_timestamps: bool = False
 
 
 class ProjectTTSBatchRequest(BaseModel):
     items: list[ProjectTTSItem]
+
+
+class NoteSubtitleRequest(BaseModel):
+    audio_url: str
+
+
+def _groq_word_timestamps(audio_path: Path) -> list[dict]:
+    """Lấy timestamp từng từ từ chính file TTS để subtitle bám giọng thật."""
+    groq_key = os.environ.get("GROQ_API_KEY", "").strip()
+    if not groq_key:
+        raise RuntimeError("Server chưa cấu hình GROQ_API_KEY")
+    from groq import Groq
+    client = Groq(api_key=groq_key)
+    with audio_path.open("rb") as audio_file:
+        response = client.audio.transcriptions.create(
+            file=("note-tts.mp3", audio_file, "audio/mpeg"),
+            model=os.environ.get("GROQ_STT_MODEL", "whisper-large-v3"),
+            language="vi",
+            response_format="verbose_json",
+            timestamp_granularities=["word"],
+        )
+    words = getattr(response, "words", None) or []
+    result = []
+    for entry in words:
+        word = entry.word if hasattr(entry, "word") else entry.get("word", "")
+        start = entry.start if hasattr(entry, "start") else entry.get("start", 0)
+        end = entry.end if hasattr(entry, "end") else entry.get("end", start)
+        word = str(word or "").strip()
+        if word:
+            result.append({"word": word, "start": round(float(start), 3), "end": round(float(end), 3)})
+    return result
+
+
+@app.post("/note-subtitles")
+def generate_note_subtitles(req: NoteSubtitleRequest, _identity: dict = Depends(tts_identity)):
+    audio_name = Path(str(req.audio_url or "")).name
+    if not re.fullmatch(r"[0-9a-f]{32}\.mp3", audio_name):
+        raise HTTPException(400, "audio_url TTS không hợp lệ")
+    audio_path = AUDIO_DIR / audio_name
+    if not audio_path.is_file():
+        raise HTTPException(404, "File TTS đã hết hạn; hãy tạo lại giọng đọc")
+    try:
+        return {"words": _groq_word_timestamps(audio_path)}
+    except Exception as exc:
+        raise HTTPException(502, f"Groq STT lỗi: {exc}")
 
 
 class MixedTTSItem(BaseModel):
@@ -321,6 +367,21 @@ def _probe_duration(path: Path) -> float:
     return float(r.stdout.strip() or "0")
 
 
+TTS_SINGLE_MAX_CHARS = int(os.getenv("TTS_SINGLE_MAX_CHARS", "390"))
+
+
+def _reject_tts_text_too_long(text: str) -> None:
+    if len(text) > TTS_SINGLE_MAX_CHARS:
+        raise HTTPException(400, f"Một đoạn TTS tối đa {TTS_SINGLE_MAX_CHARS} ký tự. Hãy tách nội dung thành nhiều đoạn/card nhỏ hơn.")
+
+
+def _reject_tts_texts_too_long(texts: list[str]) -> None:
+    too_long = [(index + 1, len(text)) for index, text in enumerate(texts) if len(text) > TTS_SINGLE_MAX_CHARS]
+    if too_long:
+        first_index, first_len = too_long[0]
+        raise HTTPException(400, f"Đoạn TTS #{first_index} dài {first_len} ký tự, vượt giới hạn {TTS_SINGLE_MAX_CHARS}. Hãy tách nội dung thành nhiều đoạn nhỏ hơn.")
+
+
 def _voice_json_by_lang(lang_prefix: str) -> list[dict]:
     voice_path = BASE_DIR / "capcut-tts-api-main" / "Voice.json"
     if not voice_path.exists():
@@ -396,21 +457,6 @@ def _split_mixed_text(text: str, english_phrases: list[str]) -> list[tuple[str, 
     return [(lang, part) for lang, part in pieces if part]
 
 
-def _concat_audio(parts: list[Path], out_path: Path) -> None:
-    if len(parts) == 1:
-        parts[0].replace(out_path)
-        return
-    list_path = out_path.with_suffix(".concat.txt")
-    list_path.write_text("".join(f"file '{p.as_posix()}'\n" for p in parts), encoding="utf-8")
-    subprocess.run(
-        [FFMPEG_BIN, "-y", "-f", "concat", "-safe", "0", "-i", str(list_path), "-c", "copy", str(out_path)],
-        capture_output=True,
-        text=True,
-        check=True,
-    )
-    list_path.unlink(missing_ok=True)
-
-
 def _apply_echo(path: Path) -> None:
     """Ghi đè MP3 với vang phòng nhẹ và gain đầu ra +30%.
 
@@ -484,6 +530,7 @@ def generate_tts(req: TTSRequest, _identity: dict = Depends(tts_identity)):
         raise HTTPException(400, "text rỗng")
     if len(text) > int(os.getenv("TTS_MAX_CHARS", "5000")):
         raise HTTPException(400, "Nội dung TTS quá dài")
+    _reject_tts_text_too_long(text)
     voice_type = req.voice_type or tv.CAPCUT_VOICES_VI[1][1]
     resource_id = req.resource_id or tv.CAPCUT_VOICES_VI[1][2]
     _reject_edge_voice(voice_type)
@@ -526,6 +573,7 @@ def generate_tts_batch(req: TTSBatchRequest, _identity: dict = Depends(tts_ident
     total_chars = sum(map(len, texts))
     if total_chars > int(os.getenv("TTS_BATCH_MAX_CHARS", "20000")):
         raise HTTPException(400, "Tổng nội dung TTS batch quá dài")
+    _reject_tts_texts_too_long(texts)
     voice_type = req.voice_type or tv.CAPCUT_VOICES_VI[1][1]
     resource_id = req.resource_id or tv.CAPCUT_VOICES_VI[1][2]
     _reject_edge_voice(voice_type)
@@ -644,6 +692,22 @@ def generate_project_tts_batch(req: ProjectTTSBatchRequest, identity: dict = Dep
     if any(item is None for item in ordered_results):
         _tts_log("project_error", reason="missing_results", items=len(req.items))
         raise HTTPException(500, "TTS project batch trả về thiếu kết quả")
+    for index, item in enumerate(req.items):
+        if not item.word_timestamps:
+            continue
+        result = ordered_results[index]
+        audio_name = Path(str(result["audio_url"])).name
+        audio_path = AUDIO_DIR / audio_name
+        stt_started = time.perf_counter()
+        try:
+            result["words"] = _groq_word_timestamps(audio_path)
+            _tts_log("note_stt_success", item_index=index, words=len(result["words"]),
+                     elapsed_ms=round((time.perf_counter() - stt_started) * 1000, 1))
+        except Exception as exc:
+            result["words"] = []
+            result["subtitle_error"] = str(exc)[:500]
+            _tts_log("note_stt_error", item_index=index, error_type=type(exc).__name__,
+                     error=str(exc)[:500], elapsed_ms=round((time.perf_counter() - stt_started) * 1000, 1))
     _tts_log("project_success", items=len(ordered_results), groups=len(grouped),
              elapsed_ms=round((time.perf_counter() - project_started) * 1000, 1))
     return {"items": ordered_results}
@@ -651,67 +715,7 @@ def generate_project_tts_batch(req: ProjectTTSBatchRequest, identity: dict = Dep
 
 @app.post("/tts-mixed-batch")
 def generate_tts_mixed_batch(req: MixedTTSBatchRequest, _identity: dict = Depends(tts_identity)):
-    _cleanup_expired_tts_files()
-    if not req.items or len(req.items) > 50:
-        raise HTTPException(400, "items phải có từ 1 đến 50 đoạn")
-    total_chars = sum(len(item.text or "") for item in req.items)
-    if total_chars > int(os.getenv("TTS_BATCH_MAX_CHARS", "20000")):
-        raise HTTPException(400, "Tổng nội dung mixed TTS quá dài")
-    consume_tts_quota(_identity, total_chars)
-
-    vi_voice_type = req.vi_voice_type or tv.CAPCUT_VOICES_VI[1][1]
-    vi_resource_id = req.vi_resource_id or tv.CAPCUT_VOICES_VI[1][2]
-    en_fallback = list_english_voices()[0]
-    en_voice_type = req.en_voice_type or en_fallback["voice_type"]
-    en_resource_id = req.en_resource_id or en_fallback["resource_id"]
-    device_id = os.environ.get("CAPCUT_DEVICE_ID")
-    if not device_id:
-        raise HTTPException(500, "Thiếu CAPCUT_DEVICE_ID trong .env")
-
-    split_items = [_split_mixed_text(item.text, item.englishPhrases) for item in req.items]
-    flat_parts = [(item_index, part_index, lang, text)
-                  for item_index, parts in enumerate(split_items)
-                  for part_index, (lang, text) in enumerate(parts)]
-    if not flat_parts:
-        raise HTTPException(400, "Không có nội dung TTS")
-
-    part_paths: dict[tuple[int, int], Path] = {}
-    current_device_id = device_id
-    last_err = None
-    for _attempt in range(5):
-        try:
-            part_paths.clear()
-            for lang in ("vi", "en"):
-                batch = [(item_index, part_index, text)
-                         for item_index, part_index, part_lang, text in flat_parts
-                         if part_lang == lang]
-                if not batch:
-                    continue
-                voice_type = vi_voice_type if lang == "vi" else en_voice_type
-                resource_id = vi_resource_id if lang == "vi" else en_resource_id
-                for start in range(0, len(batch), 50):
-                    chunk = batch[start:start + 50]
-                    paths = [AUDIO_DIR / f"{uuid.uuid4().hex}.mp3" for _ in chunk]
-                    texts = [text for _item_index, _part_index, text in chunk]
-                    tv.capcut_tts_batch(texts, voice_type, resource_id, paths, current_device_id, rate=req.rate)
-                    for (item_index, part_index, _text), path in zip(chunk, paths):
-                        part_paths[(item_index, part_index)] = path
-
-            items = []
-            for item_index, parts in enumerate(split_items):
-                out_name = f"{uuid.uuid4().hex}.mp3"
-                out_path = AUDIO_DIR / out_name
-                ordered_paths = [part_paths[(item_index, part_index)] for part_index in range(len(parts))]
-                _concat_audio(ordered_paths, out_path)
-                duration = _probe_duration(out_path)
-                if duration <= 0:
-                    raise RuntimeError(f"File mixed TTS {out_name} rỗng/0 giây")
-                items.append({"audio_url": f"/audio/{out_name}", "duration": duration})
-            return {"items": items}
-        except Exception as exc:
-            last_err = exc
-            current_device_id = str(random.randint(7000000000000000000, 7999999999999999999))
-    raise HTTPException(502, f"CapCut mixed TTS lỗi sau 5 lần đổi device_id: {last_err}")
+    raise HTTPException(410, "Mixed TTS đã tắt: backend không còn tự tách/ghép audio. Hãy gửi từng đoạn TTS riêng, mỗi đoạn tối đa 390 ký tự.")
 
 
 @app.post("/generate-comparisons")

@@ -702,6 +702,7 @@ header span { font-size: 12px; color: #4b5563; }
   color: #ccc; font-size: 3cqw; font-weight: 700; text-align: center; padding: 4cqw;
 }
 .retained-meme-layer{position:absolute;inset:0;z-index:7;pointer-events:none}.retained-meme-layer .meme-overlay{z-index:auto;pointer-events:auto;cursor:pointer}
+.note-subtitle-layer{display:none;position:absolute;z-index:18;left:7%;right:7%;bottom:14%;color:#fff;font-family:Arial,sans-serif;font-size:5.3cqw;font-weight:800;line-height:1.2;text-align:center;-webkit-text-stroke:.28cqw #000;paint-order:stroke fill;text-shadow:0 .45cqw 1.2cqw #000;pointer-events:none}.note-subtitle-layer.show{display:block}
 
 .preview-info {
   width: 100%;
@@ -1315,6 +1316,7 @@ header span { font-size: 12px; color: #4b5563; }
       <div class="position-guides" id="position-guides" aria-hidden="true"><i class="position-guide x g25" data-axis="x" data-ratio="0.25"></i><i class="position-guide x g50" data-axis="x" data-ratio="0.5"></i><i class="position-guide x g75" data-axis="x" data-ratio="0.75"></i><i class="position-guide y g25" data-axis="y" data-ratio="0.25"></i><i class="position-guide y g50" data-axis="y" data-ratio="0.5"></i><i class="position-guide y g75" data-axis="y" data-ratio="0.75"></i></div>
       <!-- Overlay meme (JS đổ vào khi step meme chạy) -->
       <div class="meme-overlay" id="meme-overlay" style="display:none"></div>
+      <div class="note-subtitle-layer" id="note-subtitle-layer"></div>
       <!-- Chỉ bảo vệ preview khỏi quay màn hình; export_render.html không có lớp này nên MP4 xuất ra luôn sạch. -->
       <div class="preview-watermark" aria-hidden="true">
         <span>nemcuaa1@gmail.com</span><span>nemcuaa1@gmail.com</span><span>nemcuaa1@gmail.com</span>
@@ -2097,6 +2099,8 @@ async function ttsResponseError(response) {
 }
 
 async function fetchTts(text, voiceIdx, echo = false, speed = 1) {
+  const lengthError = ttsLengthError(text);
+  if (lengthError) throw new Error(lengthError);
   const voice = selectedVoice(voiceIdx);
   const res = await fetch(ttsServerUrl() + '/tts', {
     method: 'POST',
@@ -2137,15 +2141,21 @@ async function mapWithConcurrency(items, limit, worker) {
   return results;
 }
 
+const TTS_CLIENT_MAX_CHARS = 390;
+function ttsLengthError(text, label = 'Đoạn TTS') {
+  const length = String(text || '').trim().length;
+  return length > TTS_CLIENT_MAX_CHARS ? `${label} dài ${length} ký tự, vượt giới hạn ${TTS_CLIENT_MAX_CHARS}. Hãy tách thành nhiều đoạn nhỏ hơn.` : '';
+}
+
 async function downloadTtsItems(items, onProgress) {
   return mapWithConcurrency(items, 6, async (item,index) => {
     onProgress?.(index,'downloading');
     const remoteUrl = ttsServerUrl() + item.audio_url;
     if (window.desktopApp?.downloadAsset) {
       const saved = await window.desktopApp.downloadAsset(remoteUrl, 'tts', 'tts.mp3', window.authHeaders ? window.authHeaders() : {});
-      onProgress?.(index,'done');return { audioUrl: saved.url, audioDesktopPath: saved.path, duration: item.duration };
+      onProgress?.(index,'done');return { audioUrl: saved.url, audioDesktopPath: saved.path, remoteAudioUrl:item.audio_url, duration: item.duration, words:Array.isArray(item.words)?item.words:[], subtitleError:item.subtitle_error||null };
     }
-    onProgress?.(index,'done');return { audioUrl: remoteUrl, duration: item.duration };
+    onProgress?.(index,'done');return { audioUrl: remoteUrl, remoteAudioUrl:item.audio_url, duration: item.duration, words:Array.isArray(item.words)?item.words:[], subtitleError:item.subtitle_error||null };
   });
 }
 
@@ -2153,6 +2163,8 @@ async function downloadTtsItems(items, onProgress) {
 // chat Messenger để tránh gửi từng request /tts riêng lẻ dễ bị block.
 async function fetchTtsBatch(texts, voiceIdx, speed = 1, echo = false) {
   if (!texts.length || texts.length > 50) throw new Error('TTS batch phải có từ 1 đến 50 đoạn');
+  const tooLong = texts.findIndex(text => String(text || '').trim().length > TTS_CLIENT_MAX_CHARS);
+  if (tooLong >= 0) throw new Error(ttsLengthError(texts[tooLong], `Đoạn TTS #${tooLong + 1}`));
   const voice = selectedVoice(voiceIdx);
   const res = await fetch(ttsServerUrl() + '/tts-batch', {
     method: 'POST', headers: { 'Content-Type': 'application/json', ...(window.authHeaders ? window.authHeaders() : {}) },
@@ -2167,9 +2179,11 @@ async function fetchTtsBatch(texts, voiceIdx, speed = 1, echo = false) {
 
 async function fetchProjectTtsBatch(items,onProgress) {
   if (!items.length) return [];
+  const tooLong = items.findIndex(item => String(item.text || '').trim().length > TTS_CLIENT_MAX_CHARS);
+  if (tooLong >= 0) throw new Error(ttsLengthError(items[tooLong].text, `Đoạn TTS #${tooLong + 1}`));
   const payload = items.map(item => {
     const voice = selectedVoice(item.voiceIdx);
-    return {text:item.text,voice_type:voice?.voice_type,resource_id:voice?.resource_id,speed:item.speed||1,echo:!!item.echo};
+    return {text:item.text,voice_type:voice?.voice_type,resource_id:voice?.resource_id,speed:item.speed||1,echo:!!item.echo,word_timestamps:item.step?.type==='note'&&item.step.noteSubtitles!==false};
   });
   const res = await fetch(ttsServerUrl() + '/tts-project-batch', {
     method:'POST',headers:{'Content-Type':'application/json',...(window.authHeaders?window.authHeaders():{})},body:JSON.stringify({items:payload}),
@@ -2178,6 +2192,14 @@ async function fetchProjectTtsBatch(items,onProgress) {
   const data=await res.json();
   if(!Array.isArray(data.items)||data.items.length!==items.length)throw new Error('TTS project batch trả về thiếu đoạn');
   return downloadTtsItems(data.items,onProgress);
+}
+async function fetchNoteSubtitleWords(step){
+  let audioRef=step.audioServerUrl||'';
+  if(!audioRef&&typeof step.audioUrl==='string'&&step.audioUrl.startsWith(ttsServerUrl()))audioRef=new URL(step.audioUrl).pathname;
+  if(!audioRef)throw new Error('Không còn đường dẫn file TTS trên server; hãy sửa NOTE rồi tạo lại giọng đọc.');
+  const response=await fetch(ttsServerUrl()+'/note-subtitles',{method:'POST',headers:{'Content-Type':'application/json',...(window.authHeaders?window.authHeaders():{})},body:JSON.stringify({audio_url:audioRef})});
+  if(!response.ok)throw await ttsResponseError(response);
+  const data=await response.json();return Array.isArray(data.words)?data.words:[];
 }
 
 const waitMs = ms => new Promise(resolve => setTimeout(resolve, ms));
@@ -2315,12 +2337,25 @@ async function generateAllTts() {
   for(const step of steps){
     if(!supported.has(step.type))continue;
     if((step.type==='text'||step.type==='note')&&step.hasVoice===false)continue;
+    normalizeNoteAutoSplitTts(step);
     const mainText=((step.ttsText&&step.ttsText.trim())||(step.text&&step.text.trim())||'');
-    if(!step.audioUrl&&mainText)jobs.push({step,segment:null,text:mainText,voiceIdx:step.voiceIdx!=null?step.voiceIdx:(step.type==='mess'?messengerDefaultVoice(step.messHistory?.[step.messHistory.length-1]?.side||'theirs'):null),speed:step.type==='mess'?messengerServerSpeed(step.messTtsSpeed):1,echo:!!step.echo});
+    const needsNoteSubtitle=step.type==='note'&&step.noteSubtitles!==false&&(!Array.isArray(step.subtitleWords)||!step.subtitleWords.length);
+    const noteNeedsFreshServerAudio=needsNoteSubtitle&&step.audioUrl&&!step.audioServerUrl;
+    if((!step.audioUrl||noteNeedsFreshServerAudio)&&mainText)jobs.push({step,segment:null,text:mainText,voiceIdx:step.voiceIdx!=null?step.voiceIdx:(step.type==='mess'?messengerDefaultVoice(step.messHistory?.[step.messHistory.length-1]?.side||'theirs'):null),speed:step.type==='mess'?messengerServerSpeed(step.messTtsSpeed):1,echo:!!step.echo});
     for(const segment of (step.extraTtsSegments||[])){
       const text=(segment.text||'').trim();
       if(!segment.audioUrl&&text)jobs.push({step,segment,text,voiceIdx:segment.voiceIdx!=null?segment.voiceIdx:(step.voiceIdx!=null?step.voiceIdx:null),speed:1,echo:!!segment.echo});
     }
+  }
+  const tooLongJob=jobs.find(job=>String(job.text||'').trim().length>TTS_CLIENT_MAX_CHARS);
+  if(tooLongJob){const label=TYPE_LABEL[tooLongJob.step?.type]||'Card';statusEl.textContent='✗ '+ttsLengthError(tooLongJob.text,label);return false;}
+  const subtitleOnly=steps.filter(step=>step.type==='note'&&step.noteSubtitles!==false&&step.audioUrl&&step.audioServerUrl&&(!Array.isArray(step.subtitleWords)||!step.subtitleWords.length));
+  if(!jobs.length&&subtitleOnly.length){
+    btn.disabled=true;
+    try{
+      for(let i=0;i<subtitleOnly.length;i++){statusEl.textContent=`📝 Đang tạo phụ đề NOTE ${i+1}/${subtitleOnly.length}...`;subtitleOnly[i].subtitleWords=await fetchNoteSubtitleWords(subtitleOnly[i]);subtitleOnly[i].subtitleError=null;bumpStepRevision(subtitleOnly[i].id);}
+      statusEl.textContent=`✓ Đã tạo phụ đề cho ${subtitleOnly.length} NOTE.`;renderStepList();renderIdleScene();return true;
+    }catch(error){statusEl.textContent='✗ Không tạo được phụ đề NOTE: '+error.message;return false;}finally{btn.disabled=false;}
   }
   if(!jobs.length){statusEl.textContent='✓ Tất cả step đã có giọng đọc.';return true;}
   renderTtsJobLog(jobs);
@@ -2330,11 +2365,12 @@ async function generateAllTts() {
     const touched=new Set();
     jobs.forEach((job,index)=>{
       const result=results[index];touched.add(job.step);
-      if(job.segment){job.segment.audioUrl=result.audioUrl;job.segment.audioDesktopPath=result.audioDesktopPath||null;job.segment.duration=result.duration;}
-      else{job.step.audioUrl=result.audioUrl;job.step.audioDesktopPath=result.audioDesktopPath||null;job.step.ttsDuration=result.duration;}
+      if(job.segment){job.segment.audioUrl=result.audioUrl;job.segment.audioDesktopPath=result.audioDesktopPath||null;job.segment.audioServerUrl=result.remoteAudioUrl||null;job.segment.duration=result.duration;if(job.step.type==='note'){job.segment.subtitleWords=result.words||[];job.segment.subtitleError=result.subtitleError||null;}}
+      else{job.step.audioUrl=result.audioUrl;job.step.audioDesktopPath=result.audioDesktopPath||null;job.step.audioServerUrl=result.remoteAudioUrl||null;job.step.ttsDuration=result.duration;if(job.step.type==='note'){job.step.subtitleWords=result.words||[];job.step.subtitleError=result.subtitleError||null;}}
     });
     for(const step of touched){step.duration=stepTtsTotalDuration(step)||step.duration;bumpStepRevision(step.id);}
-    statusEl.textContent=`✓ Đã tạo ${jobs.length} đoạn TTS.`;setTtsLoadingText('Đã tải giọng đọc về máy. Đang cập nhật timeline...');renderStepList();renderIdleScene();return true;
+    const subtitleErrors=[...touched].filter(step=>step.type==='note'&&step.noteSubtitles!==false&&step.subtitleError);
+    statusEl.textContent=subtitleErrors.length?`⚠ Đã tạo TTS nhưng ${subtitleErrors.length} NOTE chưa tạo được phụ đề.`:`✓ Đã tạo ${jobs.length} đoạn TTS.`;setTtsLoadingText('Đã tải giọng đọc về máy. Đang cập nhật timeline...');renderStepList();renderIdleScene();return true;
   }catch(error){markPendingTtsJobsFailed();statusEl.textContent='✗ Không tạo được TTS: '+error.message;setTtsLoadingText('Không tạo được giọng đọc: '+error.message);alert('Không tạo được giọng đọc từ API local: '+error.message);renderStepList();renderIdleScene();return false;}
   finally{btn.disabled=false;}
 }
@@ -3500,6 +3536,62 @@ function stepTtsClips(s) {
   for (const seg of (s.extraTtsSegments || [])) clips.push(seg);
   return clips;
 }
+const NOTE_TTS_SPLIT_MIN_CHARS = 300;
+const NOTE_TTS_SPLIT_MAX_CHARS = 350;
+const NOTE_TTS_AUTO_SPLIT_VERSION = 3;
+function splitLongNoteTtsText(text, minChars = NOTE_TTS_SPLIT_MIN_CHARS, maxChars = NOTE_TTS_SPLIT_MAX_CHARS) {
+  const source = String(text || '').replace(/\r\n/g, '\n').trim();
+  if (!source) return [];
+  if (source.length <= maxChars) return [source];
+  const parts = [];
+  let rest = source;
+  const boundaryRe = /[\n.!?。！？…]/g;
+  while (rest.length > maxChars) {
+    let splitAt = -1;
+    const windowText = rest.slice(minChars, maxChars + 1);
+    let match;
+    boundaryRe.lastIndex = 0;
+    while ((match = boundaryRe.exec(windowText))) {
+      splitAt = minChars + match.index + match[0].length;
+    }
+    if (splitAt < 0) {
+      const beforeWindow = rest.slice(Math.max(0, minChars - 90), minChars);
+      boundaryRe.lastIndex = 0;
+      while ((match = boundaryRe.exec(beforeWindow))) {
+        splitAt = Math.max(0, minChars - 90) + match.index + match[0].length;
+      }
+      if (splitAt < minChars - 90) splitAt = -1;
+    }
+    if (splitAt < 0) {
+      const spaceAt = rest.slice(0, maxChars + 1).lastIndexOf(' ');
+      splitAt = spaceAt > minChars ? spaceAt : maxChars;
+    }
+    const part = rest.slice(0, splitAt).trim();
+    if (part) parts.push(part);
+    rest = rest.slice(splitAt).trim();
+  }
+  if (rest) parts.push(rest);
+  return parts;
+}
+function normalizeNoteAutoSplitTts(step) {
+  if (!step || step.type !== 'note' || step.hasVoice === false) return false;
+  const fullText = String((step.text && step.text.trim()) || (step.ttsText && step.ttsText.trim()) || '');
+  const autoSegments = (step.extraTtsSegments || []).filter(seg => seg && seg.autoSplitTts);
+  if (!step.autoSplitTts && !autoSegments.length && step.autoSplitTtsVersion === NOTE_TTS_AUTO_SPLIT_VERSION) return false;
+  const manualSegments = (step.extraTtsSegments || []).filter(seg => seg && !seg.autoSplitTts);
+  step.ttsText = fullText;
+  step.audioUrl = null;
+  step.audioDesktopPath = null;
+  step.audioServerUrl = null;
+  step.ttsDuration = null;
+  step.subtitleWords = [];
+  step.subtitleError = null;
+  step.autoSplitTts = false;
+  step.autoSplitTtsVersion = NOTE_TTS_AUTO_SPLIT_VERSION;
+  step.extraTtsSegments = manualSegments;
+  bumpStepRevision(step.id);
+  return true;
+}
 function stepTtsPause(s) {
   return s.progressiveReveal ? Math.max(0, Number(s.progressivePause ?? .3)) : 0;
 }
@@ -3720,6 +3812,8 @@ function updateTextStyleSliderLabels(){
 }
 function onNotePresetChanged(){
   const preset=document.getElementById('m-note-bg-preset')?.value,color=document.getElementById('m-text-color'),bg=document.getElementById('m-card-bg-color');
+  const urlField=document.getElementById('m-note-bg-url-wrap');
+  if(urlField)urlField.style.display=preset==='custom'?'':'none';
   if(!color||!bg)return;
   const defaults={black:['#ffffff','#050505'],paper:['#2b2118','#f3e3c2'],sunset:['#ffffff','#8f3d62'],ocean:['#ffffff','#0d6b8d'],lavender:['#ffffff','#7549a8'],glass:['#ffffff','#10121a'],custom:[color.value,bg.value]};
   const values=defaults[preset]||defaults.black;color.value=values[0];bg.value=values[1];
@@ -3728,9 +3822,9 @@ function onNotePresetChanged(){
 function updateNoteModalPreview(){
   const card=document.getElementById('note-modal-preview-card'),copy=document.getElementById('note-modal-preview-text');if(!card||!copy)return;
   const text=document.getElementById('m-text')?.value||'Nội dung NOTE sẽ hiển thị ở đây...';
-  const preset=document.getElementById('m-note-bg-preset')?.value||'black',bgUrl=safeMediaUrl(document.getElementById('m-note-bg-url')?.value||'');
+  const preset=document.getElementById('m-note-bg-preset')?.value||'black',bgUrl=preset==='custom'?safeMediaUrl(document.getElementById('m-note-bg-url')?.value||''):'';
   const font=document.getElementById('m-text-font')?.value||'system',fontMap={system:'Arial, sans-serif',serif:'Georgia, serif',rounded:'Arial Rounded MT Bold, Arial, sans-serif',mono:'SFMono-Regular, Consolas, monospace',display:'Impact, Arial Black, sans-serif'};
-  const size=Math.max(2,Math.min(12,Number(document.getElementById('m-text-size')?.value)||5.2)),weight=Math.max(200,Math.min(900,Number(document.getElementById('m-font-weight')?.value)||560));
+  const size=Math.max(2,Math.min(12,Number(document.getElementById('m-text-size')?.value)||2.6)),weight=Math.max(200,Math.min(900,Number(document.getElementById('m-font-weight')?.value)||200));
   const padding=Math.max(0,Math.min(14,Number(document.getElementById('m-note-padding')?.value)||0)),radius=Math.max(0,Math.min(10,Number(document.getElementById('m-card-radius')?.value)||0));
   card.className=`note-modal-preview-card note-bg-${preset}`;
   card.style.setProperty('--text-color',document.getElementById('m-text-color')?.value||'#fff');card.style.setProperty('--text-font',fontMap[font]||fontMap.system);card.style.setProperty('--preview-size',`${size*5}px`);card.style.setProperty('--preview-weight',String(weight));
@@ -3775,7 +3869,7 @@ function openStepModal(type, stepId = null, targetGroupId = null) {
     html += statsFieldsHtml('m', editing ? editing.stats : null, 'post');
   } else if (type === 'text' || type === 'note') {
     const isNote=type==='note',hasVoice=editing?editing.hasVoice!==false:true;
-    const font=editing?.textFont||'system',fontSize=Number(editing?.textFontSize)||(isNote?5.2:6),textColor=editing?.textColor||'#ffffff';
+    const font=editing?.textFont||(isNote?'mono':'system'),fontSize=Number(editing?.textFontSize)||(isNote?2.6:6),textColor=editing?.textColor||'#ffffff';
     const bgPreset=editing?.noteBgPreset||'black',bgColor=editing?.cardBgColor||'#050505';
     const borderColor=isNote?(editing?.cardBorderColor||'#000000'):(editing?.textStrokeColor||editing?.cardBorderColor||'#000000');
     html += `<div style="font-size:12px;color:#7f8aa5;margin-bottom:10px">${isNote?'Card ghi chú gồm background và chữ, phù hợp kể chuyện dài.':'Card chữ độc lập, tối giản như một comment chỉ có nội dung.'}</div>
@@ -3783,12 +3877,13 @@ function openStepModal(type, stepId = null, targetGroupId = null) {
       ${appearanceFieldHtml(editing)}
       <div class="row2"><div><label>Font chữ</label><select id="m-text-font"><option value="system" ${font==='system'?'selected':''}>Mặc định</option><option value="serif" ${font==='serif'?'selected':''}>Serif kể chuyện</option><option value="rounded" ${font==='rounded'?'selected':''}>Rounded mềm</option><option value="mono" ${font==='mono'?'selected':''}>Mono</option><option value="display" ${font==='display'?'selected':''}>Display đậm</option></select></div><div><label>Cỡ chữ: <strong id="m-text-size-value">${fontSize}</strong></label><input id="m-text-size" type="range" min="2" max="12" step="0.1" value="${fontSize}" style="width:100%" oninput="updateTextStyleSliderLabels()"/></div></div>
       <div class="row2"><div><label>Màu chữ</label><input id="m-text-color" type="color" value="${esc(textColor)}" style="height:45px;padding:4px"/></div>${isNote?'':`<div><label>Màu viền chữ</label><input id="m-border-color" type="color" value="${esc(borderColor)}" style="height:45px;padding:4px"/></div>`}</div>`;
-    if(isNote)html+=`<label>Độ đậm font: <strong id="m-font-weight-value">${Number(editing?.textFontWeight??560)}</strong></label><input id="m-font-weight" type="range" min="200" max="900" step="50" value="${Number(editing?.textFontWeight??560)}" style="width:100%"/>
+    if(isNote)html+=`<label>Độ đậm font: <strong id="m-font-weight-value">${Number(editing?.textFontWeight??200)}</strong></label><input id="m-font-weight" type="range" min="200" max="900" step="50" value="${Number(editing?.textFontWeight??200)}" style="width:100%"/>
       <label>Padding nền: <strong id="m-note-padding-value">${Number(editing?.notePadding??6.2)}</strong></label><input id="m-note-padding" type="range" min="0" max="14" step="0.2" value="${Number(editing?.notePadding??6.2)}" style="width:100%"/>
       <label>Bo góc nền: <strong id="m-card-radius-value">${Number(editing?.cardRadius??1.2)}</strong></label><input id="m-card-radius" type="range" min="0" max="10" step="0.1" value="${Number(editing?.cardRadius??1.2)}" style="width:100%"/>
       <label>Màu nền card</label><input id="m-card-bg-color" type="color" value="${esc(bgColor)}" style="height:45px;padding:4px"/>
       <label>Mẫu background</label><select id="m-note-bg-preset" onchange="onNotePresetChanged()"><option value="black" ${bgPreset==='black'?'selected':''}>Đen kể chuyện</option><option value="paper" ${bgPreset==='paper'?'selected':''}>Giấy ấm</option><option value="sunset" ${bgPreset==='sunset'?'selected':''}>Hoàng hôn</option><option value="ocean" ${bgPreset==='ocean'?'selected':''}>Đại dương</option><option value="lavender" ${bgPreset==='lavender'?'selected':''}>Tím lavender</option><option value="glass" ${bgPreset==='glass'?'selected':''}>Kính tối</option><option value="custom" ${bgPreset==='custom'?'selected':''}>Màu/ảnh tùy chỉnh</option></select>
-      <label>Ảnh background từ URL (tuỳ chọn)</label><input id="m-note-bg-url" type="text" placeholder="https://..." value="${esc(editing?.noteBgUrl||'')}"/>`;
+      <div id="m-note-bg-url-wrap" style="${bgPreset==='custom'?'':'display:none'}"><label>Ảnh background từ URL (tuỳ chọn)</label><input id="m-note-bg-url" type="text" placeholder="https://..." value="${esc(editing?.noteBgUrl||'')}"/></div>
+      <label style="display:flex;align-items:center;gap:9px"><input id="m-note-subtitles" type="checkbox" ${editing?.noteSubtitles===false?'':'checked'}/> Hiện phụ đề STT phía dưới (tối đa 14 từ)</label>`;
     else html+=`<label>Độ dày viền chữ: <strong id="m-border-width-value">${Number(editing?.textStrokeWidth??editing?.cardBorderWidth??.18)}</strong></label><input id="m-border-width" type="range" min="0" max="1.5" step="0.05" value="${Number(editing?.textStrokeWidth??editing?.cardBorderWidth??.18)}" style="width:100%" oninput="updateTextStyleSliderLabels()"/>
       <div style="font-size:11px;color:#7f8aa5;margin-top:6px">Viền ôm sát từng ký tự; đặt 0 để tắt viền chữ.</div>`;
     html+=`<label style="display:flex;align-items:center;gap:9px"><input id="m-has-voice" type="checkbox" ${hasVoice?'checked':''} onchange="toggleTextCardVoiceFields()"/> Tạo giọng đọc cho card này</label>
@@ -4340,17 +4435,19 @@ async function submitStepModal() {
     data.text=document.getElementById('m-text').value.trim();
     data.appearance=document.getElementById('m-appearance')?.value||'normal';
     data.hasVoice=!!document.getElementById('m-has-voice')?.checked;
-    data.textFont=document.getElementById('m-text-font')?.value||'system';
-    data.textFontSize=Math.max(2,Math.min(12,Number(document.getElementById('m-text-size')?.value)||(t==='note'?5.2:6)));
+    data.textFont=document.getElementById('m-text-font')?.value||(t==='note'?'mono':'system');
+    data.textFontSize=Math.max(2,Math.min(12,Number(document.getElementById('m-text-size')?.value)||(t==='note'?2.6:6)));
     data.textColor=document.getElementById('m-text-color')?.value||'#ffffff';
     if(t==='note'){
       const cardRadius=Number(document.getElementById('m-card-radius')?.value);
-      data.textFontWeight=Math.max(200,Math.min(900,Number(document.getElementById('m-font-weight')?.value)||560));
+      data.textFontWeight=Math.max(200,Math.min(900,Number(document.getElementById('m-font-weight')?.value)||200));
       data.notePadding=Math.max(0,Math.min(14,Number(document.getElementById('m-note-padding')?.value)||0));
       data.cardBgColor=document.getElementById('m-card-bg-color')?.value||'#050505';
       data.cardRadius=Math.max(0,Math.min(10,Number.isFinite(cardRadius)?cardRadius:1.2));
       data.noteBgPreset=document.getElementById('m-note-bg-preset')?.value||'black';
-      data.noteBgUrl=document.getElementById('m-note-bg-url')?.value.trim()||null;
+      data.noteBgUrl=data.noteBgPreset==='custom'?(document.getElementById('m-note-bg-url')?.value.trim()||null):null;
+      data.noteSubtitles=!!document.getElementById('m-note-subtitles')?.checked;
+      data.subtitleWords=[];data.subtitleError=null;data.audioServerUrl=null;
     }else{
       const borderWidth=Number(document.getElementById('m-border-width')?.value);
       data.textStrokeColor=document.getElementById('m-border-color')?.value||'#000000';
@@ -6068,6 +6165,8 @@ function stopAllSfxAudio() {
 
 function renderAtTime(t) {
   let { stack, memeStep, memeSteps=[] } = computeSceneAt(t);
+  const noteSubtitle=document.getElementById('note-subtitle-layer'),noteSubtitleText=noteSubtitleTextAt(t,stack);
+  if(noteSubtitle){noteSubtitle.textContent=noteSubtitleText;noteSubtitle.classList.toggle('show',!!noteSubtitleText);}
   if(!playing&&selectedOverlayStepId!=null){const selected=memeSteps.find(s=>s.id===selectedOverlayStepId);if(selected)memeStep=selected;}
   if (playing) { syncTtsAudio(t); syncSfxAudio(t); }
 
