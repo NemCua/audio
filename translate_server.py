@@ -41,12 +41,31 @@ _env_base = Path(sys.executable).parent if getattr(sys, 'frozen', False) else Pa
 load_dotenv(_env_base / ".env")
 
 RUNTIME_DIR = Path(sys.executable).resolve().parent if getattr(sys, "frozen", False) else Path(__file__).resolve().parent
-FFMPEG_BIN      = os.getenv("FFMPEG_BIN", "ffmpeg")
-FFPROBE_BIN     = os.getenv("FFPROBE_BIN") or (
-    str(Path(FFMPEG_BIN).with_name("ffprobe.exe"))
-    if os.name == "nt" and Path(FFMPEG_BIN).suffix.lower() == ".exe"
-    else str(Path(FFMPEG_BIN).with_name("ffprobe"))
-)
+
+def _resolve_tool_binary(env_name: str, sibling_of: str | None, tool_name: str) -> str:
+    """Ưu tiên binary đi kèm app, đặc biệt Windows cần đúng đuôi .exe."""
+    env_value = os.getenv(env_name)
+    if env_value:
+        return env_value
+
+    names = [f"{tool_name}.exe", tool_name] if sys.platform == "win32" else [tool_name]
+    candidates: list[Path] = []
+
+    if sibling_of:
+        sibling_path = Path(sibling_of)
+        if sibling_path.parent != Path("."):
+            candidates.extend(sibling_path.parent / name for name in names)
+
+    candidates.extend(RUNTIME_DIR / name for name in names)
+
+    for candidate in candidates:
+        if candidate.exists():
+            return str(candidate)
+
+    return names[0]
+
+FFMPEG_BIN      = _resolve_tool_binary("FFMPEG_BIN", None, "ffmpeg")
+FFPROBE_BIN     = _resolve_tool_binary("FFPROBE_BIN", FFMPEG_BIN, "ffprobe")
 
 # â”€â”€ Billing helpers â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 def get_video_duration(path: str | Path) -> float:
@@ -60,6 +79,10 @@ def get_video_duration(path: str | Path) -> float:
         return float(r.stdout.strip())
     except ValueError:
         return 0.0
+
+print(f"[tools] RUNTIME_DIR={RUNTIME_DIR}")
+print(f"[tools] FFMPEG_BIN={FFMPEG_BIN} exists={Path(FFMPEG_BIN).exists()}")
+print(f"[tools] FFPROBE_BIN={FFPROBE_BIN} exists={Path(FFPROBE_BIN).exists()}")
 
 app = FastAPI()
 app.add_middleware(CORSMiddleware, allow_origins=["*"], allow_methods=["*"], allow_headers=["*"])
@@ -574,6 +597,19 @@ def _run_preview(job_id: str, voice: str, bg_volume: float, tts_volume: float,
 # ---------------------------------------------------------------------------
 # Endpoints
 # ---------------------------------------------------------------------------
+
+@app.get("/api/diagnostics")
+async def diagnostics():
+    static_dir = RUNTIME_DIR / "static_translate"
+    return {
+        "ok": True,
+        "platform": sys.platform,
+        "frozen": bool(getattr(sys, "frozen", False)),
+        "runtime_dir": str(RUNTIME_DIR),
+        "ffmpeg": {"path": FFMPEG_BIN, "exists": Path(FFMPEG_BIN).exists()},
+        "ffprobe": {"path": FFPROBE_BIN, "exists": Path(FFPROBE_BIN).exists()},
+        "static_translate": {"path": str(static_dir), "exists": static_dir.exists()},
+    }
 
 @app.post("/api/upload")
 async def upload_video(

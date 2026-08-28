@@ -54,11 +54,26 @@ OUTPUT_DIR = BASE_DIR / "output"
 WORK_DIR   = BASE_DIR / "workdir"
 
 FFMPEG_BIN       = os.environ.get("FFMPEG_BIN", "ffmpeg")
-FFPROBE_BIN      = os.environ.get("FFPROBE_BIN") or (
-    str(Path(FFMPEG_BIN).with_name("ffprobe.exe"))
-    if sys.platform == "win32" and Path(FFMPEG_BIN).suffix.lower() == ".exe"
-    else str(Path(FFMPEG_BIN).with_name("ffprobe"))
-)
+
+def _resolve_ffprobe_binary() -> str:
+    env_value = os.environ.get("FFPROBE_BIN")
+    if env_value:
+        return env_value
+
+    names = ["ffprobe.exe", "ffprobe"] if sys.platform == "win32" else ["ffprobe"]
+    ffmpeg_path = Path(FFMPEG_BIN)
+    candidates: list[Path] = []
+
+    if ffmpeg_path.parent != Path("."):
+        candidates.extend(ffmpeg_path.parent / name for name in names)
+
+    for candidate in candidates:
+        if candidate.exists():
+            return str(candidate)
+
+    return names[0]
+
+FFPROBE_BIN      = _resolve_ffprobe_binary()
 
 def _best_video_codec() -> tuple[list[str], list[str]]:
     """Tráº£ vá» (encode_flags, decode_flags) tá»‘i Æ°u theo platform/GPU."""
@@ -1246,4 +1261,3 @@ def main():
 
 if __name__ == "__main__":
     main()
-
