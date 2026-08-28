@@ -122,7 +122,7 @@
       if(mode==='register')body.display_name=document.getElementById('desktop-auth-name').value.trim();
       const response=await fetch(apiBase()+`/auth/${mode}`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});
       const data=await response.json().catch(()=>({}));if(!response.ok)throw new Error(data.detail||`HTTP ${response.status}`);await acceptSession(data);
-    } catch(e){error.textContent=e.message==='Failed to fetch'?'Không kết nối được auth server. Kiểm tra server cổng 8007.':e.message;}
+    } catch(e){error.textContent=e.message==='Failed to fetch'?'Không kết nối được backend. Hãy kiểm tra kết nối mạng hoặc trạng thái server.':e.message;}
     finally{submit.disabled=false;}
   };
 

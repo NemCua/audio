@@ -18,9 +18,10 @@
     "electron-builder": "26.15.2",
     "ffmpeg-static": "5.2.0"
   },
-  "build": {
+    "build": {
     "appId": "com.threadsvideomaker.desktop",
     "productName": "Threads Video Maker",
+    "icon": "build/icon",
     "asar": true,
     "files": [
       "main.js",
@@ -49,6 +50,7 @@
       }
     ],
     "mac": {
+      "icon": "build/icon.icns",
       "category": "public.app-category.video",
       "target": ["dmg", "zip"],
       "artifactName": "${productName}-${version}-${arch}.${ext}",

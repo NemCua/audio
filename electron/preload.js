@@ -19,6 +19,7 @@ contextBridge.exposeInMainWorld('desktopApp', Object.freeze({
   saveLocalAsset: (bytes, kind, originalName) => ipcRenderer.invoke('desktop:save-local-asset', bytes, kind, originalName),
   downloadAsset: (url, kind, originalName, headers) => ipcRenderer.invoke('desktop:download-asset', url, kind, originalName, headers),
   saveProjectFile: (json, suggestedName) => ipcRenderer.invoke('desktop:save-project-file', json, suggestedName),
+  copyText: text => ipcRenderer.invoke('desktop:copy-text', text),
   exportProject: payload => ipcRenderer.invoke('desktop:export-project', payload),
   onExportProgress: callback => {
     const listener = (_event, progress) => callback(progress);

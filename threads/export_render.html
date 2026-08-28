@@ -318,13 +318,13 @@ header span { font-size: 12px; color: #4b5563; }
 .thr-stack .appearance-bounce-left > .tk-comment { animation: card-bounce-left .175s linear both; }
 .thr-stack .appearance-bounce-right > .tcard,
 .thr-stack .appearance-bounce-right > .tk-comment { animation: card-bounce-right .175s linear both; }
-@keyframes card-fly-left { from { opacity:0; transform:translateX(-105cqw) scale(.9) } to { opacity:1; transform:none } }
-@keyframes card-fly-right { from { opacity:0; transform:translateX(105cqw) scale(.9) } to { opacity:1; transform:none } }
-@keyframes card-fly-top { from { opacity:0; transform:translateY(-80cqw) scale(.9) } to { opacity:1; transform:none } }
-@keyframes card-fly-bottom { from { opacity:0; transform:translateY(110cqw) scale(.9) } to { opacity:1; transform:none } }
+@keyframes card-fly-left { from { opacity:0; transform:translateX(-38cqw) scale(.96) } to { opacity:1; transform:none } }
+@keyframes card-fly-right { from { opacity:0; transform:translateX(38cqw) scale(.96) } to { opacity:1; transform:none } }
+@keyframes card-fly-top { from { opacity:0; transform:translateY(-34cqw) scale(.96) } to { opacity:1; transform:none } }
+@keyframes card-fly-bottom { from { opacity:0; transform:translateY(34cqw) scale(.96) } to { opacity:1; transform:none } }
 @keyframes card-drop-bounce {
-  0% { opacity:0; transform:translateY(-170cqw) rotate(-2.5deg) }
-  28% { opacity:1; transform:translateY(28cqw) rotate(1.4deg) }
+  0% { opacity:0; transform:translateY(-42cqw) rotate(-1.4deg) }
+  28% { opacity:1; transform:translateY(10cqw) rotate(.9deg) }
   44% { transform:translateY(-15cqw) rotate(-.85deg) }
   57% { transform:translateY(7.5cqw) rotate(.45deg) }
   68% { transform:translateY(-4.5cqw) rotate(-.28deg) }
@@ -335,8 +335,8 @@ header span { font-size: 12px; color: #4b5563; }
   100% { opacity:1; transform:none }
 }
 @keyframes card-bounce-up {
-  0% { opacity:0; transform:translateY(170cqw) rotate(2.5deg) }
-  28% { opacity:1; transform:translateY(-28cqw) rotate(-1.4deg) }
+  0% { opacity:0; transform:translateY(42cqw) rotate(1.4deg) }
+  28% { opacity:1; transform:translateY(-10cqw) rotate(-.9deg) }
   44% { transform:translateY(15cqw) rotate(.85deg) }
   57% { transform:translateY(-7.5cqw) rotate(-.45deg) }
   68% { transform:translateY(4.5cqw) rotate(.28deg) }
@@ -347,8 +347,8 @@ header span { font-size: 12px; color: #4b5563; }
   100% { opacity:1; transform:none }
 }
 @keyframes card-bounce-left {
-  0% { opacity:0; transform:translateX(-170cqw) rotate(-2.5deg) }
-  28% { opacity:1; transform:translateX(28cqw) rotate(1.4deg) }
+  0% { opacity:0; transform:translateX(-42cqw) rotate(-1.4deg) }
+  28% { opacity:1; transform:translateX(10cqw) rotate(.9deg) }
   44% { transform:translateX(-15cqw) rotate(-.85deg) }
   57% { transform:translateX(7.5cqw) rotate(.45deg) }
   68% { transform:translateX(-4.5cqw) rotate(-.28deg) }
@@ -359,8 +359,8 @@ header span { font-size: 12px; color: #4b5563; }
   100% { opacity:1; transform:none }
 }
 @keyframes card-bounce-right {
-  0% { opacity:0; transform:translateX(170cqw) rotate(2.5deg) }
-  28% { opacity:1; transform:translateX(-28cqw) rotate(-1.4deg) }
+  0% { opacity:0; transform:translateX(42cqw) rotate(1.4deg) }
+  28% { opacity:1; transform:translateX(-10cqw) rotate(-.9deg) }
   44% { transform:translateX(15cqw) rotate(.85deg) }
   57% { transform:translateX(-7.5cqw) rotate(-.45deg) }
   68% { transform:translateX(4.5cqw) rotate(.28deg) }
@@ -436,6 +436,9 @@ header span { font-size: 12px; color: #4b5563; }
    ra không hề mờ tên/avatar TikTok dù preview đã đúng. */
 #preview-frame.blur-identity .tk-uname { filter: blur(5px); }
 #preview-frame.blur-identity .tk-avatar { filter: blur(6px); }
+.blur-identity .identity-force-clear .uname,.blur-identity .identity-force-clear .avatar,.blur-identity .identity-force-clear .tk-uname,.blur-identity .identity-force-clear .tk-avatar{filter:none!important}
+.identity-force-blur .uname,.identity-force-blur .avatar,.identity-force-blur .tk-uname,.identity-force-blur .tk-avatar{filter:blur(5px)}
+.identity-force-blur .avatar,.identity-force-blur .tk-avatar{filter:blur(6px)}
 .tcard .badge-author {
   font-size: 2.04cqw; background: #ececec; color: #555;
   padding: .37cqw 1.2cqw; border-radius: .74cqw; font-weight: 600;

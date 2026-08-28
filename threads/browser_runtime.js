@@ -355,7 +355,7 @@ async function exportVideoOfflineDesktop() {
   window.addEventListener('beforeunload', () => localUrls.forEach(url => URL.revokeObjectURL(url)));
   if (window.desktopApp?.isElectron) {
     const exportButton = document.getElementById('export-btn');
-    if (exportButton) exportButton.textContent = '🎬 Xuất MP4 offline (không quay màn hình)';
+    if (exportButton) exportButton.textContent = '🎬 Xuất MP4';
   }
   refreshCacheSize();
 })();

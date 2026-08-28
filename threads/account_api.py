@@ -35,10 +35,7 @@ SIGNUP_CREDITS = int(os.getenv("AUTH_SIGNUP_CREDITS", "0"))
 EXPORT_CREDIT_COST = int(os.getenv("EXPORT_CREDIT_COST", "1"))
 RESERVATION_MINUTES = int(os.getenv("EXPORT_RESERVATION_MINUTES", "30"))
 DEFAULT_CREDIT_PRICING = {
-    "ai_script_short": 100,
-    "ai_script_medium": 500,
-    "ai_script_long": 1000,
-    "ai_script_prompt_word": 1,
+    "ai_script_card": 200,
     "post": 100,
     "comment": 100,
     "reply": 100,
@@ -346,19 +343,19 @@ def _export_credit_cost(type_counts: dict[str, int], pricing: dict[str, int] | N
     return sum(counts.get(kind, 0) * prices[kind] for kind in DEFAULT_CREDIT_PRICING)
 
 
-def reserve_ai_script_credit(identity: dict, idempotency_key: str, length: str, prompt: str) -> dict:
-    """Giữ credit trước khi gọi AI; local-dev không chạm database."""
+def reserve_ai_script_credit(identity: dict, idempotency_key: str, card_count: int, prompt: str) -> dict:
+    """Tính và trừ credit sau khi AI trả về số card thật; local-dev không chạm database."""
     if identity.get("id") == 0:
-        return {"id": f"local-{uuid.uuid4()}", "cost": 0, "balance": 0, "status": "reserved"}
+        return {"id": f"local-{uuid.uuid4()}", "cost": 0, "balance": 0, "status": "consumed"}
     key = idempotency_key.strip()
     if not key or len(key) > 160: raise HTTPException(400, "Idempotency key AI không hợp lệ")
-    if length not in ("short", "medium", "long"):
-        raise HTTPException(400, "Độ dài AI không hợp lệ")
+    try:
+        card_count = max(1, min(40, int(card_count)))
+    except (TypeError, ValueError):
+        raise HTTPException(400, "Số lượng card AI không hợp lệ")
     pricing = _credit_pricing()
-    prompt_words = len(re.findall(r"[^\W_]+", prompt, flags=re.UNICODE))
-    base_cost = pricing[f"ai_script_{length}"]
-    word_cost = pricing["ai_script_prompt_word"]
-    cost = base_cost + prompt_words * word_cost
+    card_cost = pricing["ai_script_card"]
+    cost = card_count * card_cost
     with db() as conn:
         with conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
             cur.execute("SELECT * FROM ai_script_reservations WHERE user_id=%s AND idempotency_key=%s", (identity["id"], key)); existing = cur.fetchone()
@@ -371,9 +368,9 @@ def reserve_ai_script_credit(identity: dict, idempotency_key: str, length: str, 
             if balance < cost: raise HTTPException(402, f"Không đủ credit để tạo kịch bản AI (cần {cost})")
             reservation_id, new_balance = str(uuid.uuid4()), balance - cost
             cur.execute("UPDATE users SET balance=%s WHERE id=%s", (new_balance, identity["id"]))
-            cur.execute("INSERT INTO ai_script_reservations(id,user_id,cost,idempotency_key) VALUES(%s,%s,%s,%s)", (reservation_id, identity["id"], cost, key))
-            cur.execute("INSERT INTO credit_ledger(user_id,amount,balance_after,kind,reference,idempotency_key,metadata) VALUES(%s,%s,%s,'ai_script_reserve',%s,%s,%s)", (identity["id"], -cost, new_balance, reservation_id, f"ai-script-reserve:{reservation_id}", psycopg2.extras.Json({"request_key": key, "length": length, "prompt_words": prompt_words, "base_cost": base_cost, "word_cost": word_cost})))
-            return {"id": reservation_id, "cost": cost, "balance": new_balance, "status": "reserved"}
+            cur.execute("INSERT INTO ai_script_reservations(id,user_id,cost,idempotency_key,status,finished_at) VALUES(%s,%s,%s,%s,'consumed',NOW())", (reservation_id, identity["id"], cost, key))
+            cur.execute("INSERT INTO credit_ledger(user_id,amount,balance_after,kind,reference,idempotency_key,metadata) VALUES(%s,%s,%s,'ai_script_consume',%s,%s,%s)", (identity["id"], -cost, new_balance, reservation_id, f"ai-script-consume:{reservation_id}", psycopg2.extras.Json({"request_key": key, "card_count": card_count, "card_cost": card_cost})))
+            return {"id": reservation_id, "cost": cost, "balance": new_balance, "status": "consumed"}
 
 
 def finish_ai_script_credit(identity: dict, reservation_id: str, success: bool) -> dict:

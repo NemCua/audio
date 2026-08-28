@@ -172,7 +172,7 @@ async function collectAudio(steps, workDir) {
   return tracks;
 }
 
-function ffmpegArgs({ bgVideoPath, bgAudioPath, bgAudioVolume, segments, total, audioTracks, outputPath }) {
+function ffmpegArgs({ bgVideoPath, bgAudioPath, bgAudioVolume, segments, total, audioTracks, outputPath, exportPreset = 'normal' }) {
   const inputs = ['-stream_loop', '-1', '-i', bgVideoPath];
   const filters = [`[0:v]scale=${WIDTH}:${HEIGHT}:force_original_aspect_ratio=increase,crop=${WIDTH}:${HEIGHT},setsar=1,trim=duration=${total},setpts=PTS-STARTPTS[bg]`];
   let last = 'bg', inputIndex = 1;
@@ -225,7 +225,14 @@ function ffmpegArgs({ bgVideoPath, bgAudioPath, bgAudioVolume, segments, total, 
   } else {
     filters.push('anullsrc=channel_layout=stereo:sample_rate=44100[aout]');
   }
-  return ['-y', ...inputs, '-filter_complex', filters.join(';'), '-map', `[${last}]`, '-map', '[aout]', '-t', total.toFixed(3), '-c:v', 'libx264', '-preset', 'fast', '-crf', '18', '-pix_fmt', 'yuv420p', '-c:a', 'aac', '-b:a', '192k', '-movflags', '+faststart', '-progress', 'pipe:1', outputPath];
+  const messengerMobile = exportPreset === 'messenger-mobile';
+  const videoOut = messengerMobile ? 'vout' : last;
+  if (messengerMobile) filters.push(`[${last}]fps=30,scale=720:1280,setsar=1[${videoOut}]`);
+  return ['-y', ...inputs, '-filter_complex', filters.join(';'), '-map', `[${videoOut}]`, '-map', '[aout]', '-t', total.toFixed(3),
+    '-c:v', 'libx264', '-preset', messengerMobile ? 'medium' : 'fast',
+    '-pix_fmt', 'yuv420p',
+    ...(messengerMobile ? ['-profile:v', 'main', '-level', '4.0', '-crf', '23', '-maxrate', '3500k', '-bufsize', '7000k', '-g', '60', '-keyint_min', '60', '-sc_threshold', '0'] : ['-crf', '18']),
+    '-c:a', 'aac', '-b:a', messengerMobile ? '128k' : '192k', '-ar', '44100', '-movflags', '+faststart', '-progress', 'pipe:1', outputPath];
 }
 
 function runFfmpeg(binary, args, total, sendProgress) {
@@ -251,7 +258,7 @@ async function exportProject({ payload, outputPath, threadsRoot, ffmpegPath, sen
     const segments = await renderSegments({ steps, total, threadsRoot, workDir, blurIdentity: payload.blurIdentity, sendProgress });
     sendProgress({ percent: 57, text: 'Đang chuẩn bị CapCut TTS…' });
     const audioTracks = await collectAudio(steps, workDir);
-    const args = ffmpegArgs({ bgVideoPath: payload.bgVideoPath, bgAudioPath: payload.bgAudioPath, bgAudioVolume: payload.bgAudioVolume, segments, total, audioTracks, outputPath });
+    const args = ffmpegArgs({ bgVideoPath: payload.bgVideoPath, bgAudioPath: payload.bgAudioPath, bgAudioVolume: payload.bgAudioVolume, segments, total, audioTracks, outputPath, exportPreset: payload.exportPreset });
     await runFfmpeg(ffmpegPath, args, total, sendProgress);
     sendProgress({ percent: 100, text: '✓ Đã xuất MP4.' });
   } finally {

@@ -4,6 +4,7 @@
 <meta charset="UTF-8"/>
 <meta name="viewport" content="width=device-width,initial-scale=1"/>
 <title>Threads Short Video Maker</title>
+<link rel="icon" href="assets/brand/threads-video-maker-logo.svg" type="image/svg+xml"/>
 <style>
 * { box-sizing: border-box; margin: 0; padding: 0; }
 /* Electron/Chromium trên Windows có thể coi control nằm trong một card
@@ -38,6 +39,7 @@ header {
   gap: 12px;
   flex-shrink: 0;
 }
+.app-logo { width: 34px; height: 34px; border-radius: 10px; box-shadow: 0 10px 24px #0005; flex: 0 0 auto; }
 header h1 { font-size: 18px; font-weight: 700; color: #a78bfa; }
 header span { font-size: 12px; color: #4b5563; }
 
@@ -354,13 +356,13 @@ header span { font-size: 12px; color: #4b5563; }
 .thr-stack .appearance-bounce-left > .tk-comment { animation: card-bounce-left .175s linear both; }
 .thr-stack .appearance-bounce-right > .tcard,
 .thr-stack .appearance-bounce-right > .tk-comment { animation: card-bounce-right .175s linear both; }
-@keyframes card-fly-left { from { opacity:0; transform:translateX(-105cqw) scale(.9) } to { opacity:1; transform:none } }
-@keyframes card-fly-right { from { opacity:0; transform:translateX(105cqw) scale(.9) } to { opacity:1; transform:none } }
-@keyframes card-fly-top { from { opacity:0; transform:translateY(-80cqw) scale(.9) } to { opacity:1; transform:none } }
-@keyframes card-fly-bottom { from { opacity:0; transform:translateY(110cqw) scale(.9) } to { opacity:1; transform:none } }
+@keyframes card-fly-left { from { opacity:0; transform:translateX(-38cqw) scale(.96) } to { opacity:1; transform:none } }
+@keyframes card-fly-right { from { opacity:0; transform:translateX(38cqw) scale(.96) } to { opacity:1; transform:none } }
+@keyframes card-fly-top { from { opacity:0; transform:translateY(-34cqw) scale(.96) } to { opacity:1; transform:none } }
+@keyframes card-fly-bottom { from { opacity:0; transform:translateY(34cqw) scale(.96) } to { opacity:1; transform:none } }
 @keyframes card-drop-bounce {
-  0% { opacity:0; transform:translateY(-170cqw) rotate(-2.5deg) }
-  28% { opacity:1; transform:translateY(28cqw) rotate(1.4deg) }
+  0% { opacity:0; transform:translateY(-42cqw) rotate(-1.4deg) }
+  28% { opacity:1; transform:translateY(10cqw) rotate(.9deg) }
   44% { transform:translateY(-15cqw) rotate(-.85deg) }
   57% { transform:translateY(7.5cqw) rotate(.45deg) }
   68% { transform:translateY(-4.5cqw) rotate(-.28deg) }
@@ -371,8 +373,8 @@ header span { font-size: 12px; color: #4b5563; }
   100% { opacity:1; transform:none }
 }
 @keyframes card-bounce-up {
-  0% { opacity:0; transform:translateY(170cqw) rotate(2.5deg) }
-  28% { opacity:1; transform:translateY(-28cqw) rotate(-1.4deg) }
+  0% { opacity:0; transform:translateY(42cqw) rotate(1.4deg) }
+  28% { opacity:1; transform:translateY(-10cqw) rotate(-.9deg) }
   44% { transform:translateY(15cqw) rotate(.85deg) }
   57% { transform:translateY(-7.5cqw) rotate(-.45deg) }
   68% { transform:translateY(4.5cqw) rotate(.28deg) }
@@ -383,8 +385,8 @@ header span { font-size: 12px; color: #4b5563; }
   100% { opacity:1; transform:none }
 }
 @keyframes card-bounce-left {
-  0% { opacity:0; transform:translateX(-170cqw) rotate(-2.5deg) }
-  28% { opacity:1; transform:translateX(28cqw) rotate(1.4deg) }
+  0% { opacity:0; transform:translateX(-42cqw) rotate(-1.4deg) }
+  28% { opacity:1; transform:translateX(10cqw) rotate(.9deg) }
   44% { transform:translateX(-15cqw) rotate(-.85deg) }
   57% { transform:translateX(7.5cqw) rotate(.45deg) }
   68% { transform:translateX(-4.5cqw) rotate(-.28deg) }
@@ -395,8 +397,8 @@ header span { font-size: 12px; color: #4b5563; }
   100% { opacity:1; transform:none }
 }
 @keyframes card-bounce-right {
-  0% { opacity:0; transform:translateX(170cqw) rotate(2.5deg) }
-  28% { opacity:1; transform:translateX(-28cqw) rotate(-1.4deg) }
+  0% { opacity:0; transform:translateX(42cqw) rotate(1.4deg) }
+  28% { opacity:1; transform:translateX(-10cqw) rotate(-.9deg) }
   44% { transform:translateX(15cqw) rotate(.85deg) }
   57% { transform:translateX(-7.5cqw) rotate(-.45deg) }
   68% { transform:translateX(4.5cqw) rotate(.28deg) }
@@ -472,6 +474,9 @@ header span { font-size: 12px; color: #4b5563; }
    mờ .tk-img-wrap (ảnh đính kèm nội dung comment). */
 #preview-frame.blur-identity .tk-uname { filter: blur(5px); }
 #preview-frame.blur-identity .tk-avatar { filter: blur(6px); }
+.blur-identity .identity-force-clear .uname,.blur-identity .identity-force-clear .avatar,.blur-identity .identity-force-clear .tk-uname,.blur-identity .identity-force-clear .tk-avatar{filter:none!important}
+.identity-force-blur .uname,.identity-force-blur .avatar,.identity-force-blur .tk-uname,.identity-force-blur .tk-avatar{filter:blur(5px)}
+.identity-force-blur .avatar,.identity-force-blur .tk-avatar{filter:blur(6px)}
 .tcard .badge-author {
   font-size: 2.04cqw; background: #ececec; color: #555;
   padding: .37cqw 1.2cqw; border-radius: .74cqw; font-weight: 600;
@@ -948,6 +953,9 @@ header span { font-size: 12px; color: #4b5563; }
 .step-modal .row2 > div { flex: 1; }
 .note-modal-preview-card{width:fit-content!important;max-width:100%}
 .step-modal.note-editor-open{width:min(1050px,96vw);max-height:94vh;overflow:hidden;display:flex;flex-direction:column}.note-editor-open #step-modal-fields{flex:1;min-height:0;overflow:hidden}.note-editor-open>#step-modal-tts-status{flex:0 0 auto}.note-editor-open>.modal-actions{flex:0 0 auto;margin-top:14px}.note-editor-layout{display:grid;grid-template-columns:minmax(0,1.15fr) minmax(300px,.85fr);gap:18px;height:min(68vh,680px);max-height:100%}.note-editor-controls{min-width:0;overflow-y:auto;padding-right:8px}.note-editor-preview-pane{position:sticky;top:0;align-self:start;min-width:0;padding:16px;border:1px solid #2b3151;border-radius:12px;background:#090c18}.note-editor-preview-pane h4{margin:0 0 12px;color:#c4b5fd;font-size:13px}.note-modal-preview-stage{display:grid;place-items:center;min-height:480px;padding:18px;border-radius:10px;background:linear-gradient(145deg,#1a2035,#0b0d17);overflow:hidden}.note-modal-preview-card{position:relative;width:100%;max-height:440px;overflow:auto;box-sizing:border-box;padding:28px 30px;border-style:solid;background:var(--note-bg,#050505);background-position:center;background-size:cover;color:var(--text-color,#fff);font-family:var(--text-font,Arial,sans-serif);font-size:var(--preview-size,24px);font-weight:var(--preview-weight,560);line-height:1.48;white-space:pre-wrap;overflow-wrap:anywhere;box-shadow:0 14px 38px #0007}.note-modal-preview-card::before{content:"";position:absolute;inset:0;border-radius:inherit;background:var(--note-overlay,transparent);z-index:0}.note-modal-preview-text{position:relative;z-index:1}@media(max-width:800px){.note-editor-layout{grid-template-columns:1fr;height:70vh;max-height:70vh}.note-editor-preview-pane{position:static;grid-row:1}.note-modal-preview-stage{min-height:250px}.note-editor-controls{grid-row:2}}
+.step-modal.social-editor-open{width:min(1120px,96vw);height:min(900px,94vh);max-height:94vh;box-sizing:border-box;overflow:hidden;display:flex;flex-direction:column}.social-editor-open>h3{flex:0 0 auto}.social-editor-open #step-modal-fields{flex:1;min-height:0;overflow:hidden}.social-editor-open>#step-modal-tts-status{flex:0 0 auto}.social-editor-open>.modal-actions{position:relative;z-index:5;flex:0 0 auto;margin-top:12px;padding-top:10px;border-top:1px solid #252b49;background:#12152a}.social-editor-layout{display:grid;grid-template-columns:minmax(0,1.12fr) minmax(340px,.88fr);gap:18px;height:100%;min-height:0}.social-editor-controls{min-width:0;min-height:0;overflow-y:auto;padding-right:8px;padding-bottom:28px;overscroll-behavior:contain}.social-editor-preview-pane{position:relative;align-self:stretch;min-width:0;min-height:0;overflow-y:auto;padding:14px;border:1px solid #2b3151;border-radius:12px;background:#090c18}.social-editor-preview-head{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:10px}.social-editor-preview-pane h4{margin:0;color:#c4b5fd;font-size:13px}.social-editor-close{padding:6px 9px;border:1px solid #343a5d;border-radius:7px;background:#191e35;color:#cbd5e1;cursor:pointer;font-size:11px}.social-editor-close:hover{border-color:#8b5cf6;color:#fff}.social-modal-preview-stage{width:min(100%,360px);aspect-ratio:9/16;margin:auto;border-radius:12px;background:linear-gradient(155deg,#17213a,#090c16 58%,#251743);overflow:hidden;position:relative;container-type:inline-size;box-shadow:0 16px 45px #0008}.social-modal-preview-stage .thr-stack{top:50%;padding-top:0;transform:translateY(-50%);transition:none}.social-modal-preview-stage .tcard,.social-modal-preview-stage .tk-comment{animation:none}.social-preview-hint{margin-top:9px;color:#727b9d;font-size:10px;text-align:center}@media(max-width:850px){.step-modal.social-editor-open{height:94vh}.social-editor-layout{grid-template-columns:1fr}.social-editor-preview-pane{grid-row:1;max-height:290px}.social-modal-preview-stage{width:min(100%,180px)}.social-editor-controls{grid-row:2}}
+.social-modal-preview-stage.blur-identity .uname,.social-modal-preview-stage.blur-identity .avatar,.social-modal-preview-stage.blur-identity .tk-uname,.social-modal-preview-stage.blur-identity .tk-avatar{filter:blur(5px)}.social-modal-preview-stage.blur-identity .avatar,.social-modal-preview-stage.blur-identity .tk-avatar{filter:blur(6px)}.social-identity-name-input{width:auto!important;min-width:1ch;max-width:24ch;padding:0!important;border:0!important;border-radius:0!important;background:transparent!important;color:inherit!important;font:inherit!important;font-weight:inherit!important;line-height:inherit!important;outline:0!important;box-shadow:none!important}.social-modal-preview-stage .avatar,.social-modal-preview-stage .tk-avatar{cursor:pointer}.social-modal-preview-stage .avatar:hover,.social-modal-preview-stage .tk-avatar:hover{outline:.6cqw solid #8b5cf6;outline-offset:.4cqw}
+.social-progressive-preview-line{position:relative;display:flex;align-items:flex-start;gap:.62cqw}.social-progressive-preview-line+.social-progressive-preview-line{margin-top:.45em}.social-progressive-preview-line-copy{min-width:0;flex:1;white-space:pre-wrap}.social-progressive-more{display:inline-grid;place-items:center;flex:0 0 auto;width:1.6em;height:1.6em;margin-top:.02em;padding:0;border:.08em solid #d1d5db;border-radius:50%;background:#f3f4f6;color:#8a8a8a;font:800 .78em/1 Arial,sans-serif;letter-spacing:.03em;cursor:pointer}.social-progressive-more:hover,.social-progressive-more.active{background:#e5e7eb;border-color:#c7c7c7;color:#555}.social-progressive-segment-modal{width:min(520px,94vw);padding:20px;overflow:visible}.social-progressive-segment-editor{box-sizing:border-box}.social-progressive-segment-editor h3{margin:0 0 12px;color:#e5e7eb;font-size:17px}.social-progressive-segment-editor textarea,.social-progressive-segment-editor input[type=number]{box-sizing:border-box;width:100%;padding:10px 11px;border:1px solid #343a4d;border-radius:8px;background:#0a0d16;color:#e5e7eb;font:13px inherit}.social-progressive-segment-editor textarea{min-height:130px;resize:vertical}.social-progressive-segment-editor label{display:block;margin:10px 0 5px;color:#aeb4c3;font-size:12px;font-weight:700}.social-progressive-segment-row{display:grid;grid-template-columns:1fr 1fr;gap:10px}.social-progressive-segment-actions{display:flex;justify-content:flex-end;gap:8px;margin-top:14px}.social-progressive-segment-actions button{padding:8px 12px;border:0;border-radius:8px;background:#d1d5db;color:#111827;font-size:12px;font-weight:800;cursor:pointer}.social-progressive-segment-actions button:hover{background:#e5e7eb}.social-progressive-segment-actions .cancel{background:#252b3d;color:#cbd5e1}
 .progressive-editor-modal{width:min(980px,96vw);overflow:hidden}.progressive-editor-head{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:16px}.progressive-editor-head h3{margin:0}.progressive-editor-grid{display:grid;grid-template-columns:minmax(0,1.25fr) minmax(260px,.75fr);gap:16px;min-height:430px;max-height:70vh}.progressive-editor-pane{min-width:0;overflow:auto;border:1px solid #252b49;border-radius:12px;background:#0b0e1b;padding:16px}.progressive-editor-pane h4{margin:0 0 12px;color:#d8b4fe;font-size:14px}.progressive-editor-list{display:flex;flex-direction:column;gap:8px}.progressive-editor-item{width:100%;display:flex;align-items:center;gap:9px;padding:11px;border:1px solid #29304f;border-radius:9px;background:#11162a;color:#cbd5e1;text-align:left;cursor:pointer}.progressive-editor-item:hover{border-color:#6046a8}.progressive-editor-item.active{border-color:#8b5cf6;background:#20163d;box-shadow:0 0 0 1px #8b5cf6}.progressive-editor-item-index{display:grid;place-items:center;width:24px;height:24px;flex:0 0 24px;border-radius:50%;background:#312e81;color:#ddd6fe;font-size:11px;font-weight:800}.progressive-editor-item-copy{min-width:0}.progressive-editor-item-copy strong{display:block;color:#f3e8ff;font-size:11px}.progressive-editor-item-copy span{display:block;margin-top:3px;overflow:hidden;color:#94a3b8;font-size:11px;text-overflow:ellipsis;white-space:nowrap}.progressive-editor-tools{display:flex;gap:8px;align-items:center;margin-bottom:12px;padding-bottom:12px;border-bottom:1px solid #252b49}.progressive-editor-tools label{display:flex;align-items:center;gap:7px;margin:0;font-size:11px}.progressive-editor-danger{border:0;border-radius:8px;background:#401725;color:#fda4af;padding:10px 12px;cursor:pointer}.progressive-editor-danger:hover{background:#5b1b2d}@media(max-width:760px){.progressive-editor-grid{grid-template-columns:1fr;max-height:75vh}.progressive-editor-list-pane{max-height:220px;grid-row:1}.progressive-editor-edit-pane{grid-row:2}}
 .media-dropzone {
   border: 2px dashed #2d2b45; border-radius: 10px; padding: 30px 14px;
@@ -1158,7 +1166,8 @@ header span { font-size: 12px; color: #4b5563; }
 </svg>
 
 <header>
-  <h1>🧵 Threads Short Video Maker</h1>
+  <img class="app-logo" src="assets/brand/threads-video-maker-logo.svg" alt="Threads Video Maker logo"/>
+  <h1>Threads Short Video Maker</h1>
   <span>Dựng short video kiểu Threads (post/comment UI + video nền)</span>
 </header>
 
@@ -1269,6 +1278,10 @@ header span { font-size: 12px; color: #4b5563; }
         <span class="chevron">▶</span>
       </div>
       <div class="feature-body">
+        <select id="export-preset" style="width:100%;margin-bottom:8px;background:#0b0e1a;border:1px solid var(--line);color:white;padding:9px;border-radius:9px">
+          <option value="normal">1080×1920</option>
+          <option value="messenger-mobile">720×1280</option>
+        </select>
         <button class="btn btn-primary" id="export-btn" onclick="exportVideo()">🎬 Xuất MP4</button>
         <div id="export-credit-info" style="font-size:11px;color:#94a3b8;margin-top:7px">Giá xuất video sẽ được tính trên server.</div>
         <div id="export-progress-wrap" style="display:none;margin-top:10px">
@@ -1343,8 +1356,8 @@ header span { font-size: 12px; color: #4b5563; }
       <h2 style="margin:0">Kịch bản (các step)</h2>
       <div style="display:flex;gap:6px">
         <button class="io-btn ai-script-btn" onclick="openAiScriptModal()" title="Tạo kịch bản card bằng AI"><span class="ai-script-logo">AI</span>Tạo bằng AI</button>
-        <button class="io-btn" onclick="exportProjectJson()" title="Xuất toàn bộ kịch bản ra file JSON">⭳ Xuất JSON</button>
-        <button class="io-btn" onclick="document.getElementById('import-json-input').click()" title="Nạp lại kịch bản từ file JSON đã xuất trước đó">⭱ Nạp JSON</button>
+        <button class="io-btn" onclick="openExportJsonModal()" title="Lưu file hoặc sao chép toàn bộ JSON của kịch bản">⭳ Xuất JSON</button>
+        <button class="io-btn" onclick="openImportJsonModal()" title="Nạp kịch bản từ file hoặc dán trực tiếp mã JSON">⭱ Nạp JSON</button>
         <input type="file" id="import-json-input" accept="application/json,.json" style="display:none" onchange="importProjectJson(this)"/>
       </div>
     </div>
@@ -1365,6 +1378,29 @@ header span { font-size: 12px; color: #4b5563; }
   </div>
 </div>
 
+<div class="step-modal-overlay" id="import-json-overlay" onclick="if(event.target===this)closeImportJsonModal()">
+  <div class="step-modal" style="width:min(760px,94vw);max-height:90vh;display:flex;flex-direction:column">
+    <h3>⭱ Nạp kịch bản JSON</h3>
+    <div style="font-size:12px;color:#94a3b8;line-height:1.55;margin-bottom:12px">Chọn file JSON hoặc dán toàn bộ mã JSON vào ô dưới. Cả hai cách đều dùng chung bước kiểm tra an toàn trước khi thay kịch bản.</div>
+    <textarea id="import-json-text" spellcheck="false" style="min-height:360px;max-height:58vh;resize:vertical;font:11px/1.5 ui-monospace,SFMono-Regular,Menlo,monospace" placeholder='Dán JSON tại đây, bắt đầu bằng:\n{\n  "_format": "threads-short-video-project",\n  "_version": 1,\n  "steps": [...]\n}'></textarea>
+    <div id="import-json-status" style="min-height:20px;margin-top:9px;color:#f87171;font-size:12px"></div>
+    <div class="modal-actions">
+      <button type="button" class="btn-cancel" onclick="closeImportJsonModal()">Đóng</button>
+      <button type="button" class="btn-cancel" onclick="document.getElementById('import-json-input').click()">📂 Chọn file JSON</button>
+      <button type="button" class="btn-ok" onclick="importProjectJsonText()">⭱ Nạp mã đã dán</button>
+    </div>
+  </div>
+</div>
+
+<div class="step-modal-overlay" id="export-json-overlay" onclick="if(event.target===this)closeExportJsonModal()">
+  <div class="step-modal" style="width:min(560px,94vw)">
+    <h3>⭳ Xuất kịch bản JSON</h3>
+    <div style="font-size:12px;color:#94a3b8;line-height:1.6">Mã JSON sao chép là bản project đầy đủ, đúng dữ liệu app đang chạy. Bạn có thể dán thẳng vào AI Feed rồi bấm <b>Nhận diện &amp; rút gọn</b> để tạo dữ liệu Markdown compact cho AI.</div>
+    <div id="export-json-status" style="min-height:20px;margin-top:12px;color:#86efac;font-size:12px"></div>
+    <div class="modal-actions"><button type="button" class="btn-cancel" onclick="closeExportJsonModal()">Đóng</button><button type="button" class="btn-cancel" onclick="exportProjectJson()">💾 Lưu file JSON</button><button type="button" class="btn-ok" onclick="copyProjectJson()">⧉ Sao chép mã JSON</button></div>
+  </div>
+</div>
+
 <div class="step-modal-overlay" id="ai-script-overlay" onclick="if(event.target===this)closeAiScriptModal()">
   <div class="step-modal ai-script-modal">
     <h3>✨ AI biên kịch</h3>
@@ -1372,7 +1408,6 @@ header span { font-size: 12px; color: #4b5563; }
     <label>Bạn muốn kịch bản như thế nào?</label>
     <textarea id="ai-script-prompt" style="min-height:150px" placeholder="Ví dụ: Tạo một post Threads buồn về tình yêu, sau đó có vài comment an ủi và một reply bẻ lái nhẹ..."></textarea>
     <div class="ai-script-grid">
-      <div><label>Nền tảng</label><select id="ai-script-platform"><option value="auto">AI tự chọn</option><option value="threads">Threads</option><option value="tiktok">TikTok</option></select></div>
       <div><label>Độ dài</label><select id="ai-script-length"><option value="short">Ngắn</option><option value="medium" selected>Vừa</option><option value="long">Dài</option></select></div>
     </div>
     <label style="display:flex;align-items:center;gap:7px;font-weight:500"><input id="ai-script-echo" type="checkbox" checked style="width:auto"/> Cho phép AI dùng vang ở punchline/plot twist gây cười</label>
@@ -1412,6 +1447,12 @@ header span { font-size: 12px; color: #4b5563; }
       <button type="button" class="btn-cancel" onclick="closeStepModal()">Huỷ</button>
       <button type="button" class="btn-ok" id="step-modal-submit-btn" onclick="submitStepModal()">Thêm vào kịch bản</button>
     </div>
+  </div>
+</div>
+
+<div class="step-modal-overlay" id="social-progressive-editor-overlay" onclick="if(event.target===this) closeSocialProgressiveSegmentEditor()">
+  <div class="step-modal social-progressive-segment-modal">
+    <div id="social-progressive-segment-editor" class="social-progressive-segment-editor"></div>
   </div>
 </div>
 
@@ -1456,7 +1497,8 @@ header span { font-size: 12px; color: #4b5563; }
           <div><label>Tôi</label><div class="mess-input-shell"><textarea id="mess-mine" placeholder="Nhập tin bên phải..." oninput="onMessSideInput('mine')"></textarea><button type="button" class="mess-media-trigger" title="Thêm ảnh hoặc sticker" onclick="event.stopPropagation();toggleMessengerMediaMenu('mine')">🖼️</button><div class="mess-media-popover" id="mess-media-menu-mine" onclick="event.stopPropagation()"><button type="button" onclick="chooseMessengerImageFile('mine')">Tải ảnh từ máy</button><button type="button" onclick="showMessengerUrlInput('mine')">Dán URL ảnh</button><button type="button" onclick="chooseMessengerSticker('mine')">Chọn sticker từ thư viện</button><div class="mess-media-url-row" id="mess-media-url-row-mine"><input id="mess-inline-url-mine" type="text" placeholder="https://..."/><button type="button" onclick="applyMessengerInlineUrl('mine')">Thêm</button></div></div><div class="mess-inline-image-preview" id="mess-inline-preview-mine"></div></div></div>
         </div>
         <label>Nội dung đọc TTS</label>
-        <textarea id="mess-tts" placeholder="Tự đồng bộ theo tin nhắn..." oninput="messTtsDirty=true"></textarea>
+        <textarea id="mess-tts" placeholder="Tự đồng bộ theo tin nhắn..." oninput="messTtsDirty=true;updateMessengerTtsCounter()"></textarea>
+        <div id="mess-tts-count" style="margin-top:4px;text-align:right;font-size:11px;color:#7f8aa5">0 / 390 ký tự</div>
         <label style="display:flex;align-items:center;gap:6px;margin-top:6px;font-weight:400">
           <input type="checkbox" id="mess-echo" style="width:auto"/>
           <span>✨ Hiệu ứng vang (nhấn nhá tin nhắn này cho hài/gây cười)</span>
@@ -1481,7 +1523,7 @@ header span { font-size: 12px; color: #4b5563; }
         <div id="mess-tts-status" style="font-size:11px;color:#a78bfa;margin-top:8px;min-height:14px"></div>
       </section>
       <section class="mess-preview-pane">
-        <div class="mess-preview-toolbar"><span class="mess-preview-label">PREVIEW ĐOẠN CHAT</span><div class="mess-preview-controls"><label class="mess-footer-toggle"><input type="checkbox" id="mess-footer-toggle" onchange="setMessengerFooterVisible(this.checked)"><span>Hiện ô nhập tin nhắn</span></label><div><button type="button" class="mess-platform-trigger" id="mess-platform-trigger" onclick="event.stopPropagation();toggleMessengerPlatformMenu()">Messenger</button><div class="mess-platform-menu" id="mess-platform-menu"><button type="button" class="mess-platform-option active" data-platform="messenger" onclick="selectMessengerPlatform('messenger')">Messenger</button><button type="button" class="mess-platform-option" data-platform="zalo" onclick="selectMessengerPlatform('zalo')">Zalo</button></div></div></div></div>
+        <div class="mess-preview-toolbar"><span class="mess-preview-label">PREVIEW ĐOẠN CHAT</span><div class="mess-preview-controls"><label class="mess-footer-toggle"><input type="checkbox" id="mess-header-toggle" onchange="setMessengerHeaderVisible(this.checked)" checked><span>Hiện header</span></label><label class="mess-footer-toggle"><input type="checkbox" id="mess-footer-toggle" onchange="setMessengerFooterVisible(this.checked)"><span>Hiện ô nhập tin nhắn</span></label><div><button type="button" class="mess-platform-trigger" id="mess-platform-trigger" onclick="event.stopPropagation();toggleMessengerPlatformMenu()">Messenger</button><div class="mess-platform-menu" id="mess-platform-menu"><button type="button" class="mess-platform-option active" data-platform="messenger" onclick="selectMessengerPlatform('messenger')">Messenger</button><button type="button" class="mess-platform-option" data-platform="zalo" onclick="selectMessengerPlatform('zalo')">Zalo</button></div></div></div></div>
         <div style="display:flex;flex-wrap:wrap;gap:8px 16px;padding:10px 12px;border-bottom:1px solid rgba(148,163,184,.16);background:rgba(15,23,42,.55)">
           <label class="mess-footer-toggle" title="Tự thêm messenger-tone.mp3 chạy song song với mọi tin của đối phương"><input type="checkbox" id="mess-auto-received-tone" onchange="toggleMessengerAutoTone('received',this.checked)"><span>Thêm âm thanh nhận vào tất cả tin nhận</span></label>
           <label class="mess-footer-toggle" title="Tự thêm sentmessage_1.mp3 chạy song song với mọi tin của tôi"><input type="checkbox" id="mess-auto-sent-tone" onchange="toggleMessengerAutoTone('sent',this.checked)"><span>Thêm âm thanh gửi vào tất cả tin gửi</span></label>
@@ -1568,7 +1610,7 @@ header span { font-size: 12px; color: #4b5563; }
 </div>
 
 <script>window.BROWSER_FIRST = true;</script>
-<script src="render_shared.js?v=20260808-zalo-chat"></script>
+<script src="render_shared.js?v=20260827-mess-header"></script>
 <script>
 // ===== Sidebar accordion =====
 function toggleFeature(id) {
@@ -1593,6 +1635,7 @@ function toggleBlurIdentity() {
   // không an toàn để né TDZ) nên chỉ set class CSS, bỏ qua phần render.
   if (!_stepEngineReady) return;
   _lastStackKey = null; _lastStackIds = []; _lastStackRevealStages = [];
+  updateSocialModalPreview();
   if (playing) return; // Play đang chạy tự render lại theo RAF, không cần ép
   renderIdleScene();
 }
@@ -1941,26 +1984,29 @@ function voicePickerRowsHtml(selected) {
   return groups.map(([label,engine])=>{
     const rows=ttsVoices.map((voice,index)=>({voice,index})).filter(item=>item.voice&&(item.voice.engine||'capcut')===engine);
     if(!rows.length)return '';
-    return `<div class="voice-picker-group">${label}</div>${rows.map(({voice,index})=>`<div class="voice-picker-row ${String(index)===String(selected)?'selected':''}" data-voice-index="${index}"><button type="button" class="voice-picker-select" onclick="selectCustomVoice(this.closest('.voice-picker'),${index});event.stopPropagation()">${esc(voice.label)}</button><button type="button" class="voice-picker-preview" onclick="previewCustomVoice(${index},this,event)">▶ Thử</button></div>`).join('')}`;
+    return `<div class="voice-picker-group">${label}</div>${rows.map(({voice,index})=>`<div class="voice-picker-row ${String(index)===String(selected)?'selected':''}" data-voice-index="${index}"><button type="button" class="voice-picker-select" onclick="selectCustomVoice(this.closest('.voice-picker'),${index});event.stopPropagation()">${esc(voice.label)} · ${ttsVoiceCharLimit(index)} ký tự</button><button type="button" class="voice-picker-preview" onclick="previewCustomVoice(${index},this,event)">▶ Thử</button></div>`).join('')}`;
   }).join('');
 }
 function voicePickerHtml(inputId,selected){
   const index=Number.isFinite(Number(selected))?Number(selected):0,voice=ttsVoices[index]||ttsVoices[0];
-  return `<div class="voice-picker"><input type="hidden" id="${inputId}" value="${voice?index:(ttsVoices.findIndex(Boolean)>=0?ttsVoices.findIndex(Boolean):0)}"/><button type="button" class="voice-picker-trigger" onclick="toggleCustomVoicePicker(this.parentElement,event)">${esc(voice?.label||ttsVoices.find(Boolean)?.label||'Chọn giọng đọc')}</button><div class="voice-picker-menu" onclick="event.stopPropagation()"><div class="voice-picker-tools"><span>${ttsVoices.filter(Boolean).length} giọng đọc · mẫu thử có sẵn</span></div>${voicePickerRowsHtml(index)}</div></div>`;
+  return `<div class="voice-picker"><input type="hidden" id="${inputId}" value="${voice?index:(ttsVoices.findIndex(Boolean)>=0?ttsVoices.findIndex(Boolean):0)}"/><button type="button" class="voice-picker-trigger" onclick="toggleCustomVoicePicker(this.parentElement,event)">${esc(voice?.label||ttsVoices.find(Boolean)?.label||'Chọn giọng đọc')} · ${ttsVoiceCharLimit(index)} ký tự</button><div class="voice-picker-menu" onclick="event.stopPropagation()"><div class="voice-picker-tools"><span>${ttsVoices.filter(Boolean).length} giọng đọc · mẫu thử có sẵn</span></div>${voicePickerRowsHtml(index)}</div></div>`;
 }
 function toggleCustomVoicePicker(picker,event){event?.stopPropagation();document.querySelectorAll('.voice-picker.open').forEach(item=>{if(item!==picker)item.classList.remove('open')});picker.classList.toggle('open');}
 function selectCustomVoice(picker,index){
   const input=picker.querySelector('input[type="hidden"]'),voice=ttsVoices[index];if(!input||!voice)return;
-  input.value=String(index);picker.querySelector('.voice-picker-trigger').textContent=voice.label;
+  input.value=String(index);picker.querySelector('.voice-picker-trigger').textContent=`${voice.label} · ${ttsVoiceCharLimit(index)} ký tự`;
   picker.querySelectorAll('.voice-picker-row').forEach(row=>row.classList.toggle('selected',Number(row.dataset.voiceIndex)===index));picker.classList.remove('open');
+  if(input.id.endsWith('-voice'))updateTtsCharCounter(input.id.slice(0,-6));
   if(input.id==='mess-theirs-voice')setMessengerSideVoice('theirs',index);
   if(input.id==='mess-mine-voice')setMessengerSideVoice('mine',index);
+  if(input.id==='mess-theirs-voice'||input.id==='mess-mine-voice')updateMessengerTtsCounter();
 }
 function setCustomVoicePickerValue(inputId,index){
   const input=document.getElementById(inputId),picker=input?.closest('.voice-picker');
   if(!input||!picker||!ttsVoices[index])return;
-  input.value=String(index);picker.querySelector('.voice-picker-trigger').textContent=ttsVoices[index].label;
+  input.value=String(index);picker.querySelector('.voice-picker-trigger').textContent=`${ttsVoices[index].label} · ${ttsVoiceCharLimit(index)} ký tự`;
   picker.querySelectorAll('.voice-picker-row').forEach(row=>row.classList.toggle('selected',Number(row.dataset.voiceIndex)===Number(index)));
+  if(inputId.endsWith('-voice'))updateTtsCharCounter(inputId.slice(0,-6));
 }
 async function previewCustomVoice(index,button,event){
   event?.stopPropagation();const voice=ttsVoices[index];if(!voice)return;
@@ -2099,9 +2145,9 @@ async function ttsResponseError(response) {
 }
 
 async function fetchTts(text, voiceIdx, echo = false, speed = 1) {
-  const lengthError = ttsLengthError(text);
-  if (lengthError) throw new Error(lengthError);
   const voice = selectedVoice(voiceIdx);
+  const lengthError = ttsLengthError(text, 'Đoạn TTS', voiceIdx);
+  if (lengthError) throw new Error(lengthError);
   const res = await fetch(ttsServerUrl() + '/tts', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json', ...(window.authHeaders ? window.authHeaders() : {}) },
@@ -2141,10 +2187,23 @@ async function mapWithConcurrency(items, limit, worker) {
   return results;
 }
 
-const TTS_CLIENT_MAX_CHARS = 390;
-function ttsLengthError(text, label = 'Đoạn TTS') {
+const TTS_CLIENT_DEFAULT_MAX_CHARS = 390;
+const TTS_CLIENT_EXTENDED_MAX_CHARS = 700;
+const TTS_CLIENT_EXTENDED_VOICES = new Set([
+  'BV421_vivn_streaming','vi_female_huong','BV074_streaming_dsp','BV074_streaming',
+  'BV075_streaming_vibrato_dsp','BV562_streaming','BV075_streaming_demon_dsp',
+  'BV075_streaming_robot_dsp','BV075_streaming','BV560_streaming'
+]);
+function ttsVoiceCharLimit(voiceIdx) {
+  const voice=selectedVoice(voiceIdx);
+  const serverLimit=Number(voice?.max_chars);
+  if(Number.isFinite(serverLimit)&&serverLimit>0)return serverLimit;
+  return TTS_CLIENT_EXTENDED_VOICES.has(voice?.voice_type)?TTS_CLIENT_EXTENDED_MAX_CHARS:TTS_CLIENT_DEFAULT_MAX_CHARS;
+}
+function ttsLengthError(text, label = 'Đoạn TTS', voiceIdx = null) {
   const length = String(text || '').trim().length;
-  return length > TTS_CLIENT_MAX_CHARS ? `${label} dài ${length} ký tự, vượt giới hạn ${TTS_CLIENT_MAX_CHARS}. Hãy tách thành nhiều đoạn nhỏ hơn.` : '';
+  const limit=ttsVoiceCharLimit(voiceIdx);
+  return length > limit ? `${label} dài ${length} ký tự, vượt giới hạn ${limit} của giọng đã chọn. Hãy tách thành nhiều đoạn nhỏ hơn.` : '';
 }
 
 async function downloadTtsItems(items, onProgress) {
@@ -2163,9 +2222,10 @@ async function downloadTtsItems(items, onProgress) {
 // chat Messenger để tránh gửi từng request /tts riêng lẻ dễ bị block.
 async function fetchTtsBatch(texts, voiceIdx, speed = 1, echo = false) {
   if (!texts.length || texts.length > 50) throw new Error('TTS batch phải có từ 1 đến 50 đoạn');
-  const tooLong = texts.findIndex(text => String(text || '').trim().length > TTS_CLIENT_MAX_CHARS);
-  if (tooLong >= 0) throw new Error(ttsLengthError(texts[tooLong], `Đoạn TTS #${tooLong + 1}`));
   const voice = selectedVoice(voiceIdx);
+  const limit=ttsVoiceCharLimit(voiceIdx);
+  const tooLong = texts.findIndex(text => String(text || '').trim().length > limit);
+  if (tooLong >= 0) throw new Error(ttsLengthError(texts[tooLong], `Đoạn TTS #${tooLong + 1}`, voiceIdx));
   const res = await fetch(ttsServerUrl() + '/tts-batch', {
     method: 'POST', headers: { 'Content-Type': 'application/json', ...(window.authHeaders ? window.authHeaders() : {}) },
     body: JSON.stringify({ texts, voice_type: voice?.voice_type, resource_id: voice?.resource_id, speed, echo }),
@@ -2179,8 +2239,8 @@ async function fetchTtsBatch(texts, voiceIdx, speed = 1, echo = false) {
 
 async function fetchProjectTtsBatch(items,onProgress) {
   if (!items.length) return [];
-  const tooLong = items.findIndex(item => String(item.text || '').trim().length > TTS_CLIENT_MAX_CHARS);
-  if (tooLong >= 0) throw new Error(ttsLengthError(items[tooLong].text, `Đoạn TTS #${tooLong + 1}`));
+  const tooLong = items.findIndex(item => String(item.text || '').trim().length > ttsVoiceCharLimit(item.voiceIdx));
+  if (tooLong >= 0) throw new Error(ttsLengthError(items[tooLong].text, `Đoạn TTS #${tooLong + 1}`, items[tooLong].voiceIdx));
   const payload = items.map(item => {
     const voice = selectedVoice(item.voiceIdx);
     return {text:item.text,voice_type:voice?.voice_type,resource_id:voice?.resource_id,speed:item.speed||1,echo:!!item.echo,word_timestamps:item.step?.type==='note'&&item.step.noteSubtitles!==false};
@@ -2347,8 +2407,8 @@ async function generateAllTts() {
       if(!segment.audioUrl&&text)jobs.push({step,segment,text,voiceIdx:segment.voiceIdx!=null?segment.voiceIdx:(step.voiceIdx!=null?step.voiceIdx:null),speed:1,echo:!!segment.echo});
     }
   }
-  const tooLongJob=jobs.find(job=>String(job.text||'').trim().length>TTS_CLIENT_MAX_CHARS);
-  if(tooLongJob){const label=TYPE_LABEL[tooLongJob.step?.type]||'Card';statusEl.textContent='✗ '+ttsLengthError(tooLongJob.text,label);return false;}
+  const tooLongJob=jobs.find(job=>String(job.text||'').trim().length>ttsVoiceCharLimit(job.voiceIdx));
+  if(tooLongJob){const label=TYPE_LABEL[tooLongJob.step?.type]||'Card';statusEl.textContent='✗ '+ttsLengthError(tooLongJob.text,label,tooLongJob.voiceIdx);return false;}
   const subtitleOnly=steps.filter(step=>step.type==='note'&&step.noteSubtitles!==false&&step.audioUrl&&step.audioServerUrl&&(!Array.isArray(step.subtitleWords)||!step.subtitleWords.length));
   if(!jobs.length&&subtitleOnly.length){
     btn.disabled=true;
@@ -2385,6 +2445,8 @@ let stepIdCounter = 1;
 let editingStepId = null;   // null = đang thêm mới; khác null = đang sửa
 let modalType = 'post';
 let modalTargetGroupId = null;
+let modalSocialName = '';
+let modalSocialAvatarUrl = '';
 // Platform (Threads/TikTok) của step comment/reply đang soạn trong modal — mục
 // 5.39 CONTEXT.md. Chọn 1 lần lúc mở modal (mặc định 'threads', hoặc theo
 // editing.platform nếu đang sửa step cũ), KHÔNG đổi được sau khi bấm nút
@@ -2397,6 +2459,10 @@ let modalPlatform = 'threads';
 // mỗi lần mở modal (openStepModal()), điền lại từ editing.extraTtsSegments
 // nếu đang sửa step cũ đã có sẵn nhiều đoạn.
 let modalExtraTts = [];
+// Bản nháp TTS từng dòng khi đang sửa Post/Comment/Reply. Chỉ ghi vào step
+// thật lúc người dùng bấm Lưu modal.
+let modalProgressiveTtsSegments = [];
+let socialProgressiveEditingIndex = null;
 
 const TYPE_LABEL = { post:'POST', comment:'COMMENT', reply:'REPLY', text:'TEXT', note:'NOTE', audio:'ÂM THANH', image:'ẢNH', sticker:'STICKER', mess:'TIN NHẮN' };
 const DEFAULT_DUR = { post:3, comment:2.5, reply:2.5, text:3, note:4, audio:1, image:3, sticker:2, mess:2 };
@@ -2409,6 +2475,7 @@ let messPartnerName = 'Tùng';
 let messPartnerAvatar = MESS_DEFAULT_AVATAR;
 let messPlatform = 'messenger';
 let messShowFooter = false;
+let messShowHeader = true;
 let messPendingImage = null;
 let messSideVoiceIdx = { theirs: 0, mine: 22 };
 let messTtsSpeed = 1;
@@ -2439,6 +2506,8 @@ function selectMessengerPlatform(platform){
 }
 function setMessengerFooterVisible(visible){messShowFooter=!!visible;renderMessengerDrafts();}
 function updateMessengerFooterToggle(){const input=document.getElementById('mess-footer-toggle');if(input)input.checked=messShowFooter;}
+function setMessengerHeaderVisible(visible){messShowHeader=!!visible;renderMessengerDrafts();}
+function updateMessengerHeaderToggle(){const input=document.getElementById('mess-header-toggle');if(input)input.checked=messShowHeader;}
 document.addEventListener('click',e=>{if(!e.target.closest('.mess-preview-toolbar'))document.getElementById('mess-platform-menu')?.classList.remove('open');});
 function openMessengerModal(stepId = null, conversationMode = false) {
   messEditingStepId = stepId;
@@ -2455,6 +2524,7 @@ function openMessengerModal(stepId = null, conversationMode = false) {
   messPartnerAvatar = (s && s.messPartnerAvatar) || MESS_DEFAULT_AVATAR;
   messPlatform = s?.messPlatform === 'zalo' ? 'zalo' : 'messenger';
   messShowFooter = !!s?.messShowFooter;
+  messShowHeader = s?.messShowHeader !== false;
   messSideVoiceIdx = s && s.messSideVoices ? { ...s.messSideVoices } : { theirs: messengerVoiceIndexByLabel('Nhỏ Ngọt Ngào',0), mine: messengerVoiceIndexByLabel('Thanh Niên Tự Tin',22) };
   for(const side of ['theirs','mine'])if(!ttsVoices[messSideVoiceIdx[side]])messSideVoiceIdx[side]=side==='mine'?messengerVoiceIndexByLabel('Thanh Niên Tự Tin',0):messengerVoiceIndexByLabel('Nhỏ Ngọt Ngào',0);
   messTtsSpeed = Math.max(.5, Math.min(1.5, Number(s?.messTtsSpeed || 1)));
@@ -2472,6 +2542,7 @@ function openMessengerModal(stepId = null, conversationMode = false) {
   document.getElementById('mess-finish-btn').textContent = conversationMode ? 'Lưu Box tin nhắn' : s ? 'Lưu thay đổi' : 'Tạo kịch bản tin nhắn';
   updateMessengerPlatformPicker();
   updateMessengerFooterToggle();
+  updateMessengerHeaderToggle();
   document.getElementById('mess-auto-received-tone').checked=false;
   document.getElementById('mess-auto-sent-tone').checked=false;
   const current = s&&!conversationMode ? messDrafts[messDrafts.length - 1] : null;
@@ -2486,6 +2557,7 @@ function openMessengerModal(stepId = null, conversationMode = false) {
   document.getElementById('mess-voice').innerHTML = '<option value="">Theo giọng mặc định của bên gửi</option>' + messVoiceOptions(current?.voiceOverride ? current.voiceIdx : null);
   document.getElementById('mess-tts-status').textContent = '';
   renderMessengerDrafts();
+  updateMessengerTtsCounter();
   document.getElementById('mess-modal-overlay').classList.add('open');
 }
 function closeMessengerModal(){ document.getElementById('mess-modal-overlay').classList.remove('open'); messEditingStepId=null;messEditingConversationId=null; }
@@ -2495,12 +2567,13 @@ function onMessSideInput(side) {
   if (active.value) (side === 'mine' ? theirs : mine).value = '';
   if (!messTtsDirty) document.getElementById('mess-tts').value = active.value;
   if (!messVoiceTouched) document.getElementById('mess-voice').value = '';
+  updateMessengerTtsCounter();
 }
 function messengerDefaultVoice(side) {
   const selected=messSideVoiceIdx[side];
   return ttsVoices[selected]?selected:(side==='mine'?messengerVoiceIndexByLabel('Thanh Niên Tự Tin',0):messengerVoiceIndexByLabel('Nhỏ Ngọt Ngào',0));
 }
-function messengerServerSpeed(displaySpeed){return Math.max(.65,Math.min(1.95,Number(displaySpeed||1)*1.3));}
+function messengerServerSpeed(displaySpeed){return Math.max(.5,Math.min(1.5,Number(displaySpeed||1)*0.9));}
 function setMessengerSideVoice(side, value) {
   const voiceIdx=parseInt(value,10);
   if(Number.isNaN(voiceIdx))return;
@@ -2509,6 +2582,17 @@ function setMessengerSideVoice(side, value) {
     if(msg.side===side && !msg.voiceOverride)msg.voiceIdx=voiceIdx;
   }
   renderMessengerDrafts();
+  updateMessengerTtsCounter();
+}
+function updateMessengerTtsCounter(){
+  const textEl=document.getElementById('mess-tts'),countEl=document.getElementById('mess-tts-count');if(!textEl||!countEl)return;
+  const mine=document.getElementById('mess-mine')?.value.trim(),theirs=document.getElementById('mess-theirs')?.value.trim();
+  const side=mine?'mine':theirs?'theirs':document.getElementById('mess-image-side')?.value||'theirs';
+  const override=parseInt(document.getElementById('mess-voice')?.value,10);
+  const voiceIdx=Number.isNaN(override)?messengerDefaultVoice(side):override,limit=ttsVoiceCharLimit(voiceIdx),length=textEl.value.trim().length;
+  countEl.textContent=`${length} / ${limit} ký tự`;
+  countEl.style.color=length>limit?'#f87171':length>limit*.9?'#fbbf24':'#7f8aa5';
+  textEl.setAttribute('maxlength',String(limit));
 }
 function messengerVoiceIndexByLabel(label,fallback){const idx=ttsVoices.findIndex(v=>v?.label===label);return idx>=0?idx:fallback;}
 function messengerHistoryMessage(msg){const {parallelAudios,...clean}=msg;return clean;}
@@ -2561,6 +2645,8 @@ function applyMessengerImageUrl(){const url=document.getElementById('mess-image-
 function addMessengerDraft() {
   const msg = readMessengerComposer();
   if (!msg) { alert('Nhập tin nhắn vào ô Đối phương hoặc Tôi.'); return; }
+  const lengthError=ttsLengthError(msg.ttsText,'Tin nhắn TTS',msg.voiceIdx);
+  if(lengthError){document.getElementById('mess-tts-status').textContent='✗ '+lengthError;updateMessengerTtsCounter();return;}
   applyEnabledMessengerAutoTones(msg);
   if(messDraftEditIndex!=null)messDrafts[messDraftEditIndex]=msg;
   else if(messInsertAt!=null)messDrafts.splice(messInsertAt,0,msg);
@@ -2575,7 +2661,7 @@ function removeMessengerDraft(i){
 }
 function resetMessengerComposer(){
   messDraftEditIndex=null;messInsertAt=null;messTtsDirty=false;messVoiceTouched=false;messPendingImage=null;
-  document.getElementById('mess-theirs').value='';document.getElementById('mess-mine').value='';document.getElementById('mess-tts').value='';document.getElementById('mess-echo').checked=false;document.getElementById('mess-image-url').value='';document.getElementById('mess-image-side').value='theirs';document.getElementById('mess-voice').value='';for(const side of ['theirs','mine']){const input=document.getElementById(`mess-inline-url-${side}`);if(input)input.value='';const row=document.getElementById(`mess-media-url-row-${side}`);if(row)row.classList.remove('open');}closeMessengerMediaMenus();renderMessengerImagePreview();updateMessengerComposerMode();
+  document.getElementById('mess-theirs').value='';document.getElementById('mess-mine').value='';document.getElementById('mess-tts').value='';document.getElementById('mess-echo').checked=false;document.getElementById('mess-image-url').value='';document.getElementById('mess-image-side').value='theirs';document.getElementById('mess-voice').value='';for(const side of ['theirs','mine']){const input=document.getElementById(`mess-inline-url-${side}`);if(input)input.value='';const row=document.getElementById(`mess-media-url-row-${side}`);if(row)row.classList.remove('open');}closeMessengerMediaMenus();renderMessengerImagePreview();updateMessengerComposerMode();updateMessengerTtsCounter();
 }
 function updateMessengerComposerMode(){
   const box=document.getElementById('mess-compose-mode'),btn=document.getElementById('mess-add-btn'),cancel=document.getElementById('mess-compose-cancel');
@@ -2585,7 +2671,7 @@ function updateMessengerComposerMode(){
   else{box.style.display='none';box.textContent='';btn.textContent='＋ Thêm tin nhắn';cancel.style.display='none';}
 }
 function fillMessengerComposer(msg){
-  document.getElementById('mess-theirs').value=msg.side==='theirs'?(msg.text||''):'';document.getElementById('mess-mine').value=msg.side==='mine'?(msg.text||''):'';document.getElementById('mess-tts').value=msg.ttsText??msg.text??'';document.getElementById('mess-echo').checked=!!msg.echo;document.getElementById('mess-image-side').value=msg.side;messPendingImage=msg.imageUrl?{url:msg.imageUrl,name:msg.imageName||'ảnh',type:msg.imageType||'image',desktopPath:msg.imageDesktopPath||null}:null;document.getElementById('mess-image-url').value=msg.imageUrl&&/^https?:/i.test(msg.imageUrl)?msg.imageUrl:'';document.getElementById('mess-voice').value=msg.voiceOverride?String(msg.voiceIdx):'';messTtsDirty=true;messVoiceTouched=!!msg.voiceOverride;renderMessengerImagePreview();
+  document.getElementById('mess-theirs').value=msg.side==='theirs'?(msg.text||''):'';document.getElementById('mess-mine').value=msg.side==='mine'?(msg.text||''):'';document.getElementById('mess-tts').value=msg.ttsText??msg.text??'';document.getElementById('mess-echo').checked=!!msg.echo;document.getElementById('mess-image-side').value=msg.side;messPendingImage=msg.imageUrl?{url:msg.imageUrl,name:msg.imageName||'ảnh',type:msg.imageType||'image',desktopPath:msg.imageDesktopPath||null}:null;document.getElementById('mess-image-url').value=msg.imageUrl&&/^https?:/i.test(msg.imageUrl)?msg.imageUrl:'';document.getElementById('mess-voice').value=msg.voiceOverride?String(msg.voiceIdx):'';messTtsDirty=true;messVoiceTouched=!!msg.voiceOverride;renderMessengerImagePreview();updateMessengerTtsCounter();
 }
 function closeMessengerDraftMenus(){document.querySelectorAll('.mess-draft-actions.open').forEach(el=>el.classList.remove('open'));}
 function editMessengerDraft(i){const msg=messDrafts[i];if(!msg)return;closeMessengerDraftMenus();messDraftEditIndex=i;messInsertAt=null;fillMessengerComposer(msg);updateMessengerComposerMode();document.getElementById('mess-theirs').scrollIntoView({behavior:'smooth',block:'center'});}
@@ -2790,6 +2876,7 @@ function applyMessengerJson(raw) {
   if (!Array.isArray(raw)) {
     messPlatform = raw.platform === 'zalo' || raw.messPlatform === 'zalo' ? 'zalo' : 'messenger';
     messShowFooter = !!(raw.showFooter ?? raw.messShowFooter);
+    messShowHeader = (raw.showHeader ?? raw.messShowHeader) !== false;
     const theirsVoice = raw.theirsVoiceIdx ?? raw.opponentVoiceIdx;
     const mineVoice = raw.mineVoiceIdx ?? raw.myVoiceIdx;
     if (Number.isInteger(Number(theirsVoice))) messSideVoiceIdx.theirs = Number(theirsVoice);
@@ -2817,6 +2904,7 @@ function applyMessengerJson(raw) {
   messPartnerAvatar = Array.isArray(raw) ? MESS_DEFAULT_AVATAR : String(raw.partnerAvatar || raw.avatarUrl || MESS_DEFAULT_AVATAR).trim();
   updateMessengerPlatformPicker();
   updateMessengerFooterToggle();
+  updateMessengerHeaderToggle();
   resetMessengerComposer();
   renderMessengerDrafts();
   document.getElementById('mess-tts-status').textContent = `✓ Đã nạp ${messDrafts.length} tin từ JSON.`;
@@ -2845,7 +2933,7 @@ function importMessengerJson(input) {
 }
 function renderMessengerDrafts() {
   document.getElementById('mess-draft-list').innerHTML = messEditingStepId == null ? messDrafts.map((m,i)=>`<div class="mess-draft-item"><b>${m.side==='mine'?'Tôi':'Đối phương'}</b><span>${esc(m.text)}</span><button onclick="removeMessengerDraft(${i})">✕</button></div>`).join('') : '';
-  document.getElementById('mess-live-preview').innerHTML = buildMessengerHtml({ messHistory: messDrafts, messPartnerName, messPartnerAvatar, messPlatform, messShowFooter, messEditable:messEditingStepId==null||messEditingConversationId!=null, messIdentityEditable:true, messAudioIndexes:messengerAudioIndexesForConversation(messengerConversationIdForQuickAudio()) });
+  document.getElementById('mess-live-preview').innerHTML = buildMessengerHtml({ messHistory: messDrafts, messPartnerName, messPartnerAvatar, messPlatform, messShowFooter, messShowHeader, messEditable:messEditingStepId==null||messEditingConversationId!=null, messIdentityEditable:true, messAudioIndexes:messengerAudioIndexesForConversation(messengerConversationIdForQuickAudio()) });
   autoScrollMessenger(document.getElementById('mess-live-preview'));
 }
 function commitPendingMessengerDraft(){
@@ -2869,7 +2957,7 @@ async function generateMessengerTtsResults(messages,status,reuseSteps=[]){
   return results;
 }
 function makeMessengerStep(msg,index,history,conversationId,ttsResult,oldStep=null){
-  return {id:oldStep?.id??stepIdCounter++,type:'mess',conversationId,groupId:oldStep?.groupId===false?false:(oldStep?.groupId||conversationId),messIndex:index,messPlatform,messShowFooter,messPartnerName:messPartnerName.trim()||'Tùng',messPartnerAvatar,messSideVoices:{...messSideVoiceIdx},messTtsSpeed,messHistory:history.map(x=>({...x})),text:msg.text,ttsText:msg.ttsText,voiceIdx:msg.voiceIdx,echo:!!msg.echo,audioUrl:ttsResult?.audioUrl||null,ttsDuration:ttsResult?.duration||null,duration:ttsResult?.duration||DEFAULT_DUR.mess,gap:oldStep?.gap??0,clearBefore:oldStep?.clearBefore??true,hue:oldStep?.hue??0,offsetX:oldStep?.offsetX??0,offsetY:oldStep?.offsetY??0,rotation:oldStep?.rotation??0};
+  return {id:oldStep?.id??stepIdCounter++,type:'mess',conversationId,groupId:oldStep?.groupId===false?false:(oldStep?.groupId||conversationId),messIndex:index,messPlatform,messShowFooter,messShowHeader,messPartnerName:messPartnerName.trim()||'Tùng',messPartnerAvatar,messSideVoices:{...messSideVoiceIdx},messTtsSpeed,messHistory:history.map(x=>({...x})),text:msg.text,ttsText:msg.ttsText,voiceIdx:msg.voiceIdx,echo:!!msg.echo,audioUrl:ttsResult?.audioUrl||null,ttsDuration:ttsResult?.duration||null,duration:ttsResult?.duration||DEFAULT_DUR.mess,gap:oldStep?.gap??0,clearBefore:oldStep?.clearBefore??true,hue:oldStep?.hue??0,offsetX:oldStep?.offsetX??0,offsetY:oldStep?.offsetY??0,rotation:oldStep?.rotation??0};
 }
 function insertPendingMessengerAudios(drafts,messSteps){
   drafts.forEach((msg,i)=>{
@@ -2905,7 +2993,7 @@ async function submitMessengerConversation() {
       const idx=(s.messHistory||[]).length-1; const conv=s.conversationId;
       messSideVoiceIdx={theirs:parseInt(document.getElementById('mess-theirs-voice').value,10),mine:parseInt(document.getElementById('mess-mine-voice').value,10)};
       messPartnerName=messPartnerName.trim()||'Tùng';
-      for(const related of steps.filter(x=>x.type==='mess'&&x.conversationId===conv)){related.messPlatform=messPlatform;related.messShowFooter=messShowFooter;related.messPartnerName=messPartnerName;related.messPartnerAvatar=messPartnerAvatar;related.messSideVoices={...messSideVoiceIdx};related.messTtsSpeed=messTtsSpeed;}
+      for(const related of steps.filter(x=>x.type==='mess'&&x.conversationId===conv)){related.messPlatform=messPlatform;related.messShowFooter=messShowFooter;related.messShowHeader=messShowHeader;related.messPartnerName=messPartnerName;related.messPartnerAvatar=messPartnerAvatar;related.messSideVoices={...messSideVoiceIdx};related.messTtsSpeed=messTtsSpeed;}
       for (const later of steps.filter(x=>x.type==='mess'&&x.conversationId===conv&&((x.messIndex??0)>=idx))) if(later.messHistory&&later.messHistory[idx]) later.messHistory[idx]={...msg};
       s.text=msg.text;s.ttsText=msg.ttsText;s.voiceIdx=msg.voiceIdx;s.echo=!!msg.echo;s.audioUrl=null;s.audioDesktopPath=null;s.ttsDuration=null;s.duration=DEFAULT_DUR.mess;
       for (const x of steps.filter(x=>x.type==='mess'&&x.conversationId===conv)) bumpStepRevision(x.id);
@@ -2981,6 +3069,7 @@ function rollAndFillStats(prefix, kind) {
   document.getElementById(prefix + '-comments').value = fmtStatNumber(stats.comments);
   document.getElementById(prefix + '-reposts').value = fmtStatNumber(stats.reposts);
   document.getElementById(prefix + '-shares').value = fmtStatNumber(stats.shares);
+  if(prefix==='m')updateSocialModalPreview();
 }
 
 // kind: 'post' hoặc 'comment' — quyết định tỉ lệ dùng khi bấm 🎲 (mục 5.35).
@@ -3486,8 +3575,22 @@ function ttsFieldHtml(prefix, currentTtsText, currentEcho) {
              <span>🔊 Nội dung đọc (TTS)</span>
              <span style="font-size:10px;color:#6b7280;font-weight:400">mặc định = nội dung hiển thị, có thể sửa riêng</span>
            </label>
-           <textarea id="${prefix}-tts-text" oninput="ttsFieldDirty['${prefix}']=true" placeholder="Để trống = đọc y hệt nội dung hiển thị">${esc(currentTtsText||'')}</textarea>
+           <textarea id="${prefix}-tts-text" oninput="ttsFieldDirty['${prefix}']=true;updateTtsCharCounter('${prefix}')" placeholder="Để trống = đọc y hệt nội dung hiển thị">${esc(currentTtsText||'')}</textarea>
+           <div id="${prefix}-tts-count" style="margin-top:4px;text-align:right;font-size:11px;color:#7f8aa5">0 / 390 ký tự</div>
            ${echoCheckboxHtml(prefix + '-echo', currentEcho)}`;
+}
+
+function updateTtsCharCounter(prefix) {
+  const textEl=document.getElementById(prefix+'-tts-text');
+  const countEl=document.getElementById(prefix+'-tts-count');
+  if(!textEl||!countEl)return;
+  const voiceEl=document.getElementById(prefix+'-voice');
+  const voiceIdx=voiceEl?parseInt(voiceEl.value,10):null;
+  const limit=ttsVoiceCharLimit(Number.isNaN(voiceIdx)?null:voiceIdx);
+  const length=textEl.value.trim().length;
+  countEl.textContent=`${length} / ${limit} ký tự`;
+  countEl.style.color=length>limit?'#f87171':length>limit*.9?'#fbbf24':'#7f8aa5';
+  textEl.setAttribute('maxlength',String(limit));
 }
 
 // Checkbox "Hiệu ứng vang" (mục "nhiều đoạn TTS") — áp FFmpeg aecho lên
@@ -3507,7 +3610,9 @@ function bindTtsAutoSync(prefix, textFieldId) {
   if (!textEl || !ttsEl) return;
   textEl.addEventListener('input', () => {
     if (!ttsFieldDirty[prefix]) ttsEl.value = textEl.value;
+    updateTtsCharCounter(prefix);
   });
+  requestAnimationFrame(()=>updateTtsCharCounter(prefix));
 }
 
 // Text thực sự gửi cho TTS: ô đọc nếu user đã tự gõ (hoặc có sẵn giá trị khác rỗng), else dùng ô hiển thị.
@@ -3676,6 +3781,7 @@ function onModalImgUrlChange(prefix) {
   const url = document.getElementById(prefix + '-img').value.trim();
   const preview = document.getElementById(prefix + '-img-preview');
   preview.innerHTML = url ? `<img src="${esc(url)}" referrerpolicy="no-referrer" style="max-width:100%;max-height:80px;border-radius:6px;display:block" onerror="this.replaceWith(Object.assign(document.createElement('div'),{textContent:'⚠ Không tải được ảnh từ URL này',style:'font-size:11px;color:#ef4444'}))"/>` : '';
+  if(prefix==='m')updateSocialModalPreview();
 }
 async function uploadModalAttachedImage(prefix,file){
   if(!file)return;const status=document.getElementById(prefix+'-img-status');status.textContent='Đang nạp ảnh...';
@@ -3713,6 +3819,21 @@ function platformPickerHtml() {
   return `<label>Nền tảng</label>
           <div class="platform-picker">${mk('threads', '🧵 Threads')}${mk('tiktok', '🎵 TikTok')}</div>`;
 }
+
+function identityBlurOverridesHtml(editing){
+  const mode=editing?.identityBlurMode||'';
+  return `<div style="margin-top:12px;padding:11px;border:1px solid #2a3050;border-radius:9px;background:#0c1020">
+    <div style="font-size:12px;font-weight:700;color:#c4b5fd;margin-bottom:7px">Tên và avatar riêng của card</div>
+    <div style="font-size:10px;color:#737b9d;margin-bottom:9px">Không chọn: tuân theo công tắc “Làm mờ tên & avatar” ở thanh chức năng.</div>
+    <label style="display:flex;align-items:center;gap:7px;margin:6px 0;font-weight:400"><input id="m-identity-force-blur" type="checkbox" style="width:auto" ${mode==='blur'?'checked':''} onchange="setCardIdentityBlurMode('blur',this.checked)"/> Luôn làm mờ card này</label>
+    <label style="display:flex;align-items:center;gap:7px;margin:6px 0;font-weight:400"><input id="m-identity-force-clear" type="checkbox" style="width:auto" ${mode==='clear'?'checked':''} onchange="setCardIdentityBlurMode('clear',this.checked)"/> Luôn không làm mờ card này</label>
+  </div>`;
+}
+function setCardIdentityBlurMode(mode,checked){
+  if(checked){const other=document.getElementById(mode==='blur'?'m-identity-force-clear':'m-identity-force-blur');if(other)other.checked=false;}
+  updateSocialModalPreview();
+}
+function readCardIdentityBlurMode(){return document.getElementById('m-identity-force-blur')?.checked?'blur':document.getElementById('m-identity-force-clear')?.checked?'clear':null;}
 
 function progressiveRevealFieldHtml(editing) {
   const mode = editing?.progressiveRevealMode || 'basic';
@@ -3779,6 +3900,7 @@ function renderCommentReplyFields() {
   html += `<div id="m-extra-tts-box"></div>`;
   html += imgFieldHtml('m', editing ? editing.imgUrl : null);
   html += statsFieldsHtml('m', editing ? editing.stats : null, 'comment');
+  html += identityBlurOverridesHtml(editing);
   // "Thêm reply" (dòng "Xem N câu trả lời") CHỈ áp dụng TikTok — người dùng
   // xác nhận Threads không cần tính năng này (mục 5.39 CONTEXT.md, cập nhật
   // sau phản hồi thực tế).
@@ -3791,9 +3913,10 @@ function renderCommentReplyFields() {
                <input type="number" min="1" step="1" id="m-reply-count" value="${hasReply ? editing.replyCount : 85}"/>
              </div>`;
   }
-  document.getElementById('step-modal-fields').innerHTML = platformPickerHtml() + html;
+  document.getElementById('step-modal-fields').innerHTML = socialModalLayoutHtml(platformPickerHtml() + html,type);
   bindTtsAutoSync('m', 'm-text');
   renderExtraTtsSegmentsUI();
+  requestAnimationFrame(updateSocialModalPreview);
 }
 
 function stepGroupId(step){if(!step||step.groupId===false)return null;return step.groupId||(step.type==='mess'?step.conversationId:null);}
@@ -3838,19 +3961,149 @@ function updateNoteModalPreview(){
   const radiusValue=document.getElementById('m-card-radius-value');if(radiusValue)radiusValue.textContent=String(radius);
   const strokeValue=document.getElementById('m-border-width-value');if(strokeValue)strokeValue.textContent=String(Number(document.getElementById('m-border-width')?.value)||0);
 }
+function initialiseSocialProgressiveSegments(editing){
+  const parts=progressiveTextParts(editing||{});
+  const fallbackVoice=editing?.voiceIdx??readVoiceIdx('m');
+  modalProgressiveTtsSegments=parts.map((displayText,index)=>{
+    const old=index===0?editing:(editing?.extraTtsSegments||[])[index-1];
+    return {
+      displayText,
+      ttsText:String(index===0?(old?.ttsText??displayText):(old?.text??displayText)),
+      voiceIdx:old?.voiceIdx??fallbackVoice,
+      echo:!!old?.echo,
+      gapAfter:index===0?(editing?.progressiveGapAfterFirst??editing?.progressivePause??.3):(old?.gapAfter??editing?.progressivePause??.3),
+      duration:Number(index===0?(editing?.ttsDuration||0):(old?.duration||0)),
+    };
+  });
+  socialProgressiveEditingIndex=null;
+}
+function syncSocialProgressiveSegments(){
+  const enabled=!!document.getElementById('m-progressive-reveal')?.checked;
+  const parts=enabled?String(modalFieldValue('m-text','')).split(/\r?\n+/).map(v=>v.trim()).filter(Boolean):[];
+  const fallbackVoice=readVoiceIdx('m');
+  modalProgressiveTtsSegments=parts.map((displayText,index)=>{
+    const previous=modalProgressiveTtsSegments[index];
+    const wasAuto=previous&&(!previous.ttsText||previous.ttsText===previous.displayText);
+    return {
+      displayText,
+      ttsText:previous?(wasAuto&&previous.displayText!==displayText?displayText:previous.ttsText):displayText,
+      voiceIdx:previous?.voiceIdx??fallbackVoice,
+      echo:previous?.echo??!!document.getElementById('m-echo')?.checked,
+      gapAfter:previous?.gapAfter??.3,
+      duration:Number(previous?.duration||0),
+    };
+  });
+  if(socialProgressiveEditingIndex!=null&&socialProgressiveEditingIndex>=modalProgressiveTtsSegments.length)socialProgressiveEditingIndex=null;
+  return modalProgressiveTtsSegments;
+}
+function renderSocialProgressiveSegmentEditor(){
+  const box=document.getElementById('social-progressive-segment-editor');
+  if(!box)return;
+  const index=socialProgressiveEditingIndex,segment=index==null?null:modalProgressiveTtsSegments[index];
+  const overlay=document.getElementById('social-progressive-editor-overlay');
+  if(!segment){overlay?.classList.remove('open');box.innerHTML='';return;}
+  overlay?.classList.add('open');
+  box.innerHTML=`<h3>Đoạn ${index+1} · chỉnh riêng câu đọc</h3>
+    <label>Chữ TTS (không làm đổi chữ hiển thị)</label>
+    <textarea id="social-progressive-tts-text">${esc(segment.ttsText||'')}</textarea>
+    <label>Giọng đọc</label>${ttsVoices.length?voicePickerHtml('social-progressive-voice',segment.voiceIdx??0):'<div style="font-size:11px;color:#ef4444">Chưa tải được danh sách giọng.</div>'}
+    <div class="social-progressive-segment-row">
+      <div><label>Thời lượng</label><input id="social-progressive-duration" type="number" min="0" step="0.1" value="${Number(segment.duration||0).toFixed(2)}"/></div>
+      <div><label>Gap sau</label><input id="social-progressive-gap" type="number" min="0" step="0.1" value="${Number(segment.gapAfter??.3)}" ${index>=modalProgressiveTtsSegments.length-1?'disabled title="Đoạn cuối không có gap sau"':''}/></div>
+    </div>
+    <label style="display:flex;align-items:center;gap:6px"><input id="social-progressive-echo" type="checkbox" style="width:auto" ${segment.echo?'checked':''}/> Hiệu ứng vang</label>
+    <div class="social-progressive-segment-actions"><button type="button" class="cancel" onclick="closeSocialProgressiveSegmentEditor()">Đóng</button><button type="button" onclick="saveSocialProgressiveSegmentEditor()">Xong</button></div>`;
+}
+function openSocialProgressiveSegmentEditor(index){
+  syncSocialProgressiveSegments();
+  socialProgressiveEditingIndex=index;
+  renderSocialProgressiveSegmentEditor();
+}
+function closeSocialProgressiveSegmentEditor(){socialProgressiveEditingIndex=null;renderSocialProgressiveSegmentEditor();}
+function commitSocialProgressiveSegmentEditor(){
+  const index=socialProgressiveEditingIndex,segment=modalProgressiveTtsSegments[index];
+  if(!segment)return false;
+  segment.ttsText=modalFieldValue('social-progressive-tts-text',segment.displayText).trim()||segment.displayText;
+  const voice=parseInt(modalFieldValue('social-progressive-voice',''),10);
+  if(!Number.isNaN(voice))segment.voiceIdx=voice;
+  segment.echo=!!document.getElementById('social-progressive-echo')?.checked;
+  segment.duration=Math.max(0,Number(modalFieldValue('social-progressive-duration',segment.duration))||0);
+  if(index<modalProgressiveTtsSegments.length-1)segment.gapAfter=Math.max(0,Number(modalFieldValue('social-progressive-gap',segment.gapAfter))||0);
+  return true;
+}
+function saveSocialProgressiveSegmentEditor(){
+  if(!commitSocialProgressiveSegmentEditor())return;
+  closeSocialProgressiveSegmentEditor();
+  updateSocialModalPreview();
+}
+function addSocialProgressivePreviewControls(stack){
+  const parts=syncSocialProgressiveSegments();
+  if(parts.length<2){if(socialProgressiveEditingIndex!=null)closeSocialProgressiveSegmentEditor();return;}
+  const body=stack.querySelector('.thr-body,.tk-text');
+  if(!body){if(socialProgressiveEditingIndex!=null)closeSocialProgressiveSegmentEditor();return;}
+  body.textContent='';
+  parts.forEach((segment,index)=>{
+    const line=document.createElement('div');line.className='social-progressive-preview-line';
+    const copy=document.createElement('span');copy.className='social-progressive-preview-line-copy';copy.textContent=segment.displayText;
+    const button=document.createElement('button');button.type='button';button.className='social-progressive-more'+(socialProgressiveEditingIndex===index?' active':'');button.textContent='•••';button.title=`Chỉnh TTS đoạn ${index+1}`;
+    button.onclick=event=>{event.preventDefault();event.stopPropagation();openSocialProgressiveSegmentEditor(index);};
+    line.append(copy,button);body.appendChild(line);
+  });
+}
+function socialModalLayoutHtml(controls,type){
+  const label=type==='post'?'POST':type==='comment'?'COMMENT':'REPLY';
+  return `<div class="social-editor-layout"><div class="social-editor-controls" oninput="updateSocialModalPreview()" onchange="updateSocialModalPreview()">${controls}</div><aside class="social-editor-preview-pane"><div class="social-editor-preview-head"><h4>Preview ${label}</h4><button type="button" class="social-editor-close" onclick="closeStepModal()">✕ Đóng</button></div><input id="social-avatar-file" type="file" accept="image/*" style="display:none" onchange="setSocialModalAvatar(this.files[0]);this.value=''"/><div id="social-modal-preview-stage" class="social-modal-preview-stage"><div id="social-modal-preview-stack" class="thr-stack"></div></div><div class="social-preview-hint">Nhấn avatar để đổi ảnh · nhấn tên để nhập trực tiếp · nút … cạnh dòng để sửa TTS riêng</div></aside></div>`;
+}
+function modalFieldValue(id,fallback=''){const el=document.getElementById(id);return el?el.value:fallback;}
+async function setSocialModalAvatar(file){
+  if(!file)return;
+  try{
+    if(window.desktopApp?.saveLocalAsset){const saved=await window.desktopApp.saveLocalAsset(new Uint8Array(await file.arrayBuffer()),'image',file.name);modalSocialAvatarUrl=saved.url;}
+    else modalSocialAvatarUrl=await new Promise((resolve,reject)=>{const reader=new FileReader();reader.onload=()=>resolve(String(reader.result||''));reader.onerror=()=>reject(new Error('Không đọc được ảnh'));reader.readAsDataURL(file);});
+    updateSocialModalPreview();
+  }catch(error){document.getElementById('step-modal-tts-status').textContent='✗ Không đổi được avatar: '+error.message;}
+}
+function updateSocialModalPreview(){
+  const stack=document.getElementById('social-modal-preview-stack');if(!stack||!['post','comment','reply'].includes(modalType))return;
+  const editing=editingStepId!=null?steps.find(step=>step.id===editingStepId):null;
+  const randomIdentity=randomFakeIdentity((editing?.id??stepIdCounter)+':m');
+  const identity={uname:modalSocialName||editing?.uname||randomIdentity.uname,avatarUrl:modalSocialAvatarUrl||editing?.avatarUrl||randomIdentity.avatarUrl,timeLabel:editing?.stats?.timeLabel||randomIdentity.timeLabel};
+  const text=modalFieldValue('m-text','').trim()||`Nội dung ${TYPE_LABEL[modalType]} sẽ hiển thị ở đây...`;
+  const previewStep={
+    id:'modal-social-preview',type:modalType,text,platform:modalType==='post'?'threads':modalPlatform,
+    appearance:modalFieldValue('m-appearance','normal'),progressiveReveal:false,_progressiveFinal:true,
+    uname:identity.uname,avatarUrl:identity.avatarUrl,identityBlurMode:readCardIdentityBlurMode(),isAuthor:!!document.getElementById('m-author')?.checked,
+    imgUrl:modalFieldValue('m-img','').trim()||null,hue:editing?.hue||210,offsetX:0,offsetY:0,rotation:0,
+    stats:{likes:modalFieldValue('m-likes','1,2K')||'0',comments:modalFieldValue('m-comments','34')||'0',reposts:modalFieldValue('m-reposts','8')||'0',shares:modalFieldValue('m-shares','150')||'0',timeLabel:identity.timeLabel},
+    hasReplyCount:!!document.getElementById('m-has-reply')?.checked,
+    replyCount:parseInt(modalFieldValue('m-reply-count','85'),10)||85,
+  };
+  stack.innerHTML=buildCardHtml(previewStep);
+  addSocialProgressivePreviewControls(stack);
+  const stage=document.getElementById('social-modal-preview-stage'),globalBlur=!!document.getElementById('blur-identity-toggle')?.checked;
+  stage?.classList.toggle('blur-identity',previewStep.identityBlurMode==='blur'||(!previewStep.identityBlurMode&&globalBlur));
+  const nameNode=stack.querySelector('.uname,.tk-uname');
+  if(nameNode){const input=document.createElement('input');input.type='text';input.className=nameNode.className+' social-identity-name-input';input.value=identity.uname;input.size=Math.max(1,Math.min(24,[...input.value].length));input.title='Nhập tên cho card';input.oninput=()=>{modalSocialName=input.value;input.size=Math.max(1,Math.min(24,[...input.value].length));};input.onblur=()=>{if(!input.value.trim()){modalSocialName='';updateSocialModalPreview();}};input.onkeydown=event=>{if(event.key==='Enter'){event.preventDefault();input.blur();}};nameNode.replaceWith(input);}
+  const avatar=stack.querySelector('.avatar,.tk-avatar');if(avatar){avatar.title='Nhấn để đổi avatar';avatar.setAttribute('role','button');avatar.tabIndex=0;avatar.onclick=event=>{event.stopPropagation();document.getElementById('social-avatar-file')?.click();};avatar.onkeydown=event=>{if(event.key==='Enter'||event.key===' '){event.preventDefault();document.getElementById('social-avatar-file')?.click();}};}
+}
 function openStepModal(type, stepId = null, targetGroupId = null) {
   modalType = type;
   editingStepId = stepId;
   modalTargetGroupId = stepId!=null?stepGroupId(steps.find(s=>s.id===stepId)):targetGroupId;
   ttsFieldDirty.m = false;
   const editing = stepId != null ? steps.find(s => s.id === stepId) : null;
-  document.querySelector('#step-modal-overlay .step-modal')?.classList.toggle('note-editor-open',type==='note');
+  modalSocialName=editing?.uname||'';
+  modalSocialAvatarUrl=editing?.avatarUrl||'';
+  const stepModal=document.querySelector('#step-modal-overlay .step-modal');
+  stepModal?.classList.toggle('note-editor-open',type==='note');
+  stepModal?.classList.toggle('social-editor-open',['post','comment','reply'].includes(type));
   // Nếu step đã có ttsText lưu khác với text hiển thị (user từng tự sửa), giữ nguyên cờ dirty khi sửa lại.
   if (editing && editing.ttsText != null && editing.ttsText !== editing.text) ttsFieldDirty.m = true;
   // Đoạn giọng đọc THÊM (mục "nhiều đoạn TTS") — điền lại từ step đang sửa
   // (deep-copy để sửa/huỷ trong modal không ảnh hưởng step gốc cho tới lúc
   // bấm Submit), hoặc rỗng nếu tạo mới/step cũ chưa có field này.
   modalExtraTts = editing && editing.extraTtsSegments ? editing.extraTtsSegments.map(s => ({ ...s })) : [];
+  initialiseSocialProgressiveSegments(editing);
 
   document.getElementById('step-modal-title').textContent =
     (editing ? 'Sửa' : 'Thêm') + ' step — ' + TYPE_LABEL[type];
@@ -3867,6 +4120,8 @@ function openStepModal(type, stepId = null, targetGroupId = null) {
     html += `<div id="m-extra-tts-box"></div>`;
     html += imgFieldHtml('m', editing ? editing.imgUrl : null);
     html += statsFieldsHtml('m', editing ? editing.stats : null, 'post');
+    html += identityBlurOverridesHtml(editing);
+    html = socialModalLayoutHtml(html,type);
   } else if (type === 'text' || type === 'note') {
     const isNote=type==='note',hasVoice=editing?editing.hasVoice!==false:true;
     const font=editing?.textFont||(isNote?'mono':'system'),fontSize=Number(editing?.textFontSize)||(isNote?2.6:6),textColor=editing?.textColor||'#ffffff';
@@ -3968,6 +4223,7 @@ function openStepModal(type, stepId = null, targetGroupId = null) {
     document.getElementById('step-modal-fields').innerHTML = html;
     if (type === 'post' || type === 'text' || type === 'note') bindTtsAutoSync('m', 'm-text');
     if (type === 'note') requestAnimationFrame(updateNoteModalPreview);
+    if (type === 'post') requestAnimationFrame(updateSocialModalPreview);
     if (type === 'post' || type === 'image') renderExtraTtsSegmentsUI();
   }
   if (type === 'image' || type === 'sticker') loadLibraryOptions('meme');
@@ -4147,6 +4403,7 @@ async function addStickerToCurrentPack(file) {
 function closeStepModal() {
   stopLibraryPreviewAudio();
   document.getElementById('step-modal-overlay').classList.remove('open');
+  closeSocialProgressiveSegmentEditor();
   editingStepId = null;
   modalTargetGroupId = null;
   // Dọn trạng thái crop-nhiều-vùng (mục 5.31 CONTEXT.md) — nơi DUY NHẤT
@@ -4422,15 +4679,16 @@ async function submitStepModal() {
     if (editingNow) {
       // Sửa step cũ: giữ nguyên tên/avatar/giờ đã có (dù là random từ trước
       // hay do user tự gõ ở step tạo trước khi bỏ ô nhập) — chỉ đổi nội dung.
-      data.uname = editingNow.uname;
-      data.avatarUrl = editingNow.avatarUrl;
+      data.uname = modalSocialName.trim() || editingNow.uname;
+      data.avatarUrl = modalSocialAvatarUrl || editingNow.avatarUrl;
       data.stats.timeLabel = editingNow.stats ? editingNow.stats.timeLabel : 'vừa xong';
     } else {
       const fake = randomFakeIdentity(stepIdCounter + ':m');
-      data.uname = fake.uname;
-      data.avatarUrl = fake.avatarUrl;
+      data.uname = modalSocialName.trim() || fake.uname;
+      data.avatarUrl = modalSocialAvatarUrl || fake.avatarUrl;
       data.stats.timeLabel = fake.timeLabel;
     }
+    data.identityBlurMode=readCardIdentityBlurMode();
   } else if (t === 'text' || t === 'note') {
     data.text=document.getElementById('m-text').value.trim();
     data.appearance=document.getElementById('m-appearance')?.value||'normal';
@@ -4520,21 +4778,29 @@ async function submitStepModal() {
     data.echo = document.getElementById('m-echo')?.checked || false;
     const revealParts = progressiveTextParts(data);
     if (revealParts.length > 1) {
-      const firstSetting = progressiveSegmentSetting(editingNow, 0, data.voiceIdx, data.echo);
-      data.ttsText = revealParts[0];
+      // Các chỉnh sửa từ nút … trong preview có TTS/giọng riêng. Nếu người
+      // dùng không đụng tới thì syncSocialProgressiveSegments() tự dùng lại
+      // đúng chữ hiển thị, nên hành vi cũ không thay đổi.
+      commitSocialProgressiveSegmentEditor();
+      syncSocialProgressiveSegments();
+      const firstSetting = modalProgressiveTtsSegments[0] || progressiveSegmentSetting(editingNow, 0, data.voiceIdx, data.echo);
+      data.ttsText = String(firstSetting.ttsText || revealParts[0]).trim() || revealParts[0];
       data.voiceIdx = firstSetting.voiceIdx;
       data.echo = firstSetting.echo;
       data.progressivePause = .3;
       data.progressiveGapAfterFirst = firstSetting.gapAfter;
       data.ttsDuration = firstSetting.duration || null;
-      data.audioUrl = editingNow?.progressiveReveal && editingNow?.ttsText === revealParts[0] ? (editingNow.audioUrl || null) : null;
-      data.audioDesktopPath = editingNow?.progressiveReveal && editingNow?.ttsText === revealParts[0] ? (editingNow.audioDesktopPath || null) : null;
-      data.extraTtsSegments = revealParts.slice(1).map((text, index) => {
-        const setting = progressiveSegmentSetting(editingNow, index + 1, data.voiceIdx, data.echo);
+      const keepFirstAudio = editingNow?.progressiveReveal && editingNow?.ttsText === data.ttsText && Number(editingNow.voiceIdx) === Number(data.voiceIdx) && !!editingNow.echo === !!data.echo;
+      data.audioUrl = keepFirstAudio ? (editingNow.audioUrl || null) : null;
+      data.audioDesktopPath = keepFirstAudio ? (editingNow.audioDesktopPath || null) : null;
+      data.extraTtsSegments = revealParts.slice(1).map((displayText, index) => {
+        const setting = modalProgressiveTtsSegments[index + 1] || progressiveSegmentSetting(editingNow, index + 1, data.voiceIdx, data.echo);
+        const text=String(setting.ttsText || displayText).trim() || displayText;
         const oldSeg = editingNow?.progressiveReveal ? (editingNow.extraTtsSegments || [])[index] : null;
-        const keepAudio = oldSeg && oldSeg.text === text;
+        const keepAudio = oldSeg && oldSeg.text === text && Number(oldSeg.voiceIdx) === Number(setting.voiceIdx) && !!oldSeg.echo === !!setting.echo;
         return {text,voiceIdx:setting.voiceIdx,echo:setting.echo,gapAfter:setting.gapAfter,audioUrl:keepAudio?(oldSeg.audioUrl||null):null,audioDesktopPath:keepAudio?(oldSeg.audioDesktopPath||null):null,duration:keepAudio?(oldSeg.duration||0):(setting.duration||0)};
       });
+      data.duration = stepTtsTotalDuration(data) || editingNow?.duration || DEFAULT_DUR[t];
     } else {
       data.ttsText = editingNow?.progressiveReveal ? data.text : readTtsText('m', 'm-text');
       data.extraTtsSegments = editingNow?.progressiveReveal ? [] : modalExtraTts.map(seg=>({text:(seg.text||'').trim(),voiceIdx:seg.voiceIdx,echo:!!seg.echo,audioUrl:null,audioDesktopPath:null,duration:0}));
@@ -4544,6 +4810,16 @@ async function submitStepModal() {
     statusEl.textContent='✓ Đã lưu card; TTS sẽ tạo khi nhấn Play.';
   } else if (isVoiceCard) {
     data.audioUrl=null;data.audioDesktopPath=null;data.ttsDuration=null;data.extraTtsSegments=[];
+  }
+
+  if (!skipTts && isVoiceCard) {
+    const ttsParts=[{text:data.ttsText||data.text||'',voiceIdx:data.voiceIdx},...(data.extraTtsSegments||[])];
+    const invalidIndex=ttsParts.findIndex(part=>!!ttsLengthError(part.text,'Đoạn TTS',part.voiceIdx));
+    if(invalidIndex>=0){
+      statusEl.textContent='✗ '+ttsLengthError(ttsParts[invalidIndex].text,`Đoạn TTS #${invalidIndex+1}`,ttsParts[invalidIndex].voiceIdx);
+      updateTtsCharCounter('m');
+      return;
+    }
   }
 
   if (editingStepId != null) {
@@ -5756,10 +6032,8 @@ let aiScriptDraft = null;
 let aiScriptPricing = null;
 function aiPromptWordCount(value){return (String(value||'').match(/[\p{L}\p{N}]+/gu)||[]).length;}
 function renderAiScriptCost(){
-  if(!aiScriptPricing)return;
-  const length=document.getElementById('ai-script-length').value,prompt=document.getElementById('ai-script-prompt').value;
-  const base=Number(aiScriptPricing[`ai_script_${length}`]||0),words=aiPromptWordCount(prompt),perWord=Number(aiScriptPricing.ai_script_prompt_word||0),total=base+words*perWord;
-  document.getElementById('ai-script-cost').textContent=`Ước tính: ${total} credit (${base} phí ${length==='short'?'ngắn':length==='medium'?'vừa':'dài'} + ${words} từ × ${perWord}) · Số dư: ${window.creditClient.balance()} credit`;
+  const perCard=Number(aiScriptPricing?.ai_script_card||200);
+  document.getElementById('ai-script-cost').textContent=`Giá: ${perCard} credit/card · Tính tiền sau khi AI trả về số card thật · Số dư: ${window.creditClient?.balance?.()||0} credit`;
 }
 function openAiScriptModal(){
   aiScriptDraft=null;document.getElementById('ai-script-result').classList.remove('open');document.getElementById('ai-script-actions').classList.remove('open');document.getElementById('ai-script-status').textContent='';document.getElementById('ai-script-overlay').classList.add('open');
@@ -5783,7 +6057,7 @@ function compileAiMessengerCard(card){
   return card.messages.map((message,index)=>{
     if(!message.ttsText)throw new Error(`Tin nhắn AI thứ ${index+1} thiếu ttsText`);
     const voiceIdx=message.side==='mine'?mineVoice:theirsVoice,msg={side:message.side,text:message.text,ttsText:message.ttsText,voiceIdx,voiceOverride:false,echo:!!message.echo,imageUrl:null,imageName:null,imageType:'image',imageDesktopPath:null};history.push({...msg});
-    return {...aiBaseStep('mess'),conversationId,groupId:conversationId,messIndex:index,messPlatform:'messenger',messShowFooter:true,messPartnerName:card.partnerName||'Đối phương',messPartnerAvatar:'messenger-default-avatar.png',messSideVoices:{mine:mineVoice,theirs:theirsVoice},messTtsSpeed:1,messHistory:history.map(item=>({...item})),text:msg.text,ttsText:msg.ttsText,voiceIdx,echo:msg.echo,audioUrl:null,ttsDuration:null,clearBefore:true};
+    return {...aiBaseStep('mess'),conversationId,groupId:conversationId,messIndex:index,messPlatform:'messenger',messShowFooter:true,messShowHeader:true,messPartnerName:card.partnerName||'Đối phương',messPartnerAvatar:'messenger-default-avatar.png',messSideVoices:{mine:mineVoice,theirs:theirsVoice},messTtsSpeed:1,messHistory:history.map(item=>({...item})),text:msg.text,ttsText:msg.ttsText,voiceIdx,echo:msg.echo,audioUrl:null,ttsDuration:null,clearBefore:true};
   });
 }
 function compileAiScript(script){
@@ -5793,9 +6067,9 @@ async function generateAiScript(){
   const prompt=document.getElementById('ai-script-prompt').value.trim(),button=document.getElementById('ai-script-generate'),status=document.getElementById('ai-script-status');if(prompt.length<3){status.textContent='Hãy mô tả kịch bản cần tạo.';return;}
   button.disabled=true;aiScriptDraft=null;document.getElementById('ai-script-result').classList.remove('open');document.getElementById('ai-script-actions').classList.remove('open');status.textContent='✨ AI đang viết và kiểm tra cấu trúc kịch bản...';
   try{
-    const response=await fetch(ttsServerUrl()+'/ai/generate-script',{method:'POST',headers:{'Content-Type':'application/json',...(window.authHeaders?window.authHeaders():{})},body:JSON.stringify({prompt,platform:document.getElementById('ai-script-platform').value,length:document.getElementById('ai-script-length').value,allow_echo:document.getElementById('ai-script-echo').checked,idempotency_key:crypto.randomUUID?crypto.randomUUID():`${Date.now()}-${Math.random()}`})});
+    const response=await fetch(ttsServerUrl()+'/ai/generate-script',{method:'POST',headers:{'Content-Type':'application/json',...(window.authHeaders?window.authHeaders():{})},body:JSON.stringify({prompt,platform:'auto',length:document.getElementById('ai-script-length').value,allow_echo:document.getElementById('ai-script-echo').checked,idempotency_key:crypto.randomUUID?crypto.randomUUID():`${Date.now()}-${Math.random()}`})});
     const data=await response.json().catch(()=>({}));if(!response.ok)throw new Error(data.detail||`HTTP ${response.status}`);aiScriptDraft=data.script;const counts={post:0,comment:0,reply:0,mess:0,messages:0};for(const card of aiScriptDraft.cards){counts[card.type]=(counts[card.type]||0)+1;if(card.type==='mess')counts.messages+=card.messages.length;}
-    document.getElementById('ai-script-result').innerHTML=`<b>${esc(aiScriptDraft.title||'Kịch bản AI')}</b><br/>${counts.post} Post · ${counts.comment} Comment · ${counts.reply} Reply · ${counts.mess} cuộc trò chuyện (${counts.messages} tin)<br/><span style="color:#f0abfc">Đã dùng ${data.cost||0} credit.</span>`;document.getElementById('ai-script-result').classList.add('open');document.getElementById('ai-script-actions').classList.add('open');status.textContent='✓ JSON đã qua kiểm tra an toàn. Chọn cách đưa vào Kịch bản.';await window.creditClient?.refresh();
+    document.getElementById('ai-script-result').innerHTML=`<b>${esc(aiScriptDraft.title||'Kịch bản AI')}</b><br/>${counts.post} Post · ${counts.comment} Comment · ${counts.reply} Reply · ${counts.mess} cuộc trò chuyện (${counts.messages} tin)<br/><span style="color:#f0abfc">Đã dùng ${data.cost||0} credit (${data.card_count||aiScriptDraft.cards.length} card).</span>`;document.getElementById('ai-script-result').classList.add('open');document.getElementById('ai-script-actions').classList.add('open');status.textContent='✓ JSON compact đã qua kiểm tra. Chọn cách đưa vào Kịch bản.';await window.creditClient?.refresh();
   }catch(error){status.textContent='✗ '+error.message;}finally{button.disabled=false;}
 }
 function applyAiScript(mode){
@@ -5804,7 +6078,7 @@ function applyAiScript(mode){
   if(mode==='replace')steps=compiled;else steps.push(...compiled);computeTimeline();renderStepList();renderIdleScene();updateCreditLabels();closeAiScriptModal();
 }
 
-async function exportProjectJson() {
+function buildProjectJson() {
   computeTimeline();
   const project = {
     _format: 'threads-short-video-project',
@@ -5846,8 +6120,22 @@ async function exportProjectJson() {
     bgVideoLibrary: bgVideoLibraryItem,
     bgAudioLibrary: bgAudioLibraryItem,
   };
+  return JSON.stringify(project, null, 2);
+}
+function openExportJsonModal(){document.getElementById('export-json-status').textContent='';document.getElementById('export-json-overlay').classList.add('open');}
+function closeExportJsonModal(){document.getElementById('export-json-overlay').classList.remove('open');}
+async function copyProjectJson(){
+  const status=document.getElementById('export-json-status'),json=buildProjectJson();
+  try{
+    if(window.desktopApp?.copyText)await window.desktopApp.copyText(json);
+    else if(navigator.clipboard?.writeText)await navigator.clipboard.writeText(json);
+    else {const area=document.createElement('textarea');area.value=json;document.body.appendChild(area);area.select();document.execCommand('copy');area.remove();}
+    status.textContent=`✓ Đã sao chép ${json.length.toLocaleString('vi-VN')} ký tự JSON. Dán vào AI Feed để rút gọn.`;
+  }catch(error){status.textContent='✗ Không sao chép được: '+error.message;}
+}
+async function exportProjectJson() {
+  const json = buildProjectJson();
   const ts = new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19);
-  const json = JSON.stringify(project, null, 2);
   if (window.desktopApp?.saveProjectFile) {
     const saved = await window.desktopApp.saveProjectFile(json, `threads-project-${ts}.json`);
     if (!saved.canceled) alert(`✓ Đã lưu dự án:\n${saved.path}`);
@@ -5901,6 +6189,104 @@ async function resolveMediaNamesInSteps(stepsArr) {
     unresolved.push(`${s.type} "${s.mediaName}"`);
   }
   return unresolved;
+}
+
+function openImportJsonModal() {
+  const overlay = document.getElementById('import-json-overlay');
+  document.getElementById('import-json-status').textContent = '';
+  overlay.classList.add('open');
+  setTimeout(() => document.getElementById('import-json-text').focus(), 50);
+}
+
+function closeImportJsonModal() {
+  document.getElementById('import-json-overlay').classList.remove('open');
+}
+
+function importProjectJsonText() {
+  const text = document.getElementById('import-json-text').value.trim();
+  const status = document.getElementById('import-json-status');
+  if (!text) {
+    status.textContent = 'Hãy dán mã JSON trước khi nạp.';
+    return;
+  }
+  if (new Blob([text]).size > 10 * 1024 * 1024) {
+    status.textContent = 'Mã JSON quá lớn (tối đa 10 MB).';
+    return;
+  }
+  status.textContent = '';
+  const file = new File([text], 'pasted-project.json', { type: 'application/json' });
+  importProjectJson({ files: [file], value: '' });
+}
+
+function normalizeImportedProject(project) {
+  if (!project || !Array.isArray(project.steps)) return project;
+  let history = [], conversationId = null, conversationKey = null;
+  for (const step of project.steps) {
+    const base = step?.base && typeof step.base === 'object' && !Array.isArray(step.base) ? step.base : {};
+    const malformedMess = step && (step.type === 'message' || step.type === 'mess')
+      && (!Array.isArray(step.messHistory) || !step.conversationId);
+    if (!malformedMess) {
+      history = []; conversationId = null; conversationKey = null;
+      continue;
+    }
+    const partner = String(step.messPartnerName || 'Đối phương');
+    const platform = String(step.messPlatform || base.messPlatform || 'messenger');
+    const key = partner + '\u0000' + platform;
+    if (key !== conversationKey) {
+      history = [];
+      conversationKey = key;
+      conversationId = `import-mess-${step.id || Date.now()}`;
+    }
+    const message = {
+      side: (step.side || base.side) === 'mine' ? 'mine' : 'theirs',
+      text: String(step.text || ''),
+      ttsText: String(step.ttsText || step.text || ''),
+      voiceIdx: step.voiceIdx ?? 0,
+      voiceOverride: false,
+      echo: !!step.echo,
+      imageUrl: step.imageUrl || null,
+      imageName: step.imageName || null,
+      imageType: step.imageType || 'image',
+      imageDesktopPath: step.imageDesktopPath || null,
+    };
+    history.push(message);
+    Object.assign(step, {
+      type: 'mess', conversationId, groupId: conversationId,
+      messIndex: history.length - 1, messPlatform: platform,
+      messShowFooter: step.messShowFooter !== false,
+      messShowHeader: step.messShowHeader !== false,
+      messHistory: history.map(item => ({ ...item })),
+      text: message.text, ttsText: message.ttsText,
+      voiceIdx: message.voiceIdx, clearBefore: true,
+    });
+    delete step.side;
+    delete step.base;
+  }
+  // Nếu AI gán tất cả tin là "theirs" nhưng voiceIdx vẫn đúng, phục hồi side
+  // theo messSideVoices. Chỉ làm khi hai bên có hai giọng khác nhau.
+  for (const step of project.steps) {
+    if (!step || step.type !== 'mess' || !Array.isArray(step.messHistory)) continue;
+    const mineVoice = step.messSideVoices?.mine;
+    const theirsVoice = step.messSideVoices?.theirs;
+    if (mineVoice == null || theirsVoice == null || String(mineVoice) === String(theirsVoice)) continue;
+    for (const message of step.messHistory) {
+      if (String(message.voiceIdx) === String(mineVoice)) message.side = 'mine';
+      else if (String(message.voiceIdx) === String(theirsVoice)) message.side = 'theirs';
+    }
+    const lastMessage = step.messHistory.at(-1);
+    if (lastMessage) {
+      step.text = String(lastMessage.text || step.text || '');
+      step.ttsText = String(lastMessage.ttsText || step.ttsText || step.text);
+      step.voiceIdx = lastMessage.voiceIdx ?? step.voiceIdx ?? 0;
+      step.echo = !!(lastMessage.echo ?? step.echo);
+    }
+    const duration = Number(step.duration || 3);
+    step.duration = duration > 100 ? duration / 1000 : duration;
+    step.gap ??= 0; step.clearBefore ??= true; step.hue ??= 0;
+    step.offsetX ??= 0; step.offsetY ??= 0; step.rotation ??= 0;
+  }
+  project.stepIdCounter = Math.max(0, ...project.steps.map(step => Number(step?.id) || 0)) + 1;
+  return project;
 }
 
 async function importProjectJson(input) {
@@ -5957,7 +6343,7 @@ async function importProjectJson(input) {
     };
     try {
       if (project.steps.length > 5000) throw new Error('Dự án có quá nhiều card (tối đa 5.000)');
-      project = cleanImportedValue(project);
+      project = normalizeImportedProject(cleanImportedValue(project));
       for (const step of project.steps) {
         if (!step || typeof step !== 'object' || Array.isArray(step) || !allowedTypes.has(step.type)) {
           throw new Error('Dự án chứa loại card không hợp lệ');
@@ -6037,6 +6423,8 @@ async function importProjectJson(input) {
     renderStepList();
     renderIdleScene();
     input.value = '';
+    closeImportJsonModal();
+    document.getElementById('import-json-text').value = '';
     const hasMedia = steps.some(s => s.mediaPath);
     const bgNote = (restoredBgVideo && restoredBgAudio) ? '\n\nVideo nền + nhạc nền (thư viện) đã tự áp dụng lại.'
       : (restoredBgVideo || restoredBgAudio) ? '\n\nMột phần video/nhạc nền (thư viện) đã tự áp dụng lại — phần còn lại (nguồn "Từ máy") cần chọn lại thủ công ở sidebar trái.'
@@ -6687,6 +7075,7 @@ async function exportVideo() {
         bgAudioUrl,
         bgAudioVolume: parseFloat(document.getElementById('bgaudio-volume').value),
         blurIdentity: document.getElementById('blur-identity-toggle').checked,
+        exportPreset: document.getElementById('export-preset')?.value || 'normal',
       }),
     });
     if (!res.ok) throw new Error('HTTP ' + res.status);

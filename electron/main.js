@@ -1,4 +1,4 @@
-const { app, BrowserWindow, ipcMain: rawIpcMain, shell, session, desktopCapturer, dialog, safeStorage } = require('electron');
+const { app, BrowserWindow, ipcMain: rawIpcMain, shell, session, desktopCapturer, dialog, safeStorage, clipboard } = require('electron');
 const path = require('node:path');
 const fs = require('node:fs');
 const os = require('node:os');
@@ -13,6 +13,12 @@ function threadsRoot() {
   return isDev
     ? path.resolve(__dirname, '..', 'threads')
     : path.join(process.resourcesPath, 'threads');
+}
+
+function appIconPath() {
+  return isDev
+    ? path.resolve(__dirname, 'build', process.platform === 'darwin' ? 'icon.png' : 'icon.png')
+    : path.join(process.resourcesPath, 'threads', 'assets', 'brand', 'threads-video-maker-logo-1024.png');
 }
 
 function trustedRenderer(event) {
@@ -58,6 +64,7 @@ function createMainWindow() {
     show: false,
     backgroundColor: '#0a0c14',
     title: 'Threads Video Maker',
+    icon: appIconPath(),
     webPreferences: {
       preload: path.join(__dirname, 'preload.js'),
       contextIsolation: true,
@@ -73,9 +80,9 @@ function createMainWindow() {
     return { action: 'deny' };
   });
   win.webContents.on('will-navigate', event => event.preventDefault());
-  // Mặc định dev dùng API local. Khi cần kiểm thử đúng backend production,
-  // chạy THREADS_USE_REMOTE_API=1 npm start để dùng VPS như bản đóng gói.
-  const useLocalApi = isDev && process.env.THREADS_USE_REMOTE_API !== '1';
+  // Dev local mặc định trỏ backend localhost để test trước khi đẩy VPS.
+  // Khi build production vẫn dùng backend VPS như bản phát hành.
+  const useLocalApi = isDev;
   win.loadFile(path.join(threadsRoot(), 'index.html'), useLocalApi ? { query: { localApi: '1' } } : undefined);
   return win;
 }
@@ -411,6 +418,12 @@ ipcMain.handle('desktop:save-project-file', async (_event, json, suggestedName) 
   return { canceled: false, path: choice.filePath };
 });
 
+ipcMain.handle('desktop:copy-text', (_event, text) => {
+  if (typeof text !== 'string' || Buffer.byteLength(text, 'utf8') > 10 * 1024 * 1024) throw new Error('Mã JSON vượt giới hạn 10 MB');
+  clipboard.writeText(text);
+  return true;
+});
+
 ipcMain.handle('desktop:convert-webm-to-mp4', async (_event, bytes, suggestedName) => {
   const tempRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'threads-export-'));
   const input = path.join(tempRoot, 'capture.webm');
@@ -499,6 +512,7 @@ ipcMain.handle('desktop:export-project', async (event, payload) => {
 
 app.whenReady().then(() => {
   workspaceRoot();
+  if (process.platform === 'darwin' && app.dock) app.dock.setIcon(appIconPath());
   session.defaultSession.setPermissionCheckHandler(() => false);
   session.defaultSession.setPermissionRequestHandler((_webContents, _permission, callback) => callback(false));
   session.defaultSession.setDisplayMediaRequestHandler(async (_request, callback) => {

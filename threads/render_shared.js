@@ -322,8 +322,9 @@ function blurIdentityOn() {
 // seed = khoá ổn định cho 1 "nhân vật" trong 1 step (vd stepId + ':m' hay
 // stepId + ':m2' cho reply) — đảm bảo mỗi nhân vật có 1 tên/avatar/thời gian
 // giả cố định riêng, không trùng logic giữa comment gốc và reply trong cùng step.
-function displayIdentity(seed, realUname, realAvatarUrl, realTimeLabel) {
-  if (!blurIdentityOn()) return { uname: realUname, avatarUrl: realAvatarUrl, timeLabel: realTimeLabel };
+function displayIdentity(seed, realUname, realAvatarUrl, realTimeLabel, blurMode) {
+  const shouldBlur = blurMode === 'blur' ? true : blurMode === 'clear' ? false : blurIdentityOn();
+  if (!shouldBlur) return { uname: realUname, avatarUrl: realAvatarUrl, timeLabel: realTimeLabel };
   const h = seedHash(seed);
   return {
     uname: RANDOM_IDENTITY_NAMES[h % RANDOM_IDENTITY_NAMES.length],
@@ -376,12 +377,13 @@ function buildCardHtml(s) {
   const stepAttr = ` data-step-id="${esc(s.id)}"`;
   const allowedAppearances = new Set(['fly-left', 'fly-right', 'fly-top', 'fly-bottom', 'drop-bounce', 'bounce-up', 'bounce-left', 'bounce-right']);
   const appearanceClass = allowedAppearances.has(s.appearance) ? ` appearance-${s.appearance}` : '';
-  const posClass = (s.progressiveReveal ? 'tcard-pos progressive-reveal-card' : 'tcard-pos') + appearanceClass;
+  const identityClass=s.identityBlurMode==='blur'?' identity-force-blur':s.identityBlurMode==='clear'?' identity-force-clear':'';
+  const posClass = (s.progressiveReveal ? 'tcard-pos progressive-reveal-card' : 'tcard-pos') + appearanceClass + identityClass;
   if (s.type === 'text') return buildPlainTextCardHtml(s,posClass,stepAttr,posAttr);
   if (s.type === 'note') return buildNoteCardHtml(s,posClass,stepAttr,posAttr);
   if (s.type === 'mess') return `<div class="${posClass}"${stepAttr}${posAttr}>${buildMessengerHtml(s)}</div>`;
   if (s.type === 'post') {
-    const id1 = displayIdentity(s.id + ':m', s.uname, s.avatarUrl, (s.stats&&s.stats.timeLabel)||'vừa xong');
+    const id1 = displayIdentity(s.id + ':m', s.uname, s.avatarUrl, (s.stats&&s.stats.timeLabel)||'vừa xong', s.identityBlurMode);
     const showFooter = !s.progressiveReveal || s._progressiveFinal;
     return `<div class="${posClass}"${stepAttr}${posAttr}><div class="tcard">${buildPostHtml(id1.uname, s.text, id1.timeLabel, showFooter?s.imgUrl:null, showFooter?statsRow(s.stats):'', id1.avatarUrl)}</div></div>`;
   }
@@ -396,7 +398,7 @@ function buildCardHtml(s) {
     // TikTok: hẹp hơn + lệch phải). platform mặc định 'threads' cho step cũ
     // thiếu field.
     const platform = s.platform || 'threads';
-    const id1 = displayIdentity(s.id + ':m', s.uname, s.avatarUrl, (s.stats&&s.stats.timeLabel)||'vừa xong');
+    const id1 = displayIdentity(s.id + ':m', s.uname, s.avatarUrl, (s.stats&&s.stats.timeLabel)||'vừa xong', s.identityBlurMode);
     if (platform === 'tiktok') {
       return buildTiktokCommentHtml(s, id1, posAttr, stepAttr);
     }
@@ -442,6 +444,7 @@ function buildMessengerHtml(s) {
   const partnerAvatar = messengerPartnerAvatar(s.messPartnerAvatar);
   const partnerNameAttr = esc(partnerName).replace(/"/g,'&quot;').replace(/'/g,'&#39;');
   const partnerNameSize = Math.max(1, Math.min(24, Array.from(partnerName).length));
+  const showHeader = s.messShowHeader !== false;
   const rows = history.map((m,i) => {
     const prevSame = i>0 && history[i-1].side===m.side, nextSame=i<history.length-1&&history[i+1].side===m.side;
     const groupCls = prevSame&&nextSame?' middle':nextSame?' first':prevSame?' last':'';
@@ -466,13 +469,13 @@ function buildMessengerHtml(s) {
   const nameHtml = identityEditable
     ? `<input class="mess-name-input" value="${partnerNameAttr}" size="${partnerNameSize}" aria-label="Tên đối phương" title="Nhấn để sửa tên" oninput="messPartnerName=this.value;this.size=Math.max(1,Math.min(24,Array.from(this.value).length))" onblur="commitMessengerPartnerName(this)" onkeydown="if(event.key==='Enter'){event.preventDefault();this.blur()}"/>`
     : `<span>${esc(partnerName)}</span>`;
-  return `<div class="mess-card">
-    <div class="mess-head"><svg class="mess-back" viewBox="19 58 13 23"><path d="M31.183 60.5607C31.7688 59.9749 31.7688 59.0251 31.183 58.4393C30.5972 57.8536 29.6475 57.8536 29.0617 58.4393L19.4393 68.0617C18.8536 68.6475 18.8536 69.5972 19.4393 70.183L29.0617 79.8054C29.6475 80.3912 30.5972 80.3912 31.183 79.8054C31.7688 79.2196 31.7688 78.2699 31.183 77.6841L22.6213 69.1224L31.183 60.5607Z"/></svg><span class="mess-unread">6</span><div class="mess-avatar${identityEditable?' is-editable':''}"${avatarEditAttr}><img src="${esc(partnerAvatar)}" alt="" referrerpolicy="no-referrer"/><span class="mess-online-dot"></span></div>
+  const headerHtml = showHeader ? `<div class="mess-head"><svg class="mess-back" viewBox="19 58 13 23"><path d="M31.183 60.5607C31.7688 59.9749 31.7688 59.0251 31.183 58.4393C30.5972 57.8536 29.6475 57.8536 29.0617 58.4393L19.4393 68.0617C18.8536 68.6475 18.8536 69.5972 19.4393 70.183L29.0617 79.8054C29.6475 80.3912 30.5972 80.3912 31.183 79.8054C31.7688 79.2196 31.7688 78.2699 31.183 77.6841L22.6213 69.1224L31.183 60.5607Z"/></svg><span class="mess-unread">6</span><div class="mess-avatar${identityEditable?' is-editable':''}"${avatarEditAttr}><img src="${esc(partnerAvatar)}" alt="" referrerpolicy="no-referrer"/><span class="mess-online-dot"></span></div>
       <div class="mess-who"><div class="mess-name">${nameHtml}</div><div class="mess-status">Đang hoạt động</div></div>
       <div class="mess-head-icons">
         <svg viewBox="0 0 24 24"><path d="M9.878 13.992 10.008 14.122c2.238 2.166 4.11 3.184 5.618 3.052l.435-.405c.617-.563 1.083-.919 1.397-1.07.654-.313 1.113-.307 2.351.363 1.63.882 2.755 1.907 3.33 2.482.534.534.368 1.454.181 1.862l-.124.227c-.334.58-1.544 2.492-3.863 2.819-.881.124-1.993.01-3.297-.382-2.794-.968-5.576-2.74-8.347-5.319l-.492-.468-.005.005-.238-.242-.242-.238.005-.005-.468-.492C3.67 13.54 1.898 10.758.93 7.964.538 6.66.424 5.548.548 4.667.898 2.184 3.066.972 3.469.747l.041-.023C3.858.522 4.881.286 5.456.861l.272.28c.593.627 1.454 1.653 2.21 3.05.67 1.238.676 1.697.363 2.35-.184.384-.676.995-1.475 1.833-.132 1.508.886 3.381 3.052 5.619Z"/></svg>
         <svg viewBox="0 0 27 18"><path d="M15.2 0C17.299 0 19 1.727 19 3.857v10.286C19 16.273 17.299 18 15.2 18H3.8C1.701 18 0 16.273 0 14.143V3.857C0 1.727 1.701 0 3.8 0h11.4Zm11.666 4.022c.088.151.134.321.134.493v8.97c0 .561-.478 1.015-1.067 1.015-.181 0-.359-.044-.518-.128l-3.729-1.972A1.25 1.25 0 0 1 21 11.291V6.709c0-.461.263-.886.686-1.109l3.729-1.972a1.067 1.067 0 0 1 1.451.394Z"/></svg>
-      </div></div><div class="mess-body">${rows}${appendControl}</div>${s.messShowFooter?buildMessengerFooterHtml():''}</div>`;
+      </div></div>` : '';
+  return `<div class="mess-card">${headerHtml}<div class="mess-body">${rows}${appendControl}</div>${s.messShowFooter?buildMessengerFooterHtml():''}</div>`;
 }
 
 function buildZaloHtml(s) {
@@ -484,6 +487,7 @@ function buildZaloHtml(s) {
   const partnerAvatar = messengerPartnerAvatar(s.messPartnerAvatar);
   const partnerNameAttr = esc(partnerName).replace(/"/g,'&quot;').replace(/'/g,'&#39;');
   const partnerNameSize = Math.max(1, Math.min(24, Array.from(partnerName).length));
+  const showHeader = s.messShowHeader !== false;
   const rows = history.map((m,i) => {
     const avatarEdit = identityEditable ? ` role="button" tabindex="0" title="Đổi ảnh đại diện" onclick="event.stopPropagation();document.getElementById('mess-avatar-file').click()"` : '';
     const avatar = m.side === 'theirs' ? `<div class="zalo-mini-avatar${identityEditable?' is-editable':''}"${avatarEdit}><img src="${esc(partnerAvatar)}" alt="" referrerpolicy="no-referrer"/></div>` : '';
@@ -507,10 +511,10 @@ function buildZaloHtml(s) {
   const nameHtml = identityEditable
     ? `<input class="zalo-name-input" value="${partnerNameAttr}" size="${partnerNameSize}" aria-label="Tên cuộc trò chuyện" oninput="messPartnerName=this.value;this.size=Math.max(1,Math.min(24,Array.from(this.value).length))" onblur="commitMessengerPartnerName(this)" onkeydown="if(event.key==='Enter'){event.preventDefault();this.blur()}"/>`
     : `<span>${esc(partnerName)}</span>`;
-  return `<div class="zalo-card">
-    <div class="zalo-head"><span class="zalo-back">‹</span><div class="zalo-title"><div>${nameHtml}</div></div>
+  const headerHtml = showHeader ? `<div class="zalo-head"><span class="zalo-back">‹</span><div class="zalo-title"><div>${nameHtml}</div></div>
       <div class="zalo-head-icons" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M15 9l5-3v12l-5-3v3a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2z"/></svg><svg viewBox="0 0 24 24"><circle cx="10" cy="10" r="7"/><path d="m15 15 6 6"/></svg><svg viewBox="0 0 24 24"><path d="M8 6h13M8 12h13M8 18h13"/></svg></div>
-    </div><div class="zalo-body">${rows}${appendControl}</div>${s.messShowFooter?buildZaloFooterHtml():''}
+    </div>` : '';
+  return `<div class="zalo-card">${headerHtml}<div class="zalo-body">${rows}${appendControl}</div>${s.messShowFooter?buildZaloFooterHtml():''}
     ${identityEditable ? `<div class="zalo-avatar-editor"${avatarEditAttr}><img src="${esc(partnerAvatar)}" alt=""/></div>` : ''}
   </div>`;
 }
@@ -551,7 +555,8 @@ function buildTiktokCommentHtml(s, id1, posAttr, stepAttr = '') {
   // khi tick "Là tác giả" vì lý do này.
   const creatorBadge = s.isAuthor ? '<span class="tk-creator-badge">· Nhà sáng tạo</span>' : '';
   const showFooter = !s.progressiveReveal || s._progressiveFinal;
-  return `<div class="tcard-pos${s.progressiveReveal?' progressive-reveal-card':''}"${stepAttr}${posAttr}><div class="${cardCls}">
+  const identityClass=s.identityBlurMode==='blur'?' identity-force-blur':s.identityBlurMode==='clear'?' identity-force-clear':'';
+  return `<div class="tcard-pos${s.progressiveReveal?' progressive-reveal-card':''}${identityClass}"${stepAttr}${posAttr}><div class="${cardCls}">
     ${tiktokAvatarHtml(id1.uname, s.hue, id1.avatarUrl)}
     <div class="tk-main">
       <div class="tk-uname-row"><div class="tk-uname">${esc(id1.uname)}</div>${creatorBadge}</div>

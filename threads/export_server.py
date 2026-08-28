@@ -58,6 +58,7 @@ class ExportRequest(BaseModel):
     bgAudioUrl: str | None = None
     bgAudioVolume: float = 0.5
     blurIdentity: bool = True  # khớp trạng thái checkbox "Làm mờ tên & avatar" ở preview lúc bấm Xuất
+    exportPreset: str = "normal"  # normal | messenger-mobile
 
 
 jobs: dict[str, dict] = {}  # job_id -> {status, progress, message, downloadUrl}
@@ -181,7 +182,8 @@ async def render_stack_images(job_id: str, steps: list[dict], breakpoints: list[
 
 
 def build_ffmpeg_cmd(job_id: str, bg_video_path: Path, bg_audio_path: Path | None, bg_audio_volume: float,
-                      segments: list, total_duration: float, out_path: Path, audio_tracks: list[tuple[str, float, float, float | None]]):
+                      segments: list, total_duration: float, out_path: Path, audio_tracks: list[tuple[str, float, float, float | None]],
+                      export_preset: str = "normal"):
     """audio_tracks: list of (file_path, start_offset_seconds, volume, max_duration) — TTS + hiệu ứng.
     segments: list[dict] từ render_stack_images() — mỗi phần tử {t0, t1, img_path, dynamic_meme}."""
     inputs = []
@@ -296,6 +298,12 @@ def build_ffmpeg_cmd(job_id: str, bg_video_path: Path, bg_audio_path: Path | Non
     else:
         filter_parts.append(f"anullsrc=channel_layout=stereo:sample_rate=44100[{audio_out}]")
 
+    video_out = last_label
+    messenger_mobile = export_preset == "messenger-mobile"
+    if messenger_mobile:
+        video_out = "vout"
+        filter_parts.append(f"[{last_label}]fps=30,scale=720:1280,setsar=1[{video_out}]")
+
     filter_complex = ";".join(filter_parts)
     # KHÔNG dùng -shortest: video track ([last_label]) luôn đủ total_duration
     # (bg đã trim=duration=total_duration), nhưng audio track (amix) có thể
@@ -307,11 +315,17 @@ def build_ffmpeg_cmd(job_id: str, bg_video_path: Path, bg_audio_path: Path | Non
     # dài — audio ngắn hơn tự động im lặng ở phần dư, không cần -shortest.
     cmd = [FFMPEG_BIN, "-y"] + inputs + [
         "-filter_complex", filter_complex,
-        "-map", f"[{last_label}]",
+        "-map", f"[{video_out}]",
         "-map", f"[{audio_out}]",
         "-t", f"{total_duration:.3f}",
-        "-c:v", "libx264", "-preset", "fast", "-pix_fmt", "yuv420p",
-        "-c:a", "aac",
+        "-c:v", "libx264", "-preset", "medium" if messenger_mobile else "fast",
+        "-pix_fmt", "yuv420p",
+        *(
+            ["-profile:v", "main", "-level", "4.0", "-crf", "23", "-maxrate", "3500k", "-bufsize", "7000k", "-g", "60", "-keyint_min", "60", "-sc_threshold", "0"]
+            if messenger_mobile else []
+        ),
+        "-c:a", "aac", "-b:a", "128k" if messenger_mobile else "192k", "-ar", "44100",
+        "-movflags", "+faststart",
         "-progress", "pipe:1",
         str(out_path),
     ]
@@ -416,9 +430,10 @@ async def run_export_job(job_id: str, req: ExportRequest):
             raise RuntimeError(f"Không tìm thấy file video nền: {req.bgVideoUrl}")
         bg_audio_path = _resolve_local_media(req.bgAudioUrl) if req.bgAudioUrl else None
 
-        update_job(job_id, status="encoding", progress=65, message="Đang ghép FFmpeg...")
+        messenger_mobile = req.exportPreset == "messenger-mobile"
+        update_job(job_id, status="encoding", progress=65, message="Đang ghép FFmpeg bản Messenger mobile..." if messenger_mobile else "Đang ghép FFmpeg...")
         out_path = job_dir / "output.mp4"
-        cmd = build_ffmpeg_cmd(job_id, bg_video_path, bg_audio_path, req.bgAudioVolume, segments, total_duration, out_path, audio_tracks)
+        cmd = build_ffmpeg_cmd(job_id, bg_video_path, bg_audio_path, req.bgAudioVolume, segments, total_duration, out_path, audio_tracks, req.exportPreset)
 
         cmd_log_path = job_dir / "ffmpeg_cmd.txt"
         cmd_log_path.write_text(" ".join(cmd))

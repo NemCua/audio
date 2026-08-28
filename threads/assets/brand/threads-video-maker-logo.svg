@@ -1,0 +1,58 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256" role="img" aria-labelledby="title desc">
+  <title id="title">Threads Video Maker logo</title>
+  <desc id="desc">A square dark app icon with a vertical video frame, a soft thread-shaped conversation loop, chat bubbles, and a play mark.</desc>
+  <defs>
+    <linearGradient id="bg" x1="38" y1="28" x2="218" y2="232" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#1b2140"/>
+      <stop offset=".52" stop-color="#101425"/>
+      <stop offset="1" stop-color="#070913"/>
+    </linearGradient>
+    <linearGradient id="thread" x1="76" y1="59" x2="190" y2="191" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#c4b5fd"/>
+      <stop offset=".5" stop-color="#8b5cf6"/>
+      <stop offset="1" stop-color="#38bdf8"/>
+    </linearGradient>
+    <linearGradient id="bubble" x1="74" y1="86" x2="177" y2="166" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#f7f7fb"/>
+      <stop offset="1" stop-color="#dbeafe"/>
+    </linearGradient>
+    <filter id="shadow" x="-30%" y="-30%" width="160%" height="170%">
+      <feDropShadow dx="0" dy="14" stdDeviation="14" flood-color="#000" flood-opacity=".38"/>
+    </filter>
+    <filter id="glow" x="-40%" y="-40%" width="180%" height="180%">
+      <feGaussianBlur stdDeviation="5" result="blur"/>
+      <feMerge>
+        <feMergeNode in="blur"/>
+        <feMergeNode in="SourceGraphic"/>
+      </feMerge>
+    </filter>
+  </defs>
+
+  <rect width="256" height="256" fill="url(#bg)"/>
+  <path d="M46 56c38-33 102-35 143-8 35 23 44 64 26 98-21 40-74 64-125 49-36-11-58-39-60-72-2-28 10-51 16-67Z" fill="#8b5cf6" opacity=".1"/>
+  <path d="M199 40c24 18 36 45 32 75-4 31-26 57-61 72-49 21-104 10-130-26" fill="none" stroke="#38bdf8" stroke-width="2" opacity=".12"/>
+
+  <g filter="url(#shadow)">
+    <rect x="56" y="18" width="144" height="220" rx="20" fill="#0b0e1a" stroke="#303756" stroke-width="5"/>
+    <rect x="69" y="35" width="118" height="186" rx="14" fill="#f7f7fb"/>
+    <rect x="92" y="49" width="72" height="9" rx="4.5" fill="#cbd5e1"/>
+    <rect x="88" y="193" width="80" height="8" rx="4" fill="#dbe2ef"/>
+  </g>
+
+  <g filter="url(#glow)">
+    <path d="M130 72c34 0 56 19 56 48 0 28-20 45-52 45h-15c-18 0-30-9-30-23 0-15 12-24 30-24h25c9 0 14-4 14-11 0-9-10-15-26-15-21 0-35 9-42 25" fill="none" stroke="url(#thread)" stroke-width="17" stroke-linecap="round" stroke-linejoin="round"/>
+    <path d="M86 88c12-13 28-20 46-20" fill="none" stroke="#e9d5ff" stroke-width="10" stroke-linecap="round" opacity=".95"/>
+  </g>
+
+  <g>
+    <rect x="77" y="119" width="58" height="32" rx="16" fill="url(#bubble)"/>
+    <circle cx="97" cy="135" r="3.4" fill="#64748b"/>
+    <circle cx="111" cy="135" r="3.4" fill="#64748b"/>
+    <circle cx="125" cy="135" r="3.4" fill="#64748b"/>
+
+    <rect x="130" y="154" width="54" height="32" rx="16" fill="#2563eb"/>
+    <path d="M153 163.5v13l11-6.5-11-6.5Z" fill="#fff"/>
+  </g>
+
+  <path d="M204 188c-2 11-10 20-21 22" fill="none" stroke="#a78bfa" stroke-width="6" stroke-linecap="round" opacity=".8"/>
+</svg>
