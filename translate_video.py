@@ -381,6 +381,7 @@ KhĂ´ng dĂ¹ng: - _ / ( ) ... vĂ  dáº¥u cháº¥m há»i cuá»‘i cĂ
 
 BEEKNOEE_BASE_URL = "https://platform.beeknoee.com/api/v1"
 BEEKNOEE_MODEL    = "gemini-2.5-flash-lite"
+GROQ_CHAT_MODEL   = os.environ.get("GROQ_MODEL", "openai/gpt-oss-120b")
 
 
 def _make_chat_client(groq_key: str, beeknoee_key: str | None):
@@ -391,7 +392,7 @@ def _make_chat_client(groq_key: str, beeknoee_key: str | None):
         return client, BEEKNOEE_MODEL
     else:
         from groq import Groq
-        return Groq(api_key=groq_key), "llama-3.3-70b-versatile"
+        return Groq(api_key=groq_key), GROQ_CHAT_MODEL
 
 
 def translate_chunk(cues: list[dict], context_cues: list[dict],

@@ -228,9 +228,9 @@ tr.cjk-hit .cjk-badge{display:block}
 
       <label>Toc do doc TTS</label>
       <div class="slider-row" style="margin-bottom:8px">
-        <input type="range" id="tts-rate" min="0.5" max="2.0" step="0.05" value="1.0"
+        <input type="range" id="tts-rate" min="0.5" max="2.0" step="0.05" value="1.15"
                oninput="document.getElementById('ttsrv').textContent=parseFloat(this.value).toFixed(2)+'x'"/>
-        <span class="sv" id="ttsrv">1.00x</span>
+        <span class="sv" id="ttsrv">1.15x</span>
       </div>
 
       <label>Am luong long tieng</label>
@@ -348,9 +348,9 @@ tr.cjk-hit .cjk-badge{display:block}
           </select>
           <label>Do tre TTS/sub</label>
           <div class="slider-row">
-            <input type="range" id="sync-offset" min="-3" max="6" step="0.1" value="1.0"
+            <input type="range" id="sync-offset" min="-3" max="6" step="0.1" value="0"
                    oninput="document.getElementById('syncv').textContent=(parseFloat(this.value)>=0?'+':'')+parseFloat(this.value).toFixed(1)+'s'"/>
-            <span class="sv" id="syncv">+1.0s</span>
+            <span class="sv" id="syncv">+0.0s</span>
           </div>
         </div>
       </div>
