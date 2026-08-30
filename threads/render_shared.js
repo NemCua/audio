@@ -79,12 +79,13 @@ function isParallelAudio(s) { return s.type === 'audio' && s.parallel; }
 function isParallelVisual(s) { return (s.type === 'image' || s.type === 'sticker') && s.parallel; }
 function isParallelText(s) { return s.type === 'text' && s.parallel; }
 function isParallelMedia(s) { return isParallelAudio(s) || isParallelVisual(s) || isParallelText(s); }
+function isAbsoluteLayer(s) { return s && s.layerMode === 'absolute'; }
 
 function computeTimeline() {
   let t = 0;
   let mainEnd = 0; // mốc cuối cùng của track chính (_end + gap của step chính cuối)
   for (const s of steps) {
-    if (isParallelMedia(s)) continue; // xử lý ở lượt 2 bên dưới
+    if (isParallelMedia(s) || isAbsoluteLayer(s)) continue; // xử lý ở lượt 2 bên dưới
     s._start = t;
     s._end = t + effectiveDuration(s);
     t = s._end + (s.gap || 0);
@@ -94,6 +95,12 @@ function computeTimeline() {
   let lastMainStep = null;
   let parallelEnd = 0;
   for (const s of steps) {
+    if (isAbsoluteLayer(s)) {
+      s._start = Math.max(0, Number(s.absoluteStart) || 0);
+      s._end = s.absoluteUntilEnd ? Math.max(mainEnd, s._start + effectiveDuration(s)) : s._start + effectiveDuration(s);
+      parallelEnd = Math.max(parallelEnd, s._end);
+      continue;
+    }
     if (!isParallelMedia(s)) { lastMainStep = s; continue; }
     const contentAnchor = s.parallelAnchorStepId != null ? steps.find(step => step.id === s.parallelAnchorStepId) : null;
     s._start = contentAnchor ? contentAnchor._start + progressiveContentOffset(contentAnchor, s.parallelAnchorPartIndex || 0) : (lastMainStep ? lastMainStep._start : 0);
@@ -435,6 +442,7 @@ function buildZaloFooterHtml() {
   return `<div class="zalo-composer" aria-hidden="true"><span class="zalo-compose-more">•••</span><div class="zalo-compose-input">Tin nhắn</div><span>♩</span><span>▧</span></div>`;
 }
 function buildMessengerHtml(s) {
+  if (s.messPlatform === 'instagram') return buildInstagramHtml(s);
   if (s.messPlatform === 'zalo') return buildZaloHtml(s);
   const history = s.messHistory || [];
   const editable = !!s.messEditable;
@@ -476,6 +484,60 @@ function buildMessengerHtml(s) {
         <svg viewBox="0 0 27 18"><path d="M15.2 0C17.299 0 19 1.727 19 3.857v10.286C19 16.273 17.299 18 15.2 18H3.8C1.701 18 0 16.273 0 14.143V3.857C0 1.727 1.701 0 3.8 0h11.4Zm11.666 4.022c.088.151.134.321.134.493v8.97c0 .561-.478 1.015-1.067 1.015-.181 0-.359-.044-.518-.128l-3.729-1.972A1.25 1.25 0 0 1 21 11.291V6.709c0-.461.263-.886.686-1.109l3.729-1.972a1.067 1.067 0 0 1 1.451.394Z"/></svg>
       </div></div>` : '';
   return `<div class="mess-card">${headerHtml}<div class="mess-body">${rows}${appendControl}</div>${s.messShowFooter?buildMessengerFooterHtml():''}</div>`;
+}
+
+function buildInstagramFooterHtml() {
+  return `<div class="ig-composer" aria-hidden="true"><div class="ig-input">
+    <div class="ig-camera"><svg viewBox="0 0 25 22"><path fill-rule="evenodd" d="M73.1225 740C73.7671 740 74.388 740.242 74.8617 740.676L76.5133 742.193C76.9278 742.574 77.455 742.806 78.0122 742.858L78.2525 742.87H79.0128C81.491 742.87 83.5 744.868 83.5 747.333V757.536C83.5 760.002 81.491 762 79.0128 762H62.9872C60.509 762 58.5 760.002 58.5 757.536V747.333C58.5 744.868 60.509 742.87 62.9872 742.87H63.7475C64.3921 742.87 65.013 742.628 65.4867 742.193L67.1383 740.676C67.612 740.242 68.2329 740 68.8775 740H73.1225ZM71 745.5C67.4101 745.5 64.5 748.41 64.5 752C64.5 755.59 67.4101 758.5 71 758.5C74.5899 758.5 77.5 755.59 77.5 752C77.5 748.41 74.5899 745.5 71 745.5ZM71 747.5C73.4853 747.5 75.5 749.515 75.5 752C75.5 754.485 73.4853 756.5 71 756.5C68.5147 756.5 66.5 754.485 66.5 752C66.5 749.515 68.5147 747.5 71 747.5Z" transform="translate(-58.5 -740)"/></svg></div>
+    <div class="ig-placeholder">Nhắn tin...</div>
+    <div class="ig-tool"><svg aria-label="Clip âm thanh" fill="currentColor" role="img" viewBox="0 0 24 24"><title>Clip âm thanh</title><path d="M19.5 10.671v.897a7.5 7.5 0 0 1-15 0v-.897" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"></path><line fill="none" stroke="currentColor" stroke-linejoin="round" stroke-width="2" x1="12" x2="12" y1="19.068" y2="22"></line><line fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" x1="8.706" x2="15.104" y1="22" y2="22"></line><path d="M12 15.745a4 4 0 0 1-4-4V6a4 4 0 0 1 8 0v5.745a4 4 0 0 1-4 4Z" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"></path></svg></div>
+    <div class="ig-tool"><svg aria-label="Thêm ảnh hoặc video" fill="currentColor" role="img" viewBox="0 0 24 24"><title>Thêm ảnh hoặc video</title><path d="M6.549 5.013A1.557 1.557 0 1 0 8.106 6.57a1.557 1.557 0 0 0-1.557-1.557Z" fill-rule="evenodd"></path><path d="m2 18.605 3.901-3.9a.908.908 0 0 1 1.284 0l2.807 2.806a.908.908 0 0 0 1.283 0l5.534-5.534a.908.908 0 0 1 1.283 0l3.905 3.905" fill="none" stroke="currentColor" stroke-linejoin="round" stroke-width="2"></path><path d="M18.44 2.004A3.56 3.56 0 0 1 22 5.564h0v12.873a3.56 3.56 0 0 1-3.56 3.56H5.568a3.56 3.56 0 0 1-3.56-3.56V5.563a3.56 3.56 0 0 1 3.56-3.56Z" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"></path></svg></div>
+    <div class="ig-tool"><svg aria-label="Chọn một ảnh GIF hoặc nhãn dán" fill="currentColor" role="img" viewBox="0 0 24 24"><title>Chọn một ảnh GIF hoặc nhãn dán</title><path d="M13.11 22H7.416A5.417 5.417 0 0 1 2 16.583V7.417A5.417 5.417 0 0 1 7.417 2h9.166A5.417 5.417 0 0 1 22 7.417v5.836a2.083 2.083 0 0 1-.626 1.488l-6.808 6.664A2.083 2.083 0 0 1 13.11 22Z" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"></path><circle cx="8.238" cy="9.943" r="1.335"></circle><circle cx="15.762" cy="9.943" r="1.335"></circle><path d="M15.174 15.23a4.887 4.887 0 0 1-6.937-.301" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"></path><path d="M22 10.833v1.629a1.25 1.25 0 0 1-1.25 1.25h-1.79a5.417 5.417 0 0 0-5.417 5.417v1.62a1.25 1.25 0 0 1-1.25 1.25H9.897" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"></path></svg></div>
+    <div class="ig-tool"><span class="ig-plus-icon"><svg viewBox="0 0 44 44" aria-label="Thêm"><circle cx="22" cy="22" r="18.2" fill="none" stroke="currentColor" stroke-width="3.4"/><path d="M22 13.5v17M13.5 22h17" fill="none" stroke="currentColor" stroke-width="3.4" stroke-linecap="round"/></svg></span></div>
+  </div></div>`;
+}
+
+function buildInstagramHtml(s) {
+  const history = s.messHistory || [];
+  const editable = !!s.messEditable;
+  const identityEditable = !!s.messIdentityEditable;
+  const audioIndexes = new Set(s.messAudioIndexes || []);
+  const partnerName = s.messPartnerName || 'Thùy Dương';
+  const partnerAvatar = messengerPartnerAvatar(s.messPartnerAvatar);
+  const partnerNameAttr = esc(partnerName).replace(/"/g,'&quot;').replace(/'/g,'&#39;');
+  const partnerNameSize = Math.max(1, Math.min(24, Array.from(partnerName).length));
+  const showHeader = s.messShowHeader !== false;
+  const rows = history.map((m,i) => {
+    const prevSame = i>0 && history[i-1].side===m.side, nextSame=i<history.length-1&&history[i+1].side===m.side;
+    const groupCls = prevSame&&nextSame?' middle':nextSame?' first':prevSame?' last':'';
+    const avatar = m.side === 'theirs' ? (nextSame?'<div class="ig-space"></div>':`<div class="ig-mini"><img src="${esc(partnerAvatar)}" alt="" referrerpolicy="no-referrer"/></div>`) : '';
+    const textHtml = m.text ? `<div class="ig-bubble">${esc(m.text)}</div>` : '';
+    const imageUrl = safeMediaUrl(m.imageUrl);
+    const imageHtml = imageUrl ? `<img class="ig-image${m.imageType==='sticker'?' is-sticker':''}" src="${esc(imageUrl)}" alt="" referrerpolicy="no-referrer"/>` : '';
+    const content = `<div class="ig-content">${textHtml}${imageHtml}</div>`;
+    const audioBadge = editable && (audioIndexes.has(i) || (m.parallelAudios && m.parallelAudios.length)) ? `<span class="mess-audio-badge">🔊 ${m.parallelAudios?.length || 1}<button type="button" onclick="event.stopPropagation();removeMessengerQuickAudio(${i})" title="Xóa âm thanh song song" aria-label="Xóa âm thanh song song">×</button></span>` : '';
+    const insert = editable ? `<div class="mess-insert-slot" onclick="event.stopPropagation();beginMessengerInsert(${i})" title="Chèn tin nhắn trước tin này"><span>＋ Chèn tin tại đây</span></div>` : '';
+    const menuDirection = i < 4 ? '' : ' menu-up';
+    const actions = editable ? `<div class="mess-draft-actions${menuDirection}">
+      <button type="button" class="mess-more-btn" onclick="event.stopPropagation();toggleMessengerDraftMenu(${i})" title="Tùy chọn tin nhắn" aria-label="Tùy chọn tin nhắn">•••</button>
+      <div class="mess-draft-menu" id="mess-draft-menu-${i}">
+        <button type="button" onclick="event.stopPropagation();editMessengerDraft(${i})">Chỉnh sửa</button>
+        <button type="button" onclick="event.stopPropagation();openMessengerQuickAudio(${i})">Thêm âm thanh</button>
+        <button type="button" class="danger" onclick="event.stopPropagation();deleteMessengerDraft(${i})">Xóa</button>
+      </div></div>` : '';
+    return `<div class="mess-row ig-row ${m.side}${groupCls}" data-mess-index="${i}">${insert}${avatar}${content}${audioBadge}${actions}</div>`;
+  }).join('');
+  const appendControl = editable ? `<button type="button" class="mess-append-btn" onclick="event.stopPropagation();beginMessengerInsert(${history.length})">＋ Thêm tin ở cuối</button>` : '';
+  const avatarEditAttr = identityEditable ? ` role="button" tabindex="0" title="Đổi ảnh đại diện" onclick="event.stopPropagation();document.getElementById('mess-avatar-file').click()" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();document.getElementById('mess-avatar-file').click()}"` : '';
+  const nameHtml = identityEditable
+    ? `<input class="ig-name-input" value="${partnerNameAttr}" size="${partnerNameSize}" aria-label="Tên Instagram" title="Nhấn để sửa tên" oninput="messPartnerName=this.value;this.size=Math.max(1,Math.min(24,Array.from(this.value).length))" onblur="commitMessengerPartnerName(this)" onkeydown="if(event.key==='Enter'){event.preventDefault();this.blur()}"/>`
+    : `<span>${esc(partnerName)}</span>`;
+  const headerHtml = showHeader ? `<div class="ig-header"><div class="ig-back" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M15 18l-6-6 6-6"/></svg></div>
+    <div class="ig-avatar${identityEditable?' is-editable':''}"${avatarEditAttr}><img src="${esc(partnerAvatar)}" alt="" referrerpolicy="no-referrer"/></div>
+    <div class="ig-who"><div class="ig-name-row"><div class="ig-name">${nameHtml}</div><span class="ig-chevron"></span></div><div class="ig-status">Hoạt động 1 giờ trước</div></div>
+    <div class="ig-actions" aria-hidden="true"><button class="ig-icon"><svg aria-label="Gọi thoại" fill="currentColor" role="img" viewBox="0 0 24 24"><title>Gọi thoại</title><path d="M18.227 22.912c-4.913 0-9.286-3.627-11.486-5.828C4.486 14.83.731 10.291.921 5.231a3.289 3.289 0 0 1 .908-2.138 17.116 17.116 0 0 1 1.865-1.71 2.307 2.307 0 0 1 3.004.174 13.283 13.283 0 0 1 3.658 5.325 2.551 2.551 0 0 1-.19 1.941l-.455.853a.463.463 0 0 0-.024.387 7.57 7.57 0 0 0 4.077 4.075.455.455 0 0 0 .386-.024l.853-.455a2.548 2.548 0 0 1 1.94-.19 13.278 13.278 0 0 1 5.326 3.658 2.309 2.309 0 0 1 .174 3.003 17.319 17.319 0 0 1-1.71 1.866 3.29 3.29 0 0 1-2.138.91 10.27 10.27 0 0 1-.368.006Zm-13.144-20a.27.27 0 0 0-.167.054A15.121 15.121 0 0 0 3.28 4.47a1.289 1.289 0 0 0-.36.836c-.161 4.301 3.21 8.34 5.235 10.364s6.06 5.403 10.366 5.236a1.284 1.284 0 0 0 .835-.36 15.217 15.217 0 0 0 1.504-1.637.324.324 0 0 0-.047-.41 11.62 11.62 0 0 0-4.457-3.119.545.545 0 0 0-.411.044l-.854.455a2.452 2.452 0 0 1-2.071.116 9.571 9.571 0 0 1-5.189-5.188 2.457 2.457 0 0 1 .115-2.071l.456-.855a.544.544 0 0 0 .043-.41 11.629 11.629 0 0 0-3.118-4.458.36.36 0 0 0-.244-.1Z"></path></svg></button><button class="ig-icon"><svg aria-label="Gọi video" fill="currentColor" role="img" viewBox="0 0 24 24"><title>Gọi video</title><rect fill="none" height="18" rx="3" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" width="16.999" x="1" y="3"></rect><path d="m17.999 9.146 2.495-2.256A1.5 1.5 0 0 1 23 8.003v7.994a1.5 1.5 0 0 1-2.506 1.113L18 14.854" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"></path></svg></button></div>
+  </div>` : '';
+  return `<div class="ig-card">${headerHtml}<div class="ig-messages">${rows}${appendControl}</div>${s.messShowFooter?buildInstagramFooterHtml():''}</div>`;
 }
 
 function buildZaloHtml(s) {
@@ -592,6 +654,14 @@ function memeOverlayTransform(memeStep) {
   const scale = Math.max(.35, Math.min(2.5, finite(memeStep && memeStep.overlayScale, 1)));
   return `translate(${ox}cqw, ${oy}cqw) rotate(${rot}deg) scale(${scale})`;
 }
+function mediaOpacityValue(step) {
+  const raw = step && step.mediaOpacity;
+  if (raw == null || raw === '') return 1;
+  return Math.max(0, Math.min(1, Number(raw) || 0));
+}
+function mediaOpacityStyle(step) {
+  return `opacity:${mediaOpacityValue(step).toFixed(3)}`;
+}
 
 // Meme dạng video/gif ĐỘNG (khác ảnh tĩnh) — dùng chung export_render.html
 // (quyết định bỏ qua rotation khi xuất video) và index.html (badge cảnh báo
@@ -630,7 +700,7 @@ function bumpStepRevision(id) { stepRevision.set(id, (stepRevision.get(id) || 0)
 function computeSceneAt(t) {
   // Tìm step track-chính đang "giữ màn" tại t. Khác _end: nếu t đang nằm
   // trong gap sau step, vẫn chọn step đó để nó đứng yên chờ step sau.
-  const mainSteps = steps.filter(s => !isParallelMedia(s));
+  const mainSteps = steps.filter(s => !isParallelMedia(s) && !isAbsoluteLayer(s));
   let curIdx = -1;
   for (let i = 0; i < mainSteps.length; i++) {
     const s = mainSteps[i];
@@ -670,21 +740,39 @@ function computeSceneAt(t) {
     if(!isParallelText(s)||t<s._start-1e-6||t>=s._end-1e-6)continue;
     if(!stack.some(item=>item.id===s.id))stack.push(s);
   }
+  const absoluteTextSteps = steps.filter(s =>
+    isAbsoluteLayer(s) &&
+    (s.type === 'text' || s.type === 'note') &&
+    t >= s._start - 1e-6 &&
+    t < s._end - 1e-6
+  );
+  for (const s of absoluteTextSteps) {
+    if (!stack.some(item => item.id === s.id)) stack.push(s);
+  }
 
-  // Ảnh/sticker tuần tự tồn tại tiếp cho tới khi một step sau bật
-  // clearBefore. Media song song vẫn chỉ sống đúng bằng cửa sổ card neo.
-  // Nhờ vậy sticker không tick "Xóa nội dung cũ" có thể nằm cùng ảnh trước.
-  const memeSteps = [];
-  if (curIdx >= 0) for (const s of steps) {
+  // Ảnh/sticker của Timeline vẫn đi theo luật Timeline: tồn tại tiếp cho tới
+  // khi một step sau bật clearBefore. Layer riêng thì tách hẳn: nó chỉ nhìn
+  // cửa sổ thời gian _start/_end của chính nó, không bị bất kỳ clearBefore nào
+  // trong Timeline xoá mất.
+  const timelineMemeSteps = [];
+  for (const s of steps) {
+    if (isAbsoluteLayer(s)) continue;
     if ((s._start || 0) > t + 1e-6) continue;
-    if (!isParallelMedia(s) && s.clearBefore) memeSteps.length = 0;
+    if (!isParallelMedia(s) && s.clearBefore) timelineMemeSteps.length = 0;
     if (s.type !== 'image' && s.type !== 'sticker') continue;
     if (isParallelVisual(s) && !(t >= s._start - 1e-6 && t < s._end - 1e-6)) continue;
-    memeSteps.push(s);
+    timelineMemeSteps.push(s);
   }
+  const absoluteMemeSteps = steps.filter(s =>
+    isAbsoluteLayer(s) &&
+    (s.type === 'image' || s.type === 'sticker') &&
+    t >= s._start - 1e-6 &&
+    t < s._end - 1e-6
+  );
+  const memeSteps = [...timelineMemeSteps, ...absoluteMemeSteps];
   const memeStep = memeSteps.length ? memeSteps[memeSteps.length - 1] : null;
 
-  return { stack, memeStep, memeSteps };
+  return { stack, memeStep, memeSteps, timelineMemeSteps, absoluteMemeSteps, absoluteTextSteps };
 }
 
 function retainedMemeHtml(step) {
@@ -693,7 +781,7 @@ function retainedMemeHtml(step) {
   const media = step.mediaIsVideo
     ? `<video src="${esc(mediaUrl)}" preload="metadata" playsinline></video>`
     : `<img src="${esc(mediaUrl)}" alt=""/>`;
-  return `<div class="meme-overlay retained-meme ${step.type==='sticker'?'sticker-overlay':''}" data-id="${esc(step.id)}" style="display:block;transform:${memeOverlayTransform(step)}">${media}</div>`;
+  return `<div class="meme-overlay retained-meme ${step.type==='sticker'?'sticker-overlay':''}" data-id="${esc(step.id)}" style="display:block;transform:${memeOverlayTransform(step)};${mediaOpacityStyle(step)}">${media}</div>`;
 }
 
 function autoScrollStack() {
@@ -707,7 +795,7 @@ function autoScrollStack() {
 }
 
 function autoScrollMessenger(root = document) {
-  root.querySelectorAll('.mess-body,.zalo-body').forEach(body => {
+  root.querySelectorAll('.mess-body,.zalo-body,.ig-messages').forEach(body => {
     body.scrollTop = body.scrollHeight;
   });
 }

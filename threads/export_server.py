@@ -161,6 +161,7 @@ async def render_stack_images(job_id: str, steps: list[dict], breakpoints: list[
                     "media_url": meme_media_url,
                     "step_id": meme_step_id,
                     "step_start": meme_step_start,
+                    "opacity": max(0.0, min(1.0, float(result.get("memeOpacity", 1) or 0))),
                     "x_ratio": meme_box["xRatio"], "y_ratio": meme_box["yRatio"],
                     "w_ratio": meme_box["wRatio"], "h_ratio": meme_box["hRatio"],
                 }
@@ -228,6 +229,7 @@ def build_ffmpeg_cmd(job_id: str, bg_video_path: Path, bg_audio_path: Path | Non
         # kích thước chẵn — libx264/scale filter yêu cầu width/height chẵn
         w_px += w_px % 2
         h_px += h_px % 2
+        opacity = max(0.0, min(1.0, float(dm.get("opacity", 1) or 0)))
         is_gif = dm["_local_path"].lower().endswith(".gif")
         loop_flags = ["-ignore_loop", "0"] if is_gif else []
         # Một video-card có thể trải qua nhiều segment do card TTS/audio khác
@@ -255,7 +257,7 @@ def build_ffmpeg_cmd(job_id: str, bg_video_path: Path, bg_audio_path: Path | Non
         inputs += loop_flags + seek_flags + ["-itsoffset", f"{t0:.3f}", "-t", f"{dur:.3f}", "-i", dm["_local_path"]]
         new_label = f"v{idx}"
         filter_parts.append(
-            f"[{idx}:v]scale={w_px}:{h_px}[m{idx}];"
+            f"[{idx}:v]scale={w_px}:{h_px},format=rgba,colorchannelmixer=aa={opacity:.3f}[m{idx}];"
             f"[{last_label}][m{idx}]overlay={x_px}:{y_px}:enable='between(t,{t0:.3f},{t1:.3f})'[{new_label}]"
         )
         last_label = new_label
@@ -341,7 +343,7 @@ async def run_export_job(job_id: str, req: ExportRequest):
     job_dir.mkdir(exist_ok=True)
     try:
         steps = req.steps
-        # Audio SONG SONG (parallel=true) không chiếm chỗ track chính — bám
+        # Audio SONG SONG (parallel=true) và layer riêng không chiếm chỗ track chính — bám
         # theo step khác, không ảnh hưởng tổng thời lượng (giống mục 5.13
         # bên index.html: isParallelAudio()). Audio TUẦN TỰ (mặc định) vẫn
         # tính vào track chính như post/comment — bug đã gặp: trước đây loại
@@ -349,8 +351,9 @@ async def run_export_job(job_id: str, req: ExportRequest):
         # kịch bản bị cắt cụt mất, tổng thời lượng tính thiếu.
         total_duration = max(
             [s["_end"] + (s.get("gap") or 0) for s in steps
-             if not (s.get("type") == "audio" and s.get("parallel"))] or [0]
+             if not (s.get("type") == "audio" and s.get("parallel")) and s.get("layerMode") != "absolute"] or [0]
         )
+        total_duration = max(total_duration, *[s["_end"] for s in steps if s.get("layerMode") == "absolute"], 0)
         if total_duration <= 0:
             raise RuntimeError("Kịch bản rỗng hoặc không có step nào có thời lượng")
 

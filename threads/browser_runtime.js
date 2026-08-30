@@ -88,6 +88,8 @@
     if (status) { status.textContent = '✓ Dùng cục bộ — không upload'; status.style.color = '#4ade80'; }
     const path = document.getElementById('m-file-path');
     if (path) path.value = '';
+    if (typeof refreshMediaModalPreviewSoon === 'function') refreshMediaModalPreviewSoon();
+    else if (typeof updateMediaModalPreview === 'function') updateMediaModalPreview();
     return data.url;
   };
 
