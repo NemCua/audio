@@ -201,7 +201,17 @@ function buildEmphasisBubbleHtml(active) {
   const isMessenger = step.type === 'mess';
   const side = isMessenger ? (message.side === 'mine' || step.side === 'mine' ? 'mine' : 'theirs') : 'center';
   const platform = isMessenger ? normalizeMessengerPlatform(step.messPlatform) : `generic ${step.type || ''}`;
-  return `<div class="emphasis-bubble-wrap ${esc(platform)} ${esc(side)}"><div class="emphasis-bubble">${esc(text)}</div></div>`;
+  let groupCls = '';
+  if (isMessenger && Array.isArray(step.messHistory)) {
+    const msgIndex = Number.isFinite(Number(step.messIndex)) ? Math.max(0, Math.floor(Number(step.messIndex))) : -1;
+    const currentIndex = msgIndex >= 0 ? Math.min(msgIndex, step.messHistory.length - 1) : step.messHistory.findIndex(item => item === message);
+    if (currentIndex >= 0) {
+      const prevSame = currentIndex > 0 && step.messHistory[currentIndex - 1]?.side === side;
+      const nextSame = currentIndex < step.messHistory.length - 1 && step.messHistory[currentIndex + 1]?.side === side;
+      groupCls = prevSame && nextSame ? ' middle' : nextSame ? ' first' : prevSame ? ' last' : '';
+    }
+  }
+  return `<div class="emphasis-bubble-wrap ${esc(platform)} ${esc(side)}${esc(groupCls)}"><div class="emphasis-bubble">${esc(text)}</div></div>`;
 }
 
 function renderEmphasisLayer(t, stack) {
