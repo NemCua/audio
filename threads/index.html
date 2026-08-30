@@ -2412,9 +2412,9 @@ async function fetchTts(text, voiceIdx, echo = false, speed = 1) {
   const remoteUrl = ttsServerUrl() + data.audio_url;
   if (window.desktopApp?.downloadAsset) {
     const saved = await window.desktopApp.downloadAsset(remoteUrl, 'tts', 'tts.mp3', window.authHeaders ? window.authHeaders() : {});
-    return { audioUrl: saved.url, audioDesktopPath: saved.path, duration: data.duration };
+    return { audioUrl: saved.url, audioDesktopPath: saved.path, remoteAudioUrl: data.audio_url, duration: data.duration };
   }
-  return { audioUrl: remoteUrl, duration: data.duration };
+  return { audioUrl: remoteUrl, remoteAudioUrl: data.audio_url, duration: data.duration };
 }
 
 // Không tải toàn bộ MP3 cùng lúc: mỗi file audio cần xác thực với backend,
@@ -2574,7 +2574,7 @@ async function generateAllTtsLegacy() {
         for(let i=0;i<items.length;i++){
           statusEl.textContent=`🔊 Edge TTS Messenger ${i+1}/${items.length} (từng đoạn)...`;
           const result=await fetchEdgeTtsReliable((items[i].ttsText&&items[i].ttsText.trim())||items[i].text,voiceIdx,speed,echo);
-          items[i].audioUrl=result.audioUrl;items[i].ttsDuration=result.duration;items[i].duration=result.duration;bumpStepRevision(items[i].id);ok++;
+          items[i].audioUrl=result.audioUrl;items[i].audioDesktopPath=result.audioDesktopPath||null;items[i].audioServerUrl=result.remoteAudioUrl||null;items[i].ttsDuration=result.duration;items[i].duration=result.duration;bumpStepRevision(items[i].id);ok++;
           await waitMs(700);
         }
       }else{
@@ -2648,7 +2648,9 @@ async function generateAllTts() {
     const mainText=((step.ttsText&&step.ttsText.trim())||(step.text&&step.text.trim())||'');
     const needsNoteSubtitle=step.type==='note'&&step.noteSubtitles!==false&&(!Array.isArray(step.subtitleWords)||!step.subtitleWords.length);
     const noteNeedsFreshServerAudio=needsNoteSubtitle&&step.audioUrl&&!step.audioServerUrl;
-    const needsMainAudio=step.type==='audio'?!step.mediaUrl:(!step.audioUrl||noteNeedsFreshServerAudio);
+    const voiceIdx=step.voiceIdx!=null?step.voiceIdx:(step.type==='mess'?messengerDefaultVoice(step.messHistory?.[step.messHistory.length-1]?.side||'theirs'):null);
+    const edgeNeedsFreshLocalAudio=isEdgeVoiceIdx(voiceIdx)&&step.audioUrl&&!step.audioDesktopPath&&window.desktopApp?.downloadAsset;
+    const needsMainAudio=step.type==='audio'?!step.mediaUrl:(!step.audioUrl||noteNeedsFreshServerAudio||edgeNeedsFreshLocalAudio);
     if(needsMainAudio&&mainText)jobs.push({step,segment:null,text:mainText,voiceIdx:step.voiceIdx!=null?step.voiceIdx:(step.type==='mess'?messengerDefaultVoice(step.messHistory?.[step.messHistory.length-1]?.side||'theirs'):null),speed:step.type==='mess'?messengerServerSpeed(step.messTtsSpeed):step.type==='note'?(step.noteTtsSpeed||1):step.type==='audio'?(step.audioTtsSpeed||1):1,echo:!!step.echo});
     for(const segment of (step.extraTtsSegments||[])){
       const text=(segment.text||'').trim();
@@ -3208,14 +3210,14 @@ async function generateMessengerTtsResults(messages,status,reuseSteps=[]){
     if(!msg.ttsText)return;
     const old=reuseSteps.find(s=>(s.messIndex??((s.messHistory||[]).length-1))===index);
     if(old&&old.audioUrl&&old.ttsText===msg.ttsText&&old.voiceIdx===msg.voiceIdx&&!!old.echo===!!msg.echo&&Number(old.messTtsSpeed||1)===Number(messTtsSpeed)){
-      results.set(index,{audioUrl:old.audioUrl,duration:old.ttsDuration||old.duration});return;
+      results.set(index,{audioUrl:old.audioUrl,audioDesktopPath:old.audioDesktopPath||null,remoteAudioUrl:old.audioServerUrl||null,duration:old.ttsDuration||old.duration});return;
     }
   });
   status.textContent='✓ Đã lưu card; TTS sẽ tạo khi nhấn Play.';
   return results;
 }
 function makeMessengerStep(msg,index,history,conversationId,ttsResult,oldStep=null){
-  return {id:oldStep?.id??stepIdCounter++,type:'mess',conversationId,groupId:oldStep?.groupId===false?false:(oldStep?.groupId||conversationId),messIndex:index,messPlatform,messShowFooter,messShowHeader,messPartnerName:messPartnerName.trim()||'Tùng',messPartnerAvatar,messSideVoices:{...messSideVoiceIdx},messTtsSpeed,messHistory:history.map(x=>({...x})),text:msg.text,ttsText:msg.ttsText,voiceIdx:msg.voiceIdx,echo:!!msg.echo,emphasisBubble:!!msg.emphasisBubble,audioUrl:ttsResult?.audioUrl||null,ttsDuration:ttsResult?.duration||null,duration:ttsResult?.duration||DEFAULT_DUR.mess,gap:oldStep?.gap??0,clearBefore:oldStep?.clearBefore??true,hue:oldStep?.hue??0,offsetX:oldStep?.offsetX??0,offsetY:oldStep?.offsetY??0,rotation:oldStep?.rotation??0};
+  return {id:oldStep?.id??stepIdCounter++,type:'mess',conversationId,groupId:oldStep?.groupId===false?false:(oldStep?.groupId||conversationId),messIndex:index,messPlatform,messShowFooter,messShowHeader,messPartnerName:messPartnerName.trim()||'Tùng',messPartnerAvatar,messSideVoices:{...messSideVoiceIdx},messTtsSpeed,messHistory:history.map(x=>({...x})),text:msg.text,ttsText:msg.ttsText,voiceIdx:msg.voiceIdx,echo:!!msg.echo,emphasisBubble:!!msg.emphasisBubble,audioUrl:ttsResult?.audioUrl||null,audioDesktopPath:ttsResult?.audioDesktopPath||null,audioServerUrl:ttsResult?.remoteAudioUrl||null,ttsDuration:ttsResult?.duration||null,duration:ttsResult?.duration||DEFAULT_DUR.mess,gap:oldStep?.gap??0,clearBefore:oldStep?.clearBefore??true,hue:oldStep?.hue??0,offsetX:oldStep?.offsetX??0,offsetY:oldStep?.offsetY??0,rotation:oldStep?.rotation??0};
 }
 function insertPendingMessengerAudios(drafts,messSteps){
   drafts.forEach((msg,i)=>{
