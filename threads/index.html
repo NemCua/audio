@@ -760,19 +760,21 @@ body.absolute-layer-off #absolute-lane{display:none}
 .preview-frame.emphasis-card-zoom-mode .thr-stack{filter:none}
 .preview-frame.emphasis-card-zoom-mode .thr-stack .tcard-pos[data-step-id]{filter:blur(.55cqw) brightness(.58)}
 .preview-frame.emphasis-card-zoom-mode .thr-stack .tcard-pos.emphasis-card-zoom-active{position:relative;z-index:16;filter:none}
-.preview-frame.emphasis-card-zoom-mode .thr-stack .tcard-pos.emphasis-card-zoom-active>.mess-card,.preview-frame.emphasis-card-zoom-mode .thr-stack .tcard-pos.emphasis-card-zoom-active>.ig-card,.preview-frame.emphasis-card-zoom-mode .thr-stack .tcard-pos.emphasis-card-zoom-active>.zalo-card{transform:translate(var(--emphasis-shift-x,0),var(--emphasis-shift-y,0)) scale(1.72);transform-origin:var(--emphasis-origin-x,50%) var(--emphasis-origin-y,50%);box-shadow:0 2.4cqw 8cqw #0009}
+.preview-frame.emphasis-card-zoom-mode .thr-stack .tcard-pos.emphasis-card-zoom-active>.mess-card,.preview-frame.emphasis-card-zoom-mode .thr-stack .tcard-pos.emphasis-card-zoom-active>.ig-card,.preview-frame.emphasis-card-zoom-mode .thr-stack .tcard-pos.emphasis-card-zoom-active>.zalo-card,.preview-frame.emphasis-card-zoom-mode .thr-stack .tcard-pos.emphasis-card-zoom-active>.tcard,.preview-frame.emphasis-card-zoom-mode .thr-stack .tcard-pos.emphasis-card-zoom-active>.tk-comment{transform:translate(var(--emphasis-shift-x,0),var(--emphasis-shift-y,0)) scale(1.72);transform-origin:var(--emphasis-origin-x,50%) var(--emphasis-origin-y,50%);box-shadow:0 2.4cqw 8cqw #0009}
 .emphasis-layer{position:absolute;inset:0;z-index:17;padding:0 5.5cqw;pointer-events:none}
 .emphasis-layer:empty{display:none}
 .emphasis-bubble-wrap{position:absolute;left:5.5cqw;right:5.5cqw;top:var(--emphasis-y,50%);display:flex;justify-content:center;transform:translateY(-50%)}
 .emphasis-bubble-wrap.mine{justify-content:flex-end}.emphasis-bubble-wrap.theirs{justify-content:flex-start}.emphasis-bubble-wrap.center{justify-content:center}
 .emphasis-bubble{max-width:78cqw;padding:2.6cqw 3.4cqw;border-radius:5cqw;background:#111;color:#fff;font-family:"SFPro",-apple-system,BlinkMacSystemFont,"Segoe UI",Arial,sans-serif;font-size:4.8cqw;font-weight:740;line-height:1.18;letter-spacing:-.02em;box-shadow:0 1.7cqw 5.5cqw #0009;overflow-wrap:anywhere}
-.emphasis-bubble-wrap.generic .emphasis-bubble{box-sizing:border-box;width:100%;max-width:none;background:#fff;color:#0f1419;border-radius:3.6cqw;font-size:4.15cqw;font-weight:430;line-height:1.32;letter-spacing:0;text-align:left;box-shadow:0 1.2cqw 4.2cqw #0007}
-.emphasis-bubble-wrap.generic.comment .emphasis-bubble,.emphasis-bubble-wrap.generic.reply .emphasis-bubble{font-size:3.75cqw;border-radius:3cqw}
+.emphasis-bubble-wrap.generic{left:0;right:0}
+.emphasis-bubble-wrap.generic .emphasis-bubble{box-sizing:border-box;width:100%;max-width:none;padding:3.2cqw 5.5cqw;background:#fff;color:#0f1419;border-radius:0;font-size:4.3cqw;font-weight:430;line-height:1.32;letter-spacing:0;text-align:left;box-shadow:0 1.2cqw 4.2cqw #0007}
+.emphasis-bubble-wrap.generic.comment .emphasis-bubble,.emphasis-bubble-wrap.generic.reply .emphasis-bubble{font-size:3.95cqw;border-radius:0}
 .emphasis-bubble-wrap.messenger,.emphasis-bubble-wrap.instagram,.emphasis-bubble-wrap.zalo{box-sizing:border-box;width:auto;padding:.9cqw 1.1cqw;border-radius:3.6cqw;background:#fff;box-shadow:0 1.2cqw 4.2cqw #0007}
 .emphasis-bubble-wrap.messenger .emphasis-bubble,.emphasis-bubble-wrap.instagram .emphasis-bubble,.emphasis-bubble-wrap.zalo .emphasis-bubble{max-width:74%;box-shadow:none}
 .emphasis-bubble-wrap.messenger.mine .emphasis-bubble{background:#2864ed}.emphasis-bubble-wrap.messenger.theirs .emphasis-bubble{background:#f0f0f0;color:#050505}
 .emphasis-bubble-wrap.instagram.mine .emphasis-bubble{background:linear-gradient(90deg,#9333ea,#a933f0 56%,#8f2cf0)}.emphasis-bubble-wrap.instagram.theirs .emphasis-bubble{background:#f1f3f5;color:#111}
 .emphasis-bubble-wrap.zalo.mine .emphasis-bubble{background:#dbebff;color:#061a33}.emphasis-bubble-wrap.zalo.theirs .emphasis-bubble{background:#fff;color:#111}
+.progressive-line{display:block}.progressive-line+.progressive-line{margin-top:.32em}
 .note-subtitle-layer{display:none;position:absolute;z-index:18;left:7%;right:7%;bottom:14%;color:#fff;font-family:Arial,sans-serif;font-size:5.3cqw;font-weight:800;line-height:1.2;text-align:center;-webkit-text-stroke:.28cqw #000;paint-order:stroke fill;text-shadow:0 .45cqw 1.2cqw #000;pointer-events:none}.note-subtitle-layer.show{display:block}
 
 .preview-info {

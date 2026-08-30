@@ -158,7 +158,7 @@ function stepForRenderAtTime(s, t) {
   const stage = progressiveRevealStage(s, t);
   if (!stage) return s;
   const parts = progressiveTextParts(s);
-  return { ...s, text: parts.slice(0, stage).join('\n'), _progressiveFinal: stage === parts.length };
+  return { ...s, text: parts.slice(0, stage).join('\n'), _progressivePartsVisible: parts.slice(0, stage), _progressiveActiveIndex: stage - 1, _progressiveFinal: stage === parts.length };
 }
 
 function messengerMessageForStep(s) {
@@ -232,10 +232,13 @@ function renderEmphasisLayer(t, stack) {
     layer.style.removeProperty('--emphasis-y');
     const card = frame.querySelector(`.tcard-pos[data-step-id="${CSS.escape(String(step.id))}"]`);
     if (card) {
-      const visualCard = card.querySelector(':scope > .mess-card,:scope > .ig-card,:scope > .zalo-card');
+      const visualCard = card.querySelector(':scope > .mess-card,:scope > .ig-card,:scope > .zalo-card,:scope > .tcard,:scope > .tk-comment');
       const index = Number.isFinite(Number(step.messIndex)) ? Number(step.messIndex) : null;
       const activeRow = index == null ? null : card.querySelector(`.mess-row[data-mess-index="${CSS.escape(String(index))}"]`);
-      const activeBubble = activeRow?.querySelector('.mess-bubble,.ig-bubble,.zalo-bubble,.mess-chat-image,.ig-image,.zalo-chat-image') || activeRow;
+      const activeProgressiveLine = active.kind === 'progressive' && active.segmentIndex != null
+        ? card.querySelector(`.progressive-line[data-progressive-part-index="${CSS.escape(String(active.segmentIndex))}"]`)
+        : null;
+      const activeBubble = activeProgressiveLine || activeRow?.querySelector('.mess-bubble,.ig-bubble,.zalo-bubble,.mess-chat-image,.ig-image,.zalo-chat-image') || activeRow;
       if (visualCard && activeBubble) {
         const frameBox = frame.getBoundingClientRect();
         const cardBox = visualCard.getBoundingClientRect();
@@ -376,7 +379,7 @@ function buildPostHtml(uname, text, timeLabel, imgUrl, statsHtml, avatarUrl) {
         <div class="side-actions"><div class="menu-dots">⋯</div></div>
       </div></div>
     </div>
-    <div class="thr-body">${esc(text)}</div>
+    <div class="thr-body">${text}</div>
     ${imgWrapHtml(imgUrl)}
     ${statsHtml}`;
 }
@@ -395,7 +398,7 @@ function buildCommentRow(uname, text, hue, isAuthor, timeLabel, imgUrl, statsHtm
           </div></div>
           <div class="side-actions"><div class="menu-dots">⋯</div></div>
         </div>
-        <div class="thr-body">${esc(text)}</div>
+        <div class="thr-body">${text}</div>
         ${imgWrapHtml(imgUrl)}
         ${statsHtml}
       </div>
@@ -483,6 +486,12 @@ function safeCardColor(value, fallback) {
 function textCardFontClass(value) {
   return ['serif','rounded','mono','display'].includes(value)?` font-${value}`:'';
 }
+function progressiveBodyHtml(s) {
+  if (!s || !Array.isArray(s._progressivePartsVisible)) return esc(s?.text || '');
+  return s._progressivePartsVisible.map((part, index) =>
+    `<span class="progressive-line${index === s._progressiveActiveIndex ? ' active-progressive-line' : ''}" data-progressive-part-index="${index}">${esc(part)}</span>`
+  ).join('');
+}
 function buildPlainTextCardHtml(s,posClass,stepAttr,posAttr){
   const size=Math.max(2,Math.min(12,Number(s.textFontSize)||6));
   const legacyStroke=s.textStrokeWidth??s.cardBorderWidth,stroke=Math.max(0,Math.min(1.5,Number.isFinite(Number(legacyStroke))?Number(legacyStroke):.18));
@@ -513,7 +522,7 @@ function buildCardHtml(s) {
   if (s.type === 'post') {
     const id1 = displayIdentity(s.id + ':m', s.uname, s.avatarUrl, (s.stats&&s.stats.timeLabel)||'vừa xong', s.identityBlurMode);
     const showFooter = !s.progressiveReveal || s._progressiveFinal;
-    return `<div class="${posClass}"${stepAttr}${posAttr}><div class="tcard">${buildPostHtml(id1.uname, s.text, id1.timeLabel, showFooter?s.imgUrl:null, showFooter?statsRow(s.stats):'', id1.avatarUrl)}</div></div>`;
+    return `<div class="${posClass}"${stepAttr}${posAttr}><div class="tcard">${buildPostHtml(id1.uname, progressiveBodyHtml(s), id1.timeLabel, showFooter?s.imgUrl:null, showFooter?statsRow(s.stats):'', id1.avatarUrl)}</div></div>`;
   }
   if (s.type === 'comment' || s.type === 'reply') {
     // Platform (Threads/TikTok, mục 5.39 CONTEXT.md) — thay hẳn step 'reply'
@@ -534,7 +543,7 @@ function buildCardHtml(s) {
     // vào .thr-row vì làm vậy chỉ đẩy avatar/content bên trong nền trắng.
     // Không vẽ connector vì step này không chứa comment cha.
     const showFooter = !s.progressiveReveal || s._progressiveFinal;
-    const commentHtml = buildCommentRow(id1.uname, s.text, s.hue, s.isAuthor, id1.timeLabel, showFooter?s.imgUrl:null, showFooter?statsRow(s.stats):'', null, id1.avatarUrl);
+    const commentHtml = buildCommentRow(id1.uname, progressiveBodyHtml(s), s.hue, s.isAuthor, id1.timeLabel, showFooter?s.imgUrl:null, showFooter?statsRow(s.stats):'', null, id1.avatarUrl);
     return `<div class="${posClass}"${stepAttr}${posAttr}><div class="tcard${s.type==='reply'?' thr-reply-card':''}">${commentHtml}</div></div>`;
   }
   return '';
@@ -743,7 +752,7 @@ function buildTiktokCommentHtml(s, id1, posAttr, stepAttr = '') {
     ${tiktokAvatarHtml(id1.uname, s.hue, id1.avatarUrl)}
     <div class="tk-main">
       <div class="tk-uname-row"><div class="tk-uname">${esc(id1.uname)}</div>${creatorBadge}</div>
-      <div class="tk-text">${esc(s.text)}</div>
+      <div class="tk-text">${progressiveBodyHtml(s)}</div>
       ${showFooter?tiktokImgWrapHtml(s.imgUrl):''}
       ${showFooter?`<div class="tk-foot">
         <div class="tk-foot-left">
