@@ -63,15 +63,16 @@ body.settings-scene-open .settings-scene{display:block}
 .settings-grid .setting-card{min-width:0}
 @media(max-width:980px){.settings-grid{grid-template-columns:1fr}}
 .script-panel{min-width:0}
-.script-lanes{display:grid;grid-template-columns:minmax(0,1.25fr) minmax(220px,.75fr);gap:10px;min-height:0;flex:1}
+.script-lanes{display:grid;grid-template-columns:minmax(0,1.25fr) minmax(220px,.75fr);gap:10px;min-height:0;overflow:hidden;flex:1 1 0}
 body.absolute-layer-off .script-lanes{grid-template-columns:1fr}
 body.absolute-layer-off #absolute-lane{display:none}
-.script-lane{min-width:0;min-height:0;display:flex;flex-direction:column;border:1px solid #1e2340;border-radius:12px;background:#0b0e1a;overflow:hidden}
+.script-lane{min-width:0;min-height:0;height:100%;display:flex;flex-direction:column;border:1px solid #1e2340;border-radius:12px;background:#0b0e1a;overflow:hidden}
 .script-lane.active{border-color:#7c3aed;box-shadow:0 0 0 1px #7c3aed55}
 .script-lane-head{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:10px 11px;border-bottom:1px solid #1e2340;color:#cbd5e1;font-size:12px;font-weight:800;cursor:pointer;user-select:none}
 .script-lane.active .script-lane-head{color:#fff;background:#16132a;border-bottom-color:#35246d}
 .script-lane-count{color:#7f8aa5;font-size:11px;font-weight:700}
-.script-lane-list{min-height:0;overflow:auto;padding:10px;display:flex;flex-direction:column;gap:10px}
+.script-lane-list{flex:1;min-height:0;overflow-x:hidden;overflow-y:auto;overscroll-behavior:contain;padding:10px;display:flex;flex-direction:column;gap:10px;scrollbar-gutter:stable}
+.script-lane-list>*{flex:0 0 auto}
 .script-lane-list .script-empty{margin:0}
 @media(max-width:1180px){.layout{grid-template-columns:280px 1fr 520px}body.absolute-layer-off .layout{grid-template-columns:280px 1fr 460px}.script-lanes{grid-template-columns:1fr}.script-lane-list{max-height:45vh}}
 
@@ -755,6 +756,19 @@ body.absolute-layer-off #absolute-lane{display:none}
   color: #ccc; font-size: 3cqw; font-weight: 700; text-align: center; padding: 4cqw;
 }
 .retained-meme-layer{position:absolute;inset:0;z-index:7;pointer-events:none}.retained-meme-layer .meme-overlay{z-index:auto;pointer-events:auto;cursor:pointer}
+.preview-frame.emphasis-active .thr-stack{filter:blur(.55cqw) brightness(.58);transition:none}
+.emphasis-layer{position:absolute;inset:0;z-index:17;padding:0 5.5cqw;pointer-events:none}
+.emphasis-layer:empty{display:none}
+.emphasis-bubble-wrap{position:absolute;left:5.5cqw;right:5.5cqw;top:var(--emphasis-y,50%);display:flex;justify-content:center;transform:translateY(-50%)}
+.emphasis-bubble-wrap.mine{justify-content:flex-end}.emphasis-bubble-wrap.theirs{justify-content:flex-start}.emphasis-bubble-wrap.center{justify-content:center}
+.emphasis-bubble{max-width:78cqw;padding:2.6cqw 3.4cqw;border-radius:5cqw;background:#111;color:#fff;font-family:"SFPro",-apple-system,BlinkMacSystemFont,"Segoe UI",Arial,sans-serif;font-size:4.8cqw;font-weight:740;line-height:1.18;letter-spacing:-.02em;box-shadow:0 1.7cqw 5.5cqw #0009;overflow-wrap:anywhere}
+.emphasis-bubble-wrap.generic .emphasis-bubble{box-sizing:border-box;width:100%;max-width:none;background:#fff;color:#0f1419;border-radius:3.6cqw;font-size:4.15cqw;font-weight:430;line-height:1.32;letter-spacing:0;text-align:left;box-shadow:0 1.2cqw 4.2cqw #0007}
+.emphasis-bubble-wrap.generic.comment .emphasis-bubble,.emphasis-bubble-wrap.generic.reply .emphasis-bubble{font-size:3.75cqw;border-radius:3cqw}
+.emphasis-bubble-wrap.messenger,.emphasis-bubble-wrap.instagram,.emphasis-bubble-wrap.zalo{box-sizing:border-box;width:auto;padding:.9cqw 1.1cqw;border-radius:3.6cqw;background:#fff;box-shadow:0 1.2cqw 4.2cqw #0007}
+.emphasis-bubble-wrap.messenger .emphasis-bubble,.emphasis-bubble-wrap.instagram .emphasis-bubble,.emphasis-bubble-wrap.zalo .emphasis-bubble{max-width:74%;box-shadow:none}
+.emphasis-bubble-wrap.messenger.mine .emphasis-bubble{background:#2864ed}.emphasis-bubble-wrap.messenger.theirs .emphasis-bubble{background:#f0f0f0;color:#050505}
+.emphasis-bubble-wrap.instagram.mine .emphasis-bubble{background:linear-gradient(90deg,#9333ea,#a933f0 56%,#8f2cf0)}.emphasis-bubble-wrap.instagram.theirs .emphasis-bubble{background:#f1f3f5;color:#111}
+.emphasis-bubble-wrap.zalo.mine .emphasis-bubble{background:#dbebff;color:#061a33}.emphasis-bubble-wrap.zalo.theirs .emphasis-bubble{background:#fff;color:#111}
 .note-subtitle-layer{display:none;position:absolute;z-index:18;left:7%;right:7%;bottom:14%;color:#fff;font-family:Arial,sans-serif;font-size:5.3cqw;font-weight:800;line-height:1.2;text-align:center;-webkit-text-stroke:.28cqw #000;paint-order:stroke fill;text-shadow:0 .45cqw 1.2cqw #000;pointer-events:none}.note-subtitle-layer.show{display:block}
 
 .preview-info {
@@ -811,6 +825,8 @@ body.absolute-layer-off #absolute-lane{display:none}
 .script-panel {
   background: #12152a;
   border-left: 1px solid #1e2340;
+  height: 100%;
+  max-height: 100%;
   overflow: hidden;
   padding: 18px;
   display: flex;
@@ -818,7 +834,8 @@ body.absolute-layer-off #absolute-lane{display:none}
   min-height: 0;
   gap: 10px;
 }
-#step-list{flex:1;min-height:0;overflow-x:hidden;overflow-y:auto;overscroll-behavior:contain;padding-right:4px;scrollbar-gutter:stable}
+.script-panel>*:not(.script-lanes){flex:0 0 auto}
+#step-list{padding-right:4px}
 .script-panel h2 {
   font-size: 11px; font-weight: 700; color: #4b5563;
   text-transform: uppercase; letter-spacing: .08em; padding: 0 2px;
@@ -1035,7 +1052,7 @@ body.absolute-layer-off #absolute-lane{display:none}
 .step-modal .row2 > div { flex: 1; }
 .note-modal-preview-card,.text-modal-preview-card{width:fit-content!important;max-width:100%}
 .step-modal.note-editor-open,.step-modal.text-editor-open,.step-modal.media-editor-open{width:min(1050px,96vw);max-height:94vh;overflow:hidden;display:flex;flex-direction:column}.note-editor-open #step-modal-fields,.text-editor-open #step-modal-fields,.media-editor-open #step-modal-fields{flex:1;min-height:0;overflow:hidden}.note-editor-open>#step-modal-tts-status,.text-editor-open>#step-modal-tts-status,.media-editor-open>#step-modal-tts-status{flex:0 0 auto}.note-editor-open>.modal-actions,.text-editor-open>.modal-actions,.media-editor-open>.modal-actions{flex:0 0 auto;margin-top:14px}.note-editor-layout{display:grid;grid-template-columns:minmax(0,1.15fr) minmax(300px,.85fr);gap:18px;height:min(68vh,680px);max-height:100%}.note-editor-controls{min-width:0;overflow-y:auto;padding-right:8px}.note-editor-preview-pane{position:sticky;top:0;align-self:start;min-width:0;padding:16px;border:1px solid #2b3151;border-radius:12px;background:#090c18}.note-editor-preview-pane h4{margin:0 0 12px;color:#c4b5fd;font-size:13px}.note-modal-preview-stage{display:grid;place-items:center;min-height:480px;padding:18px;border-radius:10px;background:linear-gradient(145deg,#1a2035,#0b0d17);overflow:hidden;container-type:inline-size}.note-modal-preview-card{position:relative;width:100%;max-height:440px;overflow:auto;box-sizing:border-box;padding:28px 30px;border-style:solid;background:var(--note-bg,#050505);background-position:center;background-size:cover;color:var(--text-color,#fff);font-family:var(--text-font,Arial,sans-serif);font-size:var(--preview-size,24px);font-weight:var(--preview-weight,560);line-height:1.48;white-space:pre-wrap;overflow-wrap:anywhere;box-shadow:0 14px 38px #0007}.text-modal-preview-card{font-size:var(--preview-size,44px)!important;color:var(--text-color,#fff);font-family:var(--text-font,Arial,sans-serif);-webkit-text-stroke:var(--text-stroke-width,1.3px) var(--text-stroke-color,#000);paint-order:stroke fill}.note-modal-preview-card::before{content:"";position:absolute;inset:0;border-radius:inherit;background:var(--note-overlay,transparent);z-index:0}.note-modal-preview-text{position:relative;z-index:1}.media-modal-preview-stage{position:relative;width:min(100%,300px);aspect-ratio:9/16;margin:auto;border-radius:12px;background:#000;overflow:hidden;container-type:inline-size;box-shadow:0 16px 45px #0008}.media-modal-preview-bg{position:absolute;inset:0;background:linear-gradient(160deg,#101827,#030712 58%,#21133b)}.media-modal-preview-overlay{position:absolute;left:5%;right:5%;top:20%;z-index:2;overflow:hidden;border-radius:1.8cqw;transform-origin:center}.media-modal-preview-overlay.is-sticker{left:27.5%;right:27.5%;top:32%;overflow:visible}.media-modal-preview-overlay img,.media-modal-preview-overlay video{display:block;width:100%;height:auto}.media-modal-preview-empty{position:absolute;inset:0;display:grid;place-items:center;padding:20px;color:#64748b;font-size:12px;text-align:center}.media-modal-preview-name{margin-top:10px;color:#94a3b8;font-size:11px;text-align:center;word-break:break-word}@media(max-width:800px){.note-editor-layout{grid-template-columns:1fr;height:70vh;max-height:70vh}.note-editor-preview-pane{position:static;grid-row:1}.note-modal-preview-stage{min-height:250px}.note-editor-controls{grid-row:2}.media-modal-preview-stage{width:min(100%,190px)}}
-.step-modal.social-editor-open{width:min(1120px,96vw);height:min(900px,94vh);max-height:94vh;box-sizing:border-box;overflow:hidden;display:flex;flex-direction:column}.social-editor-open>h3{flex:0 0 auto}.social-editor-open #step-modal-fields{flex:1;min-height:0;overflow:hidden}.social-editor-open>#step-modal-tts-status{flex:0 0 auto}.social-editor-open>.modal-actions{position:relative;z-index:5;flex:0 0 auto;margin-top:12px;padding-top:10px;border-top:1px solid #252b49;background:#12152a}.social-editor-layout{display:grid;grid-template-columns:minmax(0,1.12fr) minmax(340px,.88fr);gap:18px;height:100%;min-height:0}.social-editor-controls{min-width:0;min-height:0;overflow-y:auto;padding-right:8px;padding-bottom:28px;overscroll-behavior:contain}.social-editor-preview-pane{position:relative;align-self:stretch;min-width:0;min-height:0;overflow-y:auto;padding:14px;border:1px solid #2b3151;border-radius:12px;background:#090c18}.social-editor-preview-head{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:10px}.social-editor-preview-pane h4{margin:0;color:#c4b5fd;font-size:13px}.social-editor-close{padding:6px 9px;border:1px solid #343a5d;border-radius:7px;background:#191e35;color:#cbd5e1;cursor:pointer;font-size:11px}.social-editor-close:hover{border-color:#8b5cf6;color:#fff}.social-modal-preview-stage{width:min(100%,360px);aspect-ratio:9/16;margin:auto;border-radius:12px;background:linear-gradient(155deg,#17213a,#090c16 58%,#251743);overflow:hidden;position:relative;container-type:inline-size;box-shadow:0 16px 45px #0008}.social-modal-preview-stage .thr-stack{top:50%;padding-top:0;transform:translateY(-50%);transition:none}.social-modal-preview-stage .tcard,.social-modal-preview-stage .tk-comment{animation:none}.social-preview-hint{margin-top:9px;color:#727b9d;font-size:10px;text-align:center}@media(max-width:850px){.step-modal.social-editor-open{height:94vh}.social-editor-layout{grid-template-columns:1fr}.social-editor-preview-pane{grid-row:1;max-height:290px}.social-modal-preview-stage{width:min(100%,180px)}.social-editor-controls{grid-row:2}}
+.step-modal.social-editor-open{width:min(1120px,96vw);height:min(900px,94vh);max-height:94vh;box-sizing:border-box;overflow:hidden;display:flex;flex-direction:column}.social-editor-open>h3{flex:0 0 auto}.social-editor-open #step-modal-fields{flex:1;min-height:0;overflow:hidden}.social-editor-open>#step-modal-tts-status{flex:0 0 auto}.social-editor-open>.modal-actions{position:relative;z-index:5;flex:0 0 auto;margin-top:12px;padding-top:10px;border-top:1px solid #252b49;background:#12152a}.social-editor-layout{display:grid;grid-template-columns:minmax(0,1.12fr) minmax(340px,.88fr);gap:18px;height:100%;min-height:0}.social-editor-controls{min-width:0;min-height:0;overflow-y:auto;padding-right:8px;padding-bottom:28px;overscroll-behavior:contain}.social-editor-controls.progressive-basic-on>.tts-field-block,.social-editor-controls.progressive-basic-on>.voice-field-block{display:none}.social-editor-preview-pane{position:relative;align-self:stretch;min-width:0;min-height:0;overflow-y:auto;padding:14px;border:1px solid #2b3151;border-radius:12px;background:#090c18}.social-editor-preview-head{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:10px}.social-editor-preview-pane h4{margin:0;color:#c4b5fd;font-size:13px}.social-editor-close{padding:6px 9px;border:1px solid #343a5d;border-radius:7px;background:#191e35;color:#cbd5e1;cursor:pointer;font-size:11px}.social-editor-close:hover{border-color:#8b5cf6;color:#fff}.social-modal-preview-stage{width:min(100%,360px);aspect-ratio:9/16;margin:auto;border-radius:12px;background:linear-gradient(155deg,#17213a,#090c16 58%,#251743);overflow:hidden;position:relative;container-type:inline-size;box-shadow:0 16px 45px #0008}.social-modal-preview-stage .thr-stack{top:50%;padding-top:0;transform:translateY(-50%);transition:none}.social-modal-preview-stage .tcard,.social-modal-preview-stage .tk-comment{animation:none}.social-preview-hint{margin-top:9px;color:#727b9d;font-size:10px;text-align:center}@media(max-width:850px){.step-modal.social-editor-open{height:94vh}.social-editor-layout{grid-template-columns:1fr}.social-editor-preview-pane{grid-row:1;max-height:290px}.social-modal-preview-stage{width:min(100%,180px)}.social-editor-controls{grid-row:2}}
 .social-modal-preview-stage.blur-identity .uname,.social-modal-preview-stage.blur-identity .avatar,.social-modal-preview-stage.blur-identity .tk-uname,.social-modal-preview-stage.blur-identity .tk-avatar{filter:blur(5px)}.social-modal-preview-stage.blur-identity .avatar,.social-modal-preview-stage.blur-identity .tk-avatar{filter:blur(6px)}.social-identity-name-input{width:auto!important;min-width:1ch;max-width:24ch;padding:0!important;border:0!important;border-radius:0!important;background:transparent!important;color:inherit!important;font:inherit!important;font-weight:inherit!important;line-height:inherit!important;outline:0!important;box-shadow:none!important}.social-modal-preview-stage .avatar,.social-modal-preview-stage .tk-avatar{cursor:pointer}.social-modal-preview-stage .avatar:hover,.social-modal-preview-stage .tk-avatar:hover{outline:.6cqw solid #8b5cf6;outline-offset:.4cqw}
 .social-progressive-preview-line{position:relative;display:flex;align-items:flex-start;gap:.62cqw}.social-progressive-preview-line+.social-progressive-preview-line{margin-top:.45em}.social-progressive-preview-line-copy{min-width:0;flex:1;white-space:pre-wrap}.social-progressive-more{display:inline-grid;place-items:center;flex:0 0 auto;width:1.6em;height:1.6em;margin-top:.02em;padding:0;border:.08em solid #d1d5db;border-radius:50%;background:#f3f4f6;color:#8a8a8a;font:800 .78em/1 Arial,sans-serif;letter-spacing:.03em;cursor:pointer}.social-progressive-more:hover,.social-progressive-more.active{background:#e5e7eb;border-color:#c7c7c7;color:#555}.social-progressive-segment-modal{width:min(520px,94vw);padding:20px;overflow:visible}.social-progressive-segment-editor{box-sizing:border-box}.social-progressive-segment-editor h3{margin:0 0 12px;color:#e5e7eb;font-size:17px}.social-progressive-segment-editor textarea,.social-progressive-segment-editor input[type=number]{box-sizing:border-box;width:100%;padding:10px 11px;border:1px solid #343a4d;border-radius:8px;background:#0a0d16;color:#e5e7eb;font:13px inherit}.social-progressive-segment-editor textarea{min-height:130px;resize:vertical}.social-progressive-segment-editor label{display:block;margin:10px 0 5px;color:#aeb4c3;font-size:12px;font-weight:700}.social-progressive-segment-row{display:grid;grid-template-columns:1fr 1fr;gap:10px}.social-progressive-segment-actions{display:flex;justify-content:flex-end;gap:8px;margin-top:14px}.social-progressive-segment-actions button{padding:8px 12px;border:0;border-radius:8px;background:#d1d5db;color:#111827;font-size:12px;font-weight:800;cursor:pointer}.social-progressive-segment-actions button:hover{background:#e5e7eb}.social-progressive-segment-actions .cancel{background:#252b3d;color:#cbd5e1}
 .progressive-editor-modal{width:min(980px,96vw);overflow:hidden}.progressive-editor-head{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:16px}.progressive-editor-head h3{margin:0}.progressive-editor-grid{display:grid;grid-template-columns:minmax(0,1.25fr) minmax(260px,.75fr);gap:16px;min-height:430px;max-height:70vh}.progressive-editor-pane{min-width:0;overflow:auto;border:1px solid #252b49;border-radius:12px;background:#0b0e1b;padding:16px}.progressive-editor-pane h4{margin:0 0 12px;color:#d8b4fe;font-size:14px}.progressive-editor-list{display:flex;flex-direction:column;gap:8px}.progressive-editor-item{width:100%;display:flex;align-items:center;gap:9px;padding:11px;border:1px solid #29304f;border-radius:9px;background:#11162a;color:#cbd5e1;text-align:left;cursor:pointer}.progressive-editor-item:hover{border-color:#6046a8}.progressive-editor-item.active{border-color:#8b5cf6;background:#20163d;box-shadow:0 0 0 1px #8b5cf6}.progressive-editor-item-index{display:grid;place-items:center;width:24px;height:24px;flex:0 0 24px;border-radius:50%;background:#312e81;color:#ddd6fe;font-size:11px;font-weight:800}.progressive-editor-item-copy{min-width:0}.progressive-editor-item-copy strong{display:block;color:#f3e8ff;font-size:11px}.progressive-editor-item-copy span{display:block;margin-top:3px;overflow:hidden;color:#94a3b8;font-size:11px;text-overflow:ellipsis;white-space:nowrap}.progressive-editor-tools{display:flex;gap:8px;align-items:center;margin-bottom:12px;padding-bottom:12px;border-bottom:1px solid #252b49}.progressive-editor-tools label{display:flex;align-items:center;gap:7px;margin:0;font-size:11px}.progressive-editor-danger{border:0;border-radius:8px;background:#401725;color:#fda4af;padding:10px 12px;cursor:pointer}.progressive-editor-danger:hover{background:#5b1b2d}@media(max-width:760px){.progressive-editor-grid{grid-template-columns:1fr;max-height:75vh}.progressive-editor-list-pane{max-height:220px;grid-row:1}.progressive-editor-edit-pane{grid-row:2}}
@@ -1165,7 +1182,7 @@ body.absolute-layer-off #absolute-lane{display:none}
 .mess-draft-item { display:flex; align-items:center; gap:8px; padding:8px 10px; border-radius:8px; background:#151932; color:#cbd5e1; font-size:12px; }
 .mess-draft-item span { flex:1; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
 .mess-draft-item button { border:0; background:transparent; color:#f87171; cursor:pointer; }
-.mess-live-wrap { min-height:420px; display:grid; place-items:center; padding:18px; border-radius:10px; background:linear-gradient(145deg,#355c7d,#6c5b7b); }
+.mess-live-wrap { min-height:420px; position:relative; display:grid; place-items:center; padding:18px; border-radius:10px; background:linear-gradient(145deg,#355c7d,#6c5b7b); overflow:hidden; }
 .mess-live-wrap .mess-card { width:min(100%,398px); font-size:1px; }
 @media(max-width:850px){.mess-editor-grid{grid-template-columns:1fr}.mess-live-wrap{min-height:320px}}
 
@@ -1400,6 +1417,7 @@ body.absolute-layer-off #absolute-lane{display:none}
       <div class="position-guides" id="position-guides" aria-hidden="true"><i class="position-guide x g25" data-axis="x" data-ratio="0.25"></i><i class="position-guide x g50" data-axis="x" data-ratio="0.5"></i><i class="position-guide x g75" data-axis="x" data-ratio="0.75"></i><i class="position-guide y g25" data-axis="y" data-ratio="0.25"></i><i class="position-guide y g50" data-axis="y" data-ratio="0.5"></i><i class="position-guide y g75" data-axis="y" data-ratio="0.75"></i></div>
       <!-- Overlay meme (JS đổ vào khi step meme chạy) -->
       <div class="meme-overlay" id="meme-overlay" style="display:none"></div>
+      <div class="emphasis-layer" id="emphasis-layer"></div>
       <div class="note-subtitle-layer" id="note-subtitle-layer"></div>
       <!-- Chỉ bảo vệ preview khỏi quay màn hình; export_render.html không có lớp này nên MP4 xuất ra luôn sạch. -->
       <div class="preview-watermark" aria-hidden="true">
@@ -1642,6 +1660,10 @@ body.absolute-layer-off #absolute-lane{display:none}
         <label style="display:flex;align-items:center;gap:6px;margin-top:6px;font-weight:400">
           <input type="checkbox" id="mess-echo" style="width:auto"/>
           <span>✨ Hiệu ứng vang (nhấn nhá tin nhắn này cho hài/gây cười)</span>
+        </label>
+        <label style="display:flex;align-items:center;gap:6px;margin-top:6px;font-weight:400">
+          <input type="checkbox" id="mess-emphasis" style="width:auto"/>
+          <span>Phóng to câu gây hài</span>
         </label>
         <div style="display:none"><label>Giọng riêng cho tin này</label><select id="mess-voice" onchange="messVoiceTouched=!!this.value"><option value="">Theo giọng mặc định của bên gửi</option></select></div>
         <div id="mess-legacy-image-controls" style="display:none">
@@ -2316,12 +2338,12 @@ function selectedVoice(idx) {
 // giọng nam cho người reply). `currentIdx` = index đã lưu trước đó (sửa step).
 function voiceFieldHtml(prefix, currentIdx) {
   if (!ttsVoices.length) {
-    return `<label>🔊 Giọng đọc</label>
-            <div style="font-size:11px;color:#ef4444">Chưa tải được danh sách giọng — kiểm tra TTS server ở mục 3 sidebar.</div>`;
+    return `<div class="voice-field-block"><label>🔊 Giọng đọc</label>
+            <div style="font-size:11px;color:#ef4444">Chưa tải được danh sách giọng — kiểm tra TTS server ở mục 3 sidebar.</div></div>`;
   }
   const sidebarIdx = document.getElementById('tts-voice').value;
   const useIdx = currentIdx != null ? currentIdx : sidebarIdx;
-  return `<label>🔊 Giọng đọc</label>${voicePickerHtml(`${prefix}-voice`,useIdx)}`;
+  return `<div class="voice-field-block"><label>🔊 Giọng đọc</label>${voicePickerHtml(`${prefix}-voice`,useIdx)}</div>`;
 }
 
 function readVoiceIdx(prefix) {
@@ -2776,6 +2798,7 @@ function onMessSideInput(side) {
   if (!messTtsDirty) document.getElementById('mess-tts').value = active.value;
   if (!messVoiceTouched) document.getElementById('mess-voice').value = '';
   updateMessengerTtsCounter();
+  renderMessengerDrafts();
 }
 function messengerDefaultVoice(side) {
   const selected=messSideVoiceIdx[side];
@@ -2810,7 +2833,7 @@ function readMessengerComposer() {
   if (!theirs && !mine && !messPendingImage) return null;
   const side = mine ? 'mine' : theirs ? 'theirs' : document.getElementById('mess-image-side').value;
   const selectedOverride=parseInt(document.getElementById('mess-voice').value,10);
-  return { side, text: mine || theirs, ttsText: document.getElementById('mess-tts').value.trim() || mine || theirs, voiceIdx: Number.isNaN(selectedOverride)?messengerDefaultVoice(side):selectedOverride, voiceOverride:!Number.isNaN(selectedOverride), echo:document.getElementById('mess-echo').checked, imageUrl: messPendingImage?.url || null, imageName: messPendingImage?.name || null, imageType:messPendingImage?.type || 'image', imageDesktopPath:messPendingImage?.desktopPath || null };
+  return { side, text: mine || theirs, ttsText: document.getElementById('mess-tts').value.trim() || mine || theirs, voiceIdx: Number.isNaN(selectedOverride)?messengerDefaultVoice(side):selectedOverride, voiceOverride:!Number.isNaN(selectedOverride), echo:document.getElementById('mess-echo').checked, emphasisBubble:document.getElementById('mess-emphasis').checked, imageUrl: messPendingImage?.url || null, imageName: messPendingImage?.name || null, imageType:messPendingImage?.type || 'image', imageDesktopPath:messPendingImage?.desktopPath || null };
 }
 function renderMessengerImagePreview() {
   const box=document.getElementById('mess-image-preview');
@@ -2869,7 +2892,7 @@ function removeMessengerDraft(i){
 }
 function resetMessengerComposer(){
   messDraftEditIndex=null;messInsertAt=null;messTtsDirty=false;messVoiceTouched=false;messPendingImage=null;
-  document.getElementById('mess-theirs').value='';document.getElementById('mess-mine').value='';document.getElementById('mess-tts').value='';document.getElementById('mess-echo').checked=false;document.getElementById('mess-image-url').value='';document.getElementById('mess-image-side').value='theirs';document.getElementById('mess-voice').value='';for(const side of ['theirs','mine']){const input=document.getElementById(`mess-inline-url-${side}`);if(input)input.value='';const row=document.getElementById(`mess-media-url-row-${side}`);if(row)row.classList.remove('open');}closeMessengerMediaMenus();renderMessengerImagePreview();updateMessengerComposerMode();updateMessengerTtsCounter();
+  document.getElementById('mess-theirs').value='';document.getElementById('mess-mine').value='';document.getElementById('mess-tts').value='';document.getElementById('mess-echo').checked=false;document.getElementById('mess-emphasis').checked=false;document.getElementById('mess-image-url').value='';document.getElementById('mess-image-side').value='theirs';document.getElementById('mess-voice').value='';for(const side of ['theirs','mine']){const input=document.getElementById(`mess-inline-url-${side}`);if(input)input.value='';const row=document.getElementById(`mess-media-url-row-${side}`);if(row)row.classList.remove('open');}closeMessengerMediaMenus();renderMessengerImagePreview();updateMessengerComposerMode();updateMessengerTtsCounter();
 }
 function updateMessengerComposerMode(){
   const box=document.getElementById('mess-compose-mode'),btn=document.getElementById('mess-add-btn'),cancel=document.getElementById('mess-compose-cancel');
@@ -2879,7 +2902,7 @@ function updateMessengerComposerMode(){
   else{box.style.display='none';box.textContent='';btn.textContent='＋ Thêm tin nhắn';cancel.style.display='none';}
 }
 function fillMessengerComposer(msg){
-  document.getElementById('mess-theirs').value=msg.side==='theirs'?(msg.text||''):'';document.getElementById('mess-mine').value=msg.side==='mine'?(msg.text||''):'';document.getElementById('mess-tts').value=msg.ttsText??msg.text??'';document.getElementById('mess-echo').checked=!!msg.echo;document.getElementById('mess-image-side').value=msg.side;messPendingImage=msg.imageUrl?{url:msg.imageUrl,name:msg.imageName||'ảnh',type:msg.imageType||'image',desktopPath:msg.imageDesktopPath||null}:null;document.getElementById('mess-image-url').value=msg.imageUrl&&/^https?:/i.test(msg.imageUrl)?msg.imageUrl:'';document.getElementById('mess-voice').value=msg.voiceOverride?String(msg.voiceIdx):'';messTtsDirty=true;messVoiceTouched=!!msg.voiceOverride;renderMessengerImagePreview();updateMessengerTtsCounter();
+  document.getElementById('mess-theirs').value=msg.side==='theirs'?(msg.text||''):'';document.getElementById('mess-mine').value=msg.side==='mine'?(msg.text||''):'';document.getElementById('mess-tts').value=msg.ttsText??msg.text??'';document.getElementById('mess-echo').checked=!!msg.echo;document.getElementById('mess-emphasis').checked=!!msg.emphasisBubble;document.getElementById('mess-image-side').value=msg.side;messPendingImage=msg.imageUrl?{url:msg.imageUrl,name:msg.imageName||'ảnh',type:msg.imageType||'image',desktopPath:msg.imageDesktopPath||null}:null;document.getElementById('mess-image-url').value=msg.imageUrl&&/^https?:/i.test(msg.imageUrl)?msg.imageUrl:'';document.getElementById('mess-voice').value=msg.voiceOverride?String(msg.voiceIdx):'';messTtsDirty=true;messVoiceTouched=!!msg.voiceOverride;renderMessengerImagePreview();updateMessengerTtsCounter();
 }
 function closeMessengerDraftMenus(){document.querySelectorAll('.mess-draft-actions.open').forEach(el=>el.classList.remove('open'));}
 function editMessengerDraft(i){const msg=messDrafts[i];if(!msg)return;closeMessengerDraftMenus();messDraftEditIndex=i;messInsertAt=null;fillMessengerComposer(msg);updateMessengerComposerMode();document.getElementById('mess-theirs').scrollIntoView({behavior:'smooth',block:'center'});}
@@ -3106,7 +3129,7 @@ function applyMessengerJson(raw) {
     if (!side || (!text && !imageUrl)) throw new Error(`Tin thứ ${i + 1} thiếu side hợp lệ hoặc cả text/imageUrl đều trống.`);
     const importedVoiceIdx=Number(item.voiceIdx);
     const hasVoiceOverride=item.voiceIdx!==undefined && Number.isInteger(importedVoiceIdx);
-    return { side, text, ttsText: String(item.ttsText ?? text).trim() || text, voiceIdx: hasVoiceOverride?importedVoiceIdx:messengerDefaultVoice(side), voiceOverride:hasVoiceOverride, echo:!!item.echo, imageUrl: imageUrl || null, imageName: item.imageName || null, imageType:item.imageType==='sticker'?'sticker':'image', imageDesktopPath:item.imageDesktopPath||null };
+    return { side, text, ttsText: String(item.ttsText ?? text).trim() || text, voiceIdx: hasVoiceOverride?importedVoiceIdx:messengerDefaultVoice(side), voiceOverride:hasVoiceOverride, echo:!!item.echo, emphasisBubble:!!(item.emphasisBubble || item.emphasis?.enabled), imageUrl: imageUrl || null, imageName: item.imageName || null, imageType:item.imageType==='sticker'?'sticker':'image', imageDesktopPath:item.imageDesktopPath||null };
   });
   messPartnerName = Array.isArray(raw) ? 'Tùng' : String(raw.partnerName || raw.name || 'Tùng').trim();
   messPartnerAvatar = Array.isArray(raw) ? MESS_DEFAULT_AVATAR : String(raw.partnerAvatar || raw.avatarUrl || MESS_DEFAULT_AVATAR).trim();
@@ -3165,7 +3188,7 @@ async function generateMessengerTtsResults(messages,status,reuseSteps=[]){
   return results;
 }
 function makeMessengerStep(msg,index,history,conversationId,ttsResult,oldStep=null){
-  return {id:oldStep?.id??stepIdCounter++,type:'mess',conversationId,groupId:oldStep?.groupId===false?false:(oldStep?.groupId||conversationId),messIndex:index,messPlatform,messShowFooter,messShowHeader,messPartnerName:messPartnerName.trim()||'Tùng',messPartnerAvatar,messSideVoices:{...messSideVoiceIdx},messTtsSpeed,messHistory:history.map(x=>({...x})),text:msg.text,ttsText:msg.ttsText,voiceIdx:msg.voiceIdx,echo:!!msg.echo,audioUrl:ttsResult?.audioUrl||null,ttsDuration:ttsResult?.duration||null,duration:ttsResult?.duration||DEFAULT_DUR.mess,gap:oldStep?.gap??0,clearBefore:oldStep?.clearBefore??true,hue:oldStep?.hue??0,offsetX:oldStep?.offsetX??0,offsetY:oldStep?.offsetY??0,rotation:oldStep?.rotation??0};
+  return {id:oldStep?.id??stepIdCounter++,type:'mess',conversationId,groupId:oldStep?.groupId===false?false:(oldStep?.groupId||conversationId),messIndex:index,messPlatform,messShowFooter,messShowHeader,messPartnerName:messPartnerName.trim()||'Tùng',messPartnerAvatar,messSideVoices:{...messSideVoiceIdx},messTtsSpeed,messHistory:history.map(x=>({...x})),text:msg.text,ttsText:msg.ttsText,voiceIdx:msg.voiceIdx,echo:!!msg.echo,emphasisBubble:!!msg.emphasisBubble,audioUrl:ttsResult?.audioUrl||null,ttsDuration:ttsResult?.duration||null,duration:ttsResult?.duration||DEFAULT_DUR.mess,gap:oldStep?.gap??0,clearBefore:oldStep?.clearBefore??true,hue:oldStep?.hue??0,offsetX:oldStep?.offsetX??0,offsetY:oldStep?.offsetY??0,rotation:oldStep?.rotation??0};
 }
 function insertPendingMessengerAudios(drafts,messSteps){
   drafts.forEach((msg,i)=>{
@@ -3191,7 +3214,7 @@ async function submitMessengerConversation() {
       if(replacementIndex<replacements.length)rebuilt.splice(lastConversationPosition<0?rebuilt.length:lastConversationPosition,0,...replacements.slice(replacementIndex));
       steps=rebuilt;insertPendingMessengerAudios(messDrafts,replacements);for(const step of replacements)bumpStepRevision(step.id);
     }catch(e){alert('Không lưu được Box tin nhắn: '+e.message);finish.disabled=false;return;}
-    finish.disabled=false;closeMessengerModal();renderStepList();renderIdleScene();return;
+    finish.disabled=false;closeMessengerModal();renderStepList();const focusTarget=replacements.find(step=>step.emphasisBubble)||replacements[replacements.length-1];if(focusTarget)focusScriptStep(focusTarget.id,{refreshPreview:true});else renderIdleScene();return;
   }
   if (messEditingStepId != null) {
     const s = steps.find(x=>x.id===messEditingStepId); const msg = readMessengerComposer();
@@ -3203,10 +3226,10 @@ async function submitMessengerConversation() {
       messPartnerName=messPartnerName.trim()||'Tùng';
       for(const related of steps.filter(x=>x.type==='mess'&&x.conversationId===conv)){related.messPlatform=messPlatform;related.messShowFooter=messShowFooter;related.messShowHeader=messShowHeader;related.messPartnerName=messPartnerName;related.messPartnerAvatar=messPartnerAvatar;related.messSideVoices={...messSideVoiceIdx};related.messTtsSpeed=messTtsSpeed;}
       for (const later of steps.filter(x=>x.type==='mess'&&x.conversationId===conv&&((x.messIndex??0)>=idx))) if(later.messHistory&&later.messHistory[idx]) later.messHistory[idx]={...msg};
-      s.text=msg.text;s.ttsText=msg.ttsText;s.voiceIdx=msg.voiceIdx;s.echo=!!msg.echo;s.audioUrl=null;s.audioDesktopPath=null;s.ttsDuration=null;s.duration=DEFAULT_DUR.mess;
+      s.text=msg.text;s.ttsText=msg.ttsText;s.voiceIdx=msg.voiceIdx;s.echo=!!msg.echo;s.emphasisBubble=!!msg.emphasisBubble;s.audioUrl=null;s.audioDesktopPath=null;s.ttsDuration=null;s.duration=DEFAULT_DUR.mess;
       for (const x of steps.filter(x=>x.type==='mess'&&x.conversationId===conv)) bumpStepRevision(x.id);
     } catch(e){alert('Không tạo được giọng đọc: '+e.message);finish.disabled=false;return}
-    finish.disabled=false;closeMessengerModal();renderStepList();renderIdleScene();return;
+    finish.disabled=false;closeMessengerModal();renderStepList();focusScriptStep(s.id,{refreshPreview:true});return;
   }
   // Người dùng có thể bấm thẳng "Tạo kịch bản" khi tin cuối vẫn còn nằm
   // trong ô nhập (chưa bấm nút "+ Thêm tin nhắn"). Tự commit tin đang nhập
@@ -3223,7 +3246,7 @@ async function submitMessengerConversation() {
       if(msg.parallelAudios?.length)for(const media of msg.parallelAudios)insertParallelAudioAfterStep(makeParallelAudioStepFromMedia(media,messStep),messStep);
     }
   }catch(e){alert('Không tạo được giọng đọc: '+e.message);finish.disabled=false;return}
-  finish.disabled=false;closeMessengerModal();renderStepList();renderIdleScene();
+  finish.disabled=false;closeMessengerModal();renderStepList();const focusTarget=steps.filter(s=>s.type==='mess'&&s.conversationId===conv).find(step=>step.emphasisBubble)||steps.findLast?.(s=>s.type==='mess'&&s.conversationId===conv)||steps.filter(s=>s.type==='mess'&&s.conversationId===conv).at(-1);if(focusTarget)focusScriptStep(focusTarget.id,{refreshPreview:true});else renderIdleScene();
 }
 
 // esc()/fmt() giờ định nghĩa trong render_shared.js (include ở <head>/cuối
@@ -3781,13 +3804,13 @@ function onFilePathTyped() {
 const ttsFieldDirty = {}; // prefix -> bool, reset mỗi lần mở modal
 
 function ttsFieldHtml(prefix, currentTtsText, currentEcho) {
-  return `<label style="display:flex;justify-content:space-between;align-items:center">
+  return `<div class="tts-field-block"><label style="display:flex;justify-content:space-between;align-items:center">
              <span>🔊 Nội dung đọc (TTS)</span>
              <span style="font-size:10px;color:#6b7280;font-weight:400">mặc định = nội dung hiển thị, có thể sửa riêng</span>
            </label>
            <textarea id="${prefix}-tts-text" oninput="ttsFieldDirty['${prefix}']=true;updateTtsCharCounter('${prefix}')" placeholder="Để trống = đọc y hệt nội dung hiển thị">${esc(currentTtsText||'')}</textarea>
            <div id="${prefix}-tts-count" style="margin-top:4px;text-align:right;font-size:11px;color:#7f8aa5">0 / 390 ký tự</div>
-           ${echoCheckboxHtml(prefix + '-echo', currentEcho)}`;
+           ${echoCheckboxHtml(prefix + '-echo', currentEcho)}</div>`;
 }
 
 function updateTtsCharCounter(prefix) {
@@ -3968,12 +3991,13 @@ function removeExtraTtsSegment(i) {
   renderExtraTtsSegmentsUI();
 }
 function progressiveSegmentSetting(editingStep, index, fallbackVoiceIdx, fallbackEcho) {
-  const fallback = { voiceIdx: fallbackVoiceIdx, echo: !!fallbackEcho, gapAfter: .3, duration: 0 };
+  const fallback = { voiceIdx: fallbackVoiceIdx, echo: !!fallbackEcho, emphasisBubble: false, gapAfter: .3, duration: 0 };
   if (!editingStep || !editingStep.progressiveReveal) return fallback;
   if (index === 0) {
     return {
       voiceIdx: editingStep.voiceIdx ?? fallbackVoiceIdx,
       echo: !!editingStep.echo,
+      emphasisBubble: !!editingStep.emphasisBubble,
       gapAfter: editingStep.progressiveGapAfterFirst ?? editingStep.progressivePause ?? .3,
       duration: editingStep.ttsDuration || 0,
     };
@@ -3982,6 +4006,7 @@ function progressiveSegmentSetting(editingStep, index, fallbackVoiceIdx, fallbac
   return {
     voiceIdx: seg.voiceIdx ?? fallbackVoiceIdx,
     echo: !!seg.echo,
+    emphasisBubble: !!seg.emphasisBubble,
     gapAfter: seg.gapAfter ?? editingStep.progressivePause ?? .3,
     duration: seg.duration || 0,
   };
@@ -4049,17 +4074,23 @@ function readCardIdentityBlurMode(){return document.getElementById('m-identity-f
 function progressiveRevealFieldHtml(editing) {
   const mode = editing?.progressiveRevealMode || 'basic';
   return `<label style="display:flex;align-items:flex-start;gap:7px;margin-top:10px;padding:10px;border:1px solid #2a3050;border-radius:8px;background:#11152a">
-    <input type="checkbox" id="m-progressive-reveal" style="width:auto;margin-top:2px" ${editing&&editing.progressiveReveal?'checked':''}/>
+    <input type="checkbox" id="m-progressive-reveal" style="width:auto;margin-top:2px" ${editing&&editing.progressiveReveal?'checked':''} onchange="toggleSocialProgressiveBaseFields();updateSocialModalPreview()"/>
     <span><b style="color:#c4b5fd">Hiện nội dung tăng dần theo đoạn xuống hàng</b><br/><small style="color:#6b7280;font-weight:400">Vẫn là một card; TTS tự tách từng đoạn và nghỉ 0,3 giây trước đoạn kế.</small></span>
   </label>
   <div id="m-progressive-mode-wrap" style="margin-top:8px;padding:10px;border:1px dashed #2a3050;border-radius:8px;background:#0c1020">
     <label style="margin:0 0 6px">Kiểu chia đoạn</label>
-    <select id="m-progressive-mode">
+    <select id="m-progressive-mode" onchange="toggleSocialProgressiveBaseFields();updateSocialModalPreview()">
       <option value="basic" ${mode==='basic'?'selected':''}>Cơ bản — 1 card tự hiện dần</option>
       <option value="advanced" ${mode==='advanced'?'selected':''}>Nâng cao — Box bài nhiều đoạn</option>
     </select>
     <small style="display:block;margin-top:6px;color:#6b7280;font-weight:400">Nâng cao hiển thị thành Box CONTENT trong kịch bản để chuẩn bị gắn audio/sticker/gap riêng cho từng đoạn.</small>
   </div>`;
+}
+function toggleSocialProgressiveBaseFields(){
+  const controls=document.querySelector('.social-editor-controls');
+  const enabled=!!document.getElementById('m-progressive-reveal')?.checked;
+  const mode=document.getElementById('m-progressive-mode')?.value||'basic';
+  controls?.classList.toggle('progressive-basic-on',enabled&&mode==='basic');
 }
 
 function appearanceFieldHtml(editing) {
@@ -4127,6 +4158,7 @@ function renderCommentReplyFields() {
   document.getElementById('step-modal-fields').innerHTML = socialModalLayoutHtml(platformPickerHtml() + html,type);
   bindTtsAutoSync('m', 'm-text');
   renderExtraTtsSegmentsUI();
+  toggleSocialProgressiveBaseFields();
   requestAnimationFrame(updateSocialModalPreview);
 }
 
@@ -4197,6 +4229,7 @@ function initialiseSocialProgressiveSegments(editing){
       ttsText:String(index===0?(old?.ttsText??displayText):(old?.text??displayText)),
       voiceIdx:old?.voiceIdx??fallbackVoice,
       echo:!!old?.echo,
+      emphasisBubble:!!old?.emphasisBubble,
       gapAfter:index===0?(editing?.progressiveGapAfterFirst??editing?.progressivePause??.3):(old?.gapAfter??editing?.progressivePause??.3),
       duration:Number(index===0?(editing?.ttsDuration||0):(old?.duration||0)),
     };
@@ -4215,6 +4248,7 @@ function syncSocialProgressiveSegments(){
       ttsText:previous?(wasAuto&&previous.displayText!==displayText?displayText:previous.ttsText):displayText,
       voiceIdx:previous?.voiceIdx??fallbackVoice,
       echo:previous?.echo??!!document.getElementById('m-echo')?.checked,
+      emphasisBubble:!!previous?.emphasisBubble,
       gapAfter:previous?.gapAfter??.3,
       duration:Number(previous?.duration||0),
     };
@@ -4238,6 +4272,7 @@ function renderSocialProgressiveSegmentEditor(){
       <div><label>Gap sau</label><input id="social-progressive-gap" type="number" min="0" step="0.1" value="${Number(segment.gapAfter??.3)}" ${index>=modalProgressiveTtsSegments.length-1?'disabled title="Đoạn cuối không có gap sau"':''}/></div>
     </div>
     <label style="display:flex;align-items:center;gap:6px"><input id="social-progressive-echo" type="checkbox" style="width:auto" ${segment.echo?'checked':''}/> Hiệu ứng vang</label>
+    <label style="display:flex;align-items:center;gap:6px"><input id="social-progressive-emphasis" type="checkbox" style="width:auto" ${segment.emphasisBubble?'checked':''}/> Phóng to đoạn này</label>
     <div class="social-progressive-segment-actions"><button type="button" class="cancel" onclick="closeSocialProgressiveSegmentEditor()">Đóng</button><button type="button" onclick="saveSocialProgressiveSegmentEditor()">Xong</button></div>`;
 }
 function openSocialProgressiveSegmentEditor(index){
@@ -4253,6 +4288,7 @@ function commitSocialProgressiveSegmentEditor(){
   const voice=parseInt(modalFieldValue('social-progressive-voice',''),10);
   if(!Number.isNaN(voice))segment.voiceIdx=voice;
   segment.echo=!!document.getElementById('social-progressive-echo')?.checked;
+  segment.emphasisBubble=!!document.getElementById('social-progressive-emphasis')?.checked;
   segment.duration=Math.max(0,Number(modalFieldValue('social-progressive-duration',segment.duration))||0);
   if(index<modalProgressiveTtsSegments.length-1)segment.gapAfter=Math.max(0,Number(modalFieldValue('social-progressive-gap',segment.gapAfter))||0);
   return true;
@@ -4508,7 +4544,7 @@ function openStepModal(type, stepId = null, targetGroupId = null) {
     if (type === 'post' || type === 'text' || type === 'note') bindTtsAutoSync('m', 'm-text');
     if (type === 'note') requestAnimationFrame(updateNoteModalPreview);
     if (type === 'text') requestAnimationFrame(updateTextModalPreview);
-    if (type === 'post') requestAnimationFrame(updateSocialModalPreview);
+    if (type === 'post') { toggleSocialProgressiveBaseFields(); requestAnimationFrame(updateSocialModalPreview); }
     if (type === 'image' || type === 'sticker') requestAnimationFrame(refreshMediaModalPreviewSoon);
     if (type === 'post' || type === 'image') renderExtraTtsSegmentsUI();
     if (type === 'audio') requestAnimationFrame(toggleAudioSourceFields);
@@ -5143,6 +5179,7 @@ async function submitStepModal() {
       data.ttsText = String(firstSetting.ttsText || revealParts[0]).trim() || revealParts[0];
       data.voiceIdx = firstSetting.voiceIdx;
       data.echo = firstSetting.echo;
+      data.emphasisBubble = !!firstSetting.emphasisBubble;
       data.progressivePause = .3;
       data.progressiveGapAfterFirst = firstSetting.gapAfter;
       data.ttsDuration = firstSetting.duration || null;
@@ -5154,13 +5191,14 @@ async function submitStepModal() {
         const text=String(setting.ttsText || displayText).trim() || displayText;
         const oldSeg = editingNow?.progressiveReveal ? (editingNow.extraTtsSegments || [])[index] : null;
         const keepAudio = oldSeg && oldSeg.text === text && Number(oldSeg.voiceIdx) === Number(setting.voiceIdx) && !!oldSeg.echo === !!setting.echo;
-        return {text,voiceIdx:setting.voiceIdx,echo:setting.echo,gapAfter:setting.gapAfter,audioUrl:keepAudio?(oldSeg.audioUrl||null):null,audioDesktopPath:keepAudio?(oldSeg.audioDesktopPath||null):null,duration:keepAudio?(oldSeg.duration||0):(setting.duration||0)};
+        return {text,voiceIdx:setting.voiceIdx,echo:setting.echo,emphasisBubble:!!setting.emphasisBubble,gapAfter:setting.gapAfter,audioUrl:keepAudio?(oldSeg.audioUrl||null):null,audioDesktopPath:keepAudio?(oldSeg.audioDesktopPath||null):null,duration:keepAudio?(oldSeg.duration||0):(setting.duration||0)};
       });
       data.duration = stepTtsTotalDuration(data) || editingNow?.duration || DEFAULT_DUR[t];
     } else {
       data.ttsText = editingNow?.progressiveReveal ? data.text : readTtsText('m', 'm-text');
       data.extraTtsSegments = editingNow?.progressiveReveal ? [] : modalExtraTts.map(seg=>({text:(seg.text||'').trim(),voiceIdx:seg.voiceIdx,echo:!!seg.echo,audioUrl:null,audioDesktopPath:null,duration:0}));
       data.progressiveGapAfterFirst = null;
+      if (editingNow?.progressiveReveal) data.emphasisBubble = false;
     }
     if (!data.progressiveReveal || revealParts.length < 2) { data.audioUrl = null; data.audioDesktopPath = null; data.ttsDuration = null; }
     statusEl.textContent='✓ Đã lưu card; TTS sẽ tạo khi nhấn Play.';
@@ -6340,7 +6378,14 @@ function focusScriptStep(id, { refreshPreview = false } = {}) {
   document.querySelectorAll('.tcard-pos[data-step-id]').forEach(card=>{
     card.classList.toggle('rotate-selected', Number(card.dataset.stepId) === focusedScriptStepId);
   });
-  if (refreshPreview && !playing) renderAtTime(playheadT);
+  if (refreshPreview && !playing) {
+    computeTimeline();
+    const start = Number(s._start || 0);
+    const end = Number(s._end || start);
+    playheadT = Math.max(start, Math.min(end - .001, start + Math.max(.001, Math.min(.25, (end - start) / 2))));
+    renderAtTime(playheadT);
+    updateProgress(playheadT, totalDuration());
+  }
   const card = document.querySelector(`.step-card[data-id="${s.id}"]`);
   if (card) {
     card.scrollIntoView({ behavior: 'smooth', block: 'center', inline: 'nearest' });
@@ -6516,8 +6561,8 @@ function compileAiMessengerCard(card){
   const conversationId=`ai-${Date.now()}-${stepIdCounter}`,mineVoice=aiVoiceIndex(card.mineVoice),theirsVoice=aiVoiceIndex(card.theirsVoice),history=[];
   return card.messages.map((message,index)=>{
     if(!message.ttsText)throw new Error(`Tin nhắn AI thứ ${index+1} thiếu ttsText`);
-    const voiceIdx=message.side==='mine'?mineVoice:theirsVoice,msg={side:message.side,text:message.text,ttsText:message.ttsText,voiceIdx,voiceOverride:false,echo:!!message.echo,imageUrl:null,imageName:null,imageType:'image',imageDesktopPath:null};history.push({...msg});
-    return {...aiBaseStep('mess'),conversationId,groupId:conversationId,messIndex:index,messPlatform:'messenger',messShowFooter:true,messShowHeader:true,messPartnerName:card.partnerName||'Đối phương',messPartnerAvatar:'messenger-default-avatar.png',messSideVoices:{mine:mineVoice,theirs:theirsVoice},messTtsSpeed:1,messHistory:history.map(item=>({...item})),text:msg.text,ttsText:msg.ttsText,voiceIdx,echo:msg.echo,audioUrl:null,ttsDuration:null,clearBefore:true};
+    const voiceIdx=message.side==='mine'?mineVoice:theirsVoice,msg={side:message.side,text:message.text,ttsText:message.ttsText,voiceIdx,voiceOverride:false,echo:!!message.echo,emphasisBubble:!!(message.emphasisBubble || message.emphasis?.enabled),imageUrl:null,imageName:null,imageType:'image',imageDesktopPath:null};history.push({...msg});
+    return {...aiBaseStep('mess'),conversationId,groupId:conversationId,messIndex:index,messPlatform:'messenger',messShowFooter:true,messShowHeader:true,messPartnerName:card.partnerName||'Đối phương',messPartnerAvatar:'messenger-default-avatar.png',messSideVoices:{mine:mineVoice,theirs:theirsVoice},messTtsSpeed:1,messHistory:history.map(item=>({...item})),text:msg.text,ttsText:msg.ttsText,voiceIdx,echo:msg.echo,emphasisBubble:msg.emphasisBubble,audioUrl:null,ttsDuration:null,clearBefore:true};
   });
 }
 function compileAiScript(script){
@@ -6704,6 +6749,7 @@ function normalizeImportedProject(project) {
       voiceIdx: step.voiceIdx ?? 0,
       voiceOverride: false,
       echo: !!step.echo,
+      emphasisBubble: !!(step.emphasisBubble || step.emphasis?.enabled),
       imageUrl: step.imageUrl || null,
       imageName: step.imageName || null,
       imageType: step.imageType || 'image',
@@ -6717,7 +6763,7 @@ function normalizeImportedProject(project) {
       messShowHeader: step.messShowHeader !== false,
       messHistory: history.map(item => ({ ...item })),
       text: message.text, ttsText: message.ttsText,
-      voiceIdx: message.voiceIdx, clearBefore: true,
+      voiceIdx: message.voiceIdx, echo: message.echo, emphasisBubble: message.emphasisBubble, clearBefore: true,
     });
     delete step.side;
     delete step.base;
@@ -7074,6 +7120,7 @@ function renderAtTime(t) {
     autoScrollStack();
     autoScrollMessenger(stackEl);
   }
+  renderEmphasisLayer(t,stack);
 
   const retainedMemeSteps=memeSteps.filter(s=>!memeStep||s.id!==memeStep.id);
   const retainedMemeKey=retainedMemeSteps.map(s=>`${s.id}:${s.overlayScale||1}:${s.offsetX||0}:${s.offsetY||0}:${s.rotation||0}:${mediaOpacityValue(s)}`).join('|');
@@ -7440,6 +7487,9 @@ function renderIdleScene() {
   if (!steps.length) {
     document.getElementById('thr-stack').innerHTML = '';
     document.getElementById('meme-overlay').style.display = 'none';
+    const emphasisLayer=document.getElementById('emphasis-layer');
+    if(emphasisLayer)emphasisLayer.innerHTML='';
+    document.getElementById('preview-frame')?.classList.remove('emphasis-active');
     _lastStackIds = [];
     _lastStackRevealStages = [];
     return;

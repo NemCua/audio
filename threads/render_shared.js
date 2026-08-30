@@ -32,6 +32,11 @@ function esc(s) {
     .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')
     .replace(/"/g,'&quot;').replace(/'/g,'&#39;');
 }
+function normalizeMessengerPlatform(value) {
+  const platform = String(value || '').toLowerCase();
+  if (platform === 'ig' || platform === 'instagram-dm') return 'instagram';
+  return ['messenger', 'zalo', 'instagram'].includes(platform) ? platform : 'messenger';
+}
 function safeMediaUrl(value) {
   const raw = String(value || '').trim();
   if (!raw) return '';
@@ -154,6 +159,83 @@ function stepForRenderAtTime(s, t) {
   if (!stage) return s;
   const parts = progressiveTextParts(s);
   return { ...s, text: parts.slice(0, stage).join('\n'), _progressiveFinal: stage === parts.length };
+}
+
+function messengerMessageForStep(s) {
+  if (!s || s.type !== 'mess') return null;
+  const history = Array.isArray(s.messHistory) ? s.messHistory : [];
+  const index = Number.isFinite(Number(s.messIndex)) ? Number(s.messIndex) : history.length - 1;
+  return history[index] || history[history.length - 1] || null;
+}
+
+function progressiveEmphasisForStep(s, t) {
+  const parts = progressiveTextParts(s);
+  if (parts.length < 2) return null;
+  if (!(t >= Number(s._start || 0) - 1e-6 && t < Number(s._end || 0) - 1e-6)) return null;
+  const stage = progressiveRevealStage(s, t);
+  const index = Math.max(0, Math.min(parts.length - 1, stage - 1));
+  const setting = index === 0 ? s : (s.extraTtsSegments || [])[index - 1];
+  if (!setting?.emphasisBubble) return null;
+  return { step: s, message: { side: 'center', text: parts[index] }, kind: 'progressive', segmentIndex: index };
+}
+
+function emphasisStepAt(t, stack) {
+  for (let i = stack.length - 1; i >= 0; i--) {
+    const s = stack[i];
+    if (!(t >= Number(s._start || 0) - 1e-6 && t < Number(s._end || 0) - 1e-6)) continue;
+    const progressiveActive = progressiveEmphasisForStep(s, t);
+    if (progressiveActive) return progressiveActive;
+    if (!s || s.type !== 'mess') continue;
+    const msg = messengerMessageForStep(s);
+    if (msg?.emphasisBubble || s.emphasisBubble) return { step: s, message: msg || s };
+  }
+  return null;
+}
+
+function buildEmphasisBubbleHtml(active) {
+  if (!active) return '';
+  const step = active.step || {};
+  const message = active.message || {};
+  const text = String(message.text || step.text || '').trim();
+  if (!text) return '';
+  const isMessenger = step.type === 'mess';
+  const side = isMessenger ? (message.side === 'mine' || step.side === 'mine' ? 'mine' : 'theirs') : 'center';
+  const platform = isMessenger ? normalizeMessengerPlatform(step.messPlatform) : `generic ${step.type || ''}`;
+  return `<div class="emphasis-bubble-wrap ${esc(platform)} ${esc(side)}"><div class="emphasis-bubble">${esc(text)}</div></div>`;
+}
+
+function renderEmphasisLayer(t, stack) {
+  const layer = document.getElementById('emphasis-layer');
+  const frame = document.getElementById('preview-frame');
+  if (!layer || !frame) return null;
+  const active = emphasisStepAt(t, stack);
+  const msg = active?.message || {};
+  const step = active?.step || {};
+  const key = active ? `${step.id || ''}:${active.kind || step.type || ''}:${active.segmentIndex ?? step.messIndex ?? ''}:${msg.side || ''}:${msg.text || ''}` : '';
+  if (!active) {
+    if (layer.dataset.emphasisKey) {
+      layer.innerHTML = '';
+      layer.dataset.emphasisKey = '';
+    }
+    frame.classList.remove('emphasis-active');
+    layer.style.removeProperty('--emphasis-y');
+    return null;
+  }
+  if (layer.dataset.emphasisKey !== key) {
+    layer.innerHTML = buildEmphasisBubbleHtml(active);
+    layer.dataset.emphasisKey = key;
+  }
+  const card = frame.querySelector(`.tcard-pos[data-step-id="${CSS.escape(String(step.id))}"]`);
+  if (card) {
+    const frameBox = frame.getBoundingClientRect();
+    const cardBox = card.getBoundingClientRect();
+    const centerY = ((cardBox.top + cardBox.height / 2 - frameBox.top) / Math.max(1, frameBox.height)) * 100;
+    layer.style.setProperty('--emphasis-y', `${Math.max(12, Math.min(88, centerY)).toFixed(3)}%`);
+  } else {
+    layer.style.removeProperty('--emphasis-y');
+  }
+  frame.classList.add('emphasis-active');
+  return active;
 }
 
 function progressiveGapAfter(s, clipIndex) {

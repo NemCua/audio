@@ -1,0 +1,229 @@
+<!doctype html>
+<html lang="vi">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>Instagram DM UI Mock</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+@font-face{font-family:SFPro;src:local("SFNS"),local(".AppleSystemUIFont")}
+:root{
+  --ig-blue:#3797f0;
+  --ig-purple:#833ab4;
+  --ig-pink:#c13584;
+  --ig-orange:#f77737;
+  --text:#050505;
+  --muted:#737373;
+  --line:#dbdbdb;
+  --incoming:#efefef;
+}
+html,body{min-height:100%}
+body{
+  min-height:100vh;
+  display:grid;
+  place-items:center;
+  padding:30px;
+  background:#151515;
+  color:var(--text);
+  font-family:SFPro,-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial,sans-serif;
+  -webkit-font-smoothing:antialiased;
+}
+.mock-controls{
+  position:fixed;z-index:20;top:18px;right:18px;width:320px;
+  padding:14px;border:1px solid #39405c;border-radius:12px;
+  background:#0d1020;color:#e5e7eb;box-shadow:0 14px 45px #0008;
+}
+.mock-controls h2{font-size:15px;margin-bottom:10px;color:#f0abfc}
+.mock-controls label{display:block;margin:8px 0 4px;font-size:11px;color:#9ca3af}
+.mock-controls input,.mock-controls select{width:100%;padding:8px;border:1px solid #343a57;border-radius:7px;background:#171b31;color:#fff}
+.mock-controls button{width:100%;margin-top:10px;padding:9px;border:0;border-radius:7px;background:linear-gradient(90deg,var(--ig-purple),var(--ig-pink),var(--ig-orange));color:#fff;font-weight:800;cursor:pointer}
+.frame{
+  position:relative;width:828px;height:1792px;overflow:hidden;
+  background:#fff;
+  border-radius:0;box-shadow:0 20px 70px #000;
+}
+.label{display:none}
+
+.ig-window{
+  position:absolute;inset:0;
+  display:flex;flex-direction:column;overflow:hidden;
+  border-radius:0;background:#fff;color:var(--text);
+  box-shadow:none;
+}
+.ig-header{
+  height:122px;flex:0 0 122px;display:flex;align-items:center;
+  gap:12px;padding:13px 26px 13px 58px;border-bottom:1px solid #edf0f3;
+  background:#fff;
+}
+.ig-back{
+  width:48px;height:48px;display:grid;place-items:center;flex:0 0 48px;
+  color:#111;
+}
+.ig-back svg{width:100%;height:100%;stroke:currentColor;fill:none;stroke-width:2.25;stroke-linecap:round;stroke-linejoin:round}
+.ig-avatar{
+  position:relative;width:80px;height:80px;flex:0 0 80px;border-radius:50%;
+  padding:0;background:#eef1f4;border:4px solid #e8ebee;
+}
+.ig-avatar img{display:block;width:100%;height:100%;border:4px solid #fff;border-radius:50%;object-fit:cover;background:#ddd}
+.ig-who{min-width:0;flex:1}
+.ig-name-row{display:flex;align-items:center;gap:9px;min-width:0}
+.ig-name{font-size:32px;font-weight:790;letter-spacing:-.8px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.ig-verified{display:none}
+.ig-chevron{width:12px;height:12px;border-right:2px solid #6b7280;border-bottom:2px solid #6b7280;transform:rotate(-45deg)}
+.ig-status{margin-top:3px;color:#6b7280;font-size:25px;font-weight:430}
+.ig-actions{display:flex;align-items:center;gap:26px;color:#111}
+.ig-icon{width:46px;height:46px;display:grid;place-items:center;border:0;background:transparent;color:inherit}
+.ig-icon svg{width:46px;height:46px;display:block}
+.ig-plus-icon{width:43px;height:43px;display:block}
+.ig-plus-icon svg{width:43px;height:43px;display:block}
+
+.ig-messages{
+  position:relative;flex:1;min-height:0;overflow:hidden;padding:30px 16px 22px;
+  display:flex;flex-direction:column;background:#fff;
+}
+.ig-row{display:flex;align-items:flex-end;gap:8px;margin-top:6px}
+.ig-row.mine{justify-content:flex-end;padding-left:230px}
+.ig-row.theirs{padding-right:230px}
+.ig-mini,.ig-space{width:45px;height:45px;flex:0 0 45px}
+.ig-mini{border-radius:50%;overflow:hidden;background:#ddd}
+.ig-mini img{width:100%;height:100%;display:block;object-fit:cover}
+.ig-bubble{
+  max-width:530px;padding:17px 24px 18px;border-radius:38px;
+  background:#f1f3f5;color:#111;font-size:31px;line-height:1.22;
+  letter-spacing:-.15px;overflow-wrap:anywhere;
+}
+.ig-row.mine .ig-bubble{background:linear-gradient(90deg,#9333ea,#a933f0 56%,#8f2cf0);color:#fff}
+.ig-row.theirs.first .ig-bubble{border-bottom-left-radius:14px}
+.ig-row.theirs.middle .ig-bubble{border-top-left-radius:14px;border-bottom-left-radius:14px}
+.ig-row.theirs.last .ig-bubble{border-top-left-radius:14px}
+.ig-row.mine.first .ig-bubble{border-bottom-right-radius:14px}
+.ig-row.mine.middle .ig-bubble{border-top-right-radius:14px;border-bottom-right-radius:14px}
+.ig-row.mine.last .ig-bubble{border-top-right-radius:14px}
+.ig-like-heart{font-size:34px;filter:drop-shadow(0 3px 4px #0002);transform:translateY(-4px)}
+.ig-row.mine .ig-like-heart{order:-1}
+.ig-spacer{flex:1}
+.ig-image-row{display:flex;align-items:flex-end;margin-top:10px}
+.ig-image-row.mine{justify-content:flex-end;padding-left:230px}
+.ig-image-row.theirs{gap:8px;padding-right:230px}
+.ig-image{display:block;max-width:430px;max-height:360px;object-fit:cover;border-radius:28px;background:#efefef}
+.ig-image-error{width:330px;padding:24px;border-radius:26px;background:#efefef;color:#777;font-size:22px;text-align:center}
+.ig-seen{height:44px;display:flex;align-items:center;justify-content:flex-end;padding-right:0;color:#6b7280;font-size:26px;font-weight:420}
+.ig-seen .ig-mini{width:25px;height:25px;flex-basis:25px;margin-left:8px}
+
+.ig-composer{
+  height:126px;flex:0 0 126px;display:flex;align-items:flex-start;gap:10px;
+  padding:14px 16px 0;background:#fff;
+}
+.ig-input{
+  min-width:0;flex:1;height:88px;display:flex;align-items:center;gap:22px;
+  padding:0 25px 0 11px;border:0;border-radius:999px;background:#f6f7f8;color:#111;
+}
+.ig-camera{
+  width:56px;height:56px;display:grid;place-items:center;flex:0 0 56px;
+  border-radius:50%;background:#5f4df5;color:#fff;
+}
+.ig-camera svg{width:30px;height:28px;display:block;fill:currentColor}
+.ig-placeholder{flex:1;color:#6b7280;font-size:31px;font-weight:420}
+.ig-tool{width:44px;height:44px;color:#111;display:grid;place-items:center}
+.ig-tool svg{width:44px;height:44px;display:block}
+.ig-send{font-size:25px;font-weight:760;color:var(--ig-blue)}
+@media(max-width:900px){
+  body{place-items:start;padding:12px;overflow:auto}
+  .mock-controls{position:static;width:100%;margin-bottom:14px}
+  .frame{transform:scale(.45);transform-origin:top left;margin-right:-455px;margin-bottom:-985px}
+}
+</style>
+</head>
+<body>
+<aside class="mock-controls">
+  <h2>Instagram DM mock</h2>
+  <label>Người gửi ảnh test</label>
+  <select id="mock-image-side">
+    <option value="mine">Tôi — bên phải</option>
+    <option value="theirs">Đối phương — bên trái</option>
+  </select>
+  <label>Chọn ảnh từ máy</label>
+  <input type="file" id="mock-image-file" accept="image/*" onchange="previewMockImageFile(this.files[0])"/>
+  <label>Hoặc dán link ảnh web</label>
+  <input type="text" id="mock-image-url" placeholder="https://..."/>
+  <button type="button" onclick="previewMockImageUrl()">Hiển thị ảnh trong DM</button>
+</aside>
+
+<div class="frame">
+  <div class="label">INSTAGRAM DM OVERLAY MOCK</div>
+  <section class="ig-window">
+    <header class="ig-header">
+      <div class="ig-back" aria-hidden="true">
+        <svg viewBox="0 0 24 24"><path d="M15 18l-6-6 6-6"/></svg>
+      </div>
+      <div class="ig-avatar"><img class="default-avatar" alt="" referrerpolicy="no-referrer"/></div>
+      <div class="ig-who">
+        <div class="ig-name-row"><div class="ig-name">Thùy Dương☃️🐳</div><span class="ig-chevron"></span></div>
+        <div class="ig-status">Hoạt động 1 giờ trước</div>
+      </div>
+      <div class="ig-actions" aria-hidden="true">
+        <button class="ig-icon"><svg aria-label="Gọi thoại" fill="currentColor" role="img" viewBox="0 0 24 24"><title>Gọi thoại</title><path d="M18.227 22.912c-4.913 0-9.286-3.627-11.486-5.828C4.486 14.83.731 10.291.921 5.231a3.289 3.289 0 0 1 .908-2.138 17.116 17.116 0 0 1 1.865-1.71 2.307 2.307 0 0 1 3.004.174 13.283 13.283 0 0 1 3.658 5.325 2.551 2.551 0 0 1-.19 1.941l-.455.853a.463.463 0 0 0-.024.387 7.57 7.57 0 0 0 4.077 4.075.455.455 0 0 0 .386-.024l.853-.455a2.548 2.548 0 0 1 1.94-.19 13.278 13.278 0 0 1 5.326 3.658 2.309 2.309 0 0 1 .174 3.003 17.319 17.319 0 0 1-1.71 1.866 3.29 3.29 0 0 1-2.138.91 10.27 10.27 0 0 1-.368.006Zm-13.144-20a.27.27 0 0 0-.167.054A15.121 15.121 0 0 0 3.28 4.47a1.289 1.289 0 0 0-.36.836c-.161 4.301 3.21 8.34 5.235 10.364s6.06 5.403 10.366 5.236a1.284 1.284 0 0 0 .835-.36 15.217 15.217 0 0 0 1.504-1.637.324.324 0 0 0-.047-.41 11.62 11.62 0 0 0-4.457-3.119.545.545 0 0 0-.411.044l-.854.455a2.452 2.452 0 0 1-2.071.116 9.571 9.571 0 0 1-5.189-5.188 2.457 2.457 0 0 1 .115-2.071l.456-.855a.544.544 0 0 0 .043-.41 11.629 11.629 0 0 0-3.118-4.458.36.36 0 0 0-.244-.1Z"></path></svg></button>
+        <button class="ig-icon"><svg aria-label="Gọi video" fill="currentColor" role="img" viewBox="0 0 24 24"><title>Gọi video</title><rect fill="none" height="18" rx="3" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" width="16.999" x="1" y="3"></rect><path d="m17.999 9.146 2.495-2.256A1.5 1.5 0 0 1 23 8.003v7.994a1.5 1.5 0 0 1-2.506 1.113L18 14.854" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"></path></svg></button>
+      </div>
+    </header>
+
+    <main class="ig-messages">
+      <div class="ig-spacer"></div>
+
+      <div class="ig-row theirs first">
+        <div class="ig-space"></div>
+        <div class="ig-bubble">hôm nay đi ăn gì không</div>
+      </div>
+      <div class="ig-row theirs last">
+        <div class="ig-mini"><img class="default-avatar" alt="" referrerpolicy="no-referrer"/></div>
+        <div class="ig-bubble">tôi tìm được quán này nè</div>
+      </div>
+
+      <div class="ig-image-row mine" id="mock-image-row"><img class="ig-image" id="mock-chat-image" src="commentIMG.jpg" alt="Ảnh trong DM"/></div>
+      <div class="ig-row mine first"><div class="ig-bubble">ngon quá 😊</div></div>
+      <div class="ig-row mine last"><div class="ig-bubble">đi không</div></div>
+      <div class="ig-row theirs"><div class="ig-mini"><img class="default-avatar" alt="" referrerpolicy="no-referrer"/></div><div class="ig-bubble">đi liền chứ hỏi gì nữa</div></div>
+    </main>
+
+    <footer class="ig-composer">
+      <div class="ig-input">
+        <div class="ig-camera"><svg viewBox="0 0 25 22"><path fill-rule="evenodd" d="M73.1225 740C73.7671 740 74.388 740.242 74.8617 740.676L76.5133 742.193C76.9278 742.574 77.455 742.806 78.0122 742.858L78.2525 742.87H79.0128C81.491 742.87 83.5 744.868 83.5 747.333V757.536C83.5 760.002 81.491 762 79.0128 762H62.9872C60.509 762 58.5 760.002 58.5 757.536V747.333C58.5 744.868 60.509 742.87 62.9872 742.87H63.7475C64.3921 742.87 65.013 742.628 65.4867 742.193L67.1383 740.676C67.612 740.242 68.2329 740 68.8775 740H73.1225ZM71 745.5C67.4101 745.5 64.5 748.41 64.5 752C64.5 755.59 67.4101 758.5 71 758.5C74.5899 758.5 77.5 755.59 77.5 752C77.5 748.41 74.5899 745.5 71 745.5ZM71 747.5C73.4853 747.5 75.5 749.515 75.5 752C75.5 754.485 73.4853 756.5 71 756.5C68.5147 756.5 66.5 754.485 66.5 752C66.5 749.515 68.5147 747.5 71 747.5Z" transform="translate(-58.5 -740)"></path></svg></div>
+        <div class="ig-placeholder">Nhắn tin...</div>
+        <div class="ig-tool"><svg aria-label="Clip âm thanh" fill="currentColor" role="img" viewBox="0 0 24 24"><title>Clip âm thanh</title><path d="M19.5 10.671v.897a7.5 7.5 0 0 1-15 0v-.897" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"></path><line fill="none" stroke="currentColor" stroke-linejoin="round" stroke-width="2" x1="12" x2="12" y1="19.068" y2="22"></line><line fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" x1="8.706" x2="15.104" y1="22" y2="22"></line><path d="M12 15.745a4 4 0 0 1-4-4V6a4 4 0 0 1 8 0v5.745a4 4 0 0 1-4 4Z" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"></path></svg></div>
+        <div class="ig-tool"><svg aria-label="Thêm ảnh hoặc video" fill="currentColor" role="img" viewBox="0 0 24 24"><title>Thêm ảnh hoặc video</title><path d="M6.549 5.013A1.557 1.557 0 1 0 8.106 6.57a1.557 1.557 0 0 0-1.557-1.557Z" fill-rule="evenodd"></path><path d="m2 18.605 3.901-3.9a.908.908 0 0 1 1.284 0l2.807 2.806a.908.908 0 0 0 1.283 0l5.534-5.534a.908.908 0 0 1 1.283 0l3.905 3.905" fill="none" stroke="currentColor" stroke-linejoin="round" stroke-width="2"></path><path d="M18.44 2.004A3.56 3.56 0 0 1 22 5.564h0v12.873a3.56 3.56 0 0 1-3.56 3.56H5.568a3.56 3.56 0 0 1-3.56-3.56V5.563a3.56 3.56 0 0 1 3.56-3.56Z" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"></path></svg></div>
+        <div class="ig-tool"><svg aria-label="Chọn một ảnh GIF hoặc nhãn dán" fill="currentColor" role="img" viewBox="0 0 24 24"><title>Chọn một ảnh GIF hoặc nhãn dán</title><path d="M13.11 22H7.416A5.417 5.417 0 0 1 2 16.583V7.417A5.417 5.417 0 0 1 7.417 2h9.166A5.417 5.417 0 0 1 22 7.417v5.836a2.083 2.083 0 0 1-.626 1.488l-6.808 6.664A2.083 2.083 0 0 1 13.11 22Z" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"></path><circle cx="8.238" cy="9.943" r="1.335"></circle><circle cx="15.762" cy="9.943" r="1.335"></circle><path d="M15.174 15.23a4.887 4.887 0 0 1-6.937-.301" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"></path><path d="M22 10.833v1.629a1.25 1.25 0 0 1-1.25 1.25h-1.79a5.417 5.417 0 0 0-5.417 5.417v1.62a1.25 1.25 0 0 1-1.25 1.25H9.897" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"></path></svg></div>
+        <div class="ig-tool"><span class="ig-plus-icon"><svg viewBox="0 0 44 44" aria-label="Thêm"><circle cx="22" cy="22" r="18.2" fill="none" stroke="currentColor" stroke-width="3.4"/><path d="M22 13.5v17M13.5 22h17" fill="none" stroke="currentColor" stroke-width="3.4" stroke-linecap="round"/></svg></span></div>
+      </div>
+    </footer>
+  </section>
+</div>
+
+<script>
+const DEFAULT_AVATAR_URL='messenger-default-avatar.png';
+document.querySelectorAll('.default-avatar').forEach(img=>{img.src=DEFAULT_AVATAR_URL;});
+let mockImageObjectUrl=null;
+function setMockChatImage(src){
+  const row=document.getElementById('mock-image-row');
+  const side=document.getElementById('mock-image-side').value;
+  row.className='ig-image-row '+side;
+  row.innerHTML=(side==='theirs'?'<div class="ig-mini"><img src="'+DEFAULT_AVATAR_URL+'" alt="" referrerpolicy="no-referrer"/></div>':'')+'<img class="ig-image" id="mock-chat-image" alt="Ảnh trong DM" referrerpolicy="no-referrer"/>';
+  const img=document.getElementById('mock-chat-image');
+  img.onerror=()=>{row.innerHTML=(side==='theirs'?'<div class="ig-space"></div>':'')+'<div class="ig-image-error">Không tải được ảnh này</div>';};
+  img.src=src;
+}
+function previewMockImageFile(file){
+  if(!file)return;
+  if(mockImageObjectUrl)URL.revokeObjectURL(mockImageObjectUrl);
+  mockImageObjectUrl=URL.createObjectURL(file);
+  document.getElementById('mock-image-url').value='';
+  setMockChatImage(mockImageObjectUrl);
+}
+function previewMockImageUrl(){
+  const url=document.getElementById('mock-image-url').value.trim();
+  if(!url)return alert('Hãy dán URL ảnh trước.');
+  document.getElementById('mock-image-file').value='';
+  setMockChatImage(url);
+}
+</script>
+</body>
+</html>
