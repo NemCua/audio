@@ -2213,7 +2213,7 @@ function voiceOptionHtml(v, i, selected) {
   return `<option value="${i}" ${selected ? 'selected' : ''}>${esc(v.label)}</option>`;
 }
 function voiceOptionsHtml(selected) {
-  const groups = [['🎙 CapCut TTS', 'capcut']];
+  const groups = [['🎙 CapCut TTS', 'capcut'], ['🗣 Edge TTS', 'edge']];
   return groups.map(([label, engine]) => {
     const options = ttsVoices.map((v, i) => ({v, i})).filter(x => x.v && (x.v.engine || 'capcut') === engine);
     return options.length ? `<optgroup label="${label}">${options.map(x => voiceOptionHtml(x.v, x.i, String(x.i) === String(selected))).join('')}</optgroup>` : '';
@@ -2227,7 +2227,7 @@ function bundledVoicePreviewUrl(index) {
   return new URL(`voice-previews/voice-${String(index).padStart(2, '0')}.mp3`, window.location.href).href;
 }
 function voicePickerRowsHtml(selected) {
-  const groups=[['CapCut TTS','capcut']];
+  const groups=[['CapCut TTS','capcut'],['Edge TTS','edge']];
   return groups.map(([label,engine])=>{
     const rows=ttsVoices.map((voice,index)=>({voice,index})).filter(item=>item.voice&&(item.voice.engine||'capcut')===engine);
     if(!rows.length)return '';
@@ -2337,9 +2337,8 @@ async function loadTtsVoices() {
     const res = await fetch(ttsServerUrl() + '/voices');
     if (!res.ok) throw new Error('HTTP ' + res.status);
     const availableVoices = await res.json();
-    // legacy_index giữ voiceIdx của project cũ ổn định dù backend đã loại
-    // Edge khỏi response. Hai slot Edge trở thành rỗng và được fallback về
-    // Thanh Niên Tự Tin khi project cũ được mở.
+    // legacy_index giữ voiceIdx của project cũ ổn định dù backend lọc bớt
+    // Edge khỏi response; Nam Minh vẫn giữ slot cũ để project đã lưu không lệch.
     const maxVoiceIndex=Math.max(-1,...availableVoices.map((voice,index)=>Number.isInteger(voice.legacy_index)?voice.legacy_index:index));
     ttsVoices=Array(maxVoiceIndex+1).fill(null);
     availableVoices.forEach((voice,index)=>{ttsVoices[Number.isInteger(voice.legacy_index)?voice.legacy_index:index]=voice;});
