@@ -642,6 +642,10 @@ header span { font-size: 12px; color: #4b5563; }
 }
 .retained-meme-layer{position:absolute;inset:0;z-index:7;pointer-events:none}.retained-meme-layer .meme-overlay{z-index:auto}
 .preview-frame.emphasis-active .thr-stack{filter:blur(.55cqw) brightness(.58);transition:none}
+.preview-frame.emphasis-card-zoom-mode .thr-stack{filter:none}
+.preview-frame.emphasis-card-zoom-mode .thr-stack .tcard-pos[data-step-id]{filter:blur(.55cqw) brightness(.58)}
+.preview-frame.emphasis-card-zoom-mode .thr-stack .tcard-pos.emphasis-card-zoom-active{position:relative;z-index:16;filter:none}
+.preview-frame.emphasis-card-zoom-mode .thr-stack .tcard-pos.emphasis-card-zoom-active>.mess-card,.preview-frame.emphasis-card-zoom-mode .thr-stack .tcard-pos.emphasis-card-zoom-active>.ig-card,.preview-frame.emphasis-card-zoom-mode .thr-stack .tcard-pos.emphasis-card-zoom-active>.zalo-card{transform:translate(var(--emphasis-shift-x,0),var(--emphasis-shift-y,0)) scale(1.72);transform-origin:var(--emphasis-origin-x,50%) var(--emphasis-origin-y,50%);box-shadow:0 2.4cqw 8cqw #0009}
 .emphasis-layer{position:absolute;inset:0;z-index:17;padding:0 5.5cqw;pointer-events:none}
 .emphasis-layer:empty{display:none}
 .emphasis-bubble-wrap{position:absolute;left:5.5cqw;right:5.5cqw;top:var(--emphasis-y,50%);display:flex;justify-content:center;transform:translateY(-50%)}
@@ -950,6 +954,7 @@ header span { font-size: 12px; color: #4b5563; }
 
 <script src="render_shared.js"></script>
 <script>
+window.emphasisZoomMode = () => window.__EMPHASIS_ZOOM_MODE === 'card' ? 'card' : 'overlay';
 // ============================================================
 // Điều khiển render cho Playwright — export_server.py gọi qua CDP:
 //   1. page.goto('export_render.html?w=1080')  — set độ rộng khung xuất

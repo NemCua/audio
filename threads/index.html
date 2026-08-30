@@ -757,6 +757,10 @@ body.absolute-layer-off #absolute-lane{display:none}
 }
 .retained-meme-layer{position:absolute;inset:0;z-index:7;pointer-events:none}.retained-meme-layer .meme-overlay{z-index:auto;pointer-events:auto;cursor:pointer}
 .preview-frame.emphasis-active .thr-stack{filter:blur(.55cqw) brightness(.58);transition:none}
+.preview-frame.emphasis-card-zoom-mode .thr-stack{filter:none}
+.preview-frame.emphasis-card-zoom-mode .thr-stack .tcard-pos[data-step-id]{filter:blur(.55cqw) brightness(.58)}
+.preview-frame.emphasis-card-zoom-mode .thr-stack .tcard-pos.emphasis-card-zoom-active{position:relative;z-index:16;filter:none}
+.preview-frame.emphasis-card-zoom-mode .thr-stack .tcard-pos.emphasis-card-zoom-active>.mess-card,.preview-frame.emphasis-card-zoom-mode .thr-stack .tcard-pos.emphasis-card-zoom-active>.ig-card,.preview-frame.emphasis-card-zoom-mode .thr-stack .tcard-pos.emphasis-card-zoom-active>.zalo-card{transform:translate(var(--emphasis-shift-x,0),var(--emphasis-shift-y,0)) scale(1.72);transform-origin:var(--emphasis-origin-x,50%) var(--emphasis-origin-y,50%);box-shadow:0 2.4cqw 8cqw #0009}
 .emphasis-layer{position:absolute;inset:0;z-index:17;padding:0 5.5cqw;pointer-events:none}
 .emphasis-layer:empty{display:none}
 .emphasis-bubble-wrap{position:absolute;left:5.5cqw;right:5.5cqw;top:var(--emphasis-y,50%);display:flex;justify-content:center;transform:translateY(-50%)}
@@ -1517,6 +1521,14 @@ body.absolute-layer-off #absolute-lane{display:none}
           </label>
         </div>
         <div class="setting-card">
+          <h3>Chế độ zoom</h3>
+          <label>Kiểu highlight tin nhắn</label>
+          <select class="setting-select" id="emphasis-zoom-mode" onchange="applyEmphasisZoomSetting()">
+            <option value="overlay" selected>Tạo card phóng to</option>
+            <option value="card">Phóng to card gốc</option>
+          </select>
+        </div>
+        <div class="setting-card">
           <h3>TTS</h3>
           <label style="display:flex;align-items:center;gap:8px;cursor:pointer">
             <input type="checkbox" id="tts-disabled-toggle" style="width:auto"/>
@@ -1823,6 +1835,20 @@ function applyAbsoluteLayerSetting() {
   if (!absoluteLayerEnabled()) setScriptLane('timeline');
   renderStepList();
 }
+function emphasisZoomMode() {
+  return document.getElementById('emphasis-zoom-mode')?.value || 'overlay';
+}
+function applyEmphasisZoomSetting() {
+  try { localStorage.setItem('threads_emphasis_zoom_mode', emphasisZoomMode()); } catch {}
+  if (!playing) renderAtTime(playheadT);
+}
+function loadEmphasisZoomSetting() {
+  let saved = 'overlay';
+  try { saved = localStorage.getItem('threads_emphasis_zoom_mode') || 'overlay'; } catch {}
+  const el = document.getElementById('emphasis-zoom-mode');
+  if (el) el.value = saved === 'card' ? 'card' : 'overlay';
+}
+window.emphasisZoomMode = emphasisZoomMode;
 function defaultLayerModeForNewStep(type) {
   return absoluteLayerEnabled() && activeScriptLane === 'absolute' && ['text','image','sticker'].includes(type) ? 'absolute' : 'timeline';
 }
@@ -7489,7 +7515,7 @@ function renderIdleScene() {
     document.getElementById('meme-overlay').style.display = 'none';
     const emphasisLayer=document.getElementById('emphasis-layer');
     if(emphasisLayer)emphasisLayer.innerHTML='';
-    document.getElementById('preview-frame')?.classList.remove('emphasis-active');
+    document.getElementById('preview-frame')?.classList.remove('emphasis-active','emphasis-card-zoom-mode');
     _lastStackIds = [];
     _lastStackRevealStages = [];
     return;
@@ -7745,6 +7771,7 @@ async function exportVideo() {
         bgAudioVolume: parseFloat(document.getElementById('bgaudio-volume').value),
         blurIdentity: document.getElementById('blur-identity-toggle').checked,
         exportPreset: document.getElementById('export-preset')?.value || 'normal',
+        emphasisZoomMode: emphasisZoomMode(),
       }),
     });
     if (!res.ok) throw new Error('HTTP ' + res.status);
@@ -7826,6 +7853,7 @@ async function clearServerCache() {
 
 // Khởi tạo
 _stepEngineReady = true;
+loadEmphasisZoomSetting();
 applyAbsoluteLayerSetting();
 applyCardMoveSettings();
 // Bản browser-first cập nhật trạng thái lưu trữ sau khi runtime khởi tạo.

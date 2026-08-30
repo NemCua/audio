@@ -59,6 +59,7 @@ class ExportRequest(BaseModel):
     bgAudioVolume: float = 0.5
     blurIdentity: bool = True  # khớp trạng thái checkbox "Làm mờ tên & avatar" ở preview lúc bấm Xuất
     exportPreset: str = "normal"  # normal | messenger-mobile
+    emphasisZoomMode: str = "overlay"  # overlay | card
 
 
 jobs: dict[str, dict] = {}  # job_id -> {status, progress, message, downloadUrl}
@@ -121,7 +122,7 @@ def compute_breakpoints(steps: list[dict], total_duration: float) -> list[float]
 
 
 async def render_stack_images(job_id: str, steps: list[dict], breakpoints: list[float], job_dir: Path,
-                               on_progress, blur_identity: bool = True):
+                               on_progress, blur_identity: bool = True, emphasis_zoom_mode: str = "overlay"):
     """Dùng Playwright mở export_render.html 1 lần, chụp ảnh cho từng quãng
     ổn định — trả về list[dict] mỗi phần tử:
       {t0, t1, img_path, dynamic_meme} trong đó dynamic_meme (nếu
@@ -138,6 +139,7 @@ async def render_stack_images(job_id: str, steps: list[dict], breakpoints: list[
         blur_param = "1" if blur_identity else "0"
         await page.goto(f"{RENDER_BASE_URL}/export_render.html?w={TARGET_W}&blur={blur_param}")
         await page.wait_for_load_state("networkidle")
+        await page.evaluate("(mode) => { window.__EMPHASIS_ZOOM_MODE = mode === 'card' ? 'card' : 'overlay'; }", emphasis_zoom_mode)
         await page.evaluate("setSteps", steps)
 
         n = len(breakpoints) - 1
@@ -364,7 +366,7 @@ async def run_export_job(job_id: str, req: ExportRequest):
             pct = int(done / max(total, 1) * 60)  # chụp ảnh chiếm 0-60% progress
             update_job(job_id, progress=pct, message=f"Đang chụp thẻ {done}/{total}...")
 
-        segments = await render_stack_images(job_id, steps, breakpoints, job_dir, on_progress, req.blurIdentity)
+        segments = await render_stack_images(job_id, steps, breakpoints, job_dir, on_progress, req.blurIdentity, req.emphasisZoomMode)
 
         # thu thập audio track: TTS mỗi step (đọc thẳng file local threads/tts_audio/),
         # audio hiệu ứng mỗi step audio

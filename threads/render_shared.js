@@ -208,9 +208,12 @@ function renderEmphasisLayer(t, stack) {
   const layer = document.getElementById('emphasis-layer');
   const frame = document.getElementById('preview-frame');
   if (!layer || !frame) return null;
+  frame.querySelectorAll('.emphasis-card-zoom-active').forEach(el => el.classList.remove('emphasis-card-zoom-active'));
+  frame.classList.remove('emphasis-card-zoom-mode');
   const active = emphasisStepAt(t, stack);
   const msg = active?.message || {};
   const step = active?.step || {};
+  const cardZoomMode = active && step.type === 'mess' && typeof window.emphasisZoomMode === 'function' && window.emphasisZoomMode() === 'card';
   const key = active ? `${step.id || ''}:${active.kind || step.type || ''}:${active.segmentIndex ?? step.messIndex ?? ''}:${msg.side || ''}:${msg.text || ''}` : '';
   if (!active) {
     if (layer.dataset.emphasisKey) {
@@ -220,6 +223,42 @@ function renderEmphasisLayer(t, stack) {
     frame.classList.remove('emphasis-active');
     layer.style.removeProperty('--emphasis-y');
     return null;
+  }
+  if (cardZoomMode) {
+    if (layer.dataset.emphasisKey) {
+      layer.innerHTML = '';
+      layer.dataset.emphasisKey = '';
+    }
+    layer.style.removeProperty('--emphasis-y');
+    const card = frame.querySelector(`.tcard-pos[data-step-id="${CSS.escape(String(step.id))}"]`);
+    if (card) {
+      const visualCard = card.querySelector(':scope > .mess-card,:scope > .ig-card,:scope > .zalo-card');
+      const index = Number.isFinite(Number(step.messIndex)) ? Number(step.messIndex) : null;
+      const activeRow = index == null ? null : card.querySelector(`.mess-row[data-mess-index="${CSS.escape(String(index))}"]`);
+      const activeBubble = activeRow?.querySelector('.mess-bubble,.ig-bubble,.zalo-bubble,.mess-chat-image,.ig-image,.zalo-chat-image') || activeRow;
+      if (visualCard && activeBubble) {
+        const frameBox = frame.getBoundingClientRect();
+        const cardBox = visualCard.getBoundingClientRect();
+        const targetBox = activeBubble.getBoundingClientRect();
+        const targetCenterX = targetBox.left + targetBox.width / 2;
+        const targetCenterY = targetBox.top + targetBox.height / 2;
+        const originX = ((targetCenterX - cardBox.left) / Math.max(1, cardBox.width)) * 100;
+        const originY = ((targetCenterY - cardBox.top) / Math.max(1, cardBox.height)) * 100;
+        const sideBias = msg.side === 'mine' ? 3 : msg.side === 'theirs' ? 4 : 0;
+        const shiftX = ((frameBox.left + frameBox.width * (.5 + sideBias / 100) - targetCenterX) / Math.max(1, frameBox.width)) * 100;
+        const shiftY = ((frameBox.top + frameBox.height * .5 - targetCenterY) / Math.max(1, frameBox.width)) * 100;
+        visualCard.style.setProperty('--emphasis-origin-x', `${Math.max(8, Math.min(92, originX)).toFixed(3)}%`);
+        visualCard.style.setProperty('--emphasis-origin-y', `${Math.max(8, Math.min(92, originY)).toFixed(3)}%`);
+        visualCard.style.setProperty('--emphasis-shift-x', `${Math.max(-42, Math.min(42, shiftX)).toFixed(3)}cqw`);
+        visualCard.style.setProperty('--emphasis-shift-y', `${Math.max(-58, Math.min(58, shiftY)).toFixed(3)}cqw`);
+      }
+      card.classList.add('emphasis-card-zoom-active');
+      frame.classList.add('emphasis-card-zoom-mode');
+      frame.classList.add('emphasis-active');
+    } else {
+      frame.classList.remove('emphasis-active');
+    }
+    return active;
   }
   if (layer.dataset.emphasisKey !== key) {
     layer.innerHTML = buildEmphasisBubbleHtml(active);
