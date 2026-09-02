@@ -270,12 +270,13 @@ ipcMain.handle('desktop:get-bundled-memeready', () => {
 });
 
 ipcMain.handle('desktop:get-bundled-library', (_event, category) => {
-  const folders = { audio: 'audio', meme: 'gif', background: 'background', bgaudio: 'audiobackground' };
+  const folders = { audio: 'audio', meme: 'gif', image: 'image', background: 'background', bgaudio: 'audiobackground' };
   const allowedFiles = {
     audio: /\.(mp3|wav|m4a|aac|ogg|flac|opus)$/i,
     bgaudio: /\.(mp3|wav|m4a|aac|ogg|flac|opus)$/i,
     background: /\.(mp4|mov|m4v|webm|avi|mkv)$/i,
     meme: /\.(gif|png|jpe?g|webp|mp4|webm)$/i,
+    image: /\.(gif|png|jpe?g|webp|mp4|webm)$/i,
   };
   const folder = folders[category];
   if (!folder) return [];
@@ -303,7 +304,7 @@ ipcMain.handle('desktop:get-bundled-library', (_event, category) => {
 });
 
 ipcMain.handle('desktop:add-library-file', (_event, category, bytes, originalName) => {
-  const folders = { audio:'audio', meme:'gif', background:'background', bgaudio:'audiobackground' };
+  const folders = { audio:'audio', meme:'gif', image:'image', background:'background', bgaudio:'audiobackground' };
   const folder = folders[category];
   if (!folder) throw new Error('Loại thư viện không hợp lệ');
   const safeName = path.basename(String(originalName || 'media.bin')).replace(/[^\p{L}\p{N}._ -]/gu, '_');

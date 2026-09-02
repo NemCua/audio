@@ -152,6 +152,19 @@ body.absolute-layer-off #absolute-lane{display:none}
 }
 .feature-item.done .feature-head .num { background: #14532d; color: #4ade80; }
 .feature-head .label { flex: 1; font-size: 13px; font-weight: 600; color: #e2e8f0; }
+.feature-head .feature-mini-btn {
+  border: 1px solid #34206b;
+  background: #24104f;
+  color: #ddd6fe;
+  border-radius: 8px;
+  padding: 6px 8px;
+  font-size: 11px;
+  font-weight: 800;
+  cursor: pointer;
+  white-space: nowrap;
+}
+.feature-head .feature-mini-btn:hover { background: #351873; border-color: #7c3aed; color: #fff; }
+.feature-head .feature-mini-btn:disabled { opacity: .55; cursor: wait; }
 .feature-head .status-dot {
   width: 8px; height: 8px; border-radius: 50%;
   background: #374151; flex-shrink: 0;
@@ -1014,6 +1027,7 @@ body.absolute-layer-off #absolute-lane{display:none}
   padding: 8px 12px; border-top: 1px solid #1e2340; flex-wrap: wrap;
 }
 .step-card .sc-ctrls label { font-size: 10px; color: #9ca3af; display: flex; align-items: center; gap: 4px; }
+.step-card .sc-ctrls .absolute-until-end-note { justify-content: center; padding: 6px 8px; border: 1px solid #28304f; border-radius: 7px; background: #11162a; color: #a78bfa; font-weight: 700; }
 .step-card .sc-ctrls input[type=number] {
   width: 52px; background: #0a0c14; border: 1px solid #1e2340;
   border-radius: 5px; color: #e2e8f0; font-size: 11px; padding: 3px 6px;
@@ -1037,6 +1051,7 @@ body.absolute-layer-off #absolute-lane{display:none}
   background: rgba(0,0,0,0.6); z-index: 100;
   align-items: center; justify-content: center;
 }
+#modal-library-overlay{z-index:260}
 .step-modal-overlay.open { display: flex; }
 .step-modal {
   background: #12152a; border: 1px solid #1e2340; color: #e2e8f0;
@@ -1088,6 +1103,10 @@ body.absolute-layer-off #absolute-lane{display:none}
 .background-library-grid{grid-template-columns:repeat(3,minmax(0,1fr));max-height:520px;grid-auto-rows:245px}
 .background-library-grid .lib-item-bgvideo{min-height:225px}
 .background-library-grid video{width:100%;height:180px;object-fit:cover;border-radius:9px;background:#000}
+#modal-library-grid.background-library-grid{grid-template-columns:repeat(5,minmax(0,1fr));gap:14px;grid-auto-rows:auto}
+#modal-library-grid.background-library-grid .lib-item-meme{padding:8px;gap:7px}
+#modal-library-grid.background-library-grid .lib-thumb{aspect-ratio:16/9;border-radius:7px}
+#modal-library-grid.background-library-grid video.lib-thumb{height:auto;pointer-events:none}
 .background-audio-list{display:flex;flex-direction:column;gap:9px;max-height:520px;overflow-y:auto;padding:10px;border:1px solid #1e2340;border-radius:10px;background:#0a0c14}
 .background-audio-list .lib-item{display:flex;align-items:center;gap:12px;min-height:58px}
 .library-modal-head{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:14px}
@@ -1364,6 +1383,7 @@ body.absolute-layer-off #absolute-lane{display:none}
       <div class="feature-head" style="cursor:default">
         <span class="num">3</span>
         <span class="label">Kết nối TTS</span>
+        <button type="button" class="feature-mini-btn" id="regen-all-tts-btn" onclick="event.stopPropagation();regenerateAllExistingTts()" title="Xoá TTS cũ rồi tạo lại và gán lại toàn bộ giọng đọc của các card hiện có">↻ Tạo lại</button>
         <span class="status-dot" id="tts-status-dot"></span>
       </div>
       <div style="display:none">
@@ -1606,6 +1626,14 @@ body.absolute-layer-off #absolute-lane{display:none}
     <div style="display:flex;gap:10px;margin-bottom:12px"><button type="button" class="btn-ok" onclick="document.getElementById('bgaudio-library-add').click()">＋ Thêm âm thanh vào thư viện</button><input id="bgaudio-library-add" type="file" accept="audio/*" hidden onchange="addBackgroundLibraryFile('bgaudio',this.files[0]);this.value=''"/></div>
     <div id="bgaudio-library-grid" class="background-audio-list"><div class="lib-empty">Đang tải...</div></div>
     <div class="modal-actions"><button type="button" class="btn-cancel" onclick="closeBackgroundAudioLibrary()">Huỷ</button><button type="button" class="btn-ok" id="bgaudio-library-confirm" onclick="confirmBackgroundAudioLibrary()" disabled>Chọn âm thanh này</button></div>
+  </div>
+</div>
+
+<div class="step-modal-overlay" id="modal-library-overlay" onclick="if(event.target===this)closeModalLibrary()">
+  <div class="step-modal background-library-modal">
+    <div class="library-modal-head"><h3 id="modal-library-title">Thư viện</h3><button type="button" class="btn-cancel" onclick="closeModalLibrary()">✕ Đóng</button></div>
+    <div style="display:flex;gap:10px;margin-bottom:12px"><button type="button" class="btn-ok" onclick="document.getElementById('modal-library-add-file').click()">＋ Thêm vào thư viện</button><input id="modal-library-add-file" type="file" hidden onchange="addModalLibraryFile(currentModalLibraryCategory,this.files[0]);this.value=''"/></div>
+    <div id="modal-library-grid" class="lib-grid background-library-grid"><div class="lib-empty">Đang tải...</div></div>
   </div>
 </div>
 
@@ -2686,6 +2714,84 @@ async function generateAllTts() {
   finally{btn.disabled=false;}
 }
 
+function clearStepGeneratedTts(step) {
+  if (!step || typeof step !== 'object') return false;
+  let touched = false;
+  const hasMainVoice = ['post','comment','reply','text','note','image','mess'].includes(step.type)
+    && (((step.ttsText || step.text || '').trim?.() || '').length > 0)
+    && !((step.type === 'text' || step.type === 'note') && step.hasVoice === false);
+  if (hasMainVoice) {
+    step.audioUrl = null;
+    step.audioDesktopPath = null;
+    step.audioServerUrl = null;
+    step.ttsDuration = null;
+    if (step.type === 'note') {
+      step.subtitleWords = [];
+      step.subtitleError = null;
+    }
+    touched = true;
+  }
+  if (Array.isArray(step.extraTtsSegments)) {
+    for (const segment of step.extraTtsSegments) {
+      if (!segment || !String(segment.text || '').trim()) continue;
+      segment.audioUrl = null;
+      segment.audioDesktopPath = null;
+      segment.audioServerUrl = null;
+      segment.duration = 0;
+      if (step.type === 'note') {
+        segment.subtitleWords = [];
+        segment.subtitleError = null;
+      }
+      touched = true;
+    }
+  }
+  if (step.type === 'audio' && step.audioTtsMode && String(step.ttsText || step.text || '').trim()) {
+    step.mediaUrl = null;
+    step.mediaDesktopPath = null;
+    step.audioServerUrl = null;
+    step.ttsDuration = null;
+    step.intrinsicMediaDuration = 0;
+    touched = true;
+  }
+  if (touched) bumpStepRevision(step.id);
+  return touched;
+}
+
+function stepHasRegenerableTts(step) {
+  if (!step || typeof step !== 'object') return false;
+  const textOf = value => String(value || '').trim();
+  if (['post','comment','reply','text','note','image','mess'].includes(step.type)
+    && textOf(step.ttsText || step.text)
+    && !((step.type === 'text' || step.type === 'note') && step.hasVoice === false)) return true;
+  if (Array.isArray(step.extraTtsSegments) && step.extraTtsSegments.some(segment => textOf(segment?.text))) return true;
+  return step.type === 'audio' && step.audioTtsMode && textOf(step.ttsText || step.text);
+}
+
+async function regenerateAllExistingTts() {
+  if (!steps.length) { alert('Chưa có card nào trong timeline.'); return; }
+  const targets = steps.filter(stepHasRegenerableTts);
+  if (!targets.length) { alert('Không có card nào cần tạo TTS.'); return; }
+  if (!confirm(`Tạo lại toàn bộ TTS cho ${targets.length} card/đoạn đang có?\n\nTTS cũ sẽ bị bỏ và gán lại theo text, giọng, echo hiện tại.`)) return;
+  stopPlay();
+  const btn = document.getElementById('regen-all-tts-btn');
+  const oldText = btn?.textContent;
+  if (btn) { btn.disabled = true; btn.textContent = '↻ Đang tạo...'; }
+  targets.forEach(clearStepGeneratedTts);
+  renderStepList();
+  renderIdleScene();
+  try {
+    await ensureTtsServerAwake(attempt => setTtsLoadingText(
+      attempt === 1 ? 'Đang kết nối máy chủ TTS...' : `Máy chủ Free đang khởi động, vui lòng chờ... (${attempt})`
+    ));
+    showTtsLoading('regen');
+    setTtsLoadingText(`Đang tạo lại TTS cho ${targets.length} card/đoạn...`);
+    await generateAllTts();
+  } finally {
+    hideTtsLoading();
+    if (btn) { btn.disabled = false; btn.textContent = oldText || '↻ Tạo lại TTS'; }
+  }
+}
+
 /* ============================================================
    STEP ENGINE (Phase 1) — mọi thứ là 1 step trong danh sách có thứ tự.
    Timing TƯƠNG ĐỐI: mỗi step bắt đầu ngay sau (step trước kết thúc + gap).
@@ -3416,29 +3522,78 @@ function libraryPickerHtml(category) {
   // local có server 8010 phải hiện giống app Electron.
   if (window.BROWSER_FIRST && !window.desktopApp?.isElectron && !localWeb) return '';
   return `<div class="lib-toggle-row">
-      <button type="button" class="lib-toggle-btn" onclick="toggleLibraryGrid()">📂 Chọn từ thư viện có sẵn</button>
-    </div>
-    <div id="m-library-grid" class="lib-grid" style="display:none"></div>`;
+      <button type="button" class="lib-toggle-btn" onclick="openModalLibrary('${esc(category)}')">📂 Chọn từ thư viện có sẵn</button>
+    </div>`;
 }
 
-function toggleLibraryGrid() {
-  const grid = document.getElementById('m-library-grid');
-  grid.style.display = grid.style.display === 'none' ? 'grid' : 'none';
+let currentModalLibraryCategory = '';
+function modalLibraryLabel(category) {
+  return category === 'image' ? 'Thư viện ảnh' : category === 'audio' ? 'Thư viện âm thanh' : 'Thư viện meme';
 }
+
+function openModalLibrary(category) {
+  currentModalLibraryCategory = category;
+  document.getElementById('modal-library-title').textContent = modalLibraryLabel(category);
+  document.getElementById('modal-library-add-file').accept = libraryAddAccept(category);
+  document.getElementById('modal-library-overlay').classList.add('open');
+  loadLibraryOptions(category);
+}
+function closeModalLibrary(){document.getElementById('modal-library-overlay').classList.remove('open');}
 
 async function loadLibraryOptions(category) {
-  const grid = document.getElementById('m-library-grid');
+  const grid = document.getElementById('modal-library-overlay')?.classList.contains('open')
+    ? document.getElementById('modal-library-grid')
+    : document.getElementById('m-library-grid');
   if (!grid) return;
   grid.innerHTML = `<div class="lib-empty">Đang tải...</div>`;
   try {
-    const res = await fetch(MEDIA_SERVER_URL + '/library/' + category);
-    if (!res.ok) throw new Error('HTTP ' + res.status);
-    const items = await res.json();
+    const fetchServerLibrary = async () => {
+      const res = await fetch(MEDIA_SERVER_URL + '/library/' + category);
+      if (!res.ok) throw new Error('HTTP ' + res.status);
+      return res.json();
+    };
+    let items = null;
+    if (category === 'image') {
+      items = await fetchServerLibrary();
+    } else if (window.desktopApp?.getBundledLibrary) {
+      const timeout = new Promise(resolve => setTimeout(() => resolve(null), 1500));
+      items = await Promise.race([window.desktopApp.getBundledLibrary(category).catch(() => null), timeout]);
+    }
+    if (!items) items = await fetchServerLibrary();
+    if (category === 'image' && !items.length && window.desktopApp?.getBundledLibrary) items = await fetchServerLibrary();
     if (!items.length) { grid.innerHTML = `<div class="lib-empty">Thư mục thư viện đang trống.</div>`; return; }
-    document.querySelector('.lib-toggle-btn').textContent = `📂 Chọn từ thư viện có sẵn (${items.length})`;
+    document.querySelectorAll('.lib-toggle-btn').forEach(btn => { btn.textContent = `📂 Chọn từ thư viện có sẵn (${items.length})`; });
     grid.innerHTML = items.map((it, i) => libraryItemHtml(category, it, i)).join('');
   } catch (e) {
     grid.innerHTML = `<div class="lib-empty" style="color:#ef4444">⚠ Không tải được thư viện — kiểm tra media_server.py đang chạy</div>`;
+  }
+}
+
+function libraryAddAccept(category) {
+  if (category === 'audio') return 'audio/*';
+  if (category === 'image') return 'image/*,video/*';
+  return 'image/*,video/*';
+}
+
+async function addModalLibraryFile(category,file) {
+  if (!file) return;
+  const grid = document.getElementById('modal-library-overlay')?.classList.contains('open')
+    ? document.getElementById('modal-library-grid')
+    : document.getElementById('m-library-grid');
+  const status = document.getElementById('m-upload-status');
+  try {
+    if (status) { status.textContent = '⏳ Đang thêm vào thư viện...'; status.style.color = '#a78bfa'; }
+    let item;
+    if (window.desktopApp?.addLibraryFile && category !== 'image') item = await window.desktopApp.addLibraryFile(category,new Uint8Array(await file.arrayBuffer()),file.name);
+    else { const form = new FormData(); form.append('file', file); const res = await fetch(`${MEDIA_SERVER_URL}/library/${category}`, { method: 'POST', body: form }); if (!res.ok) throw new Error('HTTP ' + res.status); item = await res.json(); }
+    await loadLibraryOptions(category);
+    if (status) { status.textContent = '✓ Đã thêm vào thư viện'; status.style.color = '#4ade80'; }
+    const el = [...(grid?.querySelectorAll('.lib-item[data-filename]') || [])]
+      .find(node => node.dataset.filename === item.filename);
+    if (el) selectLibraryItem(el);
+  } catch (e) {
+    if (status) { status.textContent = '✗ Thêm thư viện lỗi: ' + e.message; status.style.color = '#ef4444'; }
+    else alert('Thêm thư viện lỗi: ' + e.message);
   }
 }
 
@@ -3449,7 +3604,7 @@ async function loadLibraryOptions(category) {
 // modal "Meme sẵn" đã làm (mục 5.24), áp dụng luôn cho thư viện gốc.
 function libraryItemHtml(category, item, i) {
   const url = /^(?:file:|https?:|blob:)/i.test(item.url) ? item.url : MEDIA_SERVER_URL + item.url;
-  const itemJson = esc(JSON.stringify({ ...item, category }));
+  const itemJson = encodeURIComponent(JSON.stringify({ ...item, category }));
   const displayLabel = item.label || item.filename;
   const tooltip = item.description || displayLabel;
   const editActions = `<div class="lib-item-edit-actions" ${item.readOnly ? 'style="display:none"' : ''}>
@@ -3457,17 +3612,18 @@ function libraryItemHtml(category, item, i) {
       <button type="button" onclick="event.stopPropagation();deleteLibraryItem(this)" title="Xoá khỏi thư viện">🗑</button>
     </div>`;
   if (category === 'audio') {
-    return `<div class="lib-item lib-item-audio" data-item='${itemJson}' onclick="selectLibraryItem(this)" title="${esc(tooltip)}">
+    return `<div class="lib-item lib-item-audio" data-filename="${esc(item.filename)}" data-item="${itemJson}" onclick="selectLibraryItem(this)" title="${esc(tooltip)}">
       <button type="button" class="lib-play-btn" onclick="event.stopPropagation();selectLibraryItem(this.closest('.lib-item'));toggleLibraryPreviewAudio('${url}',this)">▶</button>
       <span class="lib-item-name">${esc(displayLabel)}</span>
       ${editActions}
     </div>`;
   }
-  // meme/gif: thumbnail ảnh thật (video thì hiện icon thay vì cố preview autoplay trong ô nhỏ)
+  // meme/gif/image-library: ảnh hiện thumbnail thật; video seek tới frame giữa
+  // để nhìn được nội dung thay vì chỉ thấy icon hoặc frame đen đầu video.
   const thumb = item.isVideo
-    ? `<div class="lib-thumb lib-thumb-video">🎬</div>`
+    ? `<video class="lib-thumb lib-thumb-video-thumb" src="${esc(url)}" preload="metadata" muted playsinline onloadedmetadata="this.currentTime=Math.max(0.01,(this.duration||0)/2)" onseeked="this.pause()"></video>`
     : `<img class="lib-thumb" src="${url}" loading="lazy" alt=""/>`;
-  return `<div class="lib-item lib-item-meme" data-item='${itemJson}' onclick="selectLibraryItem(this)" title="${esc(tooltip)}">
+  return `<div class="lib-item lib-item-meme" data-filename="${esc(item.filename)}" data-item="${itemJson}" onclick="selectLibraryItem(this)" title="${esc(tooltip)}">
     ${editActions}
     ${thumb}
     <span class="lib-item-name">${esc(displayLabel)}</span>
@@ -3476,7 +3632,7 @@ function libraryItemHtml(category, item, i) {
 
 async function editLibraryItem(btn) {
   const el = btn.closest('.lib-item');
-  const item = JSON.parse(el.dataset.item);
+  const item = JSON.parse(decodeURIComponent(el.dataset.item));
   const newLabel = prompt('Tên gọi:', item.label || item.filename);
   const newDesc = prompt('Mô tả (để dán cho AI hiểu ngữ cảnh dùng file này):', item.description || '');
   const body = {};
@@ -3501,7 +3657,7 @@ async function editLibraryItem(btn) {
 // không thể hoàn tác, confirm() cảnh báo rõ trước khi gọi.
 async function deleteLibraryItem(btn) {
   const el = btn.closest('.lib-item');
-  const item = JSON.parse(el.dataset.item);
+  const item = JSON.parse(decodeURIComponent(el.dataset.item));
   const label = item.label || item.filename;
   if (!confirm(`Xoá HẲN "${label}" khỏi thư viện? File thật sẽ bị xoá khỏi ổ đĩa, không thể hoàn tác.`)) return;
   try {
@@ -3532,7 +3688,7 @@ function toggleLibraryPreviewAudio(url, btn) {
 }
 
 async function selectLibraryItem(el) {
-  const item = JSON.parse(el.dataset.item);
+  const item = JSON.parse(decodeURIComponent(el.dataset.item));
   const url = /^(?:file:|https?:|blob:)/i.test(item.url) ? item.url : MEDIA_SERVER_URL + item.url;
   modalUploadedMedia = { url, filename: item.filename, isVideo: item.isVideo, duration: item.duration, desktopPath: item.desktopPath || null };
   if(!modalUploadedMedia.isVideo&&!modalUploadedMedia.duration&&/\.(mp3|wav|m4a|aac|ogg|flac|opus)$/i.test(item.filename||'')){
@@ -3545,6 +3701,7 @@ async function selectLibraryItem(el) {
   document.querySelectorAll('.lib-item.selected').forEach(x => x.classList.remove('selected'));
   el.classList.add('selected');
   refreshMediaModalPreviewSoon();
+  closeModalLibrary();
 }
 
 // ---------- Meme sẵn (v2 — snapshot toàn bộ step, không giới hạn ở media) ----------
@@ -4504,7 +4661,7 @@ function openStepModal(type, stepId = null, targetGroupId = null) {
       <input type="text" id="m-image-url" placeholder="https://..." value="${isExternalUrl ? esc(editing.mediaUrl) : ''}" oninput="onImageUrlTyped()"/>
       <div id="m-image-url-preview" style="margin:6px 0">${isExternalUrl ? `<img src="${esc(editing.mediaUrl)}" referrerpolicy="no-referrer" style="max-width:100%;max-height:100px;border-radius:6px;display:block" onerror="this.replaceWith(Object.assign(document.createElement('div'),{textContent:'⚠ Không tải được ảnh từ URL này',style:'font-size:11px;color:#ef4444'}))"/>` : ''}</div>
       <div style="font-size:11px;color:#6b7280;margin-bottom:10px">— hoặc chọn ảnh từ máy bên dưới —</div>`
-             + filePathFieldHtml('Ảnh', editing ? editing.mediaPath : '', editing ? editing.mediaUrl : null, editing ? editing.mediaName : null, null);
+             + filePathFieldHtml('Ảnh', editing ? editing.mediaPath : '', editing ? editing.mediaUrl : null, editing ? editing.mediaName : null, 'image');
     html += mediaOpacityFieldsHtml(editing);
     // Cắt nhiều vùng từ 1 ảnh gốc (mục 5.31/5.36 CONTEXT.md) — hiện ở CẢ 2 chế
     // độ tạo mới lẫn sửa step cũ. Khi sửa (stepId != null), addImageCropStep()
@@ -4578,7 +4735,8 @@ function openStepModal(type, stepId = null, targetGroupId = null) {
     if (type === 'post' || type === 'image') renderExtraTtsSegmentsUI();
     if (type === 'audio') requestAnimationFrame(toggleAudioSourceFields);
   }
-  if (type === 'image' || type === 'sticker') loadLibraryOptions('meme');
+  if (type === 'image') loadLibraryOptions('image');
+  if (type === 'sticker') loadLibraryOptions('meme');
   if (type === 'audio') loadLibraryOptions('audio');
   document.getElementById('step-modal-tts-status').textContent = '';
   document.getElementById('step-modal-submit-btn').disabled = false;
@@ -5368,6 +5526,11 @@ function stepCardHtml(s, idx) {
   const cardCls = (parallel ? ' t-audio-parallel' : '') + (absolute ? ' t-audio-parallel' : '') + (s.id===selectedOverlayStepId ? ' selected-overlay-card' : '') + (s.id===focusedScriptStepId ? ' preview-focused-card' : '');
   if (absolute) {
     const start = Number(s.absoluteStart || 0);
+    const absoluteDurationControl = s.absoluteUntilEnd
+      ? `<label class="absolute-until-end-note">Tồn tại tới cuối video</label>`
+      : `<label>Thời lượng
+            <input type="number" min="0" step="0.1" value="${s.duration.toFixed(2)}" onchange="updateStepField(${s.id},'duration',this.value)"/>
+          </label>`;
     return `
       <div class="step-card${cardCls}" data-id="${s.id}" tabindex="-1">
         <div class="sc-head" onclick="jumpToStep(${s.id})" title="Xem layer này">
@@ -5381,9 +5544,7 @@ function stepCardHtml(s, idx) {
           <label>Bắt đầu
             <input type="number" min="0" step="0.1" value="${start.toFixed(1)}" onchange="updateStepField(${s.id},'absoluteStart',this.value)"/>
           </label>
-          <label>Thời lượng
-            <input type="number" min="0" step="0.1" value="${s.duration.toFixed(2)}" ${s.absoluteUntilEnd?'disabled':''} onchange="updateStepField(${s.id},'duration',this.value)"/>
-          </label>
+          ${absoluteDurationControl}
           <label class="clear-toggle"><input type="checkbox" ${s.absoluteUntilEnd?'checked':''} onchange="updateStepField(${s.id},'absoluteUntilEnd',this.checked)"/> Đến hết</label>
           <div class="sc-actions">
             <button onclick="openStepModal('${s.type}',${s.id})" title="Sửa">✎</button>
@@ -6645,6 +6806,11 @@ function buildProjectJson() {
     ttsServerUrl: document.getElementById('tts-server-url').value,
     ttsVoiceIdx: document.getElementById('tts-voice').value,
     bgAudioVolume: document.getElementById('bgaudio-volume').value,
+    blurIdentity: !!document.getElementById('blur-identity-toggle')?.checked,
+    absoluteLayerEnabled: absoluteLayerEnabled(),
+    emphasisZoomMode: emphasisZoomMode(),
+    cardMoveMode: cardMoveMode(),
+    gridSnapEnabled: gridSnapEnabled(),
     // Video/nhạc nền chọn TỪ THƯ VIỆN (mục 5.40 CONTEXT.md) dùng URL HTTP
     // bền (media_server.py serve từ threads/background|audiobackground/),
     // khác hẳn nguồn "Từ máy" (blob URL chỉ sống trong session, mục 8 —
@@ -6698,16 +6864,24 @@ async function exportProjectJson() {
 // không còn tham gia vào việc dò mediaName ở đây nữa — LẤY RA từ memeready
 // tự tạo thẳng step mới với mediaUrl đã có sẵn, không đi qua luồng này.
 async function resolveMediaNamesInSteps(stepsArr) {
-  const [gifList, audioList] = await Promise.all([
+  const [gifList, audioList, imageList] = await Promise.all([
     fetch(MEDIA_SERVER_URL + '/library/meme').then(r => r.ok ? r.json() : []).catch(() => []),
     fetch(MEDIA_SERVER_URL + '/library/audio').then(r => r.ok ? r.json() : []).catch(() => []),
+    fetch(MEDIA_SERVER_URL + '/library/image').then(r => r.ok ? r.json() : []).catch(() => []),
   ]);
   const gifByName = new Map(gifList.map(it => [it.filename, it]));
   const audioByName = new Map(audioList.map(it => [it.filename, it]));
+  const imageByName = new Map(imageList.map(it => [it.filename, it]));
 
   const unresolved = [];
   for (const s of stepsArr) {
     if ((s.type !== 'image' && s.type !== 'audio') || s.mediaUrl || !s.mediaName) continue;
+    const imageItem = s.type === 'image' ? imageByName.get(s.mediaName) : null;
+    if (imageItem) {
+      s.mediaUrl = MEDIA_SERVER_URL + imageItem.url;
+      s.mediaIsVideo = imageItem.isVideo;
+      continue;
+    }
     const gifItem = gifByName.get(s.mediaName);
     if (gifItem) {
       s.mediaUrl = MEDIA_SERVER_URL + gifItem.url;
@@ -6924,6 +7098,25 @@ async function importProjectJson(input) {
       document.getElementById('bgaudio-volume').value = project.bgAudioVolume;
       document.getElementById('bgaudio-volume-val').textContent = Math.round(project.bgAudioVolume * 100) + '%';
     }
+    if (project.blurIdentity != null) {
+      document.getElementById('blur-identity-toggle').checked = !!project.blurIdentity;
+      toggleBlurIdentity();
+    }
+    if (project.absoluteLayerEnabled != null) {
+      document.getElementById('absolute-layer-toggle').checked = !!project.absoluteLayerEnabled;
+      applyAbsoluteLayerSetting();
+    }
+    if (project.emphasisZoomMode) {
+      const el = document.getElementById('emphasis-zoom-mode');
+      if (el) el.value = project.emphasisZoomMode === 'card' ? 'card' : 'overlay';
+      applyEmphasisZoomSetting();
+    }
+    if (project.cardMoveMode) {
+      const el = document.getElementById('card-move-mode');
+      if (el) el.value = project.cardMoveMode === 'buttons' ? 'buttons' : 'drag';
+    }
+    if (project.gridSnapEnabled != null) document.getElementById('grid-snap-toggle').checked = !!project.gridSnapEnabled;
+    applyCardMoveSettings();
     // giọng TTS cần load xong danh sách voices trước mới set được index hợp lệ
     loadTtsVoices().then(() => {
       if (project.ttsVoiceIdx != null) document.getElementById('tts-voice').value = project.ttsVoiceIdx;
@@ -6975,15 +7168,26 @@ async function importProjectJson(input) {
 // thiết cho export_render.html (trang đó chỉ cần chụp ảnh tĩnh, không phát
 // âm thanh gì).
 function ttsClipAt(t) {
-  const s = steps.find(x => t >= x._start - 1e-6 && t < x._end - 1e-6);
-  if (!s) return null;
   // 'image' (mục 5.30 CONTEXT.md) dùng chung cơ chế audio như post/comment.
   // Nhiều đoạn giọng đọc nối tiếp trong 1 step (extraTtsSegments) — duyệt
   // qua stepTtsClips(s) THEO ĐÚNG THỨ TỰ, cộng dồn duration từng đoạn để
   // biết "tại thời điểm t (tính từ lúc step bắt đầu), đang ở đoạn nào, lùi
   // bao xa vào trong đoạn đó" — giống hệt nguyên lý ttsDuration/ttsDuration2
   // đã dùng cho reply 2-khối trước đây (giờ tổng quát hoá cho N đoạn).
-  if ((s.type === 'post' || s.type === 'comment' || s.type === 'reply' || s.type === 'text' || s.type === 'note' || s.type === 'image' || s.type === 'mess') && s.audioUrl) {
+  const readableTypes = new Set(['post', 'comment', 'reply', 'text', 'note', 'image', 'mess']);
+  const audibleSteps = steps.filter(s =>
+    readableTypes.has(s.type)
+    && t >= s._start - 1e-6
+    && t < s._end - 1e-6
+    && stepTtsClips(s).some(clip => clip.audioUrl)
+  );
+  audibleSteps.sort((a, b) => {
+    const layerScore = stepLayerMode(a) === 'timeline' ? 0 : 1;
+    const otherLayerScore = stepLayerMode(b) === 'timeline' ? 0 : 1;
+    if (layerScore !== otherLayerScore) return layerScore - otherLayerScore;
+    return steps.indexOf(a) - steps.indexOf(b);
+  });
+  for (const s of audibleSteps) {
     let acc = 0;
     const clips = stepTtsClips(s);
     for (let i = 0; i < clips.length; i++) {
@@ -7002,6 +7206,15 @@ function ttsClipAt(t) {
 }
 
 let _lastTtsClipKey = null;
+function playTtsElement(ttsEl) {
+  ttsEl.muted = false;
+  ttsEl.volume = 1;
+  ttsEl.playbackRate = 1;
+  return ttsEl.play().catch(error => {
+    console.warn('Không phát được TTS preview:', error);
+    throw error;
+  });
+}
 function syncTtsAudio(t) {
   const ttsEl = document.getElementById('tts-audio');
   const clip = ttsClipAt(t);
@@ -7013,11 +7226,13 @@ function syncTtsAudio(t) {
   if (clipKey !== _lastTtsClipKey) {
     if (ttsEl.src !== clip.url) ttsEl.src = clip.url;
     ttsEl.currentTime = Math.max(0, clip.offset);
-    ttsEl.play().catch(() => {});
-    _lastTtsClipKey = clipKey;
+    playTtsElement(ttsEl).then(() => { _lastTtsClipKey = clipKey; }).catch(() => { _lastTtsClipKey = null; });
   } else if (Math.abs(ttsEl.currentTime - clip.offset) > 0.35) {
     // lệch quá nhiều (vd tua timeline) — chỉnh lại cho khớp
     ttsEl.currentTime = Math.max(0, clip.offset);
+    if (ttsEl.paused) playTtsElement(ttsEl).catch(() => { _lastTtsClipKey = null; });
+  } else if (ttsEl.paused) {
+    playTtsElement(ttsEl).catch(() => { _lastTtsClipKey = null; });
   }
 }
 
@@ -7862,7 +8077,7 @@ applyCardMoveSettings();
 // Bản browser-first cập nhật trạng thái lưu trữ sau khi runtime khởi tạo.
 </script>
 <script src="auth_client.js?v=20260807-auth-v2"></script>
-<script src="browser_runtime.js?v=20260815-local-api-fix"></script>
+<script src="browser_runtime.js?v=20260901-image-library-modal"></script>
 
 </body>
 </html>

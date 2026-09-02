@@ -69,16 +69,21 @@ h1 { font-size: 18px; color: #a78bfa; margin-bottom: 4px; }
    người dùng yêu cầu — KHÔNG chỉ hiện số giây). */
 #strip-wrap {
   position: relative; width: 100%; height: 64px; margin-top: 16px;
-  border-radius: 8px; overflow: hidden; background: #1e2340;
+  border-radius: 8px; overflow-x: auto; overflow-y: hidden; background: #1e2340;
   user-select: none; -webkit-user-select: none; touch-action: none;
+  scrollbar-width: thin; scrollbar-color: #7c3aed #15182a;
 }
+#strip-wrap::-webkit-scrollbar { height: 8px; }
+#strip-wrap::-webkit-scrollbar-track { background: #15182a; }
+#strip-wrap::-webkit-scrollbar-thumb { background: #7c3aed; border-radius: 999px; }
+#strip-content { position: relative; height: 100%; min-width: 100%; }
 #strip-tiles { display: flex; width: 100%; height: 100%; }
 #strip-tiles canvas { flex: 1; height: 100%; min-width: 0; }
 .strip-dim { position: absolute; top: 0; bottom: 0; background: rgba(0,0,0,.65); pointer-events: none; }
 #strip-sel {
   position: absolute; top: 0; bottom: 0;
   border: 3px solid #f5c518; border-left-width: 14px; border-right-width: 14px;
-  border-radius: 8px; cursor: grab; touch-action: none;
+  border-radius: 8px; box-sizing: border-box; cursor: grab; touch-action: none;
 }
 #strip-sel::before, #strip-sel::after {
   content: ''; position: absolute; top: 50%; transform: translateY(-50%);
@@ -102,6 +107,8 @@ h1 { font-size: 18px; color: #a78bfa; margin-bottom: 4px; }
   font-variant-numeric: tabular-nums; pointer-events: none;
 }
 #strip-outer { position: relative; margin-top: 24px; }
+.timeline-tools { display:flex; align-items:center; gap:8px; margin-top:12px; }
+.timeline-tools .info { min-width: 54px; text-align:center; font-variant-numeric: tabular-nums; }
 
 .progress { height: 8px; background: #1e2340; border-radius: 5px; overflow: hidden; margin-top: 10px; }
 .progress .bar { height: 100%; width: 0%; background: linear-gradient(90deg,#7c3aed,#a78bfa); transition: width .3s; }
@@ -138,14 +145,21 @@ h1 { font-size: 18px; color: #a78bfa; margin-bottom: 4px; }
       <button class="btn" id="play-btn" onclick="togglePlaySelection()">▶ Phát thử đoạn chọn</button>
     </div>
 
+    <div class="timeline-tools">
+      <button class="btn" onclick="adjustTimelineZoom(-1)" title="Thu nhỏ timeline để kéo nhanh hơn">− Thu nhỏ</button>
+      <button class="btn" onclick="adjustTimelineZoom(1)" title="Giãn timeline để kéo chính xác hơn">＋ Giãn ra</button>
+      <span class="info" id="timeline-zoom-label">1.0×</span>
+    </div>
     <div id="strip-outer">
       <div id="strip-wrap">
-        <div id="strip-tiles"></div>
-        <div class="strip-dim" id="dim-left"></div>
-        <div class="strip-dim" id="dim-right"></div>
-        <div id="strip-sel">
-          <div class="grip left"></div>
-          <div class="grip right"></div>
+        <div id="strip-content">
+          <div id="strip-tiles"></div>
+          <div class="strip-dim" id="dim-left"></div>
+          <div class="strip-dim" id="dim-right"></div>
+          <div id="strip-sel">
+            <div class="grip left"></div>
+            <div class="grip right"></div>
+          </div>
         </div>
       </div>
       <div id="trim-tip"></div>
@@ -161,7 +175,7 @@ h1 { font-size: 18px; color: #a78bfa; margin-bottom: 4px; }
     <div class="progress" id="progress-wrap" style="display:none"><div class="bar" id="progress-bar"></div></div>
     <div class="info" id="progress-text" style="margin-top:6px"></div>
     <div id="result"></div>
-    <div class="hintline">File xuất ra được lưu thẳng vào thư viện media của app — dùng ngay được làm video nền hoặc meme, đồng thời tải về được.</div>
+    <div class="hintline">File xuất ra chỉ dùng để tải về trên trình duyệt, không lưu vào thư viện media của app.</div>
   </div>
 </div>
 
@@ -199,6 +213,10 @@ function loadFile(f) {
   video.addEventListener('loadedmetadata', () => {
     duration = video.duration;
     trimStart = 0; trimEnd = duration;
+    timelineZoom = 1;
+    stripContent.style.width = '100%';
+    stripWrap.scrollLeft = 0;
+    document.getElementById('timeline-zoom-label').textContent = '1.0×';
     dropzone.style.display = 'none';
     document.getElementById('editor').style.display = 'block';
     updateTrimUI();
@@ -238,8 +256,11 @@ async function buildFilmstrip() {
 
 // ---------- Trim: kéo tay cầm / kéo thân vùng chọn ----------
 const stripWrap = document.getElementById('strip-wrap');
+const stripContent = document.getElementById('strip-content');
 const stripSel = document.getElementById('strip-sel');
 const trimTip = document.getElementById('trim-tip');
+const HANDLE_W = 14;
+let timelineZoom = 1;
 
 function fmtT(t) {
   const m = Math.floor(t / 60), s = t - m * 60;
@@ -247,11 +268,17 @@ function fmtT(t) {
 }
 
 function updateTrimUI(showTipAt) {
-  const rect = stripWrap.getBoundingClientRect();
-  const l = (trimStart / duration) * 100;
-  const r = (trimEnd / duration) * 100;
-  stripSel.style.left = `calc(${l}% - 0px)`;
-  stripSel.style.width = `${r - l}%`;
+  stripContent.style.width = `${timelineZoom * 100}%`;
+  const rect = stripContent.getBoundingClientRect();
+  const pxPerSecond = rect.width / duration;
+  const leftEdge = trimStart * pxPerSecond;
+  const rightEdge = trimEnd * pxPerSecond;
+  const selLeft = Math.max(0, leftEdge - HANDLE_W);
+  const selWidth = Math.max(HANDLE_W * 2 + 2, rightEdge - leftEdge + HANDLE_W * 2);
+  const l = (leftEdge / rect.width) * 100;
+  const r = (rightEdge / rect.width) * 100;
+  stripSel.style.left = `${selLeft}px`;
+  stripSel.style.width = `${selWidth}px`;
   document.getElementById('dim-left').style.left = '0';
   document.getElementById('dim-left').style.width = `${l}%`;
   document.getElementById('dim-right').style.right = '0';
@@ -260,7 +287,7 @@ function updateTrimUI(showTipAt) {
     `${fmtT(trimStart)} → ${fmtT(trimEnd)}  (${(trimEnd - trimStart).toFixed(1)}s / ${duration.toFixed(1)}s)`;
   if (showTipAt != null) {
     trimTip.style.display = 'block';
-    trimTip.style.left = `${(showTipAt / duration) * rect.width}px`;
+    trimTip.style.left = `${(showTipAt / duration) * rect.width - stripWrap.scrollLeft}px`;
     trimTip.textContent = fmtT(showTipAt);
   } else {
     trimTip.style.display = 'none';
@@ -270,17 +297,39 @@ function updateTrimUI(showTipAt) {
 // 1 hệ pointer chung cho 3 kiểu kéo: tay trái, tay phải, thân (dịch cả đoạn)
 let dragMode = null; // 'left' | 'right' | 'body'
 let dragOffsetT = 0; // body-drag: khoảng cách từ điểm bấm tới trimStart
+let dragEdgeOffsetPx = 0; // grip-drag: bù từ điểm bấm tới mép trong tay cầm
 
 function stripT(clientX) {
-  const rect = stripWrap.getBoundingClientRect();
+  const rect = stripContent.getBoundingClientRect();
   return Math.min(duration, Math.max(0, (clientX - rect.left) / rect.width * duration));
 }
 
+function gripEdgeT(clientX, side) {
+  return stripT(clientX + dragEdgeOffsetPx);
+}
+
+function keepTimeVisible(time) {
+  const x = (time / duration) * stripContent.getBoundingClientRect().width;
+  const margin = 48;
+  if (x < stripWrap.scrollLeft + margin) stripWrap.scrollLeft = Math.max(0, x - margin);
+  else if (x > stripWrap.scrollLeft + stripWrap.clientWidth - margin) stripWrap.scrollLeft = x - stripWrap.clientWidth + margin;
+}
+
+function adjustTimelineZoom(dir) {
+  const centerTime = stripT(stripWrap.getBoundingClientRect().left + stripWrap.clientWidth / 2);
+  timelineZoom = Math.max(1, Math.min(8, Number((timelineZoom * (dir > 0 ? 1.45 : 1 / 1.45)).toFixed(2))));
+  stripContent.style.width = `${timelineZoom * 100}%`;
+  updateTrimUI();
+  const centerX = (centerTime / duration) * stripContent.getBoundingClientRect().width;
+  stripWrap.scrollLeft = Math.max(0, centerX - stripWrap.clientWidth / 2);
+  document.getElementById('timeline-zoom-label').textContent = `${timelineZoom.toFixed(1)}×`;
+}
+
 stripSel.querySelector('.grip.left').addEventListener('pointerdown', e => {
-  e.stopPropagation(); dragMode = 'left'; e.target.setPointerCapture(e.pointerId);
+  e.stopPropagation(); dragMode = 'left'; dragEdgeOffsetPx = e.currentTarget.getBoundingClientRect().right - e.clientX; e.target.setPointerCapture(e.pointerId);
 });
 stripSel.querySelector('.grip.right').addEventListener('pointerdown', e => {
-  e.stopPropagation(); dragMode = 'right'; e.target.setPointerCapture(e.pointerId);
+  e.stopPropagation(); dragMode = 'right'; dragEdgeOffsetPx = e.currentTarget.getBoundingClientRect().left - e.clientX; e.target.setPointerCapture(e.pointerId);
 });
 stripSel.addEventListener('pointerdown', e => {
   dragMode = 'body'; dragOffsetT = stripT(e.clientX) - trimStart;
@@ -289,15 +338,18 @@ stripSel.addEventListener('pointerdown', e => {
 
 document.addEventListener('pointermove', e => {
   if (!dragMode) return;
-  const t = stripT(e.clientX);
+  e.preventDefault();
+  const t = dragMode === 'left' ? gripEdgeT(e.clientX, 'left') : dragMode === 'right' ? gripEdgeT(e.clientX, 'right') : stripT(e.clientX);
   const MIN = 0.2; // đoạn chọn tối thiểu 0.2s
   if (dragMode === 'left') {
     trimStart = Math.min(t, trimEnd - MIN);
     video.currentTime = trimStart;      // video chính nhảy theo frame đang cắt
+    keepTimeVisible(trimStart);
     updateTrimUI(trimStart);
   } else if (dragMode === 'right') {
     trimEnd = Math.max(t, trimStart + MIN);
     video.currentTime = trimEnd;
+    keepTimeVisible(trimEnd);
     updateTrimUI(trimEnd);
   } else {
     const len = trimEnd - trimStart;
@@ -309,6 +361,7 @@ document.addEventListener('pointermove', e => {
   }
 });
 document.addEventListener('pointerup', () => { if (dragMode) { dragMode = null; updateTrimUI(); } });
+stripWrap.addEventListener('scroll', () => updateTrimUI());
 
 // ---------- Phát thử trong đoạn chọn ----------
 let playingSel = false;
@@ -413,10 +466,10 @@ async function exportVideo() {
   resultEl.innerHTML = '';
   btn.disabled = true;
   try {
-    setProgress(2, 'Đang tải video gốc lên server...');
+    setProgress(2, 'Đang chuẩn bị video tạm để xử lý...');
     const form = new FormData();
     form.append('file', pickedFile);
-    const up = await fetch(MEDIA_SERVER_URL + '/upload', { method: 'POST', body: form });
+    const up = await fetch(MEDIA_SERVER_URL + '/video-tool-upload', { method: 'POST', body: form });
     if (!up.ok) throw new Error('Upload lỗi HTTP ' + up.status);
     const upData = await up.json();
 
@@ -462,8 +515,7 @@ function pollJob(jobId) {
         btn.disabled = false;
         const url = MEDIA_SERVER_URL + job.outputUrl;
         resultEl.innerHTML =
-          `✓ Xong (${(job.duration || 0).toFixed(1)}s) — <a href="${url}" download>⭳ Tải video đã cắt</a>` +
-          `<div class="hintline">File cũng đã có sẵn trong thư viện media của app: <code style="color:#a78bfa">${job.outputFilename}</code></div>`;
+          `✓ Xong (${(job.duration || 0).toFixed(1)}s) — <a href="${url}" download>⭳ Tải video đã cắt</a>`;
       } else if (job.status === 'error') {
         clearInterval(timer);
         btn.disabled = false;

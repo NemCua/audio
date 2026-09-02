@@ -498,7 +498,7 @@ def _split_mixed_text(text: str, english_phrases: list[str]) -> list[tuple[str, 
 
 
 def _apply_echo(path: Path) -> None:
-    """Ghi đè MP3 với vang phòng nhẹ và gain đầu ra +30%.
+    """Ghi đè MP3 với vang phòng nhẹ và gain đầu ra mạnh hơn.
 
     Bốn phản xạ 38/79/127/181ms không cách đều, decay thấp và giảm nhanh nên
     hòa vào giọng như không gian phòng thay vì nghe thành các bản sao lặp lại.
@@ -512,7 +512,7 @@ def _apply_echo(path: Path) -> None:
     subprocess.run(
         [
             FFMPEG_BIN, "-y", "-i", str(path),
-            "-af", "aecho=0.88:0.88:38|79|127|181:0.34|0.24|0.15|0.09,volume=2.0,alimiter=limit=0.97:level=false",
+            "-af", "aecho=0.88:0.88:38|79|127|181:0.34|0.24|0.15|0.09,volume=2.6,alimiter=limit=0.97:level=false",
             "-b:a", "160k", str(tmp_out),
         ],
         capture_output=True, check=True,

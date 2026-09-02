@@ -25,6 +25,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
+from starlette.background import BackgroundTask
 
 FFPROBE_BIN = "ffprobe"
 FFMPEG_BIN = "ffmpeg"
@@ -51,6 +52,8 @@ def _probe_duration(path: Path) -> float | None:
 
 MEDIA_DIR = Path(__file__).resolve().parent / "media"
 MEDIA_DIR.mkdir(exist_ok=True)
+VIDEO_TOOL_TMP_DIR = Path(__file__).resolve().parent / ".video_tool_tmp"
+VIDEO_TOOL_TMP_DIR.mkdir(exist_ok=True)
 
 # File mp3 TTS sinh ra bởi tts_server.py (cổng 8007, threads/tts_audio/) — nằm
 # CÙNG máy/CÙNG thư mục threads/ với server này nên đọc thẳng file local được,
@@ -85,11 +88,12 @@ CACHE_DIRS = {
 # Thư viện file có sẵn (người dùng tự copy vào, không qua upload) — mỗi
 # category trỏ 1 thư mục cố định trong threads/. "audio" = âm thanh hiệu
 # ứng sẵn có (threads/audio/, vd vine-boom.mp3, bonk.mp3...); "meme" = ảnh
-# gif/video meme sẵn có (threads/gif/, vd john-jonah-jameson-lol.gif) — cả
-# 2 đều chọn nhanh trong modal soạn step thay vì upload lại mỗi lần.
+# gif/video meme sẵn có (threads/gif/, vd john-jonah-jameson-lol.gif);
+# "image" = ảnh asset đi kèm app (threads/image/) để đóng gói cùng bản tải về.
 LIBRARY_DIRS = {
     "audio": Path(__file__).resolve().parent / "audio",
     "meme": Path(__file__).resolve().parent / "gif",
+    "image": Path(__file__).resolve().parent / "image",
     # "background"/"bgaudio" — video nền (gameplay)/nhạc nền có sẵn, chọn
     # nhanh trong sidebar mục 1/2 thay vì phải chọn file từ máy mỗi lần.
     "background": Path(__file__).resolve().parent / "background",
@@ -109,6 +113,7 @@ LIBRARY_DIRS = {
 LIBRARY_META_FILES = {
     "audio": Path(__file__).resolve().parent / "audio" / "_meta.json",
     "meme": Path(__file__).resolve().parent / "gif" / "_meta.json",
+    "image": Path(__file__).resolve().parent / "image" / "_meta.json",
     "background": Path(__file__).resolve().parent / "background" / "_meta.json",
     "bgaudio": Path(__file__).resolve().parent / "audiobackground" / "_meta.json",
 }
@@ -172,12 +177,38 @@ async def upload(file: UploadFile):
     }
 
 
+@app.post("/video-tool-upload")
+async def video_tool_upload(file: UploadFile):
+    if not file.filename:
+        raise HTTPException(400, "Thiếu tên file")
+    out_name = _safe_filename(file.filename)
+    out_path = VIDEO_TOOL_TMP_DIR / out_name
+    content = await file.read()
+    out_path.write_bytes(content)
+    is_video = bool(re.search(r"\.(mp4|mov|webm|m4v)$", out_name, re.IGNORECASE))
+    return {
+        "filename": out_name,
+        "originalName": file.filename,
+        "isVideo": is_video,
+        "size": len(content),
+        "duration": _probe_duration(out_path),
+    }
+
+
 @app.get("/media/{filename}")
 def get_media(filename: str):
     path = MEDIA_DIR / filename
     if not path.exists() or MEDIA_DIR not in path.resolve().parents:
         raise HTTPException(404, "Không tìm thấy file")
     return FileResponse(path)
+
+
+@app.get("/video-tool-file/{filename}")
+def get_video_tool_file(filename: str):
+    path = VIDEO_TOOL_TMP_DIR / Path(filename).name
+    if not path.exists() or VIDEO_TOOL_TMP_DIR not in path.resolve().parents:
+        raise HTTPException(404, "Không tìm thấy file")
+    return FileResponse(path, filename=path.name, background=BackgroundTask(path.unlink, missing_ok=True))
 
 
 @app.get("/library/{category}")
@@ -541,12 +572,11 @@ def update_memeready(item_id: str, req: MemereadyUpdateRequest):
 # ---------- Cắt/crop video (video_tool.html — mục 5.26 CONTEXT.md) ----------
 # Trang video_tool.html (serve qua /static/) cho chọn vùng crop + kéo trim
 # filmstrip hoàn toàn phía client; khi bấm Xuất mới upload file gốc qua
-# POST /upload có sẵn rồi gọi POST /video-process xử lý thật bằng FFmpeg.
+# POST /video-tool-upload rồi gọi POST /video-process xử lý thật bằng FFmpeg.
 # Job chạy nền bằng threading.Thread (endpoints server này đều sync def,
 # không trộn asyncio vào cho rối — khác export_server.py dùng async vì bên
-# đó cần Playwright async sẵn rồi). Kết quả lưu THẲNG vào threads/media/ —
-# URL /media/{out} vừa để tải về vừa dùng ngay được trong app (làm video
-# nền/meme) không cần upload lại.
+# đó cần Playwright async sẵn rồi). Kết quả lưu trong thư mục tạm của tool,
+# chỉ phục vụ nút tải về rồi xóa sau khi trình duyệt tải xong.
 
 video_jobs: dict[str, dict] = {}  # job_id -> {status, progress, message, outputUrl, duration}
 
@@ -585,7 +615,7 @@ def _run_video_job(job_id: str, in_path: Path, req: VideoProcessRequest):
             y = max(0, int(req.crop.get("y", 0)))
             cmd += ["-vf", f"crop={w}:{h}:{x}:{y}"]
         out_name = f"{in_path.stem}_cut_{uuid.uuid4().hex[:8]}.mp4"
-        out_path = MEDIA_DIR / out_name
+        out_path = VIDEO_TOOL_TMP_DIR / out_name
         # Luôn re-encode (crop bắt buộc re-encode; giữ 1 đường code duy nhất
         # cho cả trường hợp chỉ trim — chậm hơn stream-copy chút nhưng cắt
         # chính xác từng frame, không bị kẹt keyframe).
@@ -609,18 +639,21 @@ def _run_video_job(job_id: str, in_path: Path, req: VideoProcessRequest):
             raise RuntimeError(f"FFmpeg lỗi (mã {proc.returncode}): {stderr_out[-1500:]}")
         video_jobs[job_id].update(
             status="done", progress=100, message="Hoàn tất!",
-            outputUrl=f"/media/{out_name}", outputFilename=out_name,
+            outputUrl=f"/video-tool-file/{out_name}", outputFilename=out_name,
             duration=_probe_duration(out_path),
         )
     except Exception as e:
         video_jobs[job_id].update(status="error", message=str(e))
+    finally:
+        if in_path.exists() and VIDEO_TOOL_TMP_DIR in in_path.resolve().parents:
+            in_path.unlink(missing_ok=True)
 
 
 @app.post("/video-process")
 def video_process(req: VideoProcessRequest):
-    in_path = MEDIA_DIR / Path(req.filename).name  # .name chặn path traversal
+    in_path = VIDEO_TOOL_TMP_DIR / Path(req.filename).name  # .name chặn path traversal
     if not in_path.exists():
-        raise HTTPException(404, f"Không tìm thấy file: {req.filename} — cần upload qua /upload trước")
+        raise HTTPException(404, f"Không tìm thấy file: {req.filename} — cần upload qua /video-tool-upload trước")
     job_id = uuid.uuid4().hex[:12]
     video_jobs[job_id] = {"status": "queued", "progress": 0, "message": "Đang chờ...", "outputUrl": None}
     threading.Thread(target=_run_video_job, args=(job_id, in_path, req), daemon=True).start()

@@ -338,14 +338,33 @@ async function exportVideoOfflineDesktop() {
   window.addEventListener('credit-balance-changed', refreshExportCreditInfo);
 
   // Video/Audio nền dùng thư viện cục bộ trong Documents của người dùng.
+  // Modal thư viện mới không còn dùng #m-library-grid; riêng "image" là
+  // asset đóng cùng app trong threads/image nên đọc qua media_server local.
   window.loadLibraryOptions = loadLibraryOptions = async function () {
     const category = arguments[0];
-    const grid = document.getElementById('m-library-grid');
+    const grid = document.getElementById('modal-library-overlay')?.classList.contains('open')
+      ? document.getElementById('modal-library-grid')
+      : document.getElementById('m-library-grid');
     if (!grid) return;
-    const items = await window.desktopApp?.getBundledLibrary?.(category) || [];
-    const toggle = document.querySelector('.lib-toggle-btn');
-    if (toggle) toggle.textContent = `📂 Chọn từ thư viện có sẵn (${items.length})`;
-    grid.innerHTML = items.length ? items.map((item, i) => libraryItemHtml(category, item, i)).join('') : '<div class="lib-empty">Thư viện đóng sẵn đang trống.</div>';
+    grid.innerHTML = '<div class="lib-empty">Đang tải...</div>';
+    try {
+      let items = null;
+      if (category === 'image') {
+        const res = await fetch(MEDIA_SERVER_URL + '/library/image');
+        if (!res.ok) throw new Error('HTTP ' + res.status);
+        items = await res.json();
+      } else {
+        items = await window.desktopApp?.getBundledLibrary?.(category) || [];
+      }
+      document.querySelectorAll('.lib-toggle-btn').forEach(toggle => {
+        toggle.textContent = `📂 Chọn từ thư viện có sẵn (${items.length})`;
+      });
+      grid.innerHTML = items.length
+        ? items.map((item, i) => libraryItemHtml(category, item, i)).join('')
+        : '<div class="lib-empty">Thư viện đóng sẵn đang trống.</div>';
+    } catch (error) {
+      grid.innerHTML = `<div class="lib-empty" style="color:#ef4444">⚠ Không tải được thư viện: ${esc(error.message || String(error))}</div>`;
+    }
   };
   window.loadMemereadyOptions = loadMemereadyOptions = async function () {
     const grid = document.getElementById('memeready-modal-grid');
