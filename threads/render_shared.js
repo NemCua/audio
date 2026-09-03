@@ -579,7 +579,24 @@ function buildMessengerFooterHtml() {
   </div>`;
 }
 function buildZaloFooterHtml() {
-  return `<div class="zalo-composer" aria-hidden="true"><span class="zalo-compose-more">•••</span><div class="zalo-compose-input">Tin nhắn</div><span>♩</span><span>▧</span></div>`;
+  return `<div class="zalo-composer" aria-hidden="true">
+    <img class="zalo-compose-icon zalo-compose-smile" src="assets/brand/zalo/smile.png" alt=""/>
+    <div class="zalo-compose-input">Tin nhắn</div>
+    <svg class="zalo-compose-icon zalo-compose-more" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+      <circle cx="8.2" cy="12" r="1" stroke="#464455" stroke-width="0.5"/>
+      <circle cx="12" cy="12" r="1" stroke="#464455" stroke-width="0.5"/>
+      <circle cx="15.8" cy="12" r="1" stroke="#464455" stroke-width="0.5"/>
+    </svg>
+    <img class="zalo-compose-icon zalo-compose-mic" src="assets/brand/zalo/mic.png" alt=""/>
+    <img class="zalo-compose-icon zalo-compose-image" src="assets/brand/zalo/image.png" alt=""/>
+  </div>`;
+}
+function zaloClockLabel(value) {
+  const raw = String(value || '').trim();
+  const matched = raw.match(/\b([01]?\d|2[0-3]):([0-5]\d)\b/);
+  if (matched) return `${matched[1].padStart(2, '0')}:${matched[2]}`;
+  const now = new Date();
+  return `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
 }
 function buildMessengerHtml(s) {
   if (s.messPlatform === 'instagram') return buildInstagramHtml(s);
@@ -674,7 +691,7 @@ function buildInstagramHtml(s) {
     : `<span>${esc(partnerName)}</span>`;
   const headerHtml = showHeader ? `<div class="ig-header"><div class="ig-back" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M15 18l-6-6 6-6"/></svg></div>
     <div class="ig-avatar${identityEditable?' is-editable':''}"${avatarEditAttr}><img src="${esc(partnerAvatar)}" alt="" referrerpolicy="no-referrer"/></div>
-    <div class="ig-who"><div class="ig-name-row"><div class="ig-name">${nameHtml}</div><span class="ig-chevron"></span></div><div class="ig-status">Hoạt động 1 giờ trước</div></div>
+    <div class="ig-who"><div class="ig-name-row"><div class="ig-name">${nameHtml}</div><span class="ig-chevron"><svg viewBox="0 0 12 20" aria-hidden="true"><path d="M2 2l8 8-8 8"/></svg></span></div><div class="ig-status">Hoạt động 1 giờ trước</div></div>
     <div class="ig-actions" aria-hidden="true"><button class="ig-icon"><svg aria-label="Gọi thoại" fill="currentColor" role="img" viewBox="0 0 24 24"><title>Gọi thoại</title><path d="M18.227 22.912c-4.913 0-9.286-3.627-11.486-5.828C4.486 14.83.731 10.291.921 5.231a3.289 3.289 0 0 1 .908-2.138 17.116 17.116 0 0 1 1.865-1.71 2.307 2.307 0 0 1 3.004.174 13.283 13.283 0 0 1 3.658 5.325 2.551 2.551 0 0 1-.19 1.941l-.455.853a.463.463 0 0 0-.024.387 7.57 7.57 0 0 0 4.077 4.075.455.455 0 0 0 .386-.024l.853-.455a2.548 2.548 0 0 1 1.94-.19 13.278 13.278 0 0 1 5.326 3.658 2.309 2.309 0 0 1 .174 3.003 17.319 17.319 0 0 1-1.71 1.866 3.29 3.29 0 0 1-2.138.91 10.27 10.27 0 0 1-.368.006Zm-13.144-20a.27.27 0 0 0-.167.054A15.121 15.121 0 0 0 3.28 4.47a1.289 1.289 0 0 0-.36.836c-.161 4.301 3.21 8.34 5.235 10.364s6.06 5.403 10.366 5.236a1.284 1.284 0 0 0 .835-.36 15.217 15.217 0 0 0 1.504-1.637.324.324 0 0 0-.047-.41 11.62 11.62 0 0 0-4.457-3.119.545.545 0 0 0-.411.044l-.854.455a2.452 2.452 0 0 1-2.071.116 9.571 9.571 0 0 1-5.189-5.188 2.457 2.457 0 0 1 .115-2.071l.456-.855a.544.544 0 0 0 .043-.41 11.629 11.629 0 0 0-3.118-4.458.36.36 0 0 0-.244-.1Z"></path></svg></button><button class="ig-icon"><svg aria-label="Gọi video" fill="currentColor" role="img" viewBox="0 0 24 24"><title>Gọi video</title><rect fill="none" height="18" rx="3" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" width="16.999" x="1" y="3"></rect><path d="m17.999 9.146 2.495-2.256A1.5 1.5 0 0 1 23 8.003v7.994a1.5 1.5 0 0 1-2.506 1.113L18 14.854" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"></path></svg></button></div>
   </div>` : '';
   return `<div class="ig-card">${headerHtml}<div class="ig-messages">${rows}${appendControl}</div>${s.messShowFooter?buildInstagramFooterHtml():''}</div>`;
@@ -690,12 +707,16 @@ function buildZaloHtml(s) {
   const partnerNameAttr = esc(partnerName).replace(/"/g,'&quot;').replace(/'/g,'&#39;');
   const partnerNameSize = Math.max(1, Math.min(24, Array.from(partnerName).length));
   const showHeader = s.messShowHeader !== false;
+  const timeLabel = zaloClockLabel(s.messTime || s.iphoneTime || s.timeLabel);
   const rows = history.map((m,i) => {
+    const prevSame = i > 0 && history[i - 1]?.side === m.side;
+    const nextSame = i < history.length - 1 && history[i + 1]?.side === m.side;
     const avatarEdit = identityEditable ? ` role="button" tabindex="0" title="Đổi ảnh đại diện" onclick="event.stopPropagation();document.getElementById('mess-avatar-file').click()"` : '';
-    const avatar = m.side === 'theirs' ? `<div class="zalo-mini-avatar${identityEditable?' is-editable':''}"${avatarEdit}><img src="${esc(partnerAvatar)}" alt="" referrerpolicy="no-referrer"/></div>` : '';
-    const textHtml = m.text ? `<div class="zalo-bubble">${esc(m.text)}</div>` : '';
+    const avatar = m.side === 'theirs' ? (prevSame ? '<div class="zalo-avatar-space"></div>' : `<div class="zalo-mini-avatar${identityEditable?' is-editable':''}"${avatarEdit}><img src="${esc(partnerAvatar)}" alt="" referrerpolicy="no-referrer"/></div>`) : '';
+    const timeHtml = !nextSame ? `<div class="zalo-time">${esc(zaloClockLabel(m.time || m.timeLabel || timeLabel))}</div>` : '';
+    const textHtml = m.text ? `<div class="zalo-bubble">${esc(m.text)}${timeHtml}</div>` : '';
     const imageUrl = safeMediaUrl(m.imageUrl);
-    const imageHtml = imageUrl ? `<img class="zalo-chat-image${m.imageType==='sticker'?' is-sticker':''}" src="${esc(imageUrl)}" alt="" referrerpolicy="no-referrer"/>` : '';
+    const imageHtml = imageUrl ? `<div class="zalo-image-wrap"><img class="zalo-chat-image${m.imageType==='sticker'?' is-sticker':''}" src="${esc(imageUrl)}" alt="" referrerpolicy="no-referrer"/>${!m.text ? timeHtml : ''}</div>` : '';
     const audioBadge = editable && (audioIndexes.has(i) || (m.parallelAudios && m.parallelAudios.length)) ? `<span class="mess-audio-badge">🔊 ${m.parallelAudios?.length || 1}<button type="button" onclick="event.stopPropagation();removeMessengerQuickAudio(${i})" title="Xóa âm thanh song song" aria-label="Xóa âm thanh song song">×</button></span>` : '';
     const insert = editable ? `<div class="mess-insert-slot" onclick="event.stopPropagation();beginMessengerInsert(${i})" title="Chèn tin nhắn trước tin này"><span>＋ Chèn tin tại đây</span></div>` : '';
     const menuDirection = i < 4 ? '' : ' menu-up';
@@ -714,7 +735,7 @@ function buildZaloHtml(s) {
     ? `<input class="zalo-name-input" value="${partnerNameAttr}" size="${partnerNameSize}" aria-label="Tên cuộc trò chuyện" oninput="messPartnerName=this.value;this.size=Math.max(1,Math.min(24,Array.from(this.value).length))" onblur="commitMessengerPartnerName(this)" onkeydown="if(event.key==='Enter'){event.preventDefault();this.blur()}"/>`
     : `<span>${esc(partnerName)}</span>`;
   const headerHtml = showHeader ? `<div class="zalo-head"><span class="zalo-back">‹</span><div class="zalo-title"><div>${nameHtml}</div></div>
-      <div class="zalo-head-icons" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M15 9l5-3v12l-5-3v3a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2z"/></svg><svg viewBox="0 0 24 24"><circle cx="10" cy="10" r="7"/><path d="m15 15 6 6"/></svg><svg viewBox="0 0 24 24"><path d="M8 6h13M8 12h13M8 18h13"/></svg></div>
+      <div class="zalo-head-icons" aria-hidden="true"><img class="zalo-head-icon zalo-phone" src="assets/brand/zalo/phone3.png" alt=""/><img class="zalo-head-icon zalo-camera" src="assets/brand/zalo/video.png" alt=""/><img class="zalo-head-icon zalo-menu" src="assets/brand/zalo/menu.png" alt=""/></div>
     </div>` : '';
   return `<div class="zalo-card">${headerHtml}<div class="zalo-body">${rows}${appendControl}</div>${s.messShowFooter?buildZaloFooterHtml():''}
     ${identityEditable ? `<div class="zalo-avatar-editor"${avatarEditAttr}><img src="${esc(partnerAvatar)}" alt=""/></div>` : ''}
