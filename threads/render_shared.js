@@ -211,7 +211,8 @@ function buildEmphasisBubbleHtml(active) {
       groupCls = prevSame && nextSame ? ' middle' : nextSame ? ' first' : prevSame ? ' last' : '';
     }
   }
-  return `<div class="emphasis-bubble-wrap ${esc(platform)} ${esc(side)}${esc(groupCls)}"><div class="emphasis-bubble">${esc(text)}</div></div>`;
+  const timeHtml = platform === 'zalo' ? `<div class="emphasis-zalo-time">${esc(zaloClockLabel(message.time || message.timeLabel || step.messTime || step.iphoneTime || step.timeLabel))}</div>` : '';
+  return `<div class="emphasis-bubble-wrap ${esc(platform)} ${esc(side)}${esc(groupCls)}"><div class="emphasis-bubble">${esc(text)}${timeHtml}</div></div>`;
 }
 
 function renderEmphasisLayer(t, stack) {

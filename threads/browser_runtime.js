@@ -305,8 +305,9 @@ async function exportVideoOfflineDesktop() {
       exportCompleted = true;
       await window.creditClient.consumeExport(reservation.id);
       reservation = null;
+      const cloudSaved = await window.autoSaveProjectAfterExport?.();
       const safePath = esc(exported.path);
-      result.innerHTML = `<button class="btn btn-primary" onclick="desktopApp.revealFile('${safePath.replace(/'/g, "\\'")}')">✓ MP4 đã lưu — Hiện trong thư mục</button><div style="font-size:11px;color:#94a3b8;margin-top:6px;word-break:break-all">${safePath}</div>`;
+      result.innerHTML = `<button class="btn btn-primary" onclick="desktopApp.revealFile('${safePath.replace(/'/g, "\\'")}')">✓ MP4 đã lưu — Hiện trong thư mục</button><div style="font-size:11px;color:#94a3b8;margin-top:6px;word-break:break-all">${safePath}</div>${cloudSaved?`<div style="font-size:11px;color:#86efac;margin-top:6px">✓ Đã tự lưu project cloud: ${esc(cloudSaved.title)}</div>`:''}`;
       if (creditInfo) creditInfo.textContent = `✓ Đã thanh toán ${quote.cost} credit · Còn ${window.creditClient.balance()} credit`;
     } catch (error) {
       let refundNote = '';

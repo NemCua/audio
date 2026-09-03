@@ -157,6 +157,13 @@ def migrate() -> None:
             reason TEXT DEFAULT '', metadata JSONB DEFAULT '{}', created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
         )""",
         "CREATE INDEX IF NOT EXISTS admin_audit_user_idx ON admin_audit_log(user_id, created_at DESC)",
+        """CREATE TABLE IF NOT EXISTS user_projects (
+            id UUID PRIMARY KEY, user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+            title TEXT NOT NULL DEFAULT '', payload TEXT NOT NULL, encoding TEXT NOT NULL DEFAULT 'TSV2G',
+            step_count INTEGER NOT NULL DEFAULT 0, payload_bytes INTEGER NOT NULL DEFAULT 0,
+            created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(), updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+        )""",
+        "CREATE INDEX IF NOT EXISTS user_projects_user_updated_idx ON user_projects(user_id, updated_at DESC)",
     ]
     with db() as conn:
         with conn.cursor() as cur:
@@ -314,6 +321,13 @@ class AdminCreditRequest(BaseModel):
     user_id: int; amount: int; reference: str = "manual"; idempotency_key: str
 class AdminPricingRequest(BaseModel):
     prices: dict[str, int] = Field(default_factory=dict)
+class ProjectSaveRequest(BaseModel):
+    title: str = Field(default="", max_length=160)
+    payload: str = Field(min_length=8, max_length=5_000_000)
+    encoding: str = Field(default="TSV2G", max_length=24)
+    step_count: int = Field(default=0, ge=0, le=5000)
+class ProjectUpdateRequest(ProjectSaveRequest):
+    pass
 
 
 def _validated_type_counts(type_counts: dict[str, int]) -> dict[str, int]:
@@ -532,6 +546,89 @@ def refund_export(req: ReservationRequest, identity: dict = Depends(current_iden
             cur.execute("UPDATE export_reservations SET status='refunded',finished_at=NOW() WHERE id=%s", (req.reservation_id,))
             cur.execute("INSERT INTO credit_ledger(user_id,amount,balance_after,kind,reference,idempotency_key) VALUES(%s,%s,%s,'export_refund',%s,%s)", (identity["id"], reservation["cost"], balance, req.reservation_id, f"refund:{req.reservation_id}"))
     return {"ok": True, "balance": balance}
+
+
+def _project_payload_bytes(payload: str) -> int:
+    return len(payload.encode("utf-8"))
+
+
+def _project_title(req: ProjectSaveRequest) -> str:
+    title = req.title.strip()
+    return title or f"Project {datetime.now(timezone.utc).strftime('%Y-%m-%d %H:%M')}"
+
+
+@router.get("/projects")
+def list_projects(identity: dict = Depends(current_identity)):
+    with db() as conn:
+        with conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
+            cur.execute(
+                """SELECT id,title,encoding,step_count,payload_bytes,created_at,updated_at
+                   FROM user_projects WHERE user_id=%s ORDER BY updated_at DESC LIMIT 100""",
+                (identity["id"],),
+            )
+            return [dict(row) for row in cur.fetchall()]
+
+
+@router.post("/projects")
+def create_project(req: ProjectSaveRequest, identity: dict = Depends(current_identity)):
+    if req.encoding not in ("TSV2G", "TSV2J"):
+        raise HTTPException(400, "Encoding project không hợp lệ")
+    project_id = str(uuid.uuid4())
+    payload_bytes = _project_payload_bytes(req.payload)
+    with db() as conn:
+        with conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
+            cur.execute(
+                """INSERT INTO user_projects(id,user_id,title,payload,encoding,step_count,payload_bytes)
+                   VALUES(%s,%s,%s,%s,%s,%s,%s)
+                   RETURNING id,title,encoding,step_count,payload_bytes,created_at,updated_at""",
+                (project_id, identity["id"], _project_title(req), req.payload, req.encoding, req.step_count, payload_bytes),
+            )
+            return dict(cur.fetchone())
+
+
+@router.get("/projects/{project_id}")
+def get_project(project_id: str, identity: dict = Depends(current_identity)):
+    with db() as conn:
+        with conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
+            cur.execute(
+                """SELECT id,title,payload,encoding,step_count,payload_bytes,created_at,updated_at
+                   FROM user_projects WHERE id=%s AND user_id=%s""",
+                (project_id, identity["id"]),
+            )
+            row = cur.fetchone()
+    if not row:
+        raise HTTPException(404, "Không tìm thấy project")
+    return dict(row)
+
+
+@router.put("/projects/{project_id}")
+def update_project(project_id: str, req: ProjectUpdateRequest, identity: dict = Depends(current_identity)):
+    if req.encoding not in ("TSV2G", "TSV2J"):
+        raise HTTPException(400, "Encoding project không hợp lệ")
+    payload_bytes = _project_payload_bytes(req.payload)
+    with db() as conn:
+        with conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
+            cur.execute(
+                """UPDATE user_projects SET title=%s,payload=%s,encoding=%s,step_count=%s,payload_bytes=%s,updated_at=NOW()
+                   WHERE id=%s AND user_id=%s
+                   RETURNING id,title,encoding,step_count,payload_bytes,created_at,updated_at""",
+                (_project_title(req), req.payload, req.encoding, req.step_count, payload_bytes, project_id, identity["id"]),
+            )
+            row = cur.fetchone()
+    if not row:
+        raise HTTPException(404, "Không tìm thấy project")
+    return dict(row)
+
+
+@router.delete("/projects/{project_id}")
+def delete_project(project_id: str, identity: dict = Depends(current_identity)):
+    with db() as conn:
+        with conn.cursor() as cur:
+            cur.execute("DELETE FROM user_projects WHERE id=%s AND user_id=%s RETURNING id", (project_id, identity["id"]))
+            row = cur.fetchone()
+    if not row:
+        raise HTTPException(404, "Không tìm thấy project")
+    return {"ok": True}
 
 
 @router.post("/admin/credits")

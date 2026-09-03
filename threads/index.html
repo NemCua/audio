@@ -61,7 +61,12 @@ body.settings-scene-open .settings-scene{display:block}
 .settings-scene-head p{margin:5px 0 0;color:#7f8aa5;font-size:13px}
 .settings-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px}
 .settings-grid .setting-card{min-width:0}
+.codec-modal-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px;min-height:0}
+.codec-modal-grid label{display:flex;flex-direction:column;gap:7px;min-width:0;color:#cbd5e1;font-size:12px;font-weight:700}
+.codec-modal-grid textarea{min-height:430px;max-height:62vh;resize:vertical;font:11px/1.5 ui-monospace,SFMono-Regular,Menlo,monospace}
+.codec-size-row{display:flex;align-items:center;justify-content:space-between;gap:10px;min-height:22px;margin-top:10px;color:#94a3b8;font-size:12px}
 @media(max-width:980px){.settings-grid{grid-template-columns:1fr}}
+@media(max-width:980px){.codec-modal-grid{grid-template-columns:1fr}.codec-modal-grid textarea{min-height:260px}}
 .script-panel{min-width:0}
 .script-lanes{display:grid;grid-template-columns:minmax(0,1.25fr) minmax(220px,.75fr);gap:10px;min-height:0;overflow:hidden;flex:1 1 0}
 body.absolute-layer-off .script-lanes{grid-template-columns:1fr}
@@ -786,7 +791,9 @@ body.absolute-layer-off #absolute-lane{display:none}
 .emphasis-bubble-wrap.messenger .emphasis-bubble,.emphasis-bubble-wrap.instagram .emphasis-bubble,.emphasis-bubble-wrap.zalo .emphasis-bubble{max-width:74%;padding:1.55cqw 2.55cqw;border-radius:999cqw;font-size:3.85cqw;font-weight:520;line-height:1.22;letter-spacing:0;box-shadow:none}
 .emphasis-bubble-wrap.messenger.mine .emphasis-bubble{background:#2864ed}.emphasis-bubble-wrap.messenger.theirs .emphasis-bubble{background:#f0f0f0;color:#050505}
 .emphasis-bubble-wrap.instagram.mine .emphasis-bubble{background:linear-gradient(90deg,#9333ea,#a933f0 56%,#8f2cf0)}.emphasis-bubble-wrap.instagram.theirs .emphasis-bubble{background:#f1f3f5;color:#111}
-.emphasis-bubble-wrap.zalo.mine .emphasis-bubble{background:#dbebff;color:#061a33}.emphasis-bubble-wrap.zalo.theirs .emphasis-bubble{background:#fff;color:#111}
+.emphasis-bubble-wrap.zalo.mine .emphasis-bubble{background:#d9f2ff;color:#111827;border:1px solid #b7dbe9;border-radius:2.2cqw}.emphasis-bubble-wrap.zalo.theirs .emphasis-bubble{background:#fff;color:#111;border:1px solid #d4d9df;border-radius:2.2cqw}
+.emphasis-bubble-wrap.zalo .emphasis-bubble{padding:2.05cqw 2.35cqw 1.85cqw;border-radius:2.2cqw;font-size:3.65cqw;font-weight:400;line-height:1.25}
+.emphasis-zalo-time{margin-top:1.05cqw;color:#8f969f;font-size:2.15cqw;line-height:1;font-weight:400;font-variant-numeric:tabular-nums}
 .progressive-line{display:block}.progressive-line+.progressive-line{margin-top:.32em}
 .note-subtitle-layer{display:none;position:absolute;z-index:18;left:7%;right:7%;bottom:14%;color:#fff;font-family:Arial,sans-serif;font-size:5.3cqw;font-weight:800;line-height:1.2;text-align:center;-webkit-text-stroke:.28cqw #000;paint-order:stroke fill;text-shadow:0 .45cqw 1.2cqw #000;pointer-events:none}.note-subtitle-layer.show{display:block}
 
@@ -1571,7 +1578,56 @@ body.absolute-layer-off #absolute-lane{display:none}
           <button class="btn btn-ghost" onclick="clearServerCache()">🗑️ Dọn media tạm</button>
           <button class="btn btn-ghost" id="clear-local-media-btn" style="margin-top:7px;border-color:#7f1d1d;color:#fca5a5" onclick="clearDesktopMedia()">🧹 Xóa toàn bộ media cục bộ</button>
         </div>
+        <div class="setting-card">
+          <h3>Mã rút gọn</h3>
+          <div class="hint">Chuyển đổi thử giữa JSON project đầy đủ và mã rút gọn nén ngay trên máy người dùng.</div>
+          <button class="btn btn-ghost" style="margin-top:10px" onclick="openProjectCodecModal()">⇄ Mở bộ chuyển đổi</button>
+        </div>
+        <div class="setting-card">
+          <h3>Project cloud</h3>
+          <div class="hint">Lưu project lên database bằng mã rút gọn. Server chỉ giữ chuỗi đã nén, app tự giải nén khi mở lại.</div>
+          <button class="btn btn-ghost" style="margin-top:10px" onclick="openCloudProjectsModal()">☁ Mở project cloud</button>
+        </div>
       </div>
+    </div>
+  </div>
+</div>
+
+<div class="step-modal-overlay" id="project-codec-overlay" onclick="if(event.target===this)closeProjectCodecModal()">
+  <div class="step-modal" style="width:min(1180px,96vw);max-height:92vh;display:flex;flex-direction:column">
+    <h3>⇄ Chuyển đổi mã rút gọn</h3>
+    <div class="codec-modal-grid">
+      <label>
+        JSON project
+        <textarea id="codec-json-text" spellcheck="false" oninput="updateCodecSizeLabel()" placeholder='Dán JSON đầy đủ, hoặc bấm "Lấy project hiện tại".'></textarea>
+      </label>
+      <label>
+        Mã rút gọn
+        <textarea id="codec-compact-text" spellcheck="false" oninput="updateCodecSizeLabel()" placeholder="Dán mã bắt đầu bằng TSV2G. hoặc TSV2J."></textarea>
+      </label>
+    </div>
+    <div class="codec-size-row">
+      <span id="codec-status"></span>
+      <span id="codec-size-label"></span>
+    </div>
+    <div class="modal-actions">
+      <button type="button" class="btn-cancel" onclick="closeProjectCodecModal()">Đóng</button>
+      <button type="button" class="btn-cancel" onclick="loadCurrentProjectIntoCodec()">Lấy project hiện tại</button>
+      <button type="button" class="btn-cancel" onclick="convertCodecCompactToJson()">← Sang JSON</button>
+      <button type="button" class="btn-ok" onclick="convertCodecJsonToCompact()">Sang mã rút gọn →</button>
+    </div>
+  </div>
+</div>
+
+<div class="step-modal-overlay" id="cloud-projects-overlay" onclick="if(event.target===this)closeCloudProjectsModal()">
+  <div class="step-modal" style="width:min(820px,94vw);max-height:88vh;display:flex;flex-direction:column">
+    <h3>☁ Project cloud</h3>
+    <div class="hint">Project sẽ tự lưu vào cloud bằng mã rút gọn sau mỗi lần xuất video thành công.</div>
+    <div id="cloud-project-status" style="min-height:20px;margin-top:10px;color:#86efac;font-size:12px"></div>
+    <div id="cloud-project-list" style="display:grid;gap:8px;overflow:auto;max-height:58vh;margin-top:10px"></div>
+    <div class="modal-actions">
+      <button type="button" class="btn-cancel" onclick="closeCloudProjectsModal()">Đóng</button>
+      <button type="button" class="btn-cancel" onclick="loadCloudProjects()">Làm mới</button>
     </div>
   </div>
 </div>
@@ -6828,6 +6884,177 @@ function buildProjectJson() {
   };
   return JSON.stringify(project, null, 2);
 }
+const PROJECT_COMPACT_GZIP_PREFIX = 'TSV2G.';
+const PROJECT_COMPACT_JSON_PREFIX = 'TSV2J.';
+function codecByteSize(value){return new TextEncoder().encode(String(value||'')).length;}
+function bytesToBase64Url(bytes){
+  let binary='';
+  for(let i=0;i<bytes.length;i+=0x8000)binary+=String.fromCharCode(...bytes.subarray(i,i+0x8000));
+  return btoa(binary).replace(/\+/g,'-').replace(/\//g,'_').replace(/=+$/,'');
+}
+function base64UrlToBytes(value){
+  const normalized=String(value||'').replace(/\s+/g,'').replace(/-/g,'+').replace(/_/g,'/');
+  const padded=normalized+'='.repeat((4-normalized.length%4)%4);
+  const binary=atob(padded),bytes=new Uint8Array(binary.length);
+  for(let i=0;i<binary.length;i++)bytes[i]=binary.charCodeAt(i);
+  return bytes;
+}
+async function gzipTextClientSide(text){
+  if(!('CompressionStream' in window))return null;
+  const stream=new Blob([text]).stream().pipeThrough(new CompressionStream('gzip'));
+  return new Uint8Array(await new Response(stream).arrayBuffer());
+}
+async function gunzipTextClientSide(bytes){
+  if(!('DecompressionStream' in window))throw new Error('Trình duyệt hiện tại không hỗ trợ giải nén client-side.');
+  try{
+    const stream=new Blob([bytes]).stream().pipeThrough(new DecompressionStream('gzip'));
+    return await new Response(stream).text();
+  }catch(_error){
+    throw new Error('Không giải nén được mã rút gọn. Mã có thể bị copy thiếu, dính ký tự lạ hoặc không đúng prefix TSV2G.');
+  }
+}
+async function encodeProjectCompactText(jsonText){
+  const project=JSON.parse(jsonText);
+  const minified=JSON.stringify(project);
+  const gzipped=await gzipTextClientSide(minified);
+  if(gzipped)return PROJECT_COMPACT_GZIP_PREFIX+bytesToBase64Url(gzipped);
+  return PROJECT_COMPACT_JSON_PREFIX+bytesToBase64Url(new TextEncoder().encode(minified));
+}
+async function decodeProjectCompactText(compactText){
+  const text=String(compactText||'').trim().replace(/^```(?:text)?\s*/i,'').replace(/```\s*$/,'').trim();
+  let json;
+  if(text.startsWith(PROJECT_COMPACT_GZIP_PREFIX)){
+    json=await gunzipTextClientSide(base64UrlToBytes(text.slice(PROJECT_COMPACT_GZIP_PREFIX.length)));
+  }else if(text.startsWith(PROJECT_COMPACT_JSON_PREFIX)){
+    json=new TextDecoder().decode(base64UrlToBytes(text.slice(PROJECT_COMPACT_JSON_PREFIX.length)));
+  }else{
+    throw new Error('Mã rút gọn phải bắt đầu bằng TSV2G. hoặc TSV2J.');
+  }
+  return JSON.stringify(JSON.parse(json),null,2);
+}
+function updateCodecSizeLabel(){
+  const json=document.getElementById('codec-json-text')?.value||'',compact=document.getElementById('codec-compact-text')?.value||'',label=document.getElementById('codec-size-label');
+  if(label)label.textContent=`JSON ${codecByteSize(json).toLocaleString('vi-VN')} byte · Mã ${codecByteSize(compact).toLocaleString('vi-VN')} byte`;
+}
+function openProjectCodecModal(){
+  document.getElementById('codec-status').textContent='';
+  document.getElementById('project-codec-overlay').classList.add('open');
+  updateCodecSizeLabel();
+}
+function closeProjectCodecModal(){document.getElementById('project-codec-overlay').classList.remove('open');}
+function loadCurrentProjectIntoCodec(){
+  document.getElementById('codec-json-text').value=buildProjectJson();
+  document.getElementById('codec-status').textContent='✓ Đã lấy project hiện tại.';
+  updateCodecSizeLabel();
+}
+async function convertCodecJsonToCompact(){
+  const status=document.getElementById('codec-status'),source=document.getElementById('codec-json-text').value.trim();
+  try{
+    if(!source)throw new Error('Chưa có JSON để chuyển đổi.');
+    const compact=await encodeProjectCompactText(source);
+    const restored=await decodeProjectCompactText(compact);
+    if(JSON.stringify(JSON.parse(source))!==JSON.stringify(JSON.parse(restored)))throw new Error('Round-trip không khớp dữ liệu gốc.');
+    document.getElementById('codec-compact-text').value=compact;
+    status.textContent='✓ Đã chuyển sang mã rút gọn và kiểm tra khôi phục OK.';
+  }catch(error){status.textContent='✗ '+error.message;}
+  updateCodecSizeLabel();
+}
+async function convertCodecCompactToJson(){
+  const status=document.getElementById('codec-status'),source=document.getElementById('codec-compact-text').value.trim();
+  try{
+    if(!source)throw new Error('Chưa có mã rút gọn để khôi phục.');
+    document.getElementById('codec-json-text').value=await decodeProjectCompactText(source);
+    status.textContent='✓ Đã khôi phục JSON từ mã rút gọn.';
+  }catch(error){status.textContent='✗ '+error.message;}
+  updateCodecSizeLabel();
+}
+function compactProjectEncoding(payload){
+  if(String(payload||'').startsWith(PROJECT_COMPACT_GZIP_PREFIX))return 'TSV2G';
+  if(String(payload||'').startsWith(PROJECT_COMPACT_JSON_PREFIX))return 'TSV2J';
+  return 'unknown';
+}
+async function projectApi(path,options={}){
+  if(!window.authFetch)throw new Error('Chưa đăng nhập hoặc app chưa kết nối backend.');
+  const headers=new Headers(options.headers||{});
+  if(options.body&&!headers.has('Content-Type'))headers.set('Content-Type','application/json');
+  const response=await window.authFetch('/auth/projects'+path,{...options,headers});
+  const data=await response.json().catch(()=>({}));
+  if(!response.ok)throw new Error(data.detail||`HTTP ${response.status}`);
+  return data;
+}
+function cloudProjectRowHtml(project){
+  const updated=project.updated_at?new Date(project.updated_at).toLocaleString('vi-VN'):'';
+  const size=Number(project.payload_bytes||0).toLocaleString('vi-VN');
+  const title=esc(project.title||'Project chưa đặt tên');
+  return `<div style="display:grid;grid-template-columns:1fr auto;gap:10px;align-items:center;padding:10px 12px;border:1px solid #252b49;border-radius:9px;background:#0a0c14">
+    <div style="min-width:0">
+      <div style="color:#e5e7eb;font-size:13px;font-weight:800;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${title}</div>
+      <div style="margin-top:4px;color:#94a3b8;font-size:11px">${Number(project.step_count||0)} card · ${esc(project.encoding||'')} · ${size} byte · ${esc(updated)}</div>
+    </div>
+    <div style="display:flex;gap:6px">
+      <button type="button" class="btn-cancel" onclick="loadProjectFromCloud('${esc(project.id)}')">Mở</button>
+      <button type="button" class="btn-cancel" style="border-color:#7f1d1d;color:#fca5a5" onclick="deleteProjectFromCloud('${esc(project.id)}')">Xóa</button>
+    </div>
+  </div>`;
+}
+function openCloudProjectsModal(){
+  document.getElementById('cloud-project-status').textContent='';
+  document.getElementById('cloud-projects-overlay').classList.add('open');
+  loadCloudProjects();
+}
+function closeCloudProjectsModal(){document.getElementById('cloud-projects-overlay').classList.remove('open');}
+async function loadCloudProjects(){
+  const status=document.getElementById('cloud-project-status'),list=document.getElementById('cloud-project-list');
+  try{
+    status.textContent='Đang tải danh sách project...';
+    const projects=await projectApi('');
+    list.innerHTML=projects.length?projects.map(cloudProjectRowHtml).join(''):'<div class="script-empty">Chưa có project nào trên cloud.</div>';
+    status.textContent=`✓ Có ${projects.length} project.`;
+  }catch(error){
+    if(status)status.textContent='✗ '+error.message;
+    throw error;
+  }
+}
+function autoProjectTitle(){
+  const ts=new Date().toLocaleString('vi-VN',{year:'numeric',month:'2-digit',day:'2-digit',hour:'2-digit',minute:'2-digit'});
+  return `Export ${ts} - ${steps.length} card`;
+}
+async function saveCurrentProjectToCloud(title=autoProjectTitle()){
+  const status=document.getElementById('cloud-project-status');
+  try{
+    if(status)status.textContent='Đang nén project ở máy bạn...';
+    const payload=await encodeProjectCompactText(buildProjectJson());
+    const saved=await projectApi('',{method:'POST',body:JSON.stringify({title,payload,encoding:compactProjectEncoding(payload),step_count:steps.length})});
+    if(status)status.textContent=`✓ Đã lưu "${saved.title}" (${Number(saved.payload_bytes||0).toLocaleString('vi-VN')} byte).`;
+    if(document.getElementById('cloud-projects-overlay')?.classList.contains('open'))await loadCloudProjects();
+    return saved;
+  }catch(error){status.textContent='✗ '+error.message;}
+}
+async function autoSaveProjectAfterExport(){
+  try{return await saveCurrentProjectToCloud();}
+  catch(error){console.warn('Không thể tự lưu project cloud:',error);}
+  return null;
+}
+async function loadProjectFromCloud(projectId){
+  const status=document.getElementById('cloud-project-status');
+  try{
+    status.textContent='Đang tải và giải nén project...';
+    const project=await projectApi('/'+encodeURIComponent(projectId));
+    const json=await decodeProjectCompactText(project.payload);
+    const file=new File([json],'cloud-project.json',{type:'application/json'});
+    await importProjectJson({files:[file],value:''});
+    status.textContent=`✓ Đã nạp "${project.title}".`;
+  }catch(error){status.textContent='✗ '+error.message;}
+}
+async function deleteProjectFromCloud(projectId){
+  if(!confirm('Xóa project này khỏi cloud?'))return;
+  const status=document.getElementById('cloud-project-status');
+  try{
+    await projectApi('/'+encodeURIComponent(projectId),{method:'DELETE'});
+    status.textContent='✓ Đã xóa project.';
+    await loadCloudProjects();
+  }catch(error){status.textContent='✗ '+error.message;}
+}
 function openExportJsonModal(){document.getElementById('export-json-status').textContent='';document.getElementById('export-json-overlay').classList.add('open');}
 function closeExportJsonModal(){document.getElementById('export-json-overlay').classList.remove('open');}
 async function copyProjectJson(){
@@ -8023,6 +8250,11 @@ function pollExportStatus(jobId) {
         const url = EXPORT_SERVER_URL + job.downloadUrl;
         document.getElementById('export-result').innerHTML =
           `<a href="${url}" download class="btn btn-primary" style="display:block;text-align:center;text-decoration:none">⭳ Tải video vừa xuất (.mp4)</a>`;
+        autoSaveProjectAfterExport().then(saved=>{
+          if(saved)document.getElementById('export-result').insertAdjacentHTML('beforeend',`<div style="font-size:11px;color:#86efac;margin-top:6px">✓ Đã tự lưu project cloud: ${esc(saved.title)}</div>`);
+        }).catch(error=>{
+          document.getElementById('export-result').insertAdjacentHTML('beforeend',`<div style="font-size:11px;color:#fbbf24;margin-top:6px">MP4 đã xuất, nhưng chưa tự lưu cloud: ${esc(error.message)}</div>`);
+        });
       } else if (job.status === 'error') {
         clearInterval(exportPollTimer);
         setExportLoading(false);
