@@ -16,6 +16,8 @@ import subprocess
 import time
 import uuid
 from pathlib import Path
+from urllib.parse import unquote, urlparse
+from urllib.request import url2pathname
 
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
@@ -29,6 +31,7 @@ EXPORT_RENDER_URL_DIR = BASE_DIR  # export_render.html nằm cùng thư mục
 EXPORTS_DIR = BASE_DIR / "exports"
 EXPORTS_DIR.mkdir(exist_ok=True)
 TTS_AUDIO_DIR = BASE_DIR / "tts_audio"
+DESKTOP_EXPORTS_DIR = Path.home() / "Documents" / "Threads Video Maker" / "Exports"
 
 FFMPEG_BIN = "ffmpeg"
 FFPROBE_BIN = "ffprobe"
@@ -60,6 +63,8 @@ class ExportRequest(BaseModel):
     blurIdentity: bool = True  # khớp trạng thái checkbox "Làm mờ tên & avatar" ở preview lúc bấm Xuất
     exportPreset: str = "normal"  # normal | messenger-mobile
     emphasisZoomMode: str = "overlay"  # overlay | card
+    desktopOutput: bool = False
+    desktopOutputDir: str | None = None
 
 
 jobs: dict[str, dict] = {}  # job_id -> {status, progress, message, downloadUrl}
@@ -93,13 +98,80 @@ def has_audio_stream(path: Path) -> bool:
     return bool(r.stdout.strip())
 
 
+def desktop_exports_dir(requested_dir: str | None) -> Path:
+    """Dùng Documents do Electron trả về, tránh tự đoán đường dẫn macOS/Windows."""
+    if not requested_dir:
+        return DESKTOP_EXPORTS_DIR
+    destination = Path(requested_dir).expanduser().resolve()
+    if destination.name != "Exports" or destination.parent.name != "Threads Video Maker":
+        raise RuntimeError("Thư mục lưu desktop không hợp lệ")
+    return destination
+
+
+def appearance_delay(step: dict) -> float:
+    appearance = step.get("appearance")
+    if appearance in ("drop-bounce", "bounce-up", "bounce-left", "bounce-right"):
+        return 0.175
+    if appearance in ("fly-left", "fly-right", "fly-top", "fly-bottom"):
+        return 0.253
+    return 0.0
+
+
+def compute_export_timeline(steps: list[dict]) -> float:
+    """Export server tự phòng thủ nếu client gửi steps chưa có _start/_end."""
+    def is_parallel_media(step: dict) -> bool:
+        return step.get("parallel") and step.get("type") in ("audio", "image", "sticker", "text")
+
+    def is_absolute_layer(step: dict) -> bool:
+        return step.get("layerMode") == "absolute"
+
+    def effective_duration(step: dict) -> float:
+        return float(step.get("duration") or 0) + appearance_delay(step)
+
+    if steps and all("_start" in step and "_end" in step for step in steps):
+        return max(float(step.get("_end") or 0) for step in steps)
+
+    t = 0.0
+    main_end = 0.0
+    for step in steps:
+        if is_parallel_media(step) or is_absolute_layer(step):
+            continue
+        step["_start"] = t
+        step["_end"] = t + effective_duration(step)
+        t = step["_end"] + float(step.get("gap") or 0)
+        main_end = t
+
+    last_main = None
+    parallel_end = 0.0
+    by_id = {step.get("id"): step for step in steps}
+    for step in steps:
+        if is_absolute_layer(step):
+            step["_start"] = max(0.0, float(step.get("absoluteStart") or 0))
+            step["_end"] = max(main_end, step["_start"] + effective_duration(step)) if step.get("absoluteUntilEnd") else step["_start"] + effective_duration(step)
+            parallel_end = max(parallel_end, step["_end"])
+            continue
+        if not is_parallel_media(step):
+            last_main = step
+            continue
+        anchor = by_id.get(step.get("parallelAnchorStepId"))
+        step["_start"] = float((anchor or last_main or {}).get("_start") or 0)
+        step["_end"] = step["_start"] + effective_duration(step)
+        parallel_end = max(parallel_end, step["_end"])
+    return max(main_end, parallel_end)
+
+
+def is_parallel_export_media(step: dict) -> bool:
+    return bool(step.get("parallel") and step.get("type") in ("audio", "image", "sticker", "text"))
+
+
 def compute_breakpoints(steps: list[dict], total_duration: float) -> list[float]:
     """Mọi mốc _start/_end của step post/comment/reply/image (KHÔNG gồm
     audio — nó không hiện hình, không ảnh hưởng stack) — mỗi đoạn giữa 2 mốc
     liền kề là 1 "quãng ổn định" của computeSceneAt(), chỉ cần render 1 ảnh."""
     points = {0.0, total_duration}
+    visual_types = {"post", "comment", "reply", "text", "note", "image", "sticker", "mess"}
     for s in steps:
-        if s.get("type") in ("post", "comment", "reply", "image", "mess"):
+        if s.get("type") in visual_types:
             points.add(round(s["_start"], 6))
             points.add(round(s["_end"], 6))
             appearance = s.get("appearance")
@@ -158,6 +230,7 @@ async def render_stack_images(job_id: str, steps: list[dict], breakpoints: list[
             meme_step_start = result.get("memeStepStart")
 
             dynamic_meme = None
+            dynamic_memes = []
             if has_meme and is_dynamic and meme_box:
                 dynamic_meme = {
                     "media_url": meme_media_url,
@@ -167,6 +240,20 @@ async def render_stack_images(job_id: str, steps: list[dict], breakpoints: list[
                     "x_ratio": meme_box["xRatio"], "y_ratio": meme_box["yRatio"],
                     "w_ratio": meme_box["wRatio"], "h_ratio": meme_box["hRatio"],
                 }
+            for item in result.get("dynamicMemes") or []:
+                box = item.get("box") or {}
+                if not item.get("mediaUrl") or not box:
+                    continue
+                dynamic_memes.append({
+                    "media_url": item.get("mediaUrl"),
+                    "step_id": item.get("stepId"),
+                    "step_start": item.get("stepStart"),
+                    "opacity": max(0.0, min(1.0, float(item.get("opacity", 1) or 0))),
+                    "x_ratio": box["xRatio"], "y_ratio": box["yRatio"],
+                    "w_ratio": box["wRatio"], "h_ratio": box["hRatio"],
+                })
+            if dynamic_meme and not dynamic_memes:
+                dynamic_memes.append(dynamic_meme)
 
             # ảnh tĩnh cần chụp: có card (stack_ids) HOẶC có meme TĨNH đứng
             # riêng (has_meme mà không phải dynamic — dynamic đã tự ẩn ở JS)
@@ -177,7 +264,7 @@ async def render_stack_images(job_id: str, steps: list[dict], breakpoints: list[
                 await page.locator("#preview-frame").screenshot(path=str(img_path), omit_background=True)
 
             segments.append({
-                "t0": t0, "t1": t1, "img_path": img_path, "dynamic_meme": dynamic_meme,
+                "t0": t0, "t1": t1, "img_path": img_path, "dynamic_meme": dynamic_meme, "dynamic_memes": dynamic_memes,
             })
             on_progress(i + 1, n)
         await browser.close()
@@ -219,51 +306,51 @@ def build_ffmpeg_cmd(job_id: str, bg_video_path: Path, bg_audio_path: Path | Non
     # chỉ phát đúng một lượt rồi overlay giữ frame cuối; không stream_loop.
     # Riêng GIF vẫn giữ cách đọc loop nội tại của chính file GIF.
     for seg in segments:
-        dm = seg.get("dynamic_meme")
-        if not dm or not dm.get("_local_path"):
-            continue
-        t0, t1 = seg["t0"], seg["t1"]
-        dur = t1 - t0
-        x_px = round(dm["x_ratio"] * TARGET_W)
-        y_px = round(dm["y_ratio"] * TARGET_H)
-        w_px = max(2, round(dm["w_ratio"] * TARGET_W))
-        h_px = max(2, round(dm["h_ratio"] * TARGET_H))
-        # kích thước chẵn — libx264/scale filter yêu cầu width/height chẵn
-        w_px += w_px % 2
-        h_px += h_px % 2
-        opacity = max(0.0, min(1.0, float(dm.get("opacity", 1) or 0)))
-        is_gif = dm["_local_path"].lower().endswith(".gif")
-        loop_flags = ["-ignore_loop", "0"] if is_gif else []
-        # Một video-card có thể trải qua nhiều segment do card TTS/audio khác
-        # tạo breakpoint. Mỗi segment phải tiếp tục đúng vị trí trong file,
-        # không được mở lại từ giây 0 (gây lóe/phát lại video cũ).
-        raw_step_start = dm.get("step_start")
-        step_start = t0 if raw_step_start is None else float(raw_step_start)
-        source_offset = max(0.0, t0 - step_start)
-        if not is_gif:
-            media_duration = probe_duration(Path(dm["_local_path"]))
-            if media_duration > 0:
-                source_offset = min(source_offset, max(0.0, media_duration - 0.04))
-        # -itsoffset {t0} — BẮT BUỘC, không chỉ là tối ưu. Không có nó, input
-        # gif/video bắt đầu đọc PTS=0 ngay từ đầu lệnh ffmpeg, nhưng overlay
-        # 'enable=between(t,t0,t1)' chỉ ẨN/HIỆN kết quả — không hề dịch PTS
-        # của input overlay. Track chính chạy tới t=t0 thì input gif (chỉ có
-        # đúng '-t {dur}' giây dữ liệu tính từ PTS=0) đã hết sạch từ lâu,
-        # FFmpeg giữ nguyên frame CUỐI CÙNG available → overlay đứng hình y
-        # hệt 1 ảnh tĩnh (bug thật đã gặp, xem qua nhiều lớp test: so khung
-        # hình bằng mắt phát hiện MD5 khác nhau chỉ do nén H.264, không phải
-        # chuyển động thật — ffprobe/duration không lộ được bug này, phải
-        # crop đúng vùng meme rồi xếp lưới nhiều khung mới thấy). itsoffset
-        # dịch input để nó "bắt đầu" đúng lúc t0 của track chính, khớp pha.
-        seek_flags = ["-ss", f"{source_offset:.3f}"] if source_offset > 0 and not is_gif else []
-        inputs += loop_flags + seek_flags + ["-itsoffset", f"{t0:.3f}", "-t", f"{dur:.3f}", "-i", dm["_local_path"]]
-        new_label = f"v{idx}"
-        filter_parts.append(
-            f"[{idx}:v]scale={w_px}:{h_px},format=rgba,colorchannelmixer=aa={opacity:.3f}[m{idx}];"
-            f"[{last_label}][m{idx}]overlay={x_px}:{y_px}:enable='between(t,{t0:.3f},{t1:.3f})'[{new_label}]"
-        )
-        last_label = new_label
-        idx += 1
+        for dm in seg.get("dynamic_memes") or ([seg.get("dynamic_meme")] if seg.get("dynamic_meme") else []):
+            if not dm or not dm.get("_local_path"):
+                continue
+            t0, t1 = seg["t0"], seg["t1"]
+            dur = t1 - t0
+            x_px = round(dm["x_ratio"] * TARGET_W)
+            y_px = round(dm["y_ratio"] * TARGET_H)
+            w_px = max(2, round(dm["w_ratio"] * TARGET_W))
+            h_px = max(2, round(dm["h_ratio"] * TARGET_H))
+            # kích thước chẵn — libx264/scale filter yêu cầu width/height chẵn
+            w_px += w_px % 2
+            h_px += h_px % 2
+            opacity = max(0.0, min(1.0, float(dm.get("opacity", 1) or 0)))
+            is_gif = dm["_local_path"].lower().endswith(".gif")
+            loop_flags = ["-ignore_loop", "0"] if is_gif else []
+            # Một video-card có thể trải qua nhiều segment do card TTS/audio khác
+            # tạo breakpoint. Mỗi segment phải tiếp tục đúng vị trí trong file,
+            # không được mở lại từ giây 0 (gây lóe/phát lại video cũ).
+            raw_step_start = dm.get("step_start")
+            step_start = t0 if raw_step_start is None else float(raw_step_start)
+            source_offset = max(0.0, t0 - step_start)
+            if not is_gif:
+                media_duration = probe_duration(Path(dm["_local_path"]))
+                if media_duration > 0:
+                    source_offset = min(source_offset, max(0.0, media_duration - 0.04))
+            # -itsoffset {t0} — BẮT BUỘC, không chỉ là tối ưu. Không có nó, input
+            # gif/video bắt đầu đọc PTS=0 ngay từ đầu lệnh ffmpeg, nhưng overlay
+            # 'enable=between(t,t0,t1)' chỉ ẨN/HIỆN kết quả — không hề dịch PTS
+            # của input overlay. Track chính chạy tới t=t0 thì input gif (chỉ có
+            # đúng '-t {dur}' giây dữ liệu tính từ PTS=0) đã hết sạch từ lâu,
+            # FFmpeg giữ nguyên frame CUỐI CÙNG available → overlay đứng hình y
+            # hệt 1 ảnh tĩnh (bug thật đã gặp, xem qua nhiều lớp test: so khung
+            # hình bằng mắt phát hiện MD5 khác nhau chỉ do nén H.264, không phải
+            # chuyển động thật — ffprobe/duration không lộ được bug này, phải
+            # crop đúng vùng meme rồi xếp lưới nhiều khung mới thấy). itsoffset
+            # dịch input để nó "bắt đầu" đúng lúc t0 của track chính, khớp pha.
+            seek_flags = ["-ss", f"{source_offset:.3f}"] if source_offset > 0 and not is_gif else []
+            inputs += loop_flags + seek_flags + ["-itsoffset", f"{t0:.3f}", "-t", f"{dur:.3f}", "-i", dm["_local_path"]]
+            new_label = f"v{idx}"
+            filter_parts.append(
+                f"[{idx}:v]scale={w_px}:{h_px},format=rgba,colorchannelmixer=aa={opacity:.3f}[m{idx}];"
+                f"[{last_label}][m{idx}]overlay={x_px}:{y_px}:enable='between(t,{t0:.3f},{t1:.3f})'[{new_label}]"
+            )
+            last_label = new_label
+            idx += 1
 
     # audio: TTS/hiệu ứng qua adelay, nhạc nền qua stream_loop riêng, amix gộp
     audio_input_labels = []
@@ -345,6 +432,10 @@ async def run_export_job(job_id: str, req: ExportRequest):
     job_dir.mkdir(exist_ok=True)
     try:
         steps = req.steps
+        computed_total_duration = compute_export_timeline(steps)
+        (job_dir / "steps_debug.json").write_text(
+            json.dumps(steps, ensure_ascii=False, indent=2), encoding="utf-8"
+        )
         # Audio SONG SONG (parallel=true) và layer riêng không chiếm chỗ track chính — bám
         # theo step khác, không ảnh hưởng tổng thời lượng (giống mục 5.13
         # bên index.html: isParallelAudio()). Audio TUẦN TỰ (mặc định) vẫn
@@ -353,9 +444,10 @@ async def run_export_job(job_id: str, req: ExportRequest):
         # kịch bản bị cắt cụt mất, tổng thời lượng tính thiếu.
         total_duration = max(
             [s["_end"] + (s.get("gap") or 0) for s in steps
-             if not (s.get("type") == "audio" and s.get("parallel")) and s.get("layerMode") != "absolute"] or [0]
+             if not is_parallel_export_media(s) and s.get("layerMode") != "absolute"] or [0]
         )
         total_duration = max(total_duration, *[s["_end"] for s in steps if s.get("layerMode") == "absolute"], 0)
+        total_duration = max(total_duration, computed_total_duration)
         if total_duration <= 0:
             raise RuntimeError("Kịch bản rỗng hoặc không có step nào có thời lượng")
 
@@ -371,8 +463,9 @@ async def run_export_job(job_id: str, req: ExportRequest):
         # thu thập audio track: TTS mỗi step (đọc thẳng file local threads/tts_audio/),
         # audio hiệu ứng mỗi step audio
         audio_tracks = []
+        tts_step_types = {"post", "comment", "reply", "text", "note", "image", "mess"}
         for s in steps:
-            if s.get("type") in ("post", "comment", "reply", "image", "mess") and s.get("audioUrl"):
+            if s.get("type") in tts_step_types and s.get("audioUrl"):
                 # Nhiều đoạn giọng đọc nối tiếp trong CÙNG 1 step (mục "nhiều
                 # đoạn TTS") — đoạn #1 giữ nguyên field cũ (audioUrl/ttsDuration),
                 # các đoạn thêm nằm trong extraTtsSegments[] theo đúng thứ tự
@@ -395,7 +488,10 @@ async def run_export_job(job_id: str, req: ExportRequest):
                     allowed_duration = min(clip_duration, remaining)
                     if url and allowed_duration > 0:
                         fname = url.rstrip("/").split("/")[-1]
-                        fpath = TTS_AUDIO_DIR / fname
+                        # Desktop lưu TTS dưới file:// trong Documents; web
+                        # dùng /audio/<file>.mp3 trong cache threads/tts_audio.
+                        # Cả hai phải được trộn vào video cuối.
+                        fpath = _resolve_local_media(url) or (TTS_AUDIO_DIR / fname)
                         if fpath.exists():
                             audio_tracks.append((str(fpath), s["_start"] + appearance_delay + acc, 1.0, allowed_duration))
                     acc += clip_duration
@@ -424,10 +520,14 @@ async def run_export_job(job_id: str, req: ExportRequest):
         # resolve được (file bị xoá, server media không chạy...), bỏ qua đoạn
         # đó thay vì làm hỏng cả job.
         for seg in segments:
-            dm = seg.get("dynamic_meme")
-            if dm:
+            dynamic_items = seg.get("dynamic_memes") or ([seg.get("dynamic_meme")] if seg.get("dynamic_meme") else [])
+            for dm in dynamic_items:
                 local_path = _resolve_local_media(dm["media_url"])
                 dm["_local_path"] = str(local_path) if local_path else None
+
+        (job_dir / "segments_debug.json").write_text(
+            json.dumps(segments, ensure_ascii=False, indent=2, default=str), encoding="utf-8"
+        )
 
         update_job(job_id, status="downloading_assets", progress=62, message="Đang tải video/nhạc nền...")
         bg_video_path = _resolve_local_media(req.bgVideoUrl)
@@ -455,7 +555,21 @@ async def run_export_job(job_id: str, req: ExportRequest):
         if proc.returncode != 0:
             raise RuntimeError(f"FFmpeg lỗi (mã {proc.returncode}): {stderr_out[-2000:]}")
 
-        update_job(job_id, status="done", progress=100, message="Hoàn tất!", downloadUrl=f"/export-download/{job_id}")
+        local_output_path = None
+        if req.desktopOutput:
+            destination_dir = desktop_exports_dir(req.desktopOutputDir)
+            destination_dir.mkdir(parents=True, exist_ok=True)
+            local_output = destination_dir / f"threads-video-{job_id}.mp4"
+            shutil.copy2(out_path, local_output)
+            local_output_path = str(local_output)
+        update_job(
+            job_id,
+            status="done",
+            progress=100,
+            message="Hoàn tất!",
+            downloadUrl=f"/export-download/{job_id}",
+            localOutputPath=local_output_path,
+        )
     except Exception as e:
         update_job(job_id, status="error", message=str(e))
 
@@ -469,6 +583,7 @@ async def run_export_job(job_id: str, req: ExportRequest):
 LIBRARY_DIR_MAP = {
     "audio": BASE_DIR / "audio",
     "meme": BASE_DIR / "gif",
+    "image": BASE_DIR / "image",
     "background": BASE_DIR / "background",
     "bgaudio": BASE_DIR / "audiobackground",
 }
@@ -496,14 +611,22 @@ def _resolve_local_media(url: str | None) -> Path | None:
     không chỉ riêng thiếu tiếng."""
     if not url:
         return None
+    if url.startswith("file://"):
+        parsed = urlparse(url)
+        # url2pathname đổi file:///C:/... thành C:\\... trên Windows, đồng
+        # thời vẫn decode đúng khoảng trắng/ký tự tiếng Việt trên macOS.
+        p = Path(url2pathname(unquote(parsed.path)))
+        if p.exists():
+            return p
     if "/media/" in url:
-        fname = url.split("/media/")[-1]
+        fname = unquote(url.split("/media/")[-1])
         p = BASE_DIR / "media" / fname
         if p.exists():
             return p
     if "/library-file/" in url:
         rest = url.split("/library-file/")[-1]  # "meme/ten-file.gif" hoặc "audio/ten-file.mp3"
         category, _, fname = rest.partition("/")
+        fname = unquote(fname)
         lib_dir = LIBRARY_DIR_MAP.get(category)
         if lib_dir:
             p = lib_dir / fname
@@ -512,6 +635,7 @@ def _resolve_local_media(url: str | None) -> Path | None:
     if "/memeready-file/" in url:
         rest = url.split("/memeready-file/")[-1]  # "{id}/{filename}"
         item_id, _, fname = rest.partition("/")
+        item_id, fname = unquote(item_id), unquote(fname)
         p = MEMEREADY_DIR / item_id / fname
         if p.exists() and MEMEREADY_DIR in p.resolve().parents:
             return p

@@ -1104,6 +1104,7 @@ async function renderStackAt(t) {
   const retainedMemeLayer = document.getElementById('retained-meme-layer');
   retainedMemeLayer.innerHTML = memeSteps.filter(s=>!memeStep||s.id!==memeStep.id).map(retainedMemeHtml).join('');
   const dynamicMeme = isDynamicMeme(memeStep);
+  const dynamicMemes = [];
   let memeBox = null;
   const memeUrl = safeMediaUrl(memeStep?.mediaUrl);
   if (memeStep && memeUrl) {
@@ -1148,7 +1149,27 @@ async function renderStackAt(t) {
     const scale=Math.max(.35,Math.min(2.5,Number(memeStep.overlayScale||1)));
     memeEl.style.transform = `translate(${ox}cqw, ${oy}cqw) scale(${scale})`;
     memeBox = measureMemeBox();
+    dynamicMemes.push({mediaUrl:memeStep.mediaUrl,stepId:memeStep.id,stepStart:memeStep._start,opacity:mediaOpacityValue(memeStep),box:memeBox});
     memeEl.style.display = 'none';
+  }
+  for (const retained of retainedMemeLayer.querySelectorAll('.retained-meme')) {
+    const step = memeSteps.find(item => String(item.id) === String(retained.dataset.id));
+    if (!isDynamicMeme(step)) continue;
+    const frameBox = document.getElementById('preview-frame').getBoundingClientRect();
+    const box = retained.getBoundingClientRect();
+    dynamicMemes.push({
+      mediaUrl: step.mediaUrl,
+      stepId: step.id,
+      stepStart: step._start,
+      opacity: mediaOpacityValue(step),
+      box: {
+        xRatio: (box.left - frameBox.left) / frameBox.width,
+        yRatio: (box.top - frameBox.top) / frameBox.height,
+        wRatio: box.width / frameBox.width,
+        hRatio: box.height / frameBox.height,
+      },
+    });
+    retained.style.display = 'none';
   }
 
   return {
@@ -1160,6 +1181,7 @@ async function renderStackAt(t) {
     memeOpacity: memeStep ? mediaOpacityValue(memeStep) : 1,
     memeStepId: memeStep ? memeStep.id : null,
     memeStepStart: memeStep ? memeStep._start : null,
+    dynamicMemes,
   };
 }
 </script>

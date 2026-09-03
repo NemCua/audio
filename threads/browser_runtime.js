@@ -1,7 +1,6 @@
 /* Browser-first runtime: no Python services are required. */
 (() => {
   'use strict';
-
   // Khi chạy bản web local, giữ nguyên các hàm trong index.html để chúng gọi
   // media_server/export_server local (8010/8011). Browser runtime trước đây
   // ghi đè các hàm thư viện bằng bản chỉ dành cho desktop/browser độc lập,
@@ -193,6 +192,9 @@
   }
 
   window.exportVideo = exportVideo = async function () {
+    // Exporter offline Electron từng là một renderer riêng và không theo kịp
+    // text/note cùng video retained. Dùng pipeline server chung với preview để
+    // desktop và web xuất ra cùng một timeline.
     if (window.desktopApp?.exportProject) return exportVideoOfflineDesktop();
     if (!steps.length) { alert('Chưa có step nào trong kịch bản.'); return; }
     if (!bgVideoFile && !bgVideoLibraryItem) { alert('Cần chọn video nền trước.'); return; }
@@ -275,7 +277,6 @@ async function exportVideoOfflineDesktop() {
     const btn = document.getElementById('export-btn'), result = document.getElementById('export-result');
     const creditInfo = document.getElementById('export-credit-info');
     setExportLoading(true); result.innerHTML = '';
-    const unsubscribe = window.desktopApp.onExportProgress(progress => setExportProgress(progress.percent || 0, progress.text || ''));
     let reservation = null;
     let exportCompleted = false;
     try {
@@ -288,25 +289,46 @@ async function exportVideoOfflineDesktop() {
         ...pricingInput,
         idempotency_key: `desktop-export:${crypto.randomUUID()}`,
       });
-      const exported = await window.desktopApp.exportProject({
-        steps,
-        bgVideoPath: desktopBgVideoPath,
-        bgAudioPath: desktopBgAudioPath,
-        bgAudioVolume: parseFloat(document.getElementById('bgaudio-volume').value),
-        blurIdentity: document.getElementById('blur-identity-toggle').checked,
+      setExportProgress(2, 'Đang chuẩn bị video nền...');
+      const bgVideoUrl = bgVideoLibraryItem
+        ? bgVideoLibraryItem.url
+        : await uploadForExport(bgVideoFile, 'video nền');
+      const bgAudioUrl = bgAudioLibraryItem
+        ? bgAudioLibraryItem.url
+        : (bgAudioFile ? await uploadForExport(bgAudioFile, 'nhạc nền') : null);
+      const workspace = await window.desktopApp.getWorkspaceInfo();
+      const separator = String(workspace.root).includes('\\') ? '\\' : '/';
+      const desktopOutputDir = String(workspace.root).replace(/[\\/]+$/, '') + separator + 'Exports';
+      const response = await fetch(EXPORT_SERVER_URL + '/export', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          steps, bgVideoUrl, bgAudioUrl,
+          bgAudioVolume: parseFloat(document.getElementById('bgaudio-volume').value),
+          blurIdentity: document.getElementById('blur-identity-toggle').checked,
+          exportPreset: document.getElementById('export-preset')?.value || 'normal',
+          emphasisZoomMode: emphasisZoomMode(), desktopOutput: true, desktopOutputDir,
+        }),
       });
-      if (exported.canceled) {
-        await window.creditClient.refundExport(reservation.id);
-        reservation = null;
-        document.getElementById('export-progress-wrap').style.display = 'none';
-        if (creditInfo) creditInfo.textContent = 'Đã hủy xuất — credit đã được hoàn lại.';
-        return;
-      }
+      if (!response.ok) throw new Error('Không gửi được job xuất: HTTP ' + response.status);
+      const { job_id: jobId } = await response.json();
+      const job = await new Promise((resolve, reject) => {
+        const timer = setInterval(async () => {
+          try {
+            const statusResponse = await fetch(`${EXPORT_SERVER_URL}/export-status/${jobId}`);
+            if (!statusResponse.ok) throw new Error('HTTP ' + statusResponse.status);
+            const status = await statusResponse.json();
+            setExportProgress(status.progress || 0, status.message || '');
+            if (status.status === 'done') { clearInterval(timer); resolve(status); }
+            if (status.status === 'error') { clearInterval(timer); reject(new Error(status.message || 'Xuất video lỗi')); }
+          } catch (error) { clearInterval(timer); reject(error); }
+        }, 1200);
+      });
       exportCompleted = true;
       await window.creditClient.consumeExport(reservation.id);
       reservation = null;
       const cloudSaved = await window.autoSaveProjectAfterExport?.();
-      const safePath = esc(exported.path);
+      const safePath = esc(job.localOutputPath || '');
+      if (!job.localOutputPath) throw new Error('Server không trả đường dẫn MP4 desktop.');
       result.innerHTML = `<button class="btn btn-primary" onclick="desktopApp.revealFile('${safePath.replace(/'/g, "\\'")}')">✓ MP4 đã lưu — Hiện trong thư mục</button><div style="font-size:11px;color:#94a3b8;margin-top:6px;word-break:break-all">${safePath}</div>${cloudSaved?`<div style="font-size:11px;color:#86efac;margin-top:6px">✓ Đã tự lưu project cloud: ${esc(cloudSaved.title)}</div>`:''}`;
       if (creditInfo) creditInfo.textContent = `✓ Đã thanh toán ${quote.cost} credit · Còn ${window.creditClient.balance()} credit`;
     } catch (error) {
@@ -322,7 +344,7 @@ async function exportVideoOfflineDesktop() {
       const prefix = exportCompleted ? 'MP4 đã tạo nhưng chưa xác nhận được giao dịch credit: ' : '';
       result.innerHTML = `<div style="color:#ef4444;font-size:12px">✗ ${esc(prefix + (error.message || String(error)) + refundNote)}</div>`;
     } finally {
-      unsubscribe?.(); setExportLoading(false);
+      setExportLoading(false);
     }
   }
 
