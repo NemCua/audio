@@ -492,7 +492,6 @@ body.absolute-layer-off #absolute-lane{display:none}
   from { opacity: 0; transform: translateY(3cqw) scale(.97); }
   to   { opacity: 1; transform: translateY(0) scale(1); }
 }
-.progressive-reveal-card .tcard{animation:none}
 /* .thr-row: avatar (trái) + nội dung thụt vào theo avatar (giữa) + trái
    tim/menu (phải, ngang hàng tên/giờ). align-items:flex-start là mấu chốt
    để .follow-badge không bị kéo giãn lệch vị trí (xem giải thích trong mock). */
@@ -788,11 +787,12 @@ body.absolute-layer-off #absolute-lane{display:none}
 .emphasis-bubble-wrap.generic .emphasis-bubble{box-sizing:border-box;width:100%;max-width:none;padding:3.2cqw 5.5cqw;background:#fff;color:#0f1419;border-radius:0;font-size:4.3cqw;font-weight:430;line-height:1.32;letter-spacing:0;text-align:left;box-shadow:0 1.2cqw 4.2cqw #0007}
 .emphasis-bubble-wrap.generic.comment .emphasis-bubble,.emphasis-bubble-wrap.generic.reply .emphasis-bubble{font-size:3.95cqw;border-radius:0}
 .emphasis-bubble-wrap.messenger,.emphasis-bubble-wrap.instagram,.emphasis-bubble-wrap.zalo{left:0;right:0;box-sizing:border-box;width:auto;padding:2.2cqw 5.5cqw;border-radius:0;background:#fff;box-shadow:0 1.2cqw 4.2cqw #0007}
-.emphasis-bubble-wrap.messenger .emphasis-bubble,.emphasis-bubble-wrap.instagram .emphasis-bubble,.emphasis-bubble-wrap.zalo .emphasis-bubble{max-width:74%;padding:1.55cqw 2.55cqw;border-radius:999cqw;font-size:3.85cqw;font-weight:520;line-height:1.22;letter-spacing:0;box-shadow:none}
+.emphasis-bubble-wrap.messenger .emphasis-bubble{max-width:55.5cqw;padding:1.67cqw 2.4cqw;border-radius:3.34cqw;font-size:2.96cqw;font-weight:440;line-height:3.52cqw;letter-spacing:0;box-shadow:none}
+.emphasis-bubble-wrap.instagram .emphasis-bubble{max-width:49.1cqw;padding:1.57cqw 2.22cqw 1.67cqw;border-radius:3.52cqw;font-size:2.87cqw;font-weight:440;line-height:1.22;letter-spacing:0;box-shadow:none}
+.emphasis-bubble-wrap.zalo .emphasis-bubble{max-width:55cqw;padding:2.05cqw 2.35cqw 1.85cqw;border-radius:2.2cqw;font-size:3.65cqw;font-weight:400;line-height:1.25;letter-spacing:0;box-shadow:none}
 .emphasis-bubble-wrap.messenger.mine .emphasis-bubble{background:#2864ed}.emphasis-bubble-wrap.messenger.theirs .emphasis-bubble{background:#f0f0f0;color:#050505}
 .emphasis-bubble-wrap.instagram.mine .emphasis-bubble{background:linear-gradient(90deg,#9333ea,#a933f0 56%,#8f2cf0)}.emphasis-bubble-wrap.instagram.theirs .emphasis-bubble{background:#f1f3f5;color:#111}
 .emphasis-bubble-wrap.zalo.mine .emphasis-bubble{background:#d9f2ff;color:#111827;border:1px solid #b7dbe9;border-radius:2.2cqw}.emphasis-bubble-wrap.zalo.theirs .emphasis-bubble{background:#fff;color:#111;border:1px solid #d4d9df;border-radius:2.2cqw}
-.emphasis-bubble-wrap.zalo .emphasis-bubble{padding:2.05cqw 2.35cqw 1.85cqw;border-radius:2.2cqw;font-size:3.65cqw;font-weight:400;line-height:1.25}
 .emphasis-zalo-time{margin-top:1.05cqw;color:#8f969f;font-size:2.15cqw;line-height:1;font-weight:400;font-variant-numeric:tabular-nums}
 .progressive-line{display:block}.progressive-line+.progressive-line{margin-top:.32em}
 .note-subtitle-layer{display:none;position:absolute;z-index:18;left:7%;right:7%;bottom:14%;color:#fff;font-family:Arial,sans-serif;font-size:5.3cqw;font-weight:800;line-height:1.2;text-align:center;-webkit-text-stroke:.28cqw #000;paint-order:stroke fill;text-shadow:0 .45cqw 1.2cqw #000;pointer-events:none}.note-subtitle-layer.show{display:block}
@@ -1201,15 +1201,17 @@ body.absolute-layer-off #absolute-lane{display:none}
 .step-modal .modal-actions button { flex: 1; padding: 14px; border-radius: 9px; border: none; font-size: 15px; font-weight: 700; cursor: pointer; }
 .step-modal .btn-cancel { background: #1e2340; color: #94a3b8; }
 .step-modal .btn-ok { background: linear-gradient(135deg,#7c3aed,#5b21b6); color: #fff; }
-.mess-modal { width:min(1040px,94vw); max-width:none; }
-.mess-editor-grid { display:grid; grid-template-columns:minmax(300px,.9fr) minmax(360px,1.1fr); gap:20px; }
+.mess-modal { width:min(1360px,98vw); max-width:none; }
+.mess-editor-grid { display:grid; grid-template-columns:minmax(400px,1fr) minmax(440px,1.08fr); gap:20px; }
 .mess-compose-pane,.mess-preview-pane { min-width:0; padding:16px; border:1px solid #2a3050; border-radius:12px; background:#0d1020; }
 .mess-side-inputs { display:grid; grid-template-columns:1fr 1fr; gap:10px; }
-.mess-side-inputs textarea { min-height:84px; }
+.mess-side-inputs textarea { min-height:132px; }
 .mess-input-shell{position:relative;border:1px solid #303655;border-radius:8px;background:#090c18}.mess-input-shell textarea{display:block;width:100%;padding-right:38px;border:0;background:transparent;resize:vertical}.mess-input-shell textarea:focus{box-shadow:none}.mess-input-shell:focus-within{border-color:#7c3aed;box-shadow:0 0 0 1px #7c3aed}
 .mess-media-trigger{position:absolute;right:7px;top:7px;width:27px;height:27px;padding:0;border:0;border-radius:7px;background:#202642;color:#c4b5fd;cursor:pointer;font-size:15px}.mess-media-trigger:hover{background:#30385e;color:#fff}
+.mess-input-shell textarea{padding-right:132px}.mess-input-tools{position:absolute;top:7px;right:7px;display:flex;gap:3px}.mess-input-tools .mess-media-trigger{position:static;display:grid;place-items:center;font-size:14px}.mess-input-tools .mess-media-trigger svg{width:16px;height:16px;fill:currentColor}.mess-input-tools .mess-media-trigger:last-child svg{width:17px;height:15px}.mess-call-popover{display:none;position:absolute;right:6px;top:39px;width:180px;padding:9px;border:1px solid #343b60;border-radius:9px;background:#151932;box-shadow:0 8px 24px #0008;z-index:31}.mess-call-popover.open{display:grid;gap:7px}.mess-call-popover b{color:#e5e7eb;font-size:12px}.mess-call-popover select,.mess-call-popover input{width:100%;min-width:0;padding:7px;font-size:12px}.mess-call-popover button{padding:8px;border:0;border-radius:7px;cursor:pointer;font-size:12px}
 .mess-media-popover{display:none;position:absolute;right:6px;top:38px;width:185px;padding:7px;border:1px solid #343b60;border-radius:9px;background:#151932;box-shadow:0 8px 24px #0008;z-index:30}.mess-media-popover.open{display:block}.mess-media-popover button{display:block;width:100%;padding:8px 9px;border:0;border-radius:7px;background:transparent;color:#e5e7eb;text-align:left;cursor:pointer}.mess-media-popover button:hover{background:#272d4c}.mess-media-url-row{display:none;gap:5px;margin-top:5px}.mess-media-url-row.open{display:flex}.mess-media-url-row input{min-width:0;flex:1;padding:7px}.mess-media-url-row button{width:auto;padding:7px 9px;background:#7c3aed;color:#fff}
 .mess-inline-image-preview{display:none;padding:0 8px 8px}.mess-inline-image-preview.active{display:block}.mess-inline-image-preview .preview-inner{position:relative;width:max-content;max-width:100%}.mess-inline-image-preview img{display:block;max-width:100%;max-height:115px;border-radius:10px;object-fit:cover}.mess-inline-image-preview button{position:absolute;right:5px;top:5px;width:22px;height:22px;padding:0;border:0;border-radius:50%;background:#111c;color:#fff;cursor:pointer}
+.mess-inline-call-preview{position:relative;display:flex;flex-direction:column;gap:2px;min-height:70px;padding:12px 34px 12px 12px;border-radius:10px;background:#202642;color:#f5f7ff}.mess-inline-call-preview b{font-size:13px}.mess-inline-call-preview span{color:#aeb8d8;font-size:12px}.mess-inline-call-preview button{position:absolute;right:7px;top:7px;width:22px;height:22px;padding:0;border:0;border-radius:50%;background:#111c;color:#fff;cursor:pointer}.mess-input-shell textarea:disabled{cursor:not-allowed;opacity:.52}
 .mess-draft-list { margin-top:14px; display:none; flex-direction:column; gap:6px; max-height:210px; overflow:auto; }
 .mess-draft-item { display:flex; align-items:center; gap:8px; padding:8px 10px; border-radius:8px; background:#151932; color:#cbd5e1; font-size:12px; }
 .mess-draft-item span { flex:1; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
@@ -1234,6 +1236,9 @@ body.absolute-layer-off #absolute-lane{display:none}
 .mess-who{margin-left:2.05cqw}.mess-name{display:flex;align-items:center;gap:0;color:#050505;font-size:3.25cqw;font-weight:740;line-height:3.9cqw;letter-spacing:0}.mess-status{margin-top:0;color:#67696d;font-size:2.42cqw;font-weight:490;line-height:2.8cqw;white-space:nowrap}.mess-name-chevron{display:none}
 .mess-head-icons{gap:4.2cqw;margin-left:auto;margin-right:2.82cqw;color:#3274f5}.mess-head-icons svg{width:4.02cqw;height:4.02cqw}.mess-head-icons svg:last-child{width:4.69cqw}.mess-body{padding:2.38cqw 1.36cqw 2.38cqw 2.72cqw;background:#fff}.mess-row{gap:2.04cqw;margin-top:2.04cqw}.mess-row.joined,.mess-row.middle,.mess-row.last{margin-top:.33cqw}.mess-row.mine{padding-left:9.52cqw}.mess-row.theirs{padding-right:9.52cqw}.mess-mini-avatar,.mess-avatar-space{width:5.2cqw;height:5.2cqw;flex-basis:5.2cqw}.mess-bubble{max-width:55.5cqw;padding:1.67cqw 2.4cqw;border-radius:3.34cqw;background:#f0f0f0;color:#050505;font-size:2.96cqw;font-weight:440;line-height:3.52cqw;letter-spacing:0}.mess-row.mine .mess-bubble{background:#2864ed;color:#fff}.mess-row.theirs.first .mess-bubble{border-bottom-left-radius:.68cqw}.mess-row.theirs.middle .mess-bubble{border-top-left-radius:.68cqw;border-bottom-left-radius:.68cqw}.mess-row.theirs.last .mess-bubble{border-top-left-radius:.68cqw}.mess-row.mine.first .mess-bubble{border-bottom-right-radius:.68cqw}.mess-row.mine.middle .mess-bubble{border-top-right-radius:.68cqw;border-bottom-right-radius:.68cqw}.mess-row.mine.last .mess-bubble{border-top-right-radius:.68cqw}
 .mess-content{display:flex;flex-direction:column;align-items:flex-start;gap:.65cqw;max-width:52cqw}.mess-row.mine .mess-content{align-items:flex-end}.mess-chat-image{display:block;max-width:43cqw;max-height:34cqw;object-fit:cover;border-radius:2.8cqw;background:#e5e7eb}.mess-chat-image.is-sticker{max-width:30.1cqw;max-height:23.8cqw;object-fit:contain;background:transparent}
+.mess-time-row{position:relative;justify-content:center;padding:0!important;margin-top:2.2cqw!important}.mess-time-marker,.mess-platform-system-marker{padding:0;background:transparent;color:#6b6d72;font-size:2.3cqw;font-weight:500;line-height:1.2}.mess-platform-system-marker{color:#4b5563}.mess-call-row{align-items:flex-end}.mess-call-row.mine{padding-left:12cqw}.mess-call-row.theirs{padding-right:12cqw}.mess-call-card{width:fit-content;min-width:32cqw;max-width:46cqw;padding:1.48cqw 2cqw;border-radius:2.96cqw;background:#f1f2f4;color:#050505}.mess-call-card.is-missed{background:#f1f2f4;color:#050505}.mess-call-card.is-missed .mess-call-icon{background:#fa3e5d;color:#fff}.mess-call-icon{float:left;display:grid;place-items:center;width:6.03cqw;height:6.03cqw;margin-right:1.3cqw;border-radius:50%;background:#aab2bd;color:#fff}.mess-call-icon svg{width:3.48cqw;height:3.48cqw;fill:currentColor}.mess-call-copy{min-height:6.03cqw;padding-top:.08cqw;white-space:nowrap}.mess-call-copy b{display:block;font-size:2.66cqw;font-weight:700;line-height:3.18cqw}.mess-call-copy span{display:block;color:#74777d;font-size:2.14cqw;font-weight:430;line-height:2.55cqw}.mess-call-repeat{clear:both;display:block;height:5.67cqw;margin-top:1.15cqw;border-radius:1.94cqw;background:#dedfe1;color:#050505;text-align:center;font-size:2.66cqw;font-weight:700;line-height:5.67cqw}.mess-live-wrap .mess-time-row{margin-top:13px!important}.mess-live-wrap .mess-time-marker,.mess-live-wrap .mess-platform-system-marker{padding:0;background:transparent;font-size:13px}.mess-live-wrap .mess-call-card{min-width:160px;max-width:230px;padding:9px 13px;border-radius:16px}.mess-live-wrap .mess-call-icon{width:31px;height:31px;margin-right:9px}.mess-live-wrap .mess-call-icon svg{width:19px;height:19px}.mess-live-wrap .mess-call-copy{min-height:31px;padding-top:0}.mess-live-wrap .mess-call-copy b{font-size:14px;line-height:16px}.mess-live-wrap .mess-call-copy span{font-size:11px;line-height:13px}.mess-live-wrap .mess-call-repeat{height:32px;margin-top:9px;border-radius:12px;font-size:14px;line-height:32px}.mess-live-wrap .mess-time-row .mess-draft-actions{position:absolute;right:2px}.mess-live-wrap .mess-time-row .mess-draft-menu{left:auto;right:0}
+.mess-time-marker{font-size:1.84cqw}.mess-call-card{box-sizing:border-box;display:grid;grid-template-columns:auto minmax(0,1fr);column-gap:1.3cqw;max-width:50cqw;min-width:0}.mess-call-icon{float:none;grid-column:1;margin-right:0}.mess-call-copy{min-width:0;white-space:normal}.mess-call-copy b{overflow-wrap:anywhere}.mess-call-repeat{grid-column:1/-1}.mess-live-wrap .mess-time-marker{font-size:10.4px}.mess-live-wrap .mess-call-card{max-width:250px;column-gap:9px}.mess-live-wrap .mess-call-copy{min-width:0;white-space:normal}.mess-live-wrap .mess-call-copy b{overflow-wrap:anywhere}
+.mess-call-card{column-gap:.5cqw}.mess-live-wrap .mess-call-card{column-gap:4px}
 .mess-live-wrap .mess-card{border-radius:12px}.mess-live-wrap .mess-head{height:43.3px;border-bottom-width:1px}.mess-live-wrap .mess-back{width:11.2px;height:18.4px;flex-basis:11.2px;margin-left:9.6px}.mess-live-wrap .mess-unread{width:17.3px;height:17.3px;flex-basis:17.3px;margin-left:2.9px;font-size:11.5px}.mess-live-wrap .mess-avatar{width:34.6px;height:34.6px;flex-basis:34.6px;margin-left:6.1px}.mess-live-wrap .mess-who{margin-left:10.6px}.mess-live-wrap .mess-name{font-size:16.8px;line-height:20.2px}.mess-live-wrap .mess-status{font-size:12.5px;line-height:14.4px}.mess-live-wrap .mess-head-icons{gap:21.9px;margin-right:14.8px}.mess-live-wrap .mess-head-icons svg{width:19.2px;height:19.2px}.mess-live-wrap .mess-head-icons svg:last-child{width:22.4px}
 .mess-live-wrap .mess-online-dot{right:0;bottom:0;width:9px;height:9px;border-width:2px}
 .mess-live-wrap .mess-avatar.is-editable{cursor:pointer;outline:none}.mess-live-wrap .mess-avatar.is-editable:hover img,.mess-live-wrap .mess-avatar.is-editable:focus img{filter:brightness(.86)}.mess-live-wrap .mess-avatar.is-editable:focus-visible{box-shadow:0 0 0 2px #1877f2}
@@ -1242,6 +1247,7 @@ body.absolute-layer-off #absolute-lane{display:none}
 .mess-live-wrap .mess-row{position:relative}
 .mess-live-wrap .mess-draft-actions{position:relative;flex:0 0 24px;align-self:center;opacity:0;transition:opacity .15s;z-index:8}
 .mess-live-wrap .mess-row:hover .mess-draft-actions,.mess-live-wrap .mess-draft-actions.open{opacity:1}
+.mess-live-wrap .mess-time-row .mess-draft-actions,.mess-live-wrap .mess-call-row .mess-draft-actions{opacity:1}
 .mess-live-wrap .mess-row.mine .mess-draft-actions{order:-1;margin-right:2px}.mess-live-wrap .mess-row.theirs .mess-draft-actions{margin-left:2px}
 .mess-live-wrap .mess-more-btn{display:grid;place-items:center;width:24px;height:24px;padding:0;border:0;background:#f0f2f5;color:#65676b;border-radius:50%;cursor:pointer;font-size:12px;line-height:1;letter-spacing:-1px}.mess-live-wrap .mess-more-btn:hover{background:#e4e6eb}
 .mess-live-wrap .mess-draft-menu{display:none;position:absolute;top:28px;left:0;min-width:128px;padding:5px;background:#fff;border:1px solid #ddd;border-radius:10px;box-shadow:0 7px 22px #0004;z-index:12}
@@ -1249,10 +1255,11 @@ body.absolute-layer-off #absolute-lane{display:none}
 .mess-live-wrap .mess-draft-actions.menu-up .mess-draft-menu{top:auto;bottom:28px}
 .mess-live-wrap .mess-draft-actions.open .mess-draft-menu{display:block}
 .mess-live-wrap .mess-draft-menu button{display:block;width:100%;padding:9px 10px;border:0;border-radius:7px;background:transparent;color:#111;text-align:left;cursor:pointer;font-size:13px}.mess-live-wrap .mess-draft-menu button:hover{background:#f0f2f5}.mess-live-wrap .mess-draft-menu button.danger{color:#dc2626}
-.mess-live-wrap .mess-insert-slot{position:absolute;left:28px;right:0;top:-7px;height:14px;display:flex;align-items:center;justify-content:center;cursor:pointer;opacity:0;z-index:6;transition:opacity .15s}.mess-live-wrap .mess-row.mine .mess-insert-slot{left:0;right:0}.mess-live-wrap .mess-insert-slot::before{content:"";position:absolute;left:0;right:0;height:1px;background:#1877f2}.mess-live-wrap .mess-insert-slot span{position:relative;padding:3px 8px;border-radius:999px;background:#1877f2;color:#fff;font-size:10px;font-weight:700;white-space:nowrap;box-shadow:0 2px 6px #0003}.mess-live-wrap .mess-row:hover .mess-insert-slot,.mess-live-wrap .mess-insert-slot:hover{opacity:1}
+.mess-live-wrap .mess-insert-slot{position:absolute;left:28px;right:0;top:-7px;height:14px;display:flex;align-items:center;justify-content:center;gap:3px;opacity:0;z-index:6;transition:opacity .15s}.mess-live-wrap .mess-row.mine .mess-insert-slot{left:0;right:0}.mess-live-wrap .mess-insert-slot::before{content:"";position:absolute;left:0;right:0;height:1px;background:#1877f2}.mess-live-wrap .mess-insert-slot button{position:relative;padding:3px 7px;border:0;border-radius:999px;background:#1877f2;color:#fff;font-size:10px;font-weight:700;line-height:1;white-space:nowrap;box-shadow:0 2px 6px #0003;cursor:pointer}.mess-live-wrap .mess-row:hover .mess-insert-slot,.mess-live-wrap .mess-insert-slot:hover{opacity:1}
 .mess-live-wrap .mess-append-btn{display:block;margin:12px auto 2px;padding:7px 12px;border:1px solid #ccd0d5;border-radius:999px;background:#f0f2f5;color:#1877f2;font-size:11px;font-weight:700;cursor:pointer}.mess-live-wrap .mess-append-btn:hover{background:#e7f3ff;border-color:#1877f2}
 .mess-audio-badge{flex:0 0 auto;align-self:center;display:inline-flex;align-items:center;justify-content:center;gap:3px;min-width:24px;height:24px;padding:0 3px 0 6px;border-radius:999px;background:#e4e6eb;color:#65676b;font-size:10px;font-weight:800;box-shadow:none;opacity:.72;white-space:nowrap}.mess-audio-badge button{display:grid;place-items:center;width:16px;height:16px;padding:0;border:0;border-radius:50%;background:#c9ccd1;color:#4b4f56;font-size:13px;line-height:1;cursor:pointer}.mess-audio-badge button:hover{background:#b8bcc2;color:#111}.mess-row.mine .mess-audio-badge{order:-1;margin-right:2px;background:#e4e6eb;color:#65676b}.mess-row.theirs .mess-audio-badge{margin-left:2px}
 .mess-compose-mode{display:none;margin-top:10px;padding:8px 10px;border-radius:8px;background:#1e2648;color:#c4b5fd;font-size:12px}
+.mess-add-actions{display:flex;gap:8px}.mess-special-composer,.mess-time-composer{margin-top:10px;padding:10px;border:1px solid #343b60;border-radius:8px;background:#11162b}.mess-special-fields label{display:block;margin-bottom:7px;color:#cbd5e1;font-size:12px;font-weight:700}.mess-special-action-row{display:flex;gap:8px}.mess-special-action-row input{min-width:0;flex:1}.mess-special-action-row button{flex:0 0 auto;padding:8px 10px;border:0;border-radius:7px;cursor:pointer;font-size:12px}.mess-special-fields input,.mess-special-fields select{width:100%;min-width:0}
 .quick-audio-grid{display:grid;gap:8px;max-height:260px;overflow:auto;padding:10px;border:1px solid #1e2340;border-radius:10px;background:#0a0c14}.quick-audio-picked{min-height:18px;margin-top:8px;color:#4ade80;font-size:12px}.quick-audio-actions{display:flex;gap:8px;margin-top:14px}
 /* Messenger chỉ cao tối đa nửa khung 9:16; phần tin nhắn tự cuộn lên. */
 .mess-card{display:flex;flex-direction:column;max-height:89cqw}
@@ -1755,8 +1762,8 @@ body.absolute-layer-off #absolute-lane{display:none}
         <label>Tốc độ đọc toàn bộ hội thoại: <b id="mess-tts-speed-label">1.00×</b></label>
         <input type="range" id="mess-tts-speed" min="0.5" max="1.5" step="0.05" value="1" oninput="messTtsSpeed=parseFloat(this.value);document.getElementById('mess-tts-speed-label').textContent=messTtsSpeed.toFixed(2)+'×'"/>
         <div class="mess-side-inputs">
-          <div><label>Đối phương</label><div class="mess-input-shell"><textarea id="mess-theirs" placeholder="Nhập tin bên trái..." oninput="onMessSideInput('theirs')"></textarea><button type="button" class="mess-media-trigger" title="Thêm ảnh hoặc sticker" onclick="event.stopPropagation();toggleMessengerMediaMenu('theirs')">🖼️</button><div class="mess-media-popover" id="mess-media-menu-theirs" onclick="event.stopPropagation()"><button type="button" onclick="chooseMessengerImageFile('theirs')">Tải ảnh từ máy</button><button type="button" onclick="showMessengerUrlInput('theirs')">Dán URL ảnh</button><button type="button" onclick="chooseMessengerSticker('theirs')">Chọn sticker từ thư viện</button><div class="mess-media-url-row" id="mess-media-url-row-theirs"><input id="mess-inline-url-theirs" type="text" placeholder="https://..."/><button type="button" onclick="applyMessengerInlineUrl('theirs')">Thêm</button></div></div><div class="mess-inline-image-preview" id="mess-inline-preview-theirs"></div></div></div>
-          <div><label>Tôi</label><div class="mess-input-shell"><textarea id="mess-mine" placeholder="Nhập tin bên phải..." oninput="onMessSideInput('mine')"></textarea><button type="button" class="mess-media-trigger" title="Thêm ảnh hoặc sticker" onclick="event.stopPropagation();toggleMessengerMediaMenu('mine')">🖼️</button><div class="mess-media-popover" id="mess-media-menu-mine" onclick="event.stopPropagation()"><button type="button" onclick="chooseMessengerImageFile('mine')">Tải ảnh từ máy</button><button type="button" onclick="showMessengerUrlInput('mine')">Dán URL ảnh</button><button type="button" onclick="chooseMessengerSticker('mine')">Chọn sticker từ thư viện</button><div class="mess-media-url-row" id="mess-media-url-row-mine"><input id="mess-inline-url-mine" type="text" placeholder="https://..."/><button type="button" onclick="applyMessengerInlineUrl('mine')">Thêm</button></div></div><div class="mess-inline-image-preview" id="mess-inline-preview-mine"></div></div></div>
+          <div><label>Đối phương</label><div class="mess-input-shell"><textarea id="mess-theirs" placeholder="Nhập tin bên trái..." oninput="onMessSideInput('theirs')"></textarea><div class="mess-input-tools"><button type="button" class="mess-media-trigger" title="Thêm ảnh" aria-label="Thêm ảnh" onclick="event.stopPropagation();toggleMessengerMediaMenu('theirs')"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M7 4.25a1.25 1.25 0 1 1-2.5 0 1.25 1.25 0 0 1 2.5 0z"></path><path d="M9.302.5H6.698C5.8.5 5.05.5 4.456.58c-.628.084-1.195.27-1.65.725-.456.456-.642 1.023-.726 1.65C2 3.55 2 4.3 2 5.199v5.604c0 .899 0 1.648.08 2.242.084.628.27 1.195.725 1.65a2.3 2.3 0 0 0 .81.522c.237.092.489.152.752.192.571.086 1.281.091 2.122.092h3.174c.795-.002 1.472-.011 2.023-.1.573-.094 1.088-.285 1.509-.705.455-.456.64-1.023.725-1.65.08-.595.08-1.344.08-2.243V5.198c0-.898 0-1.648-.08-2.242-.084-.628-.27-1.195-.726-1.65C12.74.85 12.172.663 11.544.58 10.95.5 10.2.5 9.302.5zm2.602 6.427a1.75 1.75 0 0 0-2.475 0L7 9.356l-.43-.43a1.75 1.75 0 0 0-2.474 0l-.596.597V5.25c0-.964.002-1.612.067-2.095.062-.461.169-.659.3-.789.13-.13.327-.237.788-.3C5.138 2.003 5.786 2 6.75 2h2.5c.964 0 1.612.002 2.095.067.461.062.659.169.789.3.13.13.237.327.3.788.064.483.066 1.131.066 2.095v2.272l-.596-.595z"></path></svg></button><button type="button" class="mess-media-trigger" title="Chọn sticker" aria-label="Chọn sticker" onclick="event.stopPropagation();chooseMessengerSticker('theirs')"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M8.305 1h-.61c-1.368 0-2.47 0-3.337.116-.9.121-1.658.38-2.26.982-.602.602-.86 1.36-.982 2.26C1 5.225 1 6.327 1 7.695v.61c0 1.367 0 2.47.116 3.336.121.9.38 1.658.982 2.26.602.602 1.36.861 2.26.982.867.117 1.97.117 3.337.117.268 0 .537.002.805-.004v-1.034c0-.764 0-1.423.028-1.99a5.007 5.007 0 0 1-3.761-1.149.75.75 0 0 1 .966-1.147c.61.513 1.4.823 2.267.823.212 0 .419-.018.62-.053a.754.754 0 0 1 .137-.012c.127-.404.32-.755.621-1.056.475-.474 1.076-.684 1.812-.783.714-.096 1.626-.096 2.772-.095h1.034c.006-.269.004-.537.004-.805 0-1.368 0-2.47-.117-3.337-.12-.9-.38-1.658-.982-2.26-.601-.602-1.36-.86-2.26-.982C10.774.999 9.673.999 8.306 1zm3.693 4.747a1.249 1.249 0 1 1-2.498 0 1.249 1.249 0 0 1 2.498 0zM5.248 7a1.249 1.249 0 1 1 0-2.498 1.249 1.249 0 0 1 0 2.498z"></path><path d="M14.87 9.5H14c-1.193 0-2.037 0-2.677.087-.625.084-.98.24-1.238.498-.257.258-.414.613-.498 1.238-.086.64-.087 1.484-.087 2.676v.87c.076-.022.15-.048.224-.079.508-.21.899-.602 1.392-1.096l2.578-2.578c.494-.493.886-.884 1.096-1.393.03-.073.057-.148.08-.223z"></path></svg></button><button type="button" class="mess-media-trigger mess-call-trigger" title="Thêm cuộc gọi thoại" aria-label="Thêm cuộc gọi thoại" onclick="event.stopPropagation();toggleMessengerCallMenu('theirs','voice')"><svg viewBox="0 0 24 24"><path d="M9.878 13.992 10.008 14.122c2.238 2.166 4.11 3.184 5.618 3.052l.435-.405c.617-.563 1.083-.919 1.397-1.07.654-.313 1.113-.307 2.351.363 1.63.882 2.755 1.907 3.33 2.482.534.534.368 1.454.181 1.862l-.124.227c-.334.58-1.544 2.492-3.863 2.819-.881.124-1.993.01-3.297-.382-2.794-.968-5.576-2.74-8.347-5.319l-.492-.468-.005.005-.238-.242-.242-.238.005-.005-.468-.492C3.67 13.54 1.898 10.758.93 7.964.538 6.66.424 5.548.548 4.667.898 2.184 3.066.972 3.469.747l.041-.023C3.858.522 4.881.286 5.456.861l.272.28c.593.627 1.454 1.653 2.21 3.05.67 1.238.676 1.697.363 2.35-.184.384-.676.995-1.475 1.833-.132 1.508.886 3.381 3.052 5.619Z"/></svg></button><button type="button" class="mess-media-trigger mess-call-trigger" title="Thêm cuộc gọi video" aria-label="Thêm cuộc gọi video" onclick="event.stopPropagation();toggleMessengerCallMenu('theirs','video')"><svg viewBox="0 0 27 18"><path d="M15.2 0C17.299 0 19 1.727 19 3.857v10.286C19 16.273 17.299 18 15.2 18H3.8C1.701 18 0 16.273 0 14.143V3.857C0 1.727 1.701 0 3.8 0h11.4Zm11.666 4.022c.088.151.134.321.134.493v8.97c0 .561-.478 1.015-1.067 1.015-.181 0-.359-.044-.518-.128l-3.729-1.972A1.25 1.25 0 0 1 21 11.291V6.709c0-.461.263-.886.686-1.109l3.729-1.972a1.067 1.067 0 0 1 1.451.394Z"/></svg></button></div><div class="mess-media-popover" id="mess-media-menu-theirs" onclick="event.stopPropagation()"><button type="button" onclick="chooseMessengerImageFile('theirs')">Tải ảnh từ máy</button><button type="button" onclick="showMessengerUrlInput('theirs')">Dán URL ảnh</button><div class="mess-media-url-row" id="mess-media-url-row-theirs"><input id="mess-inline-url-theirs" type="text" placeholder="https://..."/><button type="button" onclick="applyMessengerInlineUrl('theirs')">Thêm</button></div></div><div class="mess-call-popover" id="mess-call-menu-theirs" onclick="event.stopPropagation()"><b id="mess-call-menu-title-theirs">Cuộc gọi thoại</b><select id="mess-call-menu-state-theirs"><option value="connected">Thành công</option><option value="missed">Đã nhỡ</option></select><input id="mess-call-menu-meta-theirs" type="text" maxlength="32" placeholder="Ví dụ: 16 giây"/><button type="button" class="btn-ok" onclick="addMessengerInlineCall('theirs')">Thêm cuộc gọi</button></div><div class="mess-inline-image-preview" id="mess-inline-preview-theirs"></div></div></div>
+          <div><label>Tôi</label><div class="mess-input-shell"><textarea id="mess-mine" placeholder="Nhập tin bên phải..." oninput="onMessSideInput('mine')"></textarea><div class="mess-input-tools"><button type="button" class="mess-media-trigger" title="Thêm ảnh" aria-label="Thêm ảnh" onclick="event.stopPropagation();toggleMessengerMediaMenu('mine')"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M7 4.25a1.25 1.25 0 1 1-2.5 0 1.25 1.25 0 0 1 2.5 0z"></path><path d="M9.302.5H6.698C5.8.5 5.05.5 4.456.58c-.628.084-1.195.27-1.65.725-.456.456-.642 1.023-.726 1.65C2 3.55 2 4.3 2 5.199v5.604c0 .899 0 1.648.08 2.242.084.628.27 1.195.725 1.65a2.3 2.3 0 0 0 .81.522c.237.092.489.152.752.192.571.086 1.281.091 2.122.092h3.174c.795-.002 1.472-.011 2.023-.1.573-.094 1.088-.285 1.509-.705.455-.456.64-1.023.725-1.65.08-.595.08-1.344.08-2.243V5.198c0-.898 0-1.648-.08-2.242-.084-.628-.27-1.195-.726-1.65C12.74.85 12.172.663 11.544.58 10.95.5 10.2.5 9.302.5zm2.602 6.427a1.75 1.75 0 0 0-2.475 0L7 9.356l-.43-.43a1.75 1.75 0 0 0-2.474 0l-.596.597V5.25c0-.964.002-1.612.067-2.095.062-.461.169-.659.3-.789.13-.13.327-.237.788-.3C5.138 2.003 5.786 2 6.75 2h2.5c.964 0 1.612.002 2.095.067.461.062.659.169.789.3.13.13.237.327.3.788.064.483.066 1.131.066 2.095v2.272l-.596-.595z"></path></svg></button><button type="button" class="mess-media-trigger" title="Chọn sticker" aria-label="Chọn sticker" onclick="event.stopPropagation();chooseMessengerSticker('mine')"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M8.305 1h-.61c-1.368 0-2.47 0-3.337.116-.9.121-1.658.38-2.26.982-.602.602-.86 1.36-.982 2.26C1 5.225 1 6.327 1 7.695v.61c0 1.367 0 2.47.116 3.336.121.9.38 1.658.982 2.26.602.602 1.36.861 2.26.982.867.117 1.97.117 3.337.117.268 0 .537.002.805-.004v-1.034c0-.764 0-1.423.028-1.99a5.007 5.007 0 0 1-3.761-1.149.75.75 0 0 1 .966-1.147c.61.513 1.4.823 2.267.823.212 0 .419-.018.62-.053a.754.754 0 0 1 .137-.012c.127-.404.32-.755.621-1.056.475-.474 1.076-.684 1.812-.783.714-.096 1.626-.096 2.772-.095h1.034c.006-.269.004-.537.004-.805 0-1.368 0-2.47-.117-3.337-.12-.9-.38-1.658-.982-2.26-.601-.602-1.36-.86-2.26-.982C10.774.999 9.673.999 8.306 1zm3.693 4.747a1.249 1.249 0 1 1-2.498 0 1.249 1.249 0 0 1 2.498 0zM5.248 7a1.249 1.249 0 1 1 0-2.498 1.249 1.249 0 0 1 0 2.498z"></path><path d="M14.87 9.5H14c-1.193 0-2.037 0-2.677.087-.625.084-.98.24-1.238.498-.257.258-.414.613-.498 1.238-.086.64-.087 1.484-.087 2.676v.87c.076-.022.15-.048.224-.079.508-.21.899-.602 1.392-1.096l2.578-2.578c.494-.493.886-.884 1.096-1.393.03-.073.057-.148.08-.223z"></path></svg></button><button type="button" class="mess-media-trigger mess-call-trigger" title="Thêm cuộc gọi thoại" aria-label="Thêm cuộc gọi thoại" onclick="event.stopPropagation();toggleMessengerCallMenu('mine','voice')"><svg viewBox="0 0 24 24"><path d="M9.878 13.992 10.008 14.122c2.238 2.166 4.11 3.184 5.618 3.052l.435-.405c.617-.563 1.083-.919 1.397-1.07.654-.313 1.113-.307 2.351.363 1.63.882 2.755 1.907 3.33 2.482.534.534.368 1.454.181 1.862l-.124.227c-.334.58-1.544 2.492-3.863 2.819-.881.124-1.993.01-3.297-.382-2.794-.968-5.576-2.74-8.347-5.319l-.492-.468-.005.005-.238-.242-.242-.238.005-.005-.468-.492C3.67 13.54 1.898 10.758.93 7.964.538 6.66.424 5.548.548 4.667.898 2.184 3.066.972 3.469.747l.041-.023C3.858.522 4.881.286 5.456.861l.272.28c.593.627 1.454 1.653 2.21 3.05.67 1.238.676 1.697.363 2.35-.184.384-.676.995-1.475 1.833-.132 1.508.886 3.381 3.052 5.619Z"/></svg></button><button type="button" class="mess-media-trigger mess-call-trigger" title="Thêm cuộc gọi video" aria-label="Thêm cuộc gọi video" onclick="event.stopPropagation();toggleMessengerCallMenu('mine','video')"><svg viewBox="0 0 27 18"><path d="M15.2 0C17.299 0 19 1.727 19 3.857v10.286C19 16.273 17.299 18 15.2 18H3.8C1.701 18 0 16.273 0 14.143V3.857C0 1.727 1.701 0 3.8 0h11.4Zm11.666 4.022c.088.151.134.321.134.493v8.97c0 .561-.478 1.015-1.067 1.015-.181 0-.359-.044-.518-.128l-3.729-1.972A1.25 1.25 0 0 1 21 11.291V6.709c0-.461.263-.886.686-1.109l3.729-1.972a1.067 1.067 0 0 1 1.451.394Z"/></svg></button></div><div class="mess-media-popover" id="mess-media-menu-mine" onclick="event.stopPropagation()"><button type="button" onclick="chooseMessengerImageFile('mine')">Tải ảnh từ máy</button><button type="button" onclick="showMessengerUrlInput('mine')">Dán URL ảnh</button><div class="mess-media-url-row" id="mess-media-url-row-mine"><input id="mess-inline-url-mine" type="text" placeholder="https://..."/><button type="button" onclick="applyMessengerInlineUrl('mine')">Thêm</button></div></div><div class="mess-call-popover" id="mess-call-menu-mine" onclick="event.stopPropagation()"><b id="mess-call-menu-title-mine">Cuộc gọi thoại</b><select id="mess-call-menu-state-mine"><option value="connected">Thành công</option><option value="missed">Đã nhỡ</option></select><input id="mess-call-menu-meta-mine" type="text" maxlength="32" placeholder="Ví dụ: 16 giây"/><button type="button" class="btn-ok" onclick="addMessengerInlineCall('mine')">Thêm cuộc gọi</button></div><div class="mess-inline-image-preview" id="mess-inline-preview-mine"></div></div></div>
         </div>
         <label>Nội dung đọc TTS</label>
         <textarea id="mess-tts" placeholder="Tự đồng bộ theo tin nhắn..." oninput="messTtsDirty=true;updateMessengerTtsCounter()"></textarea>
@@ -1781,7 +1788,19 @@ body.absolute-layer-off #absolute-lane{display:none}
         <div id="mess-image-preview" style="margin-top:8px"></div>
         </div>
         <div id="mess-compose-mode" class="mess-compose-mode"></div>
-        <div style="display:flex;gap:8px;margin-top:14px">
+        <div id="mess-time-composer" class="mess-time-composer mess-special-fields">
+          <label>Mốc giờ giữa các tin nhắn</label>
+          <div class="mess-special-action-row"><input id="mess-time-marker" type="text" maxlength="32" placeholder="Ví dụ: 16:17"/><button type="button" class="btn-ok" onclick="addMessengerTimeMarker()">Thêm mốc giờ</button></div>
+        </div>
+        <div id="mess-special-composer" class="mess-special-composer" style="display:none">
+          <div id="mess-call-composer" class="mess-special-fields" style="display:none">
+            <label>Cuộc gọi</label>
+            <div class="row2"><select id="mess-call-side"><option value="theirs">Đối phương gọi đến</option><option value="mine">Tôi gọi đi</option></select><select id="mess-call-type"><option value="voice">Cuộc gọi thoại</option><option value="video">Cuộc gọi video</option></select></div>
+            <div class="row2" style="margin-top:8px"><select id="mess-call-state"><option value="connected">Thành công</option><option value="missed">Đã nhỡ</option></select><input id="mess-call-meta" type="text" maxlength="32" placeholder="Dòng nhỏ, ví dụ: 16 giây"/></div>
+            <button type="button" class="btn-ok" style="width:100%;margin-top:8px;padding:10px;border:0;border-radius:7px;cursor:pointer" onclick="addMessengerCallDraft()">Thêm cuộc gọi</button>
+          </div>
+        </div>
+        <div class="mess-add-actions" style="margin-top:14px">
           <button type="button" class="btn-ok" id="mess-add-btn" style="flex:1;padding:12px;border:0;border-radius:8px;cursor:pointer" onclick="addMessengerDraft()">＋ Thêm tin nhắn</button>
           <button type="button" class="btn-cancel" id="mess-compose-cancel" style="display:none;padding:10px 14px;border:0;border-radius:8px;cursor:pointer" onclick="cancelMessengerDraftAction()">Huỷ</button>
         </div>
@@ -1876,7 +1895,7 @@ body.absolute-layer-off #absolute-lane{display:none}
 </div>
 
 <script>window.BROWSER_FIRST = true;</script>
-<script src="render_shared.js?v=20260903-zalo-assets"></script>
+<script src="render_shared.js?v=20260904-messenger-call-time"></script>
 <script>
 // ===== Sidebar accordion =====
 function toggleFeature(id) {
@@ -2896,10 +2915,12 @@ let messPlatform = 'messenger';
 let messShowFooter = false;
 let messShowHeader = true;
 let messPendingImage = null;
+let messPendingCall = null;
 let messSideVoiceIdx = { theirs: 0, mine: 22 };
 let messTtsSpeed = 1;
 let messDraftEditIndex = null;
 let messInsertAt = null;
+let messSpecialComposerKind = null;
 let messQuickAudioTargetIndex = null;
 let messQuickAudioMedia = null;
 let messAutoToneEnabled = { received:false, sent:false };
@@ -2943,8 +2964,11 @@ function openMessengerModal(stepId = null, conversationMode = false) {
   messVoiceTouched = false;
   messDraftEditIndex = null;
   messInsertAt = null;
+  messSpecialComposerKind = null;
   messAutoToneEnabled = { received:false, sent:false };
   messAutoToneMedia = { received:null, sent:null };
+  setMessengerSpecialComposer(null);
+  closeMessengerAddMenu();
   const s = stepId != null ? steps.find(x => x.id === stepId) : null;
   if(conversationMode&&s)messEditingConversationId=s.conversationId;
   messPartnerName = (s && s.messPartnerName) || 'Tùng';
@@ -2956,6 +2980,7 @@ function openMessengerModal(stepId = null, conversationMode = false) {
   for(const side of ['theirs','mine'])if(!ttsVoices[messSideVoiceIdx[side]])messSideVoiceIdx[side]=side==='mine'?messengerVoiceIndexByLabel('Thanh Niên Tự Tin',0):messengerVoiceIndexByLabel('Nhỏ Ngọt Ngào',0);
   messTtsSpeed = Math.max(.5, Math.min(1.5, Number(s?.messTtsSpeed || 1)));
   messPendingImage = null;
+  messPendingCall = null;
   messDrafts = s ? (s.messHistory || []).map(x => ({...x, voiceOverride:x.voiceOverride ?? true})) : [];
   document.getElementById('mess-modal-title').textContent = conversationMode ? 'Chi tiết Box tin nhắn' : s ? 'Sửa tin nhắn' : 'Thêm đoạn chat';
   document.getElementById('mess-json-paste-wrap').style.display = 'none';
@@ -2964,7 +2989,10 @@ function openMessengerModal(stepId = null, conversationMode = false) {
   document.getElementById('mess-mine-voice-host').innerHTML=voicePickerHtml('mess-mine-voice',messSideVoiceIdx.mine);
   document.getElementById('mess-tts-speed').value=String(messTtsSpeed);
   document.getElementById('mess-tts-speed-label').textContent=messTtsSpeed.toFixed(2)+'×';
-  document.getElementById('mess-add-btn').style.display = s&&!conversationMode ? 'none' : 'block';
+  const allowDraftAdd=true;
+  document.getElementById('mess-add-btn').style.display = allowDraftAdd ? 'block' : 'none';
+  const addMenuWrap=document.getElementById('mess-add-menu-wrap');
+  if(addMenuWrap)addMenuWrap.style.display = allowDraftAdd ? 'block' : 'none';
   updateMessengerComposerMode();
   document.getElementById('mess-finish-btn').textContent = conversationMode ? 'Lưu Box tin nhắn' : s ? 'Lưu thay đổi' : 'Tạo kịch bản tin nhắn';
   updateMessengerPlatformPicker();
@@ -2974,10 +3002,13 @@ function openMessengerModal(stepId = null, conversationMode = false) {
   document.getElementById('mess-auto-sent-tone').checked=false;
   const current = s&&!conversationMode ? messDrafts[messDrafts.length - 1] : null;
   if (current && current.imageUrl) messPendingImage = { url: current.imageUrl, name: current.imageName || 'ảnh', type:current.imageType||'image', desktopPath:current.imageDesktopPath||null };
-  document.getElementById('mess-theirs').value = current && current.side === 'theirs' ? current.text : '';
-  document.getElementById('mess-mine').value = current && current.side === 'mine' ? current.text : '';
-  document.getElementById('mess-tts').value = current ? (current.ttsText ?? current.text) : '';
+  if (current && messengerItemKind(current)==='call') messPendingCall = {...current};
+  const currentIsMessage=!!current&&messengerItemKind(current)==='message';
+  document.getElementById('mess-theirs').value = currentIsMessage && current.side === 'theirs' ? (current.text||'') : '';
+  document.getElementById('mess-mine').value = currentIsMessage && current.side === 'mine' ? (current.text||'') : '';
+  document.getElementById('mess-tts').value = currentIsMessage ? (current.ttsText ?? current.text ?? '') : '';
   document.getElementById('mess-echo').checked = !!current?.echo;
+  document.getElementById('mess-emphasis').checked = !!current?.emphasisBubble;
   document.getElementById('mess-image-side').value = current ? current.side : 'theirs';
   document.getElementById('mess-image-url').value = current && current.imageUrl && /^https?:/i.test(current.imageUrl) ? current.imageUrl : '';
   renderMessengerImagePreview();
@@ -3024,7 +3055,18 @@ function updateMessengerTtsCounter(){
 }
 function messengerVoiceIndexByLabel(label,fallback){const idx=ttsVoices.findIndex(v=>v?.label===label);return idx>=0?idx:fallback;}
 function messengerHistoryMessage(msg){const {parallelAudios,...clean}=msg;return clean;}
+function messengerItemKind(msg){return msg?.kind==='time'||msg?.kind==='call'?msg.kind:'message';}
+function messengerDraftLabel(msg){
+  if(messengerItemKind(msg)==='time')return `Mốc giờ: ${msg.timeLabel||''}`;
+  if(messengerItemKind(msg)==='call'){
+    const direction=msg.side==='mine'?'Tôi gọi':'Đối phương gọi';
+    const type=msg.callType==='video'?'video':'thoại';
+    return `${direction} ${type} - ${msg.state==='connected'?'thành công':'đã nhỡ'}${msg.callMeta?`: ${msg.callMeta}`:''}`;
+  }
+  return msg.text||'[Ảnh]';
+}
 function readMessengerComposer() {
+  if(messPendingCall)return {...messPendingCall,emphasisBubble:document.getElementById('mess-emphasis').checked};
   const theirs = document.getElementById('mess-theirs').value.trim();
   const mine = document.getElementById('mess-mine').value.trim();
   if (!theirs && !mine && !messPendingImage) return null;
@@ -3037,21 +3079,42 @@ function renderMessengerImagePreview() {
   box.innerHTML=messPendingImage?`<div style="display:flex;align-items:flex-start;gap:8px"><img src="${esc(messPendingImage.url)}" alt="" referrerpolicy="no-referrer" style="max-width:150px;max-height:110px;object-fit:cover;border-radius:12px"/><button type="button" onclick="messPendingImage=null;renderMessengerImagePreview()" style="border:0;background:#351725;color:#f87171;border-radius:6px;padding:5px 8px;cursor:pointer">✕ Bỏ ảnh</button></div>`:'';
   for(const side of ['theirs','mine']){
     const preview=document.getElementById(`mess-inline-preview-${side}`);if(!preview)continue;
-    const active=messPendingImage&&document.getElementById('mess-image-side').value===side;
+    const activeImage=messPendingImage&&document.getElementById('mess-image-side').value===side;
+    const activeCall=messPendingCall&&messPendingCall.side===side;
+    const active=activeImage||activeCall;
     preview.classList.toggle('active',!!active);
-    preview.innerHTML=active?`<div class="preview-inner"><img src="${esc(messPendingImage.url)}" alt="${messPendingImage.type==='sticker'?'Sticker':'Ảnh đính kèm'}" referrerpolicy="no-referrer" style="object-fit:${messPendingImage.type==='sticker'?'contain':'cover'}"/><button type="button" title="Bỏ media" onclick="event.stopPropagation();messPendingImage=null;renderMessengerImagePreview()">×</button></div>`:'';
+    preview.innerHTML=activeImage?`<div class="preview-inner"><img src="${esc(messPendingImage.url)}" alt="${messPendingImage.type==='sticker'?'Sticker':'Ảnh đính kèm'}" referrerpolicy="no-referrer" style="object-fit:${messPendingImage.type==='sticker'?'contain':'cover'}"/><button type="button" title="Bỏ media" onclick="event.stopPropagation();messPendingImage=null;renderMessengerImagePreview()">×</button></div>`:activeCall?`<div class="mess-inline-call-preview"><b>${messPendingCall.callType==='video'?'Cuộc gọi video':'Cuộc gọi thoại'}</b><span>${messPendingCall.state==='connected'?'Thành công':'Đã nhỡ'} · ${esc(messPendingCall.callMeta)}</span><button type="button" title="Bỏ cuộc gọi" onclick="event.stopPropagation();messPendingCall=null;renderMessengerImagePreview();updateMessengerComposerMode()">×</button></div>`:'';
   }
+  const locked=!!(messPendingCall||messPendingImage);
+  for(const side of ['theirs','mine'])document.getElementById(`mess-${side}`)?.toggleAttribute('disabled',locked);
 }
 function closeMessengerMediaMenus(){document.querySelectorAll('.mess-media-popover.open').forEach(el=>el.classList.remove('open'));}
+function closeMessengerCallMenus(){document.querySelectorAll('.mess-call-popover.open').forEach(el=>el.classList.remove('open'));}
 function toggleMessengerMediaMenu(side){const menu=document.getElementById(`mess-media-menu-${side}`),wasOpen=menu.classList.contains('open');closeMessengerMediaMenus();if(!wasOpen)menu.classList.add('open');}
+function toggleMessengerCallMenu(side,callType){
+  const menu=document.getElementById(`mess-call-menu-${side}`),wasOpen=menu.classList.contains('open');
+  closeMessengerMediaMenus();closeMessengerCallMenus();
+  if(wasOpen)return;
+  menu.dataset.callType=callType;
+  document.getElementById(`mess-call-menu-title-${side}`).textContent=callType==='video'?'Cuộc gọi video':'Cuộc gọi thoại';
+  document.getElementById(`mess-call-menu-meta-${side}`).value='';
+  menu.classList.add('open');document.getElementById(`mess-call-menu-meta-${side}`).focus();
+}
+function addMessengerInlineCall(side){
+  const menu=document.getElementById(`mess-call-menu-${side}`),callMeta=document.getElementById(`mess-call-menu-meta-${side}`).value.trim();
+  if(!callMeta){alert('Nhập dòng nhỏ dưới cuộc gọi, ví dụ: 16 giây hoặc 21:52.');return;}
+  messPendingImage=null;messPendingCall={kind:'call',side,callType:menu.dataset.callType==='video'?'video':'voice',state:document.getElementById(`mess-call-menu-state-${side}`).value==='connected'?'connected':'missed',callMeta,emphasisBubble:document.getElementById('mess-emphasis').checked};
+  document.getElementById('mess-theirs').value='';document.getElementById('mess-mine').value='';document.getElementById('mess-tts').value='';
+  closeMessengerCallMenus();renderMessengerImagePreview();updateMessengerComposerMode();
+}
 function chooseMessengerImageFile(side){document.getElementById('mess-image-side').value=side;closeMessengerMediaMenus();document.getElementById('mess-image-file').click();}
 function chooseMessengerSticker(side){document.getElementById('mess-image-side').value=side;closeMessengerMediaMenus();openStickerLibraryModal(side);}
 function showMessengerUrlInput(side){const row=document.getElementById(`mess-media-url-row-${side}`);row.classList.add('open');document.getElementById(`mess-inline-url-${side}`).focus();}
-function applyMessengerInlineUrl(side){const input=document.getElementById(`mess-inline-url-${side}`),url=input.value.trim();if(!url)return alert('Hãy dán URL ảnh.');document.getElementById('mess-image-side').value=side;messPendingImage={url,name:url.split('/').pop().split('?')[0]||'ảnh từ URL'};input.value='';closeMessengerMediaMenus();renderMessengerImagePreview();}
+function applyMessengerInlineUrl(side){const input=document.getElementById(`mess-inline-url-${side}`),url=input.value.trim();if(!url)return alert('Hãy dán URL ảnh.');document.getElementById('mess-image-side').value=side;messPendingCall=null;messPendingImage={url,name:url.split('/').pop().split('?')[0]||'ảnh từ URL'};input.value='';closeMessengerMediaMenus();renderMessengerImagePreview();}
 async function uploadMessengerImage(file) {
   if(!file)return;
   const status=document.getElementById('mess-tts-status');status.textContent='🖼 Đang tải ảnh lên...';
-  try{const form=new FormData();form.append('file',file);const res=await fetch(MEDIA_SERVER_URL+'/upload',{method:'POST',body:form});if(!res.ok)throw new Error('HTTP '+res.status);const data=await res.json();messPendingImage={url:MEDIA_SERVER_URL+data.url, name:data.originalName||data.filename};document.getElementById('mess-image-url').value='';renderMessengerImagePreview();status.textContent='✓ Đã tải ảnh.';}catch(e){status.textContent='';alert('Không tải được ảnh: '+e.message+'\nKiểm tra media_server.py đang chạy.');}
+  try{const form=new FormData();form.append('file',file);const res=await fetch(MEDIA_SERVER_URL+'/upload',{method:'POST',body:form});if(!res.ok)throw new Error('HTTP '+res.status);const data=await res.json();messPendingCall=null;messPendingImage={url:MEDIA_SERVER_URL+data.url, name:data.originalName||data.filename};document.getElementById('mess-image-url').value='';renderMessengerImagePreview();status.textContent='✓ Đã tải ảnh.';}catch(e){status.textContent='';alert('Không tải được ảnh: '+e.message+'\nKiểm tra media_server.py đang chạy.');}
   document.getElementById('mess-image-file').value='';
 }
 async function uploadMessengerAvatar(file) {
@@ -3069,17 +3132,54 @@ function commitMessengerPartnerName(input){
   messPartnerName=input.value.trim()||'Tùng';
   input.value=messPartnerName;
 }
-function applyMessengerImageUrl(){const url=document.getElementById('mess-image-url').value.trim();if(!url)return alert('Hãy dán URL ảnh.');messPendingImage={url,name:url.split('/').pop().split('?')[0]||'ảnh từ URL'};renderMessengerImagePreview();}
+function applyMessengerImageUrl(){const url=document.getElementById('mess-image-url').value.trim();if(!url)return alert('Hãy dán URL ảnh.');messPendingCall=null;messPendingImage={url,name:url.split('/').pop().split('?')[0]||'ảnh từ URL'};renderMessengerImagePreview();}
 function addMessengerDraft() {
+  if(messEditingStepId!=null&&messEditingConversationId==null){submitMessengerConversation();return;}
+  if(messSpecialComposerKind==='time'){addMessengerTimeMarker();return;}
+  if(messSpecialComposerKind==='call'&&!messPendingCall){addMessengerCallDraft();return;}
   const msg = readMessengerComposer();
   if (!msg) { alert('Nhập tin nhắn vào ô Đối phương hoặc Tôi.'); return; }
-  const lengthError=ttsLengthError(msg.ttsText,'Tin nhắn TTS',msg.voiceIdx);
+  const isSpecial=messengerItemKind(msg)!=='message'||!!msg.imageUrl;
+  const lengthError=isSpecial?null:ttsLengthError(msg.ttsText,'Tin nhắn TTS',msg.voiceIdx);
   if(lengthError){document.getElementById('mess-tts-status').textContent='✗ '+lengthError;updateMessengerTtsCounter();return;}
-  applyEnabledMessengerAutoTones(msg);
+  if(!isSpecial)applyEnabledMessengerAutoTones(msg);
   if(messDraftEditIndex!=null)messDrafts[messDraftEditIndex]=msg;
   else if(messInsertAt!=null)messDrafts.splice(messInsertAt,0,msg);
   else messDrafts.push(msg);
   resetMessengerComposer();renderMessengerDrafts();
+}
+function closeMessengerAddMenu(){document.getElementById('mess-add-menu')?.classList.remove('open');}
+function toggleMessengerAddMenu(){document.getElementById('mess-add-menu')?.classList.toggle('open');}
+function setMessengerSpecialComposer(kind){
+  messSpecialComposerKind=kind;
+  const wrap=document.getElementById('mess-special-composer');
+  const call=document.getElementById('mess-call-composer');
+  if(!wrap||!call)return;
+  wrap.style.display=kind==='call'?'block':'none';call.style.display=kind==='call'?'block':'none';
+}
+function openMessengerSpecialComposer(kind,insertAt=null){
+  closeMessengerAddMenu();
+  if(kind==='call'&&messPlatform!=='messenger'){alert('Thẻ cuộc gọi hiện dùng giao diện Messenger. Hãy chuyển nền tảng preview về Messenger trước.');return;}
+  if(insertAt!=null){resetMessengerComposer();messInsertAt=insertAt;}
+  setMessengerSpecialComposer(kind);updateMessengerComposerMode();
+  const input=document.getElementById(kind==='time'?'mess-time-marker':'mess-call-meta');
+  input?.scrollIntoView({behavior:'smooth',block:'center'});input?.focus();
+}
+function saveMessengerSpecialDraft(draft){
+  if(messDraftEditIndex!=null)messDrafts[messDraftEditIndex]=draft;
+  else if(messInsertAt!=null)messDrafts.splice(messInsertAt,0,draft);
+  else messDrafts.push(draft);
+  resetMessengerComposer();renderMessengerDrafts();
+}
+function addMessengerTimeMarker(){
+  const timeLabel=document.getElementById('mess-time-marker').value.trim();
+  if(!timeLabel){alert('Nhập mốc giờ cần hiển thị.');return;}
+  saveMessengerSpecialDraft({kind:'time',timeLabel});
+}
+function addMessengerCallDraft(){
+  const callMeta=document.getElementById('mess-call-meta').value.trim();
+  if(!callMeta){alert('Nhập dòng nhỏ dưới cuộc gọi, ví dụ: 16 giây hoặc 21:52.');return;}
+  saveMessengerSpecialDraft({kind:'call',side:document.getElementById('mess-call-side').value,callType:document.getElementById('mess-call-type').value,state:document.getElementById('mess-call-state').value,callMeta,emphasisBubble:document.getElementById('mess-emphasis').checked});
 }
 function removeMessengerDraft(i){
   if(!messDrafts[i])return;messDrafts.splice(i,1);
@@ -3088,27 +3188,33 @@ function removeMessengerDraft(i){
   updateMessengerComposerMode();renderMessengerDrafts();
 }
 function resetMessengerComposer(){
-  messDraftEditIndex=null;messInsertAt=null;messTtsDirty=false;messVoiceTouched=false;messPendingImage=null;
+  messDraftEditIndex=null;messInsertAt=null;messTtsDirty=false;messVoiceTouched=false;messPendingImage=null;messPendingCall=null;messSpecialComposerKind=null;
   document.getElementById('mess-theirs').value='';document.getElementById('mess-mine').value='';document.getElementById('mess-tts').value='';document.getElementById('mess-echo').checked=false;document.getElementById('mess-emphasis').checked=false;document.getElementById('mess-image-url').value='';document.getElementById('mess-image-side').value='theirs';document.getElementById('mess-voice').value='';for(const side of ['theirs','mine']){const input=document.getElementById(`mess-inline-url-${side}`);if(input)input.value='';const row=document.getElementById(`mess-media-url-row-${side}`);if(row)row.classList.remove('open');}closeMessengerMediaMenus();renderMessengerImagePreview();updateMessengerComposerMode();updateMessengerTtsCounter();
+  document.getElementById('mess-time-marker').value='';document.getElementById('mess-call-side').value='theirs';document.getElementById('mess-call-type').value='voice';document.getElementById('mess-call-state').value='connected';document.getElementById('mess-call-meta').value='';setMessengerSpecialComposer(null);closeMessengerAddMenu();closeMessengerCallMenus();
 }
 function updateMessengerComposerMode(){
   const box=document.getElementById('mess-compose-mode'),btn=document.getElementById('mess-add-btn'),cancel=document.getElementById('mess-compose-cancel');
   if(!box||!btn||!cancel)return;
-  if(messDraftEditIndex!=null){box.style.display='block';box.textContent=`Đang sửa tin nhắn #${messDraftEditIndex+1}`;btn.textContent='✓ Lưu tin nhắn';cancel.style.display='block';}
-  else if(messInsertAt!=null){box.style.display='block';box.textContent=`Sẽ chèn tại vị trí #${messInsertAt+1}`;btn.textContent='＋ Chèn tin nhắn';cancel.style.display='block';}
-  else{box.style.display='none';box.textContent='';btn.textContent='＋ Thêm tin nhắn';cancel.style.display='none';}
+  const itemName=messPendingCall||messSpecialComposerKind==='call'?'cuộc gọi':messSpecialComposerKind==='time'?'mốc giờ':'tin nhắn';
+  if(messDraftEditIndex!=null){box.style.display='block';box.textContent=`Đang sửa ${itemName} #${messDraftEditIndex+1}`;btn.textContent='✓ Lưu tin nhắn';cancel.style.display='block';}
+  else if(messInsertAt!=null){box.style.display='block';box.textContent=`Sẽ chèn ${itemName} tại vị trí #${messInsertAt+1}`;btn.textContent='＋ Chèn tin nhắn';cancel.style.display='block';}
+  else if(messPendingCall){box.style.display='block';box.textContent='Cuộc gọi đang chờ thêm vào hội thoại';btn.textContent='＋ Thêm cuộc gọi';cancel.style.display='block';}
+  else{box.style.display='none';box.textContent='';btn.textContent=messEditingStepId!=null&&messEditingConversationId==null?'✓ Lưu thay đổi':'＋ Thêm tin nhắn';cancel.style.display='none';}
 }
 function fillMessengerComposer(msg){
   document.getElementById('mess-theirs').value=msg.side==='theirs'?(msg.text||''):'';document.getElementById('mess-mine').value=msg.side==='mine'?(msg.text||''):'';document.getElementById('mess-tts').value=msg.ttsText??msg.text??'';document.getElementById('mess-echo').checked=!!msg.echo;document.getElementById('mess-emphasis').checked=!!msg.emphasisBubble;document.getElementById('mess-image-side').value=msg.side;messPendingImage=msg.imageUrl?{url:msg.imageUrl,name:msg.imageName||'ảnh',type:msg.imageType||'image',desktopPath:msg.imageDesktopPath||null}:null;document.getElementById('mess-image-url').value=msg.imageUrl&&/^https?:/i.test(msg.imageUrl)?msg.imageUrl:'';document.getElementById('mess-voice').value=msg.voiceOverride?String(msg.voiceIdx):'';messTtsDirty=true;messVoiceTouched=!!msg.voiceOverride;renderMessengerImagePreview();updateMessengerTtsCounter();
 }
 function closeMessengerDraftMenus(){document.querySelectorAll('.mess-draft-actions.open').forEach(el=>el.classList.remove('open'));}
-function editMessengerDraft(i){const msg=messDrafts[i];if(!msg)return;closeMessengerDraftMenus();messDraftEditIndex=i;messInsertAt=null;fillMessengerComposer(msg);updateMessengerComposerMode();document.getElementById('mess-theirs').scrollIntoView({behavior:'smooth',block:'center'});}
+function editMessengerDraft(i){const msg=messDrafts[i];if(!msg)return;closeMessengerDraftMenus();messDraftEditIndex=i;messInsertAt=null;const kind=messengerItemKind(msg);if(kind==='time'){document.getElementById('mess-time-marker').value=msg.timeLabel||'';setMessengerSpecialComposer('time');}else if(kind==='call'){messPendingImage=null;messPendingCall={...msg,kind:'call',side:msg.side==='mine'?'mine':'theirs',callType:msg.callType==='video'?'video':'voice',state:msg.state==='connected'?'connected':'missed',callMeta:msg.callMeta||'',emphasisBubble:!!msg.emphasisBubble};setMessengerSpecialComposer(null);renderMessengerImagePreview();}else{fillMessengerComposer(msg);setMessengerSpecialComposer(null);}updateMessengerComposerMode();document.getElementById(kind==='message'?'mess-theirs':kind==='time'?'mess-time-marker':`mess-${msg.side==='mine'?'mine':'theirs'}`).scrollIntoView({behavior:'smooth',block:'center'});}
 function deleteMessengerDraft(i){closeMessengerDraftMenus();if(!messDrafts[i]||!confirm(`Xóa tin nhắn #${i+1}?`))return;removeMessengerDraft(i);}
 function beginMessengerInsert(i){resetMessengerComposer();messInsertAt=i;updateMessengerComposerMode();document.getElementById('mess-theirs').scrollIntoView({behavior:'smooth',block:'center'});document.getElementById('mess-theirs').focus();}
+function beginMessengerTimeInsert(i){resetMessengerComposer();messInsertAt=i;openMessengerSpecialComposer('time');}
 function cancelMessengerDraftAction(){resetMessengerComposer();renderMessengerDrafts();}
 function toggleMessengerDraftMenu(i){document.querySelectorAll('.mess-draft-actions.open').forEach(el=>{if(el.querySelector(`#mess-draft-menu-${i}`))return;el.classList.remove('open')});document.getElementById(`mess-draft-menu-${i}`)?.parentElement.classList.toggle('open');}
 document.addEventListener('click',e=>{if(!e.target.closest('.mess-draft-actions'))closeMessengerDraftMenus();});
 document.addEventListener('click',e=>{if(!e.target.closest('.mess-media-popover')&&!e.target.closest('.mess-media-trigger'))closeMessengerMediaMenus();});
+document.addEventListener('click',e=>{if(!e.target.closest('.mess-call-popover')&&!e.target.closest('.mess-call-trigger'))closeMessengerCallMenus();});
+document.addEventListener('click',e=>{if(!e.target.closest('.mess-add-menu-wrap'))closeMessengerAddMenu();});
 function messengerConversationIdForQuickAudio(){
   if(messEditingConversationId!=null)return messEditingConversationId;
   if(messEditingStepId!=null)return steps.find(s=>s.id===messEditingStepId)?.conversationId||null;
@@ -3318,9 +3424,20 @@ function applyMessengerJson(raw) {
   const items = Array.isArray(raw) ? raw : raw.messages;
   if (!Array.isArray(items) || !items.length) throw new Error('JSON phải là một mảng hoặc object có mảng "messages".');
   messDrafts = items.map((item, i) => {
+    const kind=messengerItemKind(item);
+    if(kind==='time'){
+      const timeLabel=String(item.timeLabel ?? item.time ?? item.text ?? '').trim();
+      if(!timeLabel)throw new Error(`Mốc giờ thứ ${i+1} đang trống.`);
+      return {kind:'time',timeLabel};
+    }
     const sideRaw = String(item.side || '').toLowerCase();
     const side = ['mine','me','right','toi','tôi'].includes(sideRaw) ? 'mine'
       : ['theirs','left','other','opponent','doi-phuong','đối phương'].includes(sideRaw) ? 'theirs' : null;
+    if(kind==='call'){
+      const callMeta=String(item.callMeta ?? item.duration ?? item.time ?? item.meta ?? '').trim();
+      if(!side||!callMeta)throw new Error(`Cuộc gọi thứ ${i+1} thiếu bên gửi hoặc dòng nhỏ.`);
+      return {kind:'call',side,callType:item.callType==='video'?'video':'voice',state:item.state==='connected'?'connected':'missed',callMeta};
+    }
     const text = String(item.text ?? '').trim();
     const imageUrl = String(item.imageUrl ?? '').trim();
     if (!side || (!text && !imageUrl)) throw new Error(`Tin thứ ${i + 1} thiếu side hợp lệ hoặc cả text/imageUrl đều trống.`);
@@ -3360,13 +3477,13 @@ function importMessengerJson(input) {
   reader.readAsText(file);
 }
 function renderMessengerDrafts() {
-  document.getElementById('mess-draft-list').innerHTML = messEditingStepId == null ? messDrafts.map((m,i)=>`<div class="mess-draft-item"><b>${m.side==='mine'?'Tôi':'Đối phương'}</b><span>${esc(m.text)}</span><button onclick="removeMessengerDraft(${i})">✕</button></div>`).join('') : '';
+  document.getElementById('mess-draft-list').innerHTML = messEditingStepId == null ? messDrafts.map((m,i)=>`<div class="mess-draft-item"><b>${messengerItemKind(m)==='time'?'Mốc giờ':messengerItemKind(m)==='call'?'Cuộc gọi':m.side==='mine'?'Tôi':'Đối phương'}</b><span>${esc(messengerDraftLabel(m))}</span><button onclick="removeMessengerDraft(${i})">✕</button></div>`).join('') : '';
   document.getElementById('mess-live-preview').innerHTML = buildMessengerHtml({ messHistory: messDrafts, messPartnerName, messPartnerAvatar, messPlatform, messShowFooter, messShowHeader, messEditable:messEditingStepId==null||messEditingConversationId!=null, messIdentityEditable:true, messAudioIndexes:messengerAudioIndexesForConversation(messengerConversationIdForQuickAudio()) });
   autoScrollMessenger(document.getElementById('mess-live-preview'));
 }
 function commitPendingMessengerDraft(){
   const pending=readMessengerComposer();if(!pending)return;
-  applyEnabledMessengerAutoTones(pending);
+  if(messengerItemKind(pending)==='message')applyEnabledMessengerAutoTones(pending);
   if(messDraftEditIndex!=null)messDrafts[messDraftEditIndex]=pending;
   else if(messInsertAt!=null)messDrafts.splice(messInsertAt,0,pending);
   else messDrafts.push(pending);
@@ -3385,11 +3502,18 @@ async function generateMessengerTtsResults(messages,status,reuseSteps=[]){
   return results;
 }
 function makeMessengerStep(msg,index,history,conversationId,ttsResult,oldStep=null){
-  return {id:oldStep?.id??stepIdCounter++,type:'mess',conversationId,groupId:oldStep?.groupId===false?false:(oldStep?.groupId||conversationId),messIndex:index,messPlatform,messShowFooter,messShowHeader,messPartnerName:messPartnerName.trim()||'Tùng',messPartnerAvatar,messSideVoices:{...messSideVoiceIdx},messTtsSpeed,messHistory:history.map(x=>({...x})),text:msg.text,ttsText:msg.ttsText,voiceIdx:msg.voiceIdx,echo:!!msg.echo,emphasisBubble:!!msg.emphasisBubble,audioUrl:ttsResult?.audioUrl||null,audioDesktopPath:ttsResult?.audioDesktopPath||null,audioServerUrl:ttsResult?.remoteAudioUrl||null,ttsDuration:ttsResult?.duration||null,duration:ttsResult?.duration||DEFAULT_DUR.mess,gap:oldStep?.gap??0,clearBefore:oldStep?.clearBefore??true,hue:oldStep?.hue??0,offsetX:oldStep?.offsetX??0,offsetY:oldStep?.offsetY??0,rotation:oldStep?.rotation??0};
+  const isMessage=messengerItemKind(msg)==='message';
+  return {id:oldStep?.id??stepIdCounter++,type:'mess',conversationId,groupId:oldStep?.groupId===false?false:(oldStep?.groupId||conversationId),messIndex:index,messPlatform,messShowFooter,messShowHeader,messPartnerName:messPartnerName.trim()||'Tùng',messPartnerAvatar,messSideVoices:{...messSideVoiceIdx},messTtsSpeed,messHistory:history.map(x=>({...x})),text:isMessage?msg.text:'',ttsText:isMessage?msg.ttsText:'',voiceIdx:isMessage?msg.voiceIdx:messengerDefaultVoice('theirs'),echo:isMessage&&!!msg.echo,emphasisBubble:!!msg.emphasisBubble,audioUrl:ttsResult?.audioUrl||null,audioDesktopPath:ttsResult?.audioDesktopPath||null,audioServerUrl:ttsResult?.remoteAudioUrl||null,ttsDuration:ttsResult?.duration||null,duration:ttsResult?.duration||(messengerItemKind(msg)==='time'?1.5:DEFAULT_DUR.mess),gap:oldStep?.gap??0,clearBefore:oldStep?.clearBefore??true,hue:oldStep?.hue??0,offsetX:oldStep?.offsetX??0,offsetY:oldStep?.offsetY??0,rotation:oldStep?.rotation??0};
+}
+function messengerCreatesTimelineStep(msg){return messengerItemKind(msg)!=='time';}
+function messengerHistoryForTimelineStep(drafts,index){
+  const nextIndex=drafts.findIndex((item,itemIndex)=>itemIndex>index&&messengerCreatesTimelineStep(item));
+  const end=nextIndex<0?drafts.length:nextIndex;
+  return drafts.slice(0,end).map(messengerHistoryMessage);
 }
 function insertPendingMessengerAudios(drafts,messSteps){
   drafts.forEach((msg,i)=>{
-    const target=messSteps[i];if(!target||!msg.parallelAudios?.length)return;
+    const target=messSteps.find(step=>step.messIndex===i);if(!target||!msg.parallelAudios?.length)return;
     for(const media of msg.parallelAudios)insertParallelAudioAfterStep(makeParallelAudioStepFromMedia(media,target),target);
     delete msg.parallelAudios;
   });
@@ -3398,14 +3522,14 @@ async function submitMessengerConversation() {
   const status = document.getElementById('mess-tts-status');
   const finish = document.getElementById('mess-finish-btn');
   if(messEditingConversationId!=null){
-    commitPendingMessengerDraft();if(!messDrafts.length){alert('Box tin nhắn phải có ít nhất một tin nhắn.');return;}
+    commitPendingMessengerDraft();if(!messDrafts.some(messengerCreatesTimelineStep)){alert('Box tin nhắn phải có ít nhất một tin nhắn, ảnh, sticker hoặc cuộc gọi.');return;}
     const conv=messEditingConversationId,oldSteps=steps.filter(s=>s.type==='mess'&&s.conversationId===conv).sort((a,b)=>(a.messIndex??0)-(b.messIndex??0));
     const boxClearBefore=oldSteps.some(s=>s.clearBefore);
     finish.disabled=true;
     try{
       messSideVoiceIdx={theirs:parseInt(document.getElementById('mess-theirs-voice').value,10),mine:parseInt(document.getElementById('mess-mine-voice').value,10)};messPartnerName=messPartnerName.trim()||'Tùng';
-      const ttsResults=await generateMessengerTtsResults(messDrafts,status,oldSteps),history=[],replacements=[];
-      messDrafts.forEach((msg,i)=>{history.push(messengerHistoryMessage(msg));const replacement=makeMessengerStep(msg,i,history,conv,ttsResults.get(i)||null,oldSteps[i]||null);replacement.clearBefore=boxClearBefore;replacements.push(replacement);});
+      const ttsResults=await generateMessengerTtsResults(messDrafts,status,oldSteps),replacements=[];
+      messDrafts.forEach((msg,i)=>{if(!messengerCreatesTimelineStep(msg))return;const oldStep=oldSteps.find(step=>step.messIndex===i)||null;const replacement=makeMessengerStep(msg,i,messengerHistoryForTimelineStep(messDrafts,i),conv,ttsResults.get(i)||null,oldStep);replacement.clearBefore=boxClearBefore;replacements.push(replacement);});
       const rebuilt=[];let replacementIndex=0,lastConversationPosition=-1;
       for(const step of steps){if(step.type==='mess'&&step.conversationId===conv){if(replacementIndex<replacements.length){rebuilt.push(replacements[replacementIndex++]);lastConversationPosition=rebuilt.length;}}else rebuilt.push(step);}
       if(replacementIndex<replacements.length)rebuilt.splice(lastConversationPosition<0?rebuilt.length:lastConversationPosition,0,...replacements.slice(replacementIndex));
@@ -3423,7 +3547,8 @@ async function submitMessengerConversation() {
       messPartnerName=messPartnerName.trim()||'Tùng';
       for(const related of steps.filter(x=>x.type==='mess'&&x.conversationId===conv)){related.messPlatform=messPlatform;related.messShowFooter=messShowFooter;related.messShowHeader=messShowHeader;related.messPartnerName=messPartnerName;related.messPartnerAvatar=messPartnerAvatar;related.messSideVoices={...messSideVoiceIdx};related.messTtsSpeed=messTtsSpeed;}
       for (const later of steps.filter(x=>x.type==='mess'&&x.conversationId===conv&&((x.messIndex??0)>=idx))) if(later.messHistory&&later.messHistory[idx]) later.messHistory[idx]={...msg};
-      s.text=msg.text;s.ttsText=msg.ttsText;s.voiceIdx=msg.voiceIdx;s.echo=!!msg.echo;s.emphasisBubble=!!msg.emphasisBubble;s.audioUrl=null;s.audioDesktopPath=null;s.ttsDuration=null;s.duration=DEFAULT_DUR.mess;
+      const isMessage=messengerItemKind(msg)==='message';
+      s.text=isMessage?(msg.text||''):'';s.ttsText=isMessage?(msg.ttsText||''):'';s.voiceIdx=isMessage?msg.voiceIdx:messengerDefaultVoice('theirs');s.echo=isMessage&&!!msg.echo;s.emphasisBubble=!!msg.emphasisBubble;s.audioUrl=null;s.audioDesktopPath=null;s.ttsDuration=null;s.duration=messengerItemKind(msg)==='time'?1.5:DEFAULT_DUR.mess;
       for (const x of steps.filter(x=>x.type==='mess'&&x.conversationId===conv)) bumpStepRevision(x.id);
     } catch(e){alert('Không tạo được giọng đọc: '+e.message);finish.disabled=false;return}
     finish.disabled=false;closeMessengerModal();renderStepList();focusScriptStep(s.id,{refreshPreview:true});return;
@@ -3432,14 +3557,15 @@ async function submitMessengerConversation() {
   // trong ô nhập (chưa bấm nút "+ Thêm tin nhắn"). Tự commit tin đang nhập
   // để thao tác này vẫn sinh card, không âm thầm bỏ qua toàn bộ nội dung.
   commitPendingMessengerDraft();
-  if (!messDrafts.length) { alert('Hãy thêm ít nhất một tin nhắn.'); return; }
-  finish.disabled=true; const conv='mess-'+Date.now(); const history=[];
+  if (!messDrafts.some(messengerCreatesTimelineStep)) { alert('Hãy thêm ít nhất một tin nhắn, ảnh, sticker hoặc cuộc gọi.'); return; }
+  finish.disabled=true; const conv='mess-'+Date.now();
   try {
     const ttsResults=await generateMessengerTtsResults(messDrafts,status);
     for(let i=0;i<messDrafts.length;i++){
       const msg=messDrafts[i];
       const r=ttsResults.get(i)||null;
-      history.push(messengerHistoryMessage(msg));const messStep=makeMessengerStep(msg,i,history,conv,r);steps.push(messStep);
+      if(!messengerCreatesTimelineStep(msg))continue;
+      const messStep=makeMessengerStep(msg,i,messengerHistoryForTimelineStep(messDrafts,i),conv,r);steps.push(messStep);
       if(msg.parallelAudios?.length)for(const media of msg.parallelAudios)insertParallelAudioAfterStep(makeParallelAudioStepFromMedia(media,messStep),messStep);
     }
   }catch(e){alert('Không tạo được giọng đọc: '+e.message);finish.disabled=false;return}
@@ -4927,7 +5053,7 @@ function selectStickerFromLibrary(el) {
   const sticker = JSON.parse(decodeURIComponent(el.dataset.sticker));
   if(stickerLibraryMessengerSide){
     document.getElementById('mess-image-side').value=stickerLibraryMessengerSide;
-    messPendingImage={url:sticker.url,name:sticker.filename||'sticker',type:'sticker',desktopPath:sticker.desktopPath||null};
+    messPendingCall=null;messPendingImage={url:sticker.url,name:sticker.filename||'sticker',type:'sticker',desktopPath:sticker.desktopPath||null};
     closeStickerLibraryModal();renderMessengerImagePreview();return;
   }
   const layerMode=defaultLayerModeForNewStep('sticker');
@@ -6475,7 +6601,7 @@ function normalizeMessengerConversationOrder(){
     const history=[];
     related.forEach((step,index)=>{
       const previousIndex=step.messIndex??((step.messHistory||[]).length-1),stored=(step.messHistory||[])[previousIndex]||(step.messHistory||[]).at(-1)||{};
-      const message={...stored,side:stored.side||'theirs',text:step.text??stored.text??'',ttsText:step.ttsText??stored.ttsText??step.text??'',voiceIdx:step.voiceIdx??stored.voiceIdx,voiceOverride:stored.voiceOverride??false};
+      const message=messengerItemKind(stored)==='message'?{...stored,side:stored.side||'theirs',text:step.text??stored.text??'',ttsText:step.ttsText??stored.ttsText??step.text??'',voiceIdx:step.voiceIdx??stored.voiceIdx,voiceOverride:stored.voiceOverride??false}:{...stored};
       history.push(message);step.messIndex=index;step.messHistory=history.map(item=>({...item}));bumpStepRevision(step.id);
     });
   }

@@ -224,7 +224,14 @@ function renderEmphasisLayer(t, stack) {
   const active = emphasisStepAt(t, stack);
   const msg = active?.message || {};
   const step = active?.step || {};
-  const cardZoomMode = active && step.type === 'mess' && typeof window.emphasisZoomMode === 'function' && window.emphasisZoomMode() === 'card';
+  // Tin nhắn chữ có thể dùng card giả theo setting. Các nội dung đặc biệt
+  // (ảnh, sticker, call, mốc giờ) luôn phóng to card gốc để giữ đúng UI gốc.
+  const specialMessengerContent = step.type === 'mess' && (
+    messengerItemKind(msg) !== 'message' || !!msg.imageUrl
+  );
+  const cardZoomMode = active && step.type === 'mess' && (
+    specialMessengerContent || (typeof window.emphasisZoomMode === 'function' && window.emphasisZoomMode() === 'card')
+  );
   const key = active ? `${step.id || ''}:${active.kind || step.type || ''}:${active.segmentIndex ?? step.messIndex ?? ''}:${msg.side || ''}:${msg.text || ''}` : '';
   if (!active) {
     if (layer.dataset.emphasisKey) {
@@ -249,7 +256,7 @@ function renderEmphasisLayer(t, stack) {
       const activeProgressiveLine = active.kind === 'progressive' && active.segmentIndex != null
         ? card.querySelector(`.progressive-line[data-progressive-part-index="${CSS.escape(String(active.segmentIndex))}"]`)
         : null;
-      const activeBubble = activeProgressiveLine || activeRow?.querySelector('.mess-bubble,.ig-bubble,.zalo-bubble,.mess-chat-image,.ig-image,.zalo-chat-image') || activeRow;
+      const activeBubble = activeProgressiveLine || activeRow?.querySelector('.mess-bubble,.ig-bubble,.zalo-bubble,.mess-chat-image,.ig-image,.zalo-chat-image,.mess-call-card') || activeRow;
       if (visualCard && activeBubble) {
         const frameBox = frame.getBoundingClientRect();
         const cardBox = visualCard.getBoundingClientRect();
@@ -524,7 +531,11 @@ function buildCardHtml(s) {
   const posAttr = posTransform(s);
   const stepAttr = ` data-step-id="${esc(s.id)}"`;
   const allowedAppearances = new Set(['fly-left', 'fly-right', 'fly-top', 'fly-bottom', 'drop-bounce', 'bounce-up', 'bounce-left', 'bounce-right']);
-  const appearanceClass = allowedAppearances.has(s.appearance) ? ` appearance-${s.appearance}` : '';
+  // Progressive reveal dựng lại cùng một card mỗi lần thêm dòng. Chỉ stage
+  // đầu được chạy animation xuất hiện; các stage sau phải giữ card đứng yên
+  // và chỉ bổ sung phần chữ mới, nếu không hiệu ứng sẽ nảy/bay lặp lại.
+  const progressiveFirstStage = !s.progressiveReveal || Number(s._progressiveActiveIndex ?? 0) === 0;
+  const appearanceClass = progressiveFirstStage && allowedAppearances.has(s.appearance) ? ` appearance-${s.appearance}` : '';
   const identityClass=s.identityBlurMode==='blur'?' identity-force-blur':s.identityBlurMode==='clear'?' identity-force-clear':'';
   const posClass = (s.progressiveReveal ? 'tcard-pos progressive-reveal-card' : 'tcard-pos') + appearanceClass + identityClass;
   if (s.type === 'text') return buildPlainTextCardHtml(s,posClass,stepAttr,posAttr);
@@ -599,6 +610,42 @@ function zaloClockLabel(value) {
   const now = new Date();
   return `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
 }
+function messengerItemKind(item) {
+  return item?.kind === 'time' || item?.kind === 'call' ? item.kind : 'message';
+}
+function messengerInsertControls(editable, index) {
+  return editable ? `<div class="mess-insert-slot" title="Chèn nội dung trước vị trí này"><button type="button" onclick="event.stopPropagation();beginMessengerInsert(${index})">＋ Tin</button><button type="button" onclick="event.stopPropagation();beginMessengerTimeInsert(${index})">＋ Giờ</button></div>` : '';
+}
+function messengerDraftActions(editable, index, menuDirection, canAddAudio) {
+  if (!editable) return '';
+  return `<div class="mess-draft-actions${menuDirection}">
+    <button type="button" class="mess-more-btn" onclick="event.stopPropagation();toggleMessengerDraftMenu(${index})" title="Tùy chọn" aria-label="Tùy chọn">•••</button>
+    <div class="mess-draft-menu" id="mess-draft-menu-${index}">
+      <button type="button" onclick="event.stopPropagation();editMessengerDraft(${index})">Chỉnh sửa</button>
+      ${canAddAudio ? `<button type="button" onclick="event.stopPropagation();openMessengerQuickAudio(${index})">Thêm âm thanh</button>` : ''}
+      <button type="button" class="danger" onclick="event.stopPropagation();deleteMessengerDraft(${index})">Xóa</button>
+    </div></div>`;
+}
+function messengerCallIcon(callType, state, side) {
+  const missed = state !== 'connected';
+  const direction = side === 'mine' ? 'outgoing' : 'incoming';
+  const path = callType === 'video'
+    ? (missed
+      ? 'M6.304 2h-.108c-1.132 0-2.058 0-2.79.098-.763.103-1.425.325-1.954.854C.923 3.48.7 4.142.598 4.907.5 5.637.5 6.563.5 7.697v.607c0 1.133 0 2.058.098 2.79.103.763.325 1.425.854 1.954.529.529 1.19.751 1.955.854.73.098 1.656.098 2.79.098h.107c1.133 0 2.058 0 2.79-.098.763-.103 1.425-.325 1.954-.854.529-.529.751-1.19.854-1.955.038-.286.062-.602.076-.949l1.93 1.418a1 1 0 0 0 1.592-.806V5.228a1 1 0 0 0-1.57-.822l-1.956 1.357a9.984 9.984 0 0 0-.072-.856c-.103-.764-.325-1.426-.854-1.955-.529-.529-1.19-.751-1.955-.854C8.363 2 7.437 2 6.303 2zM8.53 5.72a.75.75 0 0 1 0 1.06L7.31 8l1.22 1.22a.75.75 0 0 1-1.06 1.06L6.25 9.06l-1.22 1.22a.75.75 0 1 1-1.06-1.06L5.19 8 3.97 6.78a.75.75 0 0 1 1.06-1.06l1.22 1.22 1.22-1.22a.75.75 0 0 1 1.06 0z'
+      : 'M6.304 2h-.108c-1.132 0-2.058 0-2.79.098-.763.103-1.425.325-1.954.854C.923 3.48.7 4.142.598 4.907.5 5.637.5 6.563.5 7.697v.607c0 1.133 0 2.058.098 2.79.103.763.325 1.425.854 1.954.529.529 1.19.751 1.955.854.73.098 1.656.098 2.79.098h.107c1.133 0 2.058 0 2.79-.098.763-.103 1.425-.325 1.954-.854.529-.529.751-1.19.854-1.955.038-.286.062-.602.076-.95l1.93 1.418a1 1 0 0 0 1.592-.805V5.227a1 1 0 0 0-1.57-.821l-1.956 1.357a9.974 9.974 0 0 0-.072-.856c-.103-.764-.325-1.426-.854-1.955-.529-.529-1.19-.751-1.955-.854C8.363 2 7.437 2 6.303 2zM4.75 8.44l2.72-2.72a.75.75 0 1 1 1.06 1.06L5.81 9.5H7A.75.75 0 0 1 7 11H4.5c-.69 0-1.25-.56-1.25-1.25v-2.5a.75.75 0 0 1 1.5 0v1.19z')
+    : (missed
+      ? 'M4.776 1.111a1.728 1.728 0 0 0-2.56-.127l-.472.472a4.516 4.516 0 0 0-.738 5.415 21.46 21.46 0 0 0 8.123 8.123 4.516 4.516 0 0 0 5.415-.738l.455-.456a1.75 1.75 0 0 0-.129-2.591l-2.132-1.745a1.75 1.75 0 0 0-2.143-.056L9.22 10.416a.052.052 0 0 1-.059.002 12.077 12.077 0 0 1-3.579-3.58.052.052 0 0 1 .002-.058l1.009-1.375a1.75 1.75 0 0 0-.057-2.143l-1.76-2.15zm10.004.109a.75.75 0 0 1 0 1.06L13.56 3.5l1.22 1.22a.75.75 0 0 1-1.061 1.06L12.5 4.56l-1.22 1.221a.75.75 0 0 1-1.06-1.06L11.44 3.5l-1.22-1.22a.75.75 0 1 1 1.06-1.06l1.22 1.22 1.22-1.22a.75.75 0 0 1 1.06 0z'
+      : (direction === 'outgoing'
+        ? 'M4.776 1.112a1.728 1.728 0 0 0-2.56-.127l-.472.472a4.516 4.516 0 0 0-.739 5.415 21.46 21.46 0 0 0 8.123 8.123 4.516 4.516 0 0 0 5.415-.738l.456-.455a1.75 1.75 0 0 0-.13-2.592l-2.131-1.745a1.75 1.75 0 0 0-2.143-.057L9.22 10.417a.052.052 0 0 1-.06.002 12.077 12.077 0 0 1-3.578-3.58.052.052 0 0 1 .002-.058l1.008-1.375a1.75 1.75 0 0 0-.056-2.143l-1.76-2.15zM10.22 5.78a.75.75 0 0 1 0-1.06l2.218-2.22h-1.187a.75.75 0 0 1 0-1.5h2.499c.69 0 1.25.56 1.25 1.25v2.5a.75.75 0 0 1-1.5 0V3.56l-2.22 2.22a.75.75 0 0 1-1.06 0z'
+        : 'M4.776 1.112a1.728 1.728 0 0 0-2.56-.127l-.472.472a4.516 4.516 0 0 0-.739 5.415 21.46 21.46 0 0 0 8.123 8.123 4.516 4.516 0 0 0 5.415-.738l.456-.455a1.75 1.75 0 0 0-.13-2.592l-2.131-1.745a1.75 1.75 0 0 0-2.143-.057L9.22 10.417a.052.052 0 0 1-.06.002 12.077 12.077 0 0 1-3.578-3.58.052.052 0 0 1 .002-.058l1.008-1.375a1.75 1.75 0 0 0-.056-2.143l-1.76-2.15zm10.004.108a.75.75 0 0 1 0 1.06L12.563 4.5h1.187a.75.75 0 0 1 0 1.5h-2.5C10.56 6 10 5.44 10 4.75v-2.5a.75.75 0 0 1 1.5 0v1.19l2.22-2.22a.75.75 0 0 1 1.06 0z'));
+  return `<svg viewBox="0 0 16 16" aria-hidden="true"><path d="${path}"></path></svg>`;
+}
+function messengerCallHtml(item) {
+  const missed = item.state !== 'connected';
+  const type = item.callType === 'video' ? 'video' : 'voice';
+  const title = missed ? `Đã nhỡ cuộc gọi ${type === 'video' ? 'video' : 'thoại'}` : `Cuộc gọi ${type === 'video' ? 'video' : 'thoại'}`;
+  return `<div class="mess-call-card${missed && item.side === 'theirs' ? ' is-missed' : ''}"><span class="mess-call-icon">${messengerCallIcon(type, item.state, item.side)}</span><div class="mess-call-copy"><b>${title}</b><span>${esc(item.callMeta || '')}</span></div><div class="mess-call-repeat">Gọi lại</div></div>`;
+}
 function buildMessengerHtml(s) {
   if (s.messPlatform === 'instagram') return buildInstagramHtml(s);
   if (s.messPlatform === 'zalo') return buildZaloHtml(s);
@@ -612,22 +659,27 @@ function buildMessengerHtml(s) {
   const partnerNameSize = Math.max(1, Math.min(24, Array.from(partnerName).length));
   const showHeader = s.messShowHeader !== false;
   const rows = history.map((m,i) => {
-    const prevSame = i>0 && history[i-1].side===m.side, nextSame=i<history.length-1&&history[i+1].side===m.side;
+    const kind=messengerItemKind(m);
+    const insert=messengerInsertControls(editable,i);
+    const menuDirection=i<4?'':' menu-up';
+    if(kind==='time'){
+      const actions=messengerDraftActions(editable,i,menuDirection,false);
+      return `<div class="mess-row mess-time-row" data-mess-index="${i}">${insert}<div class="mess-time-marker">${esc(m.timeLabel||'')}</div>${actions}</div>`;
+    }
+    if(kind==='call'){
+      const avatar=m.side==='theirs'?`<div class="mess-mini-avatar"><img src="${esc(partnerAvatar)}" alt="" referrerpolicy="no-referrer"/></div>`:'';
+      const audioBadge = editable && (audioIndexes.has(i) || (m.parallelAudios && m.parallelAudios.length)) ? `<span class="mess-audio-badge">🔊 ${m.parallelAudios?.length || 1}<button type="button" onclick="event.stopPropagation();removeMessengerQuickAudio(${i})" title="Xóa âm thanh song song" aria-label="Xóa âm thanh song song">×</button></span>` : '';
+      const actions=messengerDraftActions(editable,i,menuDirection,true);
+      return `<div class="mess-row mess-call-row ${m.side}" data-mess-index="${i}">${insert}${avatar}<div class="mess-content">${messengerCallHtml(m)}</div>${audioBadge}${actions}</div>`;
+    }
+    const prevSame = i>0 && messengerItemKind(history[i-1])==='message' && history[i-1].side===m.side, nextSame=i<history.length-1&&messengerItemKind(history[i+1])==='message'&&history[i+1].side===m.side;
     const groupCls = prevSame&&nextSame?' middle':nextSame?' first':prevSame?' last':'';
     const avatar = m.side==='theirs' ? (nextSame?'<div class="mess-avatar-space"></div>':`<div class="mess-mini-avatar"><img src="${esc(partnerAvatar)}" alt="" referrerpolicy="no-referrer"/></div>`) : '';
     const textHtml = m.text ? `<div class="mess-bubble">${esc(m.text)}</div>` : '';
     const imageUrl = safeMediaUrl(m.imageUrl);
     const imageHtml = imageUrl ? `<img class="mess-chat-image${m.imageType==='sticker'?' is-sticker':''}" src="${esc(imageUrl)}" alt="" referrerpolicy="no-referrer"/>` : '';
     const audioBadge = editable && (audioIndexes.has(i) || (m.parallelAudios && m.parallelAudios.length)) ? `<span class="mess-audio-badge">🔊 ${m.parallelAudios?.length || 1}<button type="button" onclick="event.stopPropagation();removeMessengerQuickAudio(${i})" title="Xóa âm thanh song song" aria-label="Xóa âm thanh song song">×</button></span>` : '';
-    const insert = editable ? `<div class="mess-insert-slot" onclick="event.stopPropagation();beginMessengerInsert(${i})" title="Chèn tin nhắn trước tin này"><span>＋ Chèn tin tại đây</span></div>` : '';
-    const menuDirection = i < 4 ? '' : ' menu-up';
-    const actions = editable ? `<div class="mess-draft-actions${menuDirection}">
-      <button type="button" class="mess-more-btn" onclick="event.stopPropagation();toggleMessengerDraftMenu(${i})" title="Tùy chọn tin nhắn" aria-label="Tùy chọn tin nhắn">•••</button>
-      <div class="mess-draft-menu" id="mess-draft-menu-${i}">
-        <button type="button" onclick="event.stopPropagation();editMessengerDraft(${i})">Chỉnh sửa</button>
-        <button type="button" onclick="event.stopPropagation();openMessengerQuickAudio(${i})">Thêm âm thanh</button>
-        <button type="button" class="danger" onclick="event.stopPropagation();deleteMessengerDraft(${i})">Xóa</button>
-      </div></div>` : '';
+    const actions = messengerDraftActions(editable,i,menuDirection,true);
     return `<div class="mess-row ${m.side}${groupCls}" data-mess-index="${i}">${insert}${avatar}<div class="mess-content">${textHtml}${imageHtml}</div>${audioBadge}${actions}</div>`;
   }).join('');
   const appendControl = editable ? `<button type="button" class="mess-append-btn" onclick="event.stopPropagation();beginMessengerInsert(${history.length})">＋ Thêm tin ở cuối</button>` : '';
@@ -666,7 +718,12 @@ function buildInstagramHtml(s) {
   const partnerNameSize = Math.max(1, Math.min(24, Array.from(partnerName).length));
   const showHeader = s.messShowHeader !== false;
   const rows = history.map((m,i) => {
-    const prevSame = i>0 && history[i-1].side===m.side, nextSame=i<history.length-1&&history[i+1].side===m.side;
+    const kind=messengerItemKind(m);
+    const insert=messengerInsertControls(editable,i);
+    const menuDirection=i<4?'':' menu-up';
+    if(kind==='time')return `<div class="mess-row mess-time-row" data-mess-index="${i}">${insert}<div class="mess-time-marker">${esc(m.timeLabel||'')}</div>${messengerDraftActions(editable,i,menuDirection,false)}</div>`;
+    if(kind==='call'){const audioBadge=editable&&(audioIndexes.has(i)||(m.parallelAudios&&m.parallelAudios.length))?`<span class="mess-audio-badge">🔊 ${m.parallelAudios?.length||1}<button type="button" onclick="event.stopPropagation();removeMessengerQuickAudio(${i})" title="Xóa âm thanh song song" aria-label="Xóa âm thanh song song">×</button></span>`:'';return `<div class="mess-row mess-time-row" data-mess-index="${i}">${insert}<div class="mess-platform-system-marker">${esc(m.callType==='video'?'Cuộc gọi video':'Cuộc gọi thoại')} · ${esc(m.callMeta||'')}</div>${audioBadge}${messengerDraftActions(editable,i,menuDirection,true)}</div>`;}
+    const prevSame = i>0 && messengerItemKind(history[i-1])==='message' && history[i-1].side===m.side, nextSame=i<history.length-1&&messengerItemKind(history[i+1])==='message'&&history[i+1].side===m.side;
     const groupCls = prevSame&&nextSame?' middle':nextSame?' first':prevSame?' last':'';
     const avatar = m.side === 'theirs' ? (nextSame?'<div class="ig-space"></div>':`<div class="ig-mini"><img src="${esc(partnerAvatar)}" alt="" referrerpolicy="no-referrer"/></div>`) : '';
     const textHtml = m.text ? `<div class="ig-bubble">${esc(m.text)}</div>` : '';
@@ -674,15 +731,7 @@ function buildInstagramHtml(s) {
     const imageHtml = imageUrl ? `<img class="ig-image${m.imageType==='sticker'?' is-sticker':''}" src="${esc(imageUrl)}" alt="" referrerpolicy="no-referrer"/>` : '';
     const content = `<div class="ig-content">${textHtml}${imageHtml}</div>`;
     const audioBadge = editable && (audioIndexes.has(i) || (m.parallelAudios && m.parallelAudios.length)) ? `<span class="mess-audio-badge">🔊 ${m.parallelAudios?.length || 1}<button type="button" onclick="event.stopPropagation();removeMessengerQuickAudio(${i})" title="Xóa âm thanh song song" aria-label="Xóa âm thanh song song">×</button></span>` : '';
-    const insert = editable ? `<div class="mess-insert-slot" onclick="event.stopPropagation();beginMessengerInsert(${i})" title="Chèn tin nhắn trước tin này"><span>＋ Chèn tin tại đây</span></div>` : '';
-    const menuDirection = i < 4 ? '' : ' menu-up';
-    const actions = editable ? `<div class="mess-draft-actions${menuDirection}">
-      <button type="button" class="mess-more-btn" onclick="event.stopPropagation();toggleMessengerDraftMenu(${i})" title="Tùy chọn tin nhắn" aria-label="Tùy chọn tin nhắn">•••</button>
-      <div class="mess-draft-menu" id="mess-draft-menu-${i}">
-        <button type="button" onclick="event.stopPropagation();editMessengerDraft(${i})">Chỉnh sửa</button>
-        <button type="button" onclick="event.stopPropagation();openMessengerQuickAudio(${i})">Thêm âm thanh</button>
-        <button type="button" class="danger" onclick="event.stopPropagation();deleteMessengerDraft(${i})">Xóa</button>
-      </div></div>` : '';
+    const actions = messengerDraftActions(editable,i,menuDirection,true);
     return `<div class="mess-row ig-row ${m.side}${groupCls}" data-mess-index="${i}">${insert}${avatar}${content}${audioBadge}${actions}</div>`;
   }).join('');
   const appendControl = editable ? `<button type="button" class="mess-append-btn" onclick="event.stopPropagation();beginMessengerInsert(${history.length})">＋ Thêm tin ở cuối</button>` : '';
@@ -710,8 +759,13 @@ function buildZaloHtml(s) {
   const showHeader = s.messShowHeader !== false;
   const timeLabel = zaloClockLabel(s.messTime || s.iphoneTime || s.timeLabel);
   const rows = history.map((m,i) => {
-    const prevSame = i > 0 && history[i - 1]?.side === m.side;
-    const nextSame = i < history.length - 1 && history[i + 1]?.side === m.side;
+    const kind=messengerItemKind(m);
+    const insert=messengerInsertControls(editable,i);
+    const menuDirection=i<4?'':' menu-up';
+    if(kind==='time')return `<div class="mess-row zalo-row mess-time-row" data-mess-index="${i}">${insert}<div class="mess-time-marker">${esc(m.timeLabel||'')}</div>${messengerDraftActions(editable,i,menuDirection,false)}</div>`;
+    if(kind==='call'){const audioBadge=editable&&(audioIndexes.has(i)||(m.parallelAudios&&m.parallelAudios.length))?`<span class="mess-audio-badge">🔊 ${m.parallelAudios?.length||1}<button type="button" onclick="event.stopPropagation();removeMessengerQuickAudio(${i})" title="Xóa âm thanh song song" aria-label="Xóa âm thanh song song">×</button></span>`:'';return `<div class="mess-row zalo-row mess-time-row" data-mess-index="${i}">${insert}<div class="mess-platform-system-marker">${esc(m.callType==='video'?'Cuộc gọi video':'Cuộc gọi thoại')} · ${esc(m.callMeta||'')}</div>${audioBadge}${messengerDraftActions(editable,i,menuDirection,true)}</div>`;}
+    const prevSame = i > 0 && messengerItemKind(history[i - 1])==='message' && history[i - 1]?.side === m.side;
+    const nextSame = i < history.length - 1 && messengerItemKind(history[i + 1])==='message' && history[i + 1]?.side === m.side;
     const avatarEdit = identityEditable ? ` role="button" tabindex="0" title="Đổi ảnh đại diện" onclick="event.stopPropagation();document.getElementById('mess-avatar-file').click()"` : '';
     const avatar = m.side === 'theirs' ? (prevSame ? '<div class="zalo-avatar-space"></div>' : `<div class="zalo-mini-avatar${identityEditable?' is-editable':''}"${avatarEdit}><img src="${esc(partnerAvatar)}" alt="" referrerpolicy="no-referrer"/></div>`) : '';
     const timeHtml = !nextSame ? `<div class="zalo-time">${esc(zaloClockLabel(m.time || m.timeLabel || timeLabel))}</div>` : '';
@@ -719,15 +773,7 @@ function buildZaloHtml(s) {
     const imageUrl = safeMediaUrl(m.imageUrl);
     const imageHtml = imageUrl ? `<div class="zalo-image-wrap"><img class="zalo-chat-image${m.imageType==='sticker'?' is-sticker':''}" src="${esc(imageUrl)}" alt="" referrerpolicy="no-referrer"/>${!m.text ? timeHtml : ''}</div>` : '';
     const audioBadge = editable && (audioIndexes.has(i) || (m.parallelAudios && m.parallelAudios.length)) ? `<span class="mess-audio-badge">🔊 ${m.parallelAudios?.length || 1}<button type="button" onclick="event.stopPropagation();removeMessengerQuickAudio(${i})" title="Xóa âm thanh song song" aria-label="Xóa âm thanh song song">×</button></span>` : '';
-    const insert = editable ? `<div class="mess-insert-slot" onclick="event.stopPropagation();beginMessengerInsert(${i})" title="Chèn tin nhắn trước tin này"><span>＋ Chèn tin tại đây</span></div>` : '';
-    const menuDirection = i < 4 ? '' : ' menu-up';
-    const actions = editable ? `<div class="mess-draft-actions${menuDirection}">
-      <button type="button" class="mess-more-btn" onclick="event.stopPropagation();toggleMessengerDraftMenu(${i})" title="Tùy chọn tin nhắn" aria-label="Tùy chọn tin nhắn">•••</button>
-      <div class="mess-draft-menu" id="mess-draft-menu-${i}">
-        <button type="button" onclick="event.stopPropagation();editMessengerDraft(${i})">Chỉnh sửa</button>
-        <button type="button" onclick="event.stopPropagation();openMessengerQuickAudio(${i})">Thêm âm thanh</button>
-        <button type="button" class="danger" onclick="event.stopPropagation();deleteMessengerDraft(${i})">Xóa</button>
-      </div></div>` : '';
+    const actions = messengerDraftActions(editable,i,menuDirection,true);
     return `<div class="mess-row zalo-row ${m.side}" data-mess-index="${i}">${insert}${avatar}<div class="zalo-content">${textHtml}${imageHtml}</div>${audioBadge}${actions}</div>`;
   }).join('');
   const appendControl = editable ? `<button type="button" class="mess-append-btn" onclick="event.stopPropagation();beginMessengerInsert(${history.length})">＋ Thêm tin ở cuối</button>` : '';

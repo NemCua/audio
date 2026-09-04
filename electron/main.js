@@ -80,9 +80,9 @@ function createMainWindow() {
     return { action: 'deny' };
   });
   win.webContents.on('will-navigate', event => event.preventDefault());
-  // Dev local mặc định trỏ backend localhost để test trước khi đẩy VPS.
-  // Khi build production vẫn dùng backend VPS như bản phát hành.
-  const useLocalApi = isDev;
+  // Cả dev lẫn bản phát hành mặc định gọi VPS, để test desktop giống người
+  // dùng thật. Chỉ bật backend Python local khi cần debug chủ động.
+  const useLocalApi = process.env.THREADS_USE_LOCAL_API === '1';
   win.loadFile(path.join(threadsRoot(), 'index.html'), useLocalApi ? { query: { localApi: '1' } } : undefined);
   return win;
 }

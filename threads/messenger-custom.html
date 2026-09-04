@@ -55,10 +55,11 @@
   .back,.head-actions svg,.cell-icon,.wifi-icon,.smile,.like{overflow:visible}
 
   /* Message builder: controls stay outside the 414x896 capture area. */
-  .builder{position:fixed;z-index:20;left:24px;top:24px;width:340px;max-height:calc(100vh - 48px);overflow-y:auto;padding:16px;border:1px solid #34363a;border-radius:16px;background:#242526;color:#f5f6f7;box-shadow:0 16px 45px #0007;font-weight:500}.builder h2{margin:0 0 4px;font-size:17px}.builder-note{margin:0 0 14px;color:#b0b3b8;font-size:12px;line-height:16px}.builder-form{margin-top:10px}.builder-form label,.json-builder label{display:block;margin-bottom:5px;font-size:12px;font-weight:650}.builder-line{display:flex;gap:7px}.builder textarea{width:100%;height:56px;resize:vertical;padding:9px 10px;border:1px solid #4d5156;border-radius:10px;outline:none;background:#18191a;color:#fff;font-family:inherit;font-size:14px;line-height:18px;font-weight:500}.builder textarea:focus{border-color:#4285f4}.builder-send{flex:0 0 70px;border:0;border-radius:10px;color:#fff;font-size:13px;font-weight:700;cursor:pointer}.builder-send.left{background:#65676b}.builder-send.right{background:#2864ed}.builder-actions{display:flex;gap:7px;margin-top:13px}.builder-actions button{flex:1;padding:8px;border:1px solid #4d5156;border-radius:9px;background:#303236;color:#e4e6eb;font-size:12px;cursor:pointer}.json-builder{margin-top:14px;padding-top:13px;border-top:1px solid #3e4042}.builder #conversation-json{height:210px;resize:vertical;font:11px/15px ui-monospace,SFMono-Regular,Menlo,monospace}.json-error{min-height:15px;margin:5px 0 0;color:#ff8a8a;font-size:11px;line-height:15px}
+  .builder{position:fixed;z-index:20;left:24px;top:24px;width:340px;max-height:calc(100vh - 48px);overflow-y:auto;padding:16px;border:1px solid #34363a;border-radius:16px;background:#242526;color:#f5f6f7;box-shadow:0 16px 45px #0007;font-weight:500}.builder h2{margin:0 0 4px;font-size:17px}.builder-note{margin:0 0 14px;color:#b0b3b8;font-size:12px;line-height:16px}.builder-form{margin-top:10px}.builder-form label,.json-builder label{display:block;margin-bottom:5px;font-size:12px;font-weight:650}.builder-line{display:flex;gap:7px}.builder textarea,.builder-line input{width:100%;height:56px;padding:9px 10px;border:1px solid #4d5156;border-radius:10px;outline:none;background:#18191a;color:#fff;font-family:inherit;font-size:14px;line-height:18px;font-weight:500}.builder textarea{resize:vertical}.builder textarea:focus,.builder-line input:focus{border-color:#4285f4}.builder-send{flex:0 0 70px;border:0;border-radius:10px;color:#fff;font-size:13px;font-weight:700;cursor:pointer}.builder-send.left{background:#65676b}.builder-send.right{background:#2864ed}.builder-actions{display:flex;gap:7px;margin-top:13px}.builder-actions button{flex:1;padding:8px;border:1px solid #4d5156;border-radius:9px;background:#303236;color:#e4e6eb;font-size:12px;cursor:pointer}.json-builder{margin-top:14px;padding-top:13px;border-top:1px solid #3e4042}.builder #conversation-json{height:210px;resize:vertical;font:11px/15px ui-monospace,SFMono-Regular,Menlo,monospace}.json-error{min-height:15px;margin:5px 0 0;color:#ff8a8a;font-size:11px;line-height:15px}
   .generated{position:absolute;z-index:2;inset:0;display:flex;flex-direction:column;padding:10px 8px 14px 16px;overflow-y:auto;background:#fff;scrollbar-width:none}.generated::-webkit-scrollbar{display:none}.generated[hidden]{display:none}.chat.building>:not(.generated){display:none}.generated .row{position:relative;left:auto;right:auto;top:auto;width:100%;display:flex;align-items:flex-end;margin:0}.generated .row+.row{margin-top:12px}.generated .row.joined{margin-top:1.92px}.generated .row.mine{justify-content:flex-end;padding-left:56px}.generated .row.theirs{justify-content:flex-start;padding-right:56px;gap:12px}.generated .avatar-slot{width:28px;height:28px;display:flex;flex:0 0 28px;align-items:flex-end}.generated .avatar-slot .avatar{width:28px;height:28px}.generated .bubble{max-width:300px;white-space:pre-wrap;overflow-wrap:anywhere}.generated .mine.start .bubble{border-bottom-right-radius:4px}.generated .mine.middle .bubble{border-top-right-radius:4px;border-bottom-right-radius:4px}.generated .mine.end .bubble{border-top-right-radius:4px}.generated .theirs.start .bubble{border-bottom-left-radius:4px}.generated .theirs.middle .bubble{border-top-left-radius:4px;border-bottom-left-radius:4px}.generated .theirs.end .bubble{border-top-left-radius:4px}
   .builder-actions.export button{border-color:#315dcc;background:#244eb7;color:#fff;font-weight:700}.builder button:disabled{cursor:wait;opacity:.55}.export-status{min-height:16px;margin:8px 0 0;color:#b0b3b8;font-size:11px;line-height:16px;text-align:center}.generated{inset:0;padding-top:102px;background:transparent}
   .generated .json-time{flex:none;margin:30px 0 17px;text-align:center;color:#6b6d72;font-size:13px;line-height:16px;letter-spacing:-.17px}.generated .message-reaction{position:absolute;z-index:2;right:7px;bottom:-16px;min-width:28px;height:22px;display:flex;align-items:center;justify-content:center;padding:0 5px;border:2px solid #fff;border-radius:13px;background:#f2f3f5;font-size:13px;line-height:1}.generated .theirs .message-reaction{right:auto;left:39px}.generated .row.has-reaction{margin-bottom:14px}.generated .json-reply{position:relative;width:100%;margin-top:20px}.generated .json-reply-label{display:flex;align-items:center;gap:4px;margin:0 0 5px 40px;color:#6b6d72;font-size:12px;line-height:15px}.generated .json-reply.mine .json-reply-label{justify-content:flex-end;margin:0 8px 5px 0}.generated .json-reply-label svg{width:12px;height:12px;display:block;fill:currentColor}.generated .quoted{max-width:219px;margin-left:40px;padding:9px 12px 27px;border-radius:18px;background:rgba(250,250,250,.88);color:#696b70;font-size:14px;line-height:17px;white-space:pre-wrap}.generated .json-reply.mine .quoted{margin-right:0;margin-left:auto}.generated .json-reply .row{margin-top:-18px}.generated .json-reply .row.theirs{padding-right:56px}.generated .json-reply .row.mine{padding-left:56px}
+  .generated .call-row{position:relative;width:100%;display:flex;margin-top:12px}.generated .call-row.mine{justify-content:flex-end;padding-left:56px}.generated .call-row.theirs{justify-content:flex-start;gap:12px;padding-right:56px}.generated .call-avatar-slot{width:28px;height:28px;flex:0 0 28px;align-self:flex-end}.generated .call-avatar-slot .avatar{display:block;width:28px;height:28px}.generated .call-card{width:fit-content;max-width:100%;padding:12px;border-radius:18px;background:#f1f2f4;color:#050505}.generated .call-card-head{display:flex;align-items:center;gap:8px}.generated .call-card-icon{width:38px;height:38px;flex:0 0 38px;display:grid;place-items:center;border-radius:50%;background:#aab2bd;color:#fff}.generated .call-row.theirs .call-card.missed .call-card-icon,.generated .call-row.theirs .call-card.canceled .call-card-icon{background:#fa3e5d}.generated .call-card-icon svg{width:22px;height:22px;fill:currentColor}.generated .call-card-copy{min-width:0}.generated .call-card-title{font-size:15px;font-weight:700;line-height:18px;letter-spacing:-.25px;white-space:nowrap}.generated .call-card-status{margin-top:1px;color:#74777d;font-size:12px;line-height:14px}.generated .call-card-action{width:100%;height:36px;margin-top:11px;border:0;border-radius:13px;background:#dedfe1;color:#050505;font:700 15px -apple-system,BlinkMacSystemFont,"SF Pro Text","Helvetica Neue",Arial,sans-serif;letter-spacing:-.2px}.generated .call-card-action:active{transform:scale(.98)}
   .profile-fields{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin:12px 0 14px}.profile-field{min-width:0}.profile-field.wide{grid-column:1/-1}.profile-field label{display:block;margin-bottom:4px;color:#d7d9dd;font-size:11px;font-weight:650}.profile-field input{width:100%;height:34px;padding:7px 9px;border:1px solid #4d5156;border-radius:9px;outline:none;background:#18191a;color:#fff;font-family:inherit;font-size:12px}.profile-field input:focus{border-color:#4285f4}.profile-field input[type="file"]{height:auto;padding:6px;font-size:10px}.avatar.has-image{background-position:center;background-size:cover;background-repeat:no-repeat}.avatar.has-image:after{display:none}
   .display-options{display:flex;gap:18px;margin:2px 0 13px;padding:9px 10px;border:1px solid #3e4042;border-radius:10px;background:#1d1f20}.display-options label{display:flex;align-items:center;gap:7px;color:#e4e6eb;font-size:12px;font-weight:650;cursor:pointer}.display-options input{width:16px;height:16px;margin:0;accent-color:#2864ed}
   @media(max-width:1040px){.builder{left:8px;top:auto;right:8px;bottom:8px;width:auto;max-width:398px;margin:auto;transform:scale(.82);transform-origin:bottom center}}
@@ -111,6 +112,7 @@
   </div>
   <form class="builder-form" data-side="theirs"><label for="left-message">Tin nhắn bên trái</label><div class="builder-line"><textarea id="left-message" placeholder="Nhập tin của đối phương…"></textarea><button class="builder-send left" type="submit">Gửi trái</button></div></form>
   <form class="builder-form" data-side="mine"><label for="right-message">Tin nhắn bên phải</label><div class="builder-line"><textarea id="right-message" placeholder="Nhập tin của bạn…"></textarea><button class="builder-send right" type="submit">Gửi phải</button></div></form>
+  <form class="builder-form" id="time-marker-form"><label for="time-marker-input">Mốc giờ trong hội thoại</label><div class="builder-line"><input id="time-marker-input" type="text" inputmode="numeric" placeholder="Ví dụ: 16:17 hoặc Hôm qua, 21:52"><button class="builder-send left" type="submit">Thêm giờ</button></div></form>
   <div class="json-builder">
     <label for="conversation-json">Nạp hội thoại bằng JSON</label>
     <textarea id="conversation-json" spellcheck="false"></textarea>
@@ -213,7 +215,18 @@
       {kind:'reply', side:'left', reply:'bật kiếm tiền xong nó tắt đề xuất', mess:'thấy vẫn có view mà', label:'Khanh đã trả lời bạn'},
       {kind:'message', side:'left', content:'nó thử kênh đấy'},
       {kind:'message', side:'left', content:'làm tiếp đi a nổ view là bú'},
-      {kind:'message', side:'left', content:':)))'}
+      {kind:'message', side:'left', content:':)))'},
+      {kind:'time', content:'16:17'},
+      // Đối phương gọi đến: thoại/video, thành công và không thành công.
+      {kind:'call', side:'left', callType:'voice', state:'connected', duration:'16 giây'},
+      {kind:'call', side:'left', callType:'voice', state:'canceled', time:'21:52'},
+      {kind:'call', side:'left', callType:'video', state:'connected', duration:'28 giây'},
+      {kind:'call', side:'left', callType:'video', state:'canceled', time:'11:24'},
+      // Bên mình gọi đi: thoại/video, thành công và không thành công.
+      {kind:'call', side:'right', callType:'voice', state:'connected', duration:'11 giây'},
+      {kind:'call', side:'right', callType:'voice', state:'canceled', time:'4:18 CH'},
+      {kind:'call', side:'right', callType:'video', state:'connected', duration:'34 giây'},
+      {kind:'call', side:'right', callType:'video', state:'canceled', time:'4:21 CH'}
     ]
   };
 
@@ -318,6 +331,60 @@
     return item && ['message', 'mess', 'reply', 'messreply'].includes(item.kind);
   }
 
+  const outgoingVoiceCallIcon = '<svg viewBox="0 0 16 16" aria-hidden="true"><path d="M4.776 1.112a1.728 1.728 0 0 0-2.56-.127l-.472.472a4.516 4.516 0 0 0-.739 5.415 21.46 21.46 0 0 0 8.123 8.123 4.516 4.516 0 0 0 5.415-.738l.456-.455a1.75 1.75 0 0 0-.13-2.592l-2.131-1.745a1.75 1.75 0 0 0-2.143-.057L9.22 10.417a.052.052 0 0 1-.06.002 12.077 12.077 0 0 1-3.578-3.58.052.052 0 0 1 .002-.058l1.008-1.375a1.75 1.75 0 0 0-.056-2.143l-1.76-2.15zM10.22 5.78a.75.75 0 0 1 0-1.06l2.218-2.22h-1.187a.75.75 0 0 1 0-1.5h2.499c.69 0 1.25.56 1.25 1.25v2.5a.75.75 0 0 1-1.5 0V3.56l-2.22 2.22a.75.75 0 0 1-1.06 0z"></path></svg>';
+  const incomingVoiceCallIcon = '<svg viewBox="0 0 16 16" aria-hidden="true"><path d="M4.776 1.112a1.728 1.728 0 0 0-2.56-.127l-.472.472a4.516 4.516 0 0 0-.739 5.415 21.46 21.46 0 0 0 8.123 8.123 4.516 4.516 0 0 0 5.415-.738l.456-.455a1.75 1.75 0 0 0-.13-2.592l-2.131-1.745a1.75 1.75 0 0 0-2.143-.057L9.22 10.417a.052.052 0 0 1-.06.002 12.077 12.077 0 0 1-3.578-3.58.052.052 0 0 1 .002-.058l1.008-1.375a1.75 1.75 0 0 0-.056-2.143l-1.76-2.15zm10.004.108a.75.75 0 0 1 0 1.06L12.563 4.5h1.187a.75.75 0 0 1 0 1.5h-2.5C10.56 6 10 5.44 10 4.75v-2.5a.75.75 0 0 1 1.5 0v1.19l2.22-2.22a.75.75 0 0 1 1.06 0z"></path></svg>';
+  const missedVoiceCallIcon = '<svg viewBox="0 0 16 16" aria-hidden="true"><path d="M4.776 1.111a1.728 1.728 0 0 0-2.56-.127l-.472.472a4.516 4.516 0 0 0-.738 5.415 21.46 21.46 0 0 0 8.123 8.123 4.516 4.516 0 0 0 5.415-.738l.455-.456a1.75 1.75 0 0 0-.129-2.591l-2.132-1.745a1.75 1.75 0 0 0-2.143-.056L9.22 10.416a.052.052 0 0 1-.059.002 12.077 12.077 0 0 1-3.579-3.58.052.052 0 0 1 .002-.058l1.009-1.375a1.75 1.75 0 0 0-.057-2.143l-1.76-2.15zm10.004.109a.75.75 0 0 1 0 1.06L13.56 3.5l1.22 1.22a.75.75 0 0 1-1.061 1.06L12.5 4.56l-1.22 1.221a.75.75 0 0 1-1.06-1.06L11.44 3.5l-1.22-1.22a.75.75 0 1 1 1.06-1.06l1.22 1.22 1.22-1.22a.75.75 0 0 1 1.06 0z"></path></svg>';
+  const incomingVideoCallIcon = '<svg viewBox="0 0 16 16" aria-hidden="true"><path d="M6.304 2h-.108c-1.132 0-2.058 0-2.79.098-.763.103-1.425.325-1.954.854C.923 3.48.7 4.142.598 4.907.5 5.637.5 6.563.5 7.697v.607c0 1.133 0 2.058.098 2.79.103.763.325 1.425.854 1.954.529.529 1.19.751 1.955.854.73.098 1.656.098 2.79.098h.107c1.133 0 2.058 0 2.79-.098.763-.103 1.425-.325 1.954-.854.529-.529.751-1.19.854-1.955.038-.286.062-.602.076-.95l1.93 1.418a1 1 0 0 0 1.592-.805V5.227a1 1 0 0 0-1.57-.821l-1.956 1.357a9.974 9.974 0 0 0-.072-.856c-.103-.764-.325-1.426-.854-1.955-.529-.529-1.19-.751-1.955-.854C8.363 2 7.437 2 6.303 2zM4.75 8.44l2.72-2.72a.75.75 0 1 1 1.06 1.06L5.81 9.5H7A.75.75 0 0 1 7 11H4.5c-.69 0-1.25-.56-1.25-1.25v-2.5a.75.75 0 0 1 1.5 0v1.19z"></path></svg>';
+  const missedVideoCallIcon = '<svg viewBox="0 0 16 16" aria-hidden="true"><path d="M6.304 2h-.108c-1.132 0-2.058 0-2.79.098-.763.103-1.425.325-1.954.854C.923 3.48.7 4.142.598 4.907.5 5.637.5 6.563.5 7.697v.607c0 1.133 0 2.058.098 2.79.103.763.325 1.425.854 1.954.529.529 1.19.751 1.955.854.73.098 1.656.098 2.79.098h.107c1.133 0 2.058 0 2.79-.098.763-.103 1.425-.325 1.954-.854.529-.529.751-1.19.854-1.955.038-.286.062-.602.076-.949l1.93 1.418a1 1 0 0 0 1.592-.806V5.228a1 1 0 0 0-1.57-.822l-1.956 1.357a9.984 9.984 0 0 0-.072-.856c-.103-.764-.325-1.426-.854-1.955-.529-.529-1.19-.751-1.955-.854C8.363 2 7.437 2 6.303 2zM8.53 5.72a.75.75 0 0 1 0 1.06L7.31 8l1.22 1.22a.75.75 0 0 1-1.06 1.06L6.25 9.06l-1.22 1.22a.75.75 0 1 1-1.06-1.06L5.19 8 3.97 6.78a.75.75 0 0 1 1.06-1.06l1.22 1.22 1.22-1.22a.75.75 0 0 1 1.06 0z"></path></svg>';
+
+  function createCallRow(message) {
+    const side = normalizedSide(message.side);
+    const callType = message.callType === 'video' ? 'video' : 'voice';
+    const state = ['connected', 'canceled', 'missed'].includes(message.state) ? message.state : 'connected';
+    const row = document.createElement('div');
+    row.className = `call-row ${side}`;
+    if (side === 'theirs') {
+      const avatarSlot = document.createElement('span');
+      avatarSlot.className = 'call-avatar-slot';
+      const avatar = document.createElement('span');
+      avatar.className = 'avatar';
+      applyAvatar(avatar);
+      avatarSlot.append(avatar);
+      row.append(avatarSlot);
+    }
+    const card = document.createElement('article');
+    card.className = `call-card ${callType} ${state}`;
+    const callLabel = callType === 'video' ? 'cuộc gọi video' : 'cuộc gọi thoại';
+    const title = state === 'canceled' || state === 'missed' ? `Đã nhỡ ${callLabel}` : callType === 'video' ? 'Cuộc gọi video' : 'Cuộc gọi thoại';
+    const status = state === 'connected' ? (message.duration || 'Đã kết nối') : (message.time || 'Vừa xong');
+    const head = document.createElement('div');
+    head.className = 'call-card-head';
+    const icon = document.createElement('span');
+    icon.className = 'call-card-icon';
+    icon.innerHTML = callType === 'video'
+      ? (state === 'canceled' || state === 'missed' ? missedVideoCallIcon : incomingVideoCallIcon)
+      : state === 'canceled' || state === 'missed'
+        ? missedVoiceCallIcon
+        : side === 'theirs' ? incomingVoiceCallIcon : outgoingVoiceCallIcon;
+    const copy = document.createElement('div');
+    copy.className = 'call-card-copy';
+    const titleEl = document.createElement('div');
+    titleEl.className = 'call-card-title';
+    titleEl.textContent = title;
+    const statusEl = document.createElement('div');
+    statusEl.className = 'call-card-status';
+    statusEl.textContent = status;
+    const action = document.createElement('button');
+    action.className = 'call-card-action';
+    action.type = 'button';
+    action.textContent = 'Gọi lại';
+    copy.append(titleEl, statusEl);
+    head.append(icon, copy);
+    card.append(head, action);
+    row.append(card);
+    return row;
+  }
+
   function groupPosition(index) {
     const current = messages[index];
     const before = messages[index - 1];
@@ -416,6 +483,10 @@
         generated.append(wrapper);
         return;
       }
+      if (message.kind === 'call') {
+        generated.append(createCallRow(message));
+        return;
+      }
       if (message.kind === 'message' || message.kind === 'mess') generated.append(createMessageRow(message, index));
     });
     generated.scrollTop = generated.scrollHeight;
@@ -433,7 +504,19 @@
     input.focus();
   }
 
-  document.querySelectorAll('.builder-form').forEach(form => {
+  function addTimeMarker() {
+    const input = document.getElementById('time-marker-input');
+    const text = input.value.trim();
+    if (!text) return;
+    enterBuilderMode();
+    messages.push({kind:'time', content:text});
+    input.value = '';
+    renderMessages();
+    jsonInput.value = JSON.stringify({...sampleConversation, name:document.querySelector('.name').textContent, activity:document.querySelector('.presence').textContent, iphoneTime:document.querySelector('.clock').textContent, conversation:messages}, null, 2);
+    input.focus();
+  }
+
+  document.querySelectorAll('.builder-form[data-side]').forEach(form => {
     form.addEventListener('submit', event => {
       event.preventDefault();
       sendMessage(form);
@@ -444,6 +527,11 @@
         sendMessage(form);
       }
     });
+  });
+
+  document.getElementById('time-marker-form').addEventListener('submit', event => {
+    event.preventDefault();
+    addTimeMarker();
   });
 
   document.getElementById('clear-chat').addEventListener('click', () => {
