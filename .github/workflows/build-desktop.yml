@@ -74,3 +74,20 @@ jobs:
             release-assets/*.dmg
             release-assets/*.zip
             release-assets/*.exe
+
+  publish-public-downloads:
+    if: startsWith(github.ref, 'refs/tags/desktop-v')
+    needs: release
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    env:
+      GH_TOKEN: ${{ secrets.DOWNLOADS_REPO_TOKEN }}
+      DOWNLOADS_REPO: NemCua/threads-video-maker-downloads
+    steps:
+      - name: Download installers from the private source release
+        run: gh release download "${{ github.ref_name }}" --repo "${{ github.repository }}" --dir release-assets
+      - name: Create public release when needed
+        run: gh release view "${{ github.ref_name }}" --repo "$DOWNLOADS_REPO" || gh release create "${{ github.ref_name }}" --repo "$DOWNLOADS_REPO" --title "Threads Video Maker ${{ github.ref_name }}" --notes "Official installers for Threads Video Maker ${{ github.ref_name }}."
+      - name: Upload public installers
+        run: gh release upload "${{ github.ref_name }}" release-assets/* --repo "$DOWNLOADS_REPO" --clobber
