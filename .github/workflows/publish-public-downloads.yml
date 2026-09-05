@@ -1,0 +1,26 @@
+name: Publish public downloads
+
+on:
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: Release tag to publish
+        required: true
+        default: desktop-v1.1.9
+        type: string
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    env:
+      GH_TOKEN: ${{ secrets.DOWNLOADS_REPO_TOKEN }}
+      DOWNLOADS_REPO: NemCua/threads-video-maker-downloads
+    steps:
+      - name: Download installers from the private source release
+        run: gh release download "${{ inputs.tag }}" --repo "${{ github.repository }}" --dir release-assets
+      - name: Create public release when needed
+        run: gh release view "${{ inputs.tag }}" --repo "$DOWNLOADS_REPO" || gh release create "${{ inputs.tag }}" --repo "$DOWNLOADS_REPO" --title "Threads Video Maker ${{ inputs.tag }}" --notes "Official installers for Threads Video Maker ${{ inputs.tag }}."
+      - name: Upload public installers
+        run: gh release upload "${{ inputs.tag }}" release-assets/* --repo "$DOWNLOADS_REPO" --clobber
