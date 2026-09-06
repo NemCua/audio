@@ -11,7 +11,20 @@ on:
       - ".github/workflows/build-desktop.yml"
 
 jobs:
+  prepare-public-release:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    env:
+      GH_TOKEN: ${{ secrets.DOWNLOADS_REPO_TOKEN }}
+      DOWNLOADS_REPO: NemCua/threads-video-maker-downloads
+    steps:
+      - name: Create public release for tagged builds
+        if: startsWith(github.ref, 'refs/tags/desktop-v')
+        run: gh release view "${{ github.ref_name }}" --repo "$DOWNLOADS_REPO" || gh release create "${{ github.ref_name }}" --repo "$DOWNLOADS_REPO" --title "Threads Video Maker ${{ github.ref_name }}" --notes "Official installers for Threads Video Maker ${{ github.ref_name }}."
+
   build:
+    needs: prepare-public-release
     strategy:
       fail-fast: false
       matrix:
@@ -22,16 +35,19 @@ jobs:
             files: |
               electron/dist/*.dmg
               electron/dist/*.zip
+            release_files: electron/dist/*.dmg electron/dist/*.zip
           - os: macos-15-intel
             command: npm run build:mac -- --x64
             artifact: macos-x64
             files: |
               electron/dist/*.dmg
               electron/dist/*.zip
+            release_files: electron/dist/*.dmg electron/dist/*.zip
           - os: windows-2025
             command: npm run build:win -- --x64
             artifact: windows-x64
             files: electron/dist/*.exe
+            release_files: electron/dist/*.exe
     runs-on: ${{ matrix.os }}
     defaults:
       run:
@@ -47,47 +63,17 @@ jobs:
       - run: ${{ matrix.command }}
         env:
           CSC_IDENTITY_AUTO_DISCOVERY: "false"
-      - uses: actions/upload-artifact@v4
+      - name: Upload installers to public downloads release
+        if: startsWith(github.ref, 'refs/tags/desktop-v')
+        env:
+          GH_TOKEN: ${{ secrets.DOWNLOADS_REPO_TOKEN }}
+          DOWNLOADS_REPO: NemCua/threads-video-maker-downloads
+        run: gh release upload "${{ github.ref_name }}" ${{ matrix.release_files }} --repo "$DOWNLOADS_REPO" --clobber
+
+      - name: Keep CI artifacts for non-release builds
+        if: ${{ !startsWith(github.ref, 'refs/tags/desktop-v') }}
+        uses: actions/upload-artifact@v4
         with:
           name: threads-video-maker-${{ matrix.artifact }}
           path: ${{ matrix.files }}
           if-no-files-found: error
-
-  release:
-    if: startsWith(github.ref, 'refs/tags/desktop-v')
-    needs: build
-    runs-on: ubuntu-latest
-    permissions:
-      contents: write
-    steps:
-      - uses: actions/download-artifact@v4
-        with:
-          pattern: threads-video-maker-*
-          path: release-assets
-          merge-multiple: true
-      - name: Publish GitHub Release
-        uses: softprops/action-gh-release@v2
-        with:
-          name: Threads Video Maker ${{ github.ref_name }}
-          generate_release_notes: true
-          files: |
-            release-assets/*.dmg
-            release-assets/*.zip
-            release-assets/*.exe
-
-  publish-public-downloads:
-    if: startsWith(github.ref, 'refs/tags/desktop-v')
-    needs: release
-    runs-on: ubuntu-latest
-    permissions:
-      contents: read
-    env:
-      GH_TOKEN: ${{ secrets.DOWNLOADS_REPO_TOKEN }}
-      DOWNLOADS_REPO: NemCua/threads-video-maker-downloads
-    steps:
-      - name: Download installers from the private source release
-        run: gh release download "${{ github.ref_name }}" --repo "${{ github.repository }}" --dir release-assets
-      - name: Create public release when needed
-        run: gh release view "${{ github.ref_name }}" --repo "$DOWNLOADS_REPO" || gh release create "${{ github.ref_name }}" --repo "$DOWNLOADS_REPO" --title "Threads Video Maker ${{ github.ref_name }}" --notes "Official installers for Threads Video Maker ${{ github.ref_name }}."
-      - name: Upload public installers
-        run: gh release upload "${{ github.ref_name }}" release-assets/* --repo "$DOWNLOADS_REPO" --clobber
