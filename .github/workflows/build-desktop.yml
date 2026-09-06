@@ -35,19 +35,19 @@ jobs:
             files: |
               electron/dist/*.dmg
               electron/dist/*.zip
-            release_files: electron/dist/*.dmg electron/dist/*.zip
+            release_files: dist/*.dmg dist/*.zip
           - os: macos-15-intel
             command: npm run build:mac -- --x64
             artifact: macos-x64
             files: |
               electron/dist/*.dmg
               electron/dist/*.zip
-            release_files: electron/dist/*.dmg electron/dist/*.zip
+            release_files: dist/*.dmg dist/*.zip
           - os: windows-2025
             command: npm run build:win -- --x64
             artifact: windows-x64
             files: electron/dist/*.exe
-            release_files: electron/dist/*.exe
+            release_files: dist/*.exe
     runs-on: ${{ matrix.os }}
     defaults:
       run:
