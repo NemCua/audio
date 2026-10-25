@@ -53,6 +53,18 @@
   .composer-input{height:40px;min-width:0;flex:1;margin-left:1px;border-radius:22px;background:rgba(0,0,0,.05);display:flex;align-items:center;padding-left:16px;color:#707277;font-size:16px;letter-spacing:-.65px}.composer-input span{flex:1}.smile{width:20.92px;height:20.92px;margin-right:6.05px;display:block;fill:#1029c8}.like{width:20px;height:21.6px;margin-left:2.5px;margin-right:2.5px;display:block;fill:#1029c8;object-fit:contain;transform:translateY(-1px)}.like-emoji{display:flex;align-items:center;justify-content:center;font-size:21px;line-height:1;white-space:nowrap}
   .homebar{position:absolute;z-index:5;left:133px;bottom:7px;width:148px;height:5px;border-radius:3px;background:#000}
   .back,.head-actions svg,.cell-icon,.wifi-icon,.smile,.like{overflow:visible}
+  /* Đồng bộ hai theme đang có trong preview Messenger của app. */
+  .phone.mess-theme-olivia{--chat-bg:#e6b8c5}
+  .phone.mess-theme-olivia .chat{background:#e6b8c5 url("theme/Olivia Rodrigo.jpg") top center/cover no-repeat}
+  .phone.mess-theme-olivia:before{background:#eec5ce;-webkit-backdrop-filter:none;backdrop-filter:none}
+  .phone.mess-theme-olivia .back{fill:#45552d}.phone.mess-theme-olivia .unread{background:#45552d}
+  .phone.mess-theme-olivia .head-actions{color:#45552d}
+  .phone.mess-theme-olivia .bubble,.phone.mess-theme-olivia .reply-preview,.phone.mess-theme-olivia .generated .quoted{background:rgba(255,255,255,.91)}
+  .phone.mess-theme-olivia .mine .bubble{background:#45552d}
+  .phone.mess-theme-olivia .composer{background:rgba(166,190,118,.78);color:#45552d}
+  .phone.mess-theme-olivia .composer-input{background:rgba(111,136,75,.35);color:#45552d}
+  .phone.mess-theme-olivia .tool,.phone.mess-theme-olivia .plus,.phone.mess-theme-olivia .smile,.phone.mess-theme-olivia .like{color:#45552d;fill:#45552d}
+  .phone.mess-theme-olivia .timestamp,.phone.mess-theme-olivia .reply-label,.phone.mess-theme-olivia .generated .json-time{color:#5d5a55}
 
   /* Message builder: controls stay outside the 414x896 capture area. */
   .builder{position:fixed;z-index:20;left:24px;top:24px;width:340px;max-height:calc(100vh - 48px);overflow-y:auto;padding:16px;border:1px solid #34363a;border-radius:16px;background:#242526;color:#f5f6f7;box-shadow:0 16px 45px #0007;font-weight:500}.builder h2{margin:0 0 4px;font-size:17px}.builder-note{margin:0 0 14px;color:#b0b3b8;font-size:12px;line-height:16px}.builder-form{margin-top:10px}.builder-form label,.json-builder label{display:block;margin-bottom:5px;font-size:12px;font-weight:650}.builder-line{display:flex;gap:7px}.builder textarea,.builder-line input{width:100%;height:56px;padding:9px 10px;border:1px solid #4d5156;border-radius:10px;outline:none;background:#18191a;color:#fff;font-family:inherit;font-size:14px;line-height:18px;font-weight:500}.builder textarea{resize:vertical}.builder textarea:focus,.builder-line input:focus{border-color:#4285f4}.builder-send{flex:0 0 70px;border:0;border-radius:10px;color:#fff;font-size:13px;font-weight:700;cursor:pointer}.builder-send.left{background:#65676b}.builder-send.right{background:#2864ed}.builder-actions{display:flex;gap:7px;margin-top:13px}.builder-actions button{flex:1;padding:8px;border:1px solid #4d5156;border-radius:9px;background:#303236;color:#e4e6eb;font-size:12px;cursor:pointer}.json-builder{margin-top:14px;padding-top:13px;border-top:1px solid #3e4042}.builder #conversation-json{height:210px;resize:vertical;font:11px/15px ui-monospace,SFMono-Regular,Menlo,monospace}.json-error{min-height:15px;margin:5px 0 0;color:#ff8a8a;font-size:11px;line-height:15px}
@@ -60,7 +72,7 @@
   .builder-actions.export button{border-color:#315dcc;background:#244eb7;color:#fff;font-weight:700}.builder button:disabled{cursor:wait;opacity:.55}.export-status{min-height:16px;margin:8px 0 0;color:#b0b3b8;font-size:11px;line-height:16px;text-align:center}.generated{inset:0;padding-top:102px;background:transparent}
   .generated .json-time{flex:none;margin:30px 0 17px;text-align:center;color:#6b6d72;font-size:13px;line-height:16px;letter-spacing:-.17px}.generated .message-reaction{position:absolute;z-index:2;right:7px;bottom:-16px;min-width:28px;height:22px;display:flex;align-items:center;justify-content:center;padding:0 5px;border:2px solid #fff;border-radius:13px;background:#f2f3f5;font-size:13px;line-height:1}.generated .theirs .message-reaction{right:auto;left:39px}.generated .row.has-reaction{margin-bottom:14px}.generated .json-reply{position:relative;width:100%;margin-top:20px}.generated .json-reply-label{display:flex;align-items:center;gap:4px;margin:0 0 5px 40px;color:#6b6d72;font-size:12px;line-height:15px}.generated .json-reply.mine .json-reply-label{justify-content:flex-end;margin:0 8px 5px 0}.generated .json-reply-label svg{width:12px;height:12px;display:block;fill:currentColor}.generated .quoted{max-width:219px;margin-left:40px;padding:9px 12px 27px;border-radius:18px;background:rgba(250,250,250,.88);color:#696b70;font-size:14px;line-height:17px;white-space:pre-wrap}.generated .json-reply.mine .quoted{margin-right:0;margin-left:auto}.generated .json-reply .row{margin-top:-18px}.generated .json-reply .row.theirs{padding-right:56px}.generated .json-reply .row.mine{padding-left:56px}
   .generated .call-row{position:relative;width:100%;display:flex;margin-top:12px}.generated .call-row.mine{justify-content:flex-end;padding-left:56px}.generated .call-row.theirs{justify-content:flex-start;gap:12px;padding-right:56px}.generated .call-avatar-slot{width:28px;height:28px;flex:0 0 28px;align-self:flex-end}.generated .call-avatar-slot .avatar{display:block;width:28px;height:28px}.generated .call-card{width:fit-content;max-width:100%;padding:12px;border-radius:18px;background:#f1f2f4;color:#050505}.generated .call-card-head{display:flex;align-items:center;gap:8px}.generated .call-card-icon{width:38px;height:38px;flex:0 0 38px;display:grid;place-items:center;border-radius:50%;background:#aab2bd;color:#fff}.generated .call-row.theirs .call-card.missed .call-card-icon,.generated .call-row.theirs .call-card.canceled .call-card-icon{background:#fa3e5d}.generated .call-card-icon svg{width:22px;height:22px;fill:currentColor}.generated .call-card-copy{min-width:0}.generated .call-card-title{font-size:15px;font-weight:700;line-height:18px;letter-spacing:-.25px;white-space:nowrap}.generated .call-card-status{margin-top:1px;color:#74777d;font-size:12px;line-height:14px}.generated .call-card-action{width:100%;height:36px;margin-top:11px;border:0;border-radius:13px;background:#dedfe1;color:#050505;font:700 15px -apple-system,BlinkMacSystemFont,"SF Pro Text","Helvetica Neue",Arial,sans-serif;letter-spacing:-.2px}.generated .call-card-action:active{transform:scale(.98)}
-  .profile-fields{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin:12px 0 14px}.profile-field{min-width:0}.profile-field.wide{grid-column:1/-1}.profile-field label{display:block;margin-bottom:4px;color:#d7d9dd;font-size:11px;font-weight:650}.profile-field input{width:100%;height:34px;padding:7px 9px;border:1px solid #4d5156;border-radius:9px;outline:none;background:#18191a;color:#fff;font-family:inherit;font-size:12px}.profile-field input:focus{border-color:#4285f4}.profile-field input[type="file"]{height:auto;padding:6px;font-size:10px}.avatar.has-image{background-position:center;background-size:cover;background-repeat:no-repeat}.avatar.has-image:after{display:none}
+  .profile-fields{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin:12px 0 14px}.profile-field{min-width:0}.profile-field.wide{grid-column:1/-1}.profile-field label{display:block;margin-bottom:4px;color:#d7d9dd;font-size:11px;font-weight:650}.profile-field input,.profile-field select{width:100%;height:34px;padding:7px 9px;border:1px solid #4d5156;border-radius:9px;outline:none;background:#18191a;color:#fff;font-family:inherit;font-size:12px}.profile-field input:focus,.profile-field select:focus{border-color:#4285f4}.profile-field input[type="file"]{height:auto;padding:6px;font-size:10px}.avatar.has-image{background-position:center;background-size:cover;background-repeat:no-repeat}.avatar.has-image:after{display:none}
   .display-options{display:flex;gap:18px;margin:2px 0 13px;padding:9px 10px;border:1px solid #3e4042;border-radius:10px;background:#1d1f20}.display-options label{display:flex;align-items:center;gap:7px;color:#e4e6eb;font-size:12px;font-weight:650;cursor:pointer}.display-options input{width:16px;height:16px;margin:0;accent-color:#2864ed}
   @media(max-width:1040px){.builder{left:8px;top:auto;right:8px;bottom:8px;width:auto;max-width:398px;margin:auto;transform:scale(.82);transform-origin:bottom center}}
 
@@ -78,6 +90,7 @@
   .phone.hide-footer{height:min(100vh,747px);aspect-ratio:414/747}
   .phone.hide-footer .composer{display:none}
   .phone.hide-footer .chat{bottom:0}
+  .blocked-notice{display:none;position:absolute;z-index:4;left:0;right:0;bottom:0;height:80px;padding:15px 20px 8px;border-top:1px solid #dedee0;background:#fff;text-align:center;color:#65676b;font-size:14px;font-weight:500;line-height:18px;letter-spacing:-.25px;white-space:nowrap}.blocked-notice strong{display:block;color:#050505;font-size:15px;font-weight:700;line-height:19px;letter-spacing:-.15px}.phone.is-blocked .composer{display:none}.phone.is-blocked .chat{bottom:80px}.phone.is-blocked .blocked-notice{display:block}.phone.is-blocked .generated .avatar-slot .avatar,.phone.is-blocked .reply-avatar{background:#f1f1f1}.phone.is-blocked .generated .avatar-slot .avatar:after,.phone.is-blocked .reply-avatar:after{display:none}
   .generated>:first-child{margin-top:auto}
   body.embed-mode{display:block;width:100vw;height:100vh;overflow:hidden;background:transparent}
   body.embed-mode .builder{display:none}
@@ -97,8 +110,10 @@
   <div class="display-options">
     <label><input id="show-header" type="checkbox" checked>Hiện header</label>
     <label><input id="show-footer" type="checkbox" checked>Hiện footer</label>
+    <label><input id="blocked-mode" type="checkbox">Bị chặn</label>
   </div>
   <div class="profile-fields">
+    <div class="profile-field wide"><label for="messenger-theme">Theme</label><select id="messenger-theme"><option value="classic">Mặc định</option><option value="olivia">Olivia Rodrigo</option></select></div>
     <div class="profile-field wide"><label for="profile-avatar">Avatar</label><input id="profile-avatar" type="file" accept="image/*"></div>
     <div class="profile-field"><label for="chat-background-color">Màu nền chat</label><input id="chat-background-color" type="color" value="#ffffff"></div>
     <div class="profile-field"><label for="chat-background-image">Ảnh nền chat</label><input id="chat-background-image" type="file" accept="image/*"></div>
@@ -152,6 +167,7 @@
     <button class="tool" aria-label="Micrô"><svg viewBox="150 739 18.1 24"><path fill-rule="evenodd" d="M155 761H163C163.552 761 164 761.448 164 762C164 762.513 163.614 762.936 163.117 762.993L163 763H155C154.448 763 154 762.552 154 762C154 761.487 154.386 761.064 154.883 761.007L155 761H163H155ZM167.101 749.603C167.653 749.62 168.088 750.08 168.071 750.632C168.029 752.065 167.571 753.582 166.794 754.928C164.309 759.233 158.805 760.708 154.5 758.223C151.746 756.633 150.072 753.746 150.001 750.626C149.988 750.074 150.426 749.616 150.978 749.603C151.53 749.591 151.988 750.028 152 750.58C152.056 753.009 153.357 755.254 155.5 756.491C158.848 758.424 163.129 757.276 165.062 753.928C165.679 752.86 166.04 751.663 166.072 750.574C166.088 750.022 166.549 749.587 167.101 749.603ZM159 739C161.761 739 164 741.239 164 744V750.5C164 753.261 161.761 755.5 159 755.5C156.239 755.5 154 753.261 154 750.5V744C154 741.239 156.239 739 159 739Z"/></svg></button>
     <div class="composer-input"><span>Aa</span><svg class="smile" viewBox="289 739 24 24"><path fill-rule="evenodd" d="M301 739C307.627 739 313 744.373 313 751C313 757.627 307.627 763 301 763C294.373 763 289 757.627 289 751C289 744.373 294.373 739 301 739ZM305.712 754.72C304.518 756.249 302.976 756.995 301 756.995C299.024 756.995 297.482 756.249 296.288 754.72C295.948 754.285 295.32 754.207 294.885 754.547C294.449 754.887 294.372 755.515 294.712 755.951C296.286 757.967 298.411 758.995 301 758.995C303.589 758.995 305.714 757.967 307.288 755.951C307.628 755.515 307.551 754.887 307.115 754.547C306.68 754.207 306.052 754.285 305.712 754.72ZM297 747C296.172 747 295.5 747.895 295.5 749C295.5 750.105 296.172 751 297 751C297.828 751 298.5 750.105 298.5 749C298.5 747.895 297.828 747 297 747ZM305 747C304.172 747 303.5 747.895 303.5 749C303.5 750.105 304.172 751 305 751C305.828 751 306.5 750.105 306.5 749C306.5 747.895 305.828 747 305 747Z"/></svg></div><svg class="like" viewBox="335 738 24 25"><path fill-rule="evenodd" d="M338.983 749.618C339.608 749.618 340.115 750.126 340.115 750.753V761.865C340.115 762.492 339.608 763 338.983 763H336.948C336.603 763 336.283 762.831 336.087 762.553L336.02 762.443C335.34 761.173 335 759.128 335 756.309C335 753.556 335.324 751.541 335.973 750.265L336.084 750.06C336.24 749.787 336.531 749.618 336.845 749.618H338.983ZM347.156 738.008C349.764 738.348 351.069 740.018 351.069 743.016C351.069 743.622 350.906 744.978 350.58 747.084C355.897 747.195 358.403 748.138 358.403 749.914C358.403 750.352 358.291 750.771 357.762 751.171C358.587 751.676 359 752.395 359 753.327C359 754.26 358.525 755.022 357.576 755.615C358.033 756.131 358.204 756.732 358.089 757.42C357.974 758.108 357.455 758.625 356.531 758.971C356.98 760.915 354.791 761.886 349.964 761.886C342.853 761.886 342.185 760.104 342.163 758.501L342.163 752.04C342.09 750.566 342.52 749.327 343.453 748.325L343.647 748.128C345.3 746.523 346.194 744.918 346.327 743.314L346.133 738.948C346.111 738.447 346.499 738.023 346.999 738.001C347.051 737.999 347.104 738.001 347.156 738.008Z"/></svg>
   </footer>
+  <div class="blocked-notice" aria-live="polite">Hiện không liên lạc được với người này trên Messenger.<strong>Lựa chọn khác</strong></div>
   <div class="homebar"></div>
 </main>
 <script>
@@ -235,6 +251,22 @@
   });
   document.getElementById('show-footer').addEventListener('change', event => {
     phone.classList.toggle('hide-footer', !event.target.checked);
+  });
+  const blockedMode = document.getElementById('blocked-mode');
+  function setBlockedMode(blocked) {
+    const value = !!blocked;
+    phone.classList.toggle('is-blocked', value);
+    blockedMode.checked = value;
+  }
+  blockedMode.addEventListener('change', event => setBlockedMode(event.target.checked));
+
+  function applyMessengerTheme(theme) {
+    const olivia = theme === 'olivia';
+    phone.classList.toggle('mess-theme-olivia', olivia);
+    if (olivia) phone.classList.remove('themed-background');
+  }
+  document.getElementById('messenger-theme').addEventListener('change', event => {
+    applyMessengerTheme(event.target.value);
   });
 
   function applyAvatar(element) {
@@ -500,7 +532,7 @@
     messages.push({kind:'message', side: form.dataset.side, content:text});
     input.value = '';
     renderMessages();
-    jsonInput.value = JSON.stringify({...sampleConversation, name:document.querySelector('.name').textContent, activity:document.querySelector('.presence').textContent, iphoneTime:document.querySelector('.clock').textContent, conversation:messages}, null, 2);
+    jsonInput.value = JSON.stringify({...sampleConversation, name:document.querySelector('.name').textContent, activity:document.querySelector('.presence').textContent, iphoneTime:document.querySelector('.clock').textContent, blocked:blockedMode.checked, conversation:messages}, null, 2);
     input.focus();
   }
 
@@ -512,7 +544,7 @@
     messages.push({kind:'time', content:text});
     input.value = '';
     renderMessages();
-    jsonInput.value = JSON.stringify({...sampleConversation, name:document.querySelector('.name').textContent, activity:document.querySelector('.presence').textContent, iphoneTime:document.querySelector('.clock').textContent, conversation:messages}, null, 2);
+    jsonInput.value = JSON.stringify({...sampleConversation, name:document.querySelector('.name').textContent, activity:document.querySelector('.presence').textContent, iphoneTime:document.querySelector('.clock').textContent, blocked:blockedMode.checked, conversation:messages}, null, 2);
     input.focus();
   }
 
@@ -538,7 +570,7 @@
     enterBuilderMode();
     messages = [];
     renderMessages();
-    jsonInput.value = JSON.stringify({...sampleConversation, conversation:[]}, null, 2);
+    jsonInput.value = JSON.stringify({...sampleConversation, blocked:blockedMode.checked, conversation:[]}, null, 2);
   });
   document.getElementById('restore-sample').addEventListener('click', () => {
     loadConversation(sampleConversation);
@@ -555,6 +587,7 @@
     document.querySelector('.name').textContent = name || ' ';
     document.querySelector('.presence').textContent = activity || ' ';
     document.querySelector('.clock').textContent = iphoneTime || ' ';
+    setBlockedMode(data.blocked);
     if (typeof data.avatar === 'string' && data.avatar) {
       avatarDataUrl = data.avatar;
       refreshAvatars();

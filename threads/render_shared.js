@@ -601,6 +601,12 @@ function buildMessengerFooterHtml(s = {}) {
       : `<span class="mess-compose-like">${icon}</span>`;
   });
 }
+function buildMessengerBlockedNoticeHtml() {
+  return `<div class="mess-blocked-notice">Hiện không liên lạc được với người này trên Messenger.<strong>Lựa chọn khác</strong></div>`;
+}
+function buildMessengerBlockedByMeHtml(partnerName) {
+  return `<div class="mess-blocked-by-me"><div class="mess-blocked-copy"><strong>Bạn đã chặn ${esc(partnerName)}</strong><span>Các bạn sẽ không thể nhắn tin hay gọi điện cho nhau trong đoạn chat này.</span></div><button type="button">Bỏ chặn</button><button type="button">Báo cáo</button></div>`;
+}
 function buildZaloFooterHtml() {
   return `<div class="zalo-composer" aria-hidden="true">
     <img class="zalo-compose-icon zalo-compose-smile" src="assets/brand/zalo/smile.png" alt=""/>
@@ -669,6 +675,7 @@ function buildMessengerHtml(s) {
   const partnerNameAttr = esc(partnerName).replace(/"/g,'&quot;').replace(/'/g,'&#39;');
   const partnerNameSize = Math.max(1, Math.min(24, Array.from(partnerName).length));
   const showHeader = s.messShowHeader !== false;
+  const blockMode = s.messBlockMode === 'self' ? 'self' : (s.messBlocked ? 'them' : null);
   const rows = history.map((m,i) => {
     const kind=messengerItemKind(m);
     const insert=messengerInsertControls(editable,i);
@@ -704,7 +711,7 @@ function buildMessengerHtml(s) {
         <svg viewBox="0 0 24 24"><path d="M9.878 13.992 10.008 14.122c2.238 2.166 4.11 3.184 5.618 3.052l.435-.405c.617-.563 1.083-.919 1.397-1.07.654-.313 1.113-.307 2.351.363 1.63.882 2.755 1.907 3.33 2.482.534.534.368 1.454.181 1.862l-.124.227c-.334.58-1.544 2.492-3.863 2.819-.881.124-1.993.01-3.297-.382-2.794-.968-5.576-2.74-8.347-5.319l-.492-.468-.005.005-.238-.242-.242-.238.005-.005-.468-.492C3.67 13.54 1.898 10.758.93 7.964.538 6.66.424 5.548.548 4.667.898 2.184 3.066.972 3.469.747l.041-.023C3.858.522 4.881.286 5.456.861l.272.28c.593.627 1.454 1.653 2.21 3.05.67 1.238.676 1.697.363 2.35-.184.384-.676.995-1.475 1.833-.132 1.508.886 3.381 3.052 5.619Z"/></svg>
         <svg viewBox="0 0 27 18"><path d="M15.2 0C17.299 0 19 1.727 19 3.857v10.286C19 16.273 17.299 18 15.2 18H3.8C1.701 18 0 16.273 0 14.143V3.857C0 1.727 1.701 0 3.8 0h11.4Zm11.666 4.022c.088.151.134.321.134.493v8.97c0 .561-.478 1.015-1.067 1.015-.181 0-.359-.044-.518-.128l-3.729-1.972A1.25 1.25 0 0 1 21 11.291V6.709c0-.461.263-.886.686-1.109l3.729-1.972a1.067 1.067 0 0 1 1.451.394Z"/></svg>
       </div></div>` : '';
-  return `<div class="mess-card mess-theme-${normalizeMessengerTheme(s.messTheme)}">${headerHtml}<div class="mess-body">${rows}${appendControl}</div>${s.messShowFooter?buildMessengerFooterHtml(s):''}</div>`;
+  return `<div class="mess-card mess-theme-${normalizeMessengerTheme(s.messTheme)}${blockMode?' mess-is-blocked':''}${blockMode==='self'?' mess-blocked-by-me-card':''}">${headerHtml}<div class="mess-body">${rows}${appendControl}</div>${blockMode==='self'?buildMessengerBlockedByMeHtml(partnerName):(blockMode==='them'?buildMessengerBlockedNoticeHtml():(s.messShowFooter?buildMessengerFooterHtml(s):''))}</div>`;
 }
 
 function buildInstagramFooterHtml() {

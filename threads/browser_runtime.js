@@ -119,7 +119,7 @@
       if (!items.length) { grid.innerHTML = '<div class="lib-empty">Thư viện âm thanh đóng sẵn đang trống.</div>'; return; }
       grid.innerHTML = items.map(item => {
         const media = esc(JSON.stringify({ url:item.url, filename:item.filename, duration:item.duration || DEFAULT_DUR.audio, desktopPath:item.desktopPath || null }));
-        return `<div class="lib-item lib-item-audio" data-item='${media}' onclick="setMessengerQuickAudioMedia(JSON.parse(this.dataset.item))" title="${esc(item.description || item.label || item.filename)}"><button type="button" class="lib-play-btn" onclick="event.stopPropagation();setMessengerQuickAudioMedia(JSON.parse(this.closest('.lib-item').dataset.item));toggleLibraryPreviewAudio('${item.url}',this)">▶</button><span class="lib-item-name">${esc(item.label || item.filename)}</span></div>`;
+        return `<div class="lib-item lib-item-audio" data-item='${media}' onclick="setMessengerQuickAudioMedia(JSON.parse(this.dataset.item))" title="${esc(item.description || item.label || item.filename)}"><button type="button" class="lib-play-btn" onclick="event.stopPropagation();toggleLibraryPreviewAudio('${item.url}',this)">▶</button><span class="lib-item-name">${esc(item.label || item.filename)}</span></div>`;
       }).join('');
     } catch (error) {
       grid.innerHTML = `<div class="lib-empty" style="color:#ef4444">⚠ Không tải được thư viện: ${esc(error.message)}</div>`;
@@ -302,6 +302,7 @@ async function exportVideoOfflineDesktop() {
         bgAudioVolume: parseFloat(document.getElementById('bgaudio-volume').value),
         blurIdentity: document.getElementById('blur-identity-toggle').checked,
         exportPreset: document.getElementById('export-preset')?.value || 'normal',
+        emphasisZoomMode: emphasisZoomMode(),
       });
       if (job.canceled) {
         await window.creditClient.refundExport(reservation.id);

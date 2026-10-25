@@ -325,7 +325,7 @@ body.absolute-layer-off #absolute-lane{display:none}
 }
 
 .preview-frame {
-  width: 100%;
+  width: min(100%, 460px, calc((100dvh - 230px) * 9 / 16));
   max-width: 460px;
   aspect-ratio: 9 / 16;
   background: #000;
@@ -1206,10 +1206,10 @@ body.absolute-layer-off #absolute-lane{display:none}
 .mess-compose-pane,.mess-preview-pane { min-width:0; padding:16px; border:1px solid #2a3050; border-radius:12px; background:#0d1020; }
 .mess-side-inputs { display:grid; grid-template-columns:1fr 1fr; gap:10px; }
 .mess-side-inputs textarea { min-height:132px; }
-.mess-input-shell{position:relative;border:1px solid #303655;border-radius:8px;background:#090c18}.mess-input-shell textarea{display:block;width:100%;padding-right:38px;border:0;background:transparent;resize:vertical}.mess-input-shell textarea:focus{box-shadow:none}.mess-input-shell:focus-within{border-color:#7c3aed;box-shadow:0 0 0 1px #7c3aed}
+.mess-input-shell{position:relative;display:grid;grid-template-columns:minmax(0,1fr) auto;align-items:start;gap:8px;padding:8px;border:1px solid #303655;border-radius:8px;background:#090c18}.mess-input-shell textarea{display:block;width:100%;min-width:0;min-height:132px;padding:8px;border:0;background:transparent;resize:vertical}.mess-input-shell textarea:focus{box-shadow:none}.mess-input-shell:focus-within{border-color:#7c3aed;box-shadow:0 0 0 1px #7c3aed}
 .mess-media-trigger{position:absolute;right:7px;top:7px;width:27px;height:27px;padding:0;border:0;border-radius:7px;background:#202642;color:#c4b5fd;cursor:pointer;font-size:15px}.mess-media-trigger:hover{background:#30385e;color:#fff}
-.mess-input-shell textarea{padding-right:132px}.mess-input-tools{position:absolute;top:7px;right:7px;display:flex;gap:3px}.mess-input-tools .mess-media-trigger{position:static;display:grid;place-items:center;font-size:14px}.mess-input-tools .mess-media-trigger svg{width:16px;height:16px;fill:currentColor}.mess-input-tools .mess-media-trigger:last-child svg{width:17px;height:15px}.mess-call-popover{display:none;position:absolute;right:6px;top:39px;width:180px;padding:9px;border:1px solid #343b60;border-radius:9px;background:#151932;box-shadow:0 8px 24px #0008;z-index:31}.mess-call-popover.open{display:grid;gap:7px}.mess-call-popover b{color:#e5e7eb;font-size:12px}.mess-call-popover select,.mess-call-popover input{width:100%;min-width:0;padding:7px;font-size:12px}.mess-call-popover button{padding:8px;border:0;border-radius:7px;cursor:pointer;font-size:12px}
-.mess-media-popover{display:none;position:absolute;right:6px;top:38px;width:185px;padding:7px;border:1px solid #343b60;border-radius:9px;background:#151932;box-shadow:0 8px 24px #0008;z-index:30}.mess-media-popover.open{display:block}.mess-media-popover button{display:block;width:100%;padding:8px 9px;border:0;border-radius:7px;background:transparent;color:#e5e7eb;text-align:left;cursor:pointer}.mess-media-popover button:hover{background:#272d4c}.mess-media-url-row{display:none;gap:5px;margin-top:5px}.mess-media-url-row.open{display:flex}.mess-media-url-row input{min-width:0;flex:1;padding:7px}.mess-media-url-row button{width:auto;padding:7px 9px;background:#7c3aed;color:#fff}
+.mess-input-tools{position:static;display:flex;flex-wrap:wrap;align-content:flex-start;gap:5px;width:64px;max-width:64px}.mess-input-tools .mess-media-trigger{position:static;display:grid;place-items:center;flex:0 0 29px;width:29px;height:29px;font-size:14px}.mess-input-tools .mess-media-trigger svg{width:16px;height:16px;fill:currentColor}.mess-input-tools .mess-media-trigger:last-child svg{width:17px;height:15px}.mess-call-popover{display:none;position:absolute;right:6px;top:45px;width:180px;padding:9px;border:1px solid #343b60;border-radius:9px;background:#151932;box-shadow:0 8px 24px #0008;z-index:31}.mess-call-popover.open{display:grid;gap:7px}.mess-call-popover b{color:#e5e7eb;font-size:12px}.mess-call-popover select,.mess-call-popover input{width:100%;min-width:0;padding:7px;font-size:12px}.mess-call-popover button{padding:8px;border:0;border-radius:7px;cursor:pointer;font-size:12px}
+.mess-media-popover{display:none;position:absolute;right:6px;top:45px;width:185px;padding:7px;border:1px solid #343b60;border-radius:9px;background:#151932;box-shadow:0 8px 24px #0008;z-index:30}.mess-media-popover.open{display:block}.mess-media-popover button{display:block;width:100%;padding:8px 9px;border:0;border-radius:7px;background:transparent;color:#e5e7eb;text-align:left;cursor:pointer}.mess-media-popover button:hover{background:#272d4c}.mess-media-url-row{display:none;gap:5px;margin-top:5px}.mess-media-url-row.open{display:flex}.mess-media-url-row input{min-width:0;flex:1;padding:7px}.mess-media-url-row button{width:auto;padding:7px 9px;background:#7c3aed;color:#fff}
 .mess-inline-image-preview{display:none;padding:0 8px 8px}.mess-inline-image-preview.active{display:block}.mess-inline-image-preview .preview-inner{position:relative;width:max-content;max-width:100%}.mess-inline-image-preview img{display:block;max-width:100%;max-height:115px;border-radius:10px;object-fit:cover}.mess-inline-image-preview button{position:absolute;right:5px;top:5px;width:22px;height:22px;padding:0;border:0;border-radius:50%;background:#111c;color:#fff;cursor:pointer}
 .mess-inline-call-preview{position:relative;display:flex;flex-direction:column;gap:2px;min-height:70px;padding:12px 34px 12px 12px;border-radius:10px;background:#202642;color:#f5f7ff}.mess-inline-call-preview b{font-size:13px}.mess-inline-call-preview span{color:#aeb8d8;font-size:12px}.mess-inline-call-preview button{position:absolute;right:7px;top:7px;width:22px;height:22px;padding:0;border:0;border-radius:50%;background:#111c;color:#fff;cursor:pointer}.mess-input-shell textarea:disabled{cursor:not-allowed;opacity:.52}
 .mess-draft-list { margin-top:14px; display:none; flex-direction:column; gap:6px; max-height:210px; overflow:auto; }
@@ -1273,6 +1273,8 @@ body.absolute-layer-off #absolute-lane{display:none}
 /* Messenger chỉ cao tối đa nửa khung 9:16; phần tin nhắn tự cuộn lên. */
 .mess-card{position:relative;display:flex;flex-direction:column;max-height:89cqw}
 .mess-head{position:absolute;z-index:4;top:0;right:0;left:0;flex:0 0 auto;border:0;border-radius:2.4cqw 2.4cqw 0 0}.mess-body{min-height:0;overflow:hidden;padding-top:calc(9.7cqw + 2.38cqw)}
+.mess-card.mess-is-blocked:not(.mess-blocked-by-me-card) .mess-mini-avatar{background:#f1f1f1}.mess-card.mess-is-blocked:not(.mess-blocked-by-me-card) .mess-mini-avatar img{display:none}.mess-blocked-notice{height:11.34cqw;flex:0 0 11.34cqw;box-sizing:border-box;padding:2.13cqw 2.83cqw 1.13cqw;border-top:.08cqw solid #dedee0;background:#fff;color:#65676b;text-align:center;font-size:1.98cqw;font-weight:500;line-height:2.55cqw;letter-spacing:0;white-space:nowrap}.mess-blocked-notice strong{display:block;color:#050505;font-size:2.13cqw;font-weight:700;line-height:2.7cqw;letter-spacing:0}.mess-live-wrap .mess-blocked-notice{height:61.3px;flex-basis:61.3px;padding:11.5px 15.3px 6.1px;border-top-width:1px;font-size:10.7px;line-height:13.8px}.mess-live-wrap .mess-blocked-notice strong{font-size:11.5px;line-height:14.6px}
+.mess-blocked-by-me{height:30cqw;flex:0 0 30cqw;box-sizing:border-box;padding:2.7cqw 3cqw 1.8cqw;border-top:.08cqw solid #dedee0;background:#fff;text-align:center}.mess-blocked-copy{margin-bottom:2.1cqw;color:#65676b;font-size:1.98cqw;font-weight:500;line-height:2.55cqw}.mess-blocked-copy strong{display:block;color:#65676b;font-size:2.13cqw;font-weight:600;line-height:2.7cqw}.mess-blocked-copy span{display:block}.mess-blocked-by-me button{display:block;width:100%;height:6.9cqw;margin-top:1.2cqw;border:0;border-radius:2.2cqw;background:#e4e5e9;color:#050505;font:700 2.5cqw/6.9cqw "SFPro",-apple-system,BlinkMacSystemFont,"Segoe UI",Arial,sans-serif}.mess-live-wrap .mess-blocked-by-me{height:190px;flex-basis:190px;padding:17px 19px 12px;border-top-width:1px}.mess-live-wrap .mess-blocked-copy{margin-bottom:13px;font-size:10.7px;line-height:13.8px}.mess-live-wrap .mess-blocked-copy strong{font-size:11.5px;line-height:14.6px}.mess-live-wrap .mess-blocked-by-me button{height:44px;margin-top:8px;border-radius:14px;font-size:13.5px;line-height:44px}
 .mess-live-wrap .mess-card{max-height:440px}
 .mess-live-wrap .mess-body{overflow-y:auto;overscroll-behavior:contain;scrollbar-width:thin;scrollbar-color:#bcc0c4 transparent}
 .mess-live-wrap .mess-body::-webkit-scrollbar{width:6px}.mess-live-wrap .mess-body::-webkit-scrollbar-thumb{background:#bcc0c4;border-radius:999px}.mess-live-wrap .mess-body::-webkit-scrollbar-track{background:transparent}
@@ -2236,7 +2238,7 @@ async function loadBgAudioLibrary() {
       // Nghe thử (yêu cầu người dùng, mục 5.40) — tái dùng đúng
       // toggleLibraryPreviewAudio() đã có cho thư viện audio hiệu ứng.
       return `<div class="lib-item lib-item-audio" data-item='${itemJson}' onclick="selectBgAudioLibraryItem(this)" title="${esc(it.filename)}">
-        <button type="button" class="lib-play-btn" onclick="event.stopPropagation();selectBgAudioLibraryItem(this.closest('.lib-item'));toggleLibraryPreviewAudio('${url}',this)">▶</button>
+        <button type="button" class="lib-play-btn" onclick="event.stopPropagation();toggleLibraryPreviewAudio('${url}',this)">▶</button>
         <span class="lib-item-name">${esc(it.filename)}</span>
       </div>`;
     }).join('');
@@ -2690,7 +2692,7 @@ async function generateAllTtsLegacy() {
   const totalTargetCount = targets.length;
   // Step Messenger thiếu TTS sau khi nạp project JSON: gom theo giọng và
   // gửi batch 50 giống lúc tạo hội thoại mới, không rơi lại về N request.
-  const messTargets = targets.filter(s => s.type === 'mess' && !s.audioUrl);
+  const messTargets = targets.filter(s => s.type === 'mess' && !s.audioUrl && !isMessengerBlockedStep(s));
   try {
     const byVoice = new Map();
     messTargets.forEach(s => {
@@ -2707,7 +2709,7 @@ async function generateAllTtsLegacy() {
         for(let i=0;i<items.length;i++){
           statusEl.textContent=`🔊 Edge TTS Messenger ${i+1}/${items.length} (từng đoạn)...`;
           const result=await fetchEdgeTtsReliable((items[i].ttsText&&items[i].ttsText.trim())||items[i].text,voiceIdx,speed,echo);
-          items[i].audioUrl=result.audioUrl;items[i].audioDesktopPath=result.audioDesktopPath||null;items[i].audioServerUrl=result.remoteAudioUrl||null;items[i].ttsDuration=result.duration;items[i].duration=result.duration;bumpStepRevision(items[i].id);ok++;
+          items[i].audioUrl=result.audioUrl;items[i].audioDesktopPath=result.audioDesktopPath||null;items[i].audioServerUrl=result.remoteAudioUrl||null;items[i].ttsDuration=result.duration;syncStepDurationFromTts(items[i],result.duration);bumpStepRevision(items[i].id);ok++;
           await waitMs(700);
         }
       }else{
@@ -2718,7 +2720,7 @@ async function generateAllTtsLegacy() {
       const chunk=chunks[ci];statusEl.textContent=`🔊 Messenger batch ${ci+1}/${chunks.length} (${chunk.items.length} đoạn)...`;
       const results=await fetchTtsBatch(chunk.items.map(s=>(s.ttsText&&s.ttsText.trim())||s.text),chunk.voiceIdx,chunk.speed,chunk.echo);
       if(results.length!==chunk.items.length)throw new Error('TTS batch trả về thiếu đoạn');
-      chunk.items.forEach((s,i)=>{s.audioUrl=results[i].audioUrl;s.ttsDuration=results[i].duration;s.duration=results[i].duration;bumpStepRevision(s.id);ok++;});
+      chunk.items.forEach((s,i)=>{s.audioUrl=results[i].audioUrl;s.ttsDuration=results[i].duration;syncStepDurationFromTts(s,results[i].duration);bumpStepRevision(s.id);ok++;});
     }
   } catch(e) {
     statusEl.textContent='✗ Lỗi TTS batch Messenger: '+e.message;btn.disabled=false;renderStepList();renderIdleScene();return;
@@ -2751,7 +2753,7 @@ async function generateAllTtsLegacy() {
         seg.duration = rSeg.duration;
         totalDuration += rSeg.duration;
       }
-      s.duration = stepTtsTotalDuration(s) || totalDuration;
+      syncStepDurationFromTts(s,totalDuration);
       bumpStepRevision(s.id);
       ok++;
     } catch (e) {
@@ -2800,7 +2802,11 @@ async function generateAllTts() {
       statusEl.textContent=`✓ Đã tạo phụ đề cho ${subtitleOnly.length} NOTE.`;renderStepList();renderIdleScene();return true;
     }catch(error){statusEl.textContent='✗ Không tạo được phụ đề NOTE: '+error.message;return false;}finally{btn.disabled=false;}
   }
-  if(!jobs.length){statusEl.textContent='✓ Tất cả step đã có giọng đọc.';return true;}
+  if(!jobs.length){
+    steps.forEach(removeLegacyTtsTailPadding);
+    statusEl.textContent='✓ Tất cả step đã có giọng đọc.';
+    return true;
+  }
   renderTtsJobLog(jobs);
   btn.disabled=true;statusEl.textContent=`🔊 Đang gửi ${jobs.length} đoạn TTS lên server trong một lượt...`;setTtsLoadingText(`Đang xử lý ${jobs.length} đoạn giọng đọc trong một lượt...`);
   try{
@@ -2809,10 +2815,15 @@ async function generateAllTts() {
     jobs.forEach((job,index)=>{
       const result=results[index];touched.add(job.step);
       if(job.segment){job.segment.audioUrl=result.audioUrl;job.segment.audioDesktopPath=result.audioDesktopPath||null;job.segment.audioServerUrl=result.remoteAudioUrl||null;job.segment.duration=result.duration;if(job.step.type==='note'){job.segment.subtitleWords=result.words||[];job.segment.subtitleError=result.subtitleError||null;}}
-      else if(job.step.type==='audio'&&job.step.audioTtsMode){job.step.mediaUrl=result.audioUrl;job.step.mediaDesktopPath=result.audioDesktopPath||null;job.step.audioServerUrl=result.remoteAudioUrl||null;job.step.mediaName=job.step.mediaName||'TTS audio';job.step.intrinsicMediaDuration=result.duration;job.step.ttsDuration=result.duration;job.step.duration=result.duration;}
+      else if(job.step.type==='audio'&&job.step.audioTtsMode){job.step.mediaUrl=result.audioUrl;job.step.mediaDesktopPath=result.audioDesktopPath||null;job.step.audioServerUrl=result.remoteAudioUrl||null;job.step.mediaName=job.step.mediaName||'TTS audio';job.step.intrinsicMediaDuration=result.duration;job.step.ttsDuration=result.duration;if(shouldAutoSyncStepDuration(job.step))job.step.duration=result.duration;}
       else{job.step.audioUrl=result.audioUrl;job.step.audioDesktopPath=result.audioDesktopPath||null;job.step.audioServerUrl=result.remoteAudioUrl||null;job.step.ttsDuration=result.duration;if(job.step.type==='note'){job.step.subtitleWords=result.words||[];job.step.subtitleError=result.subtitleError||null;}}
     });
-    for(const step of touched){step.duration=stepTtsTotalDuration(step)||step.duration;bumpStepRevision(step.id);}
+    for(const step of touched){
+      const spokenDuration=stepTtsTotalDuration(step);
+      syncStepDurationFromTts(step,spokenDuration);
+      removeLegacyTtsTailPadding(step);
+      bumpStepRevision(step.id);
+    }
     const subtitleErrors=[...touched].filter(step=>step.type==='note'&&step.noteSubtitles!==false&&step.subtitleError);
     statusEl.textContent=subtitleErrors.length?`⚠ Đã tạo TTS nhưng ${subtitleErrors.length} NOTE chưa tạo được phụ đề.`:`✓ Đã tạo ${jobs.length} đoạn TTS.`;setTtsLoadingText('Đã tải giọng đọc về máy. Đang cập nhật timeline...');renderStepList();renderIdleScene();return true;
   }catch(error){markPendingTtsJobsFailed();statusEl.textContent='✗ Không tạo được TTS: '+error.message;setTtsLoadingText('Không tạo được giọng đọc: '+error.message);alert('Không tạo được giọng đọc từ API local: '+error.message);renderStepList();renderIdleScene();return false;}
@@ -2938,6 +2949,7 @@ let messPartnerAvatar = MESS_DEFAULT_AVATAR;
 let messPlatform = 'messenger';
 let messShowFooter = false;
 let messShowHeader = true;
+let messBlocked = false;
 let messTheme = 'classic';
 let messFooterIcon = '';
 let messPendingImage = null;
@@ -2976,7 +2988,7 @@ function toggleMessengerPlatformMenu(){document.getElementById('mess-platform-me
 function selectMessengerPlatform(platform){
   messPlatform=normalizeMessengerPlatform(platform);
   document.getElementById('mess-platform-menu')?.classList.remove('open');
-  updateMessengerPlatformPicker();updateMessengerThemePicker();renderMessengerDrafts();
+  updateMessengerPlatformPicker();updateMessengerThemePicker();updateMessengerBlockedToggle();renderMessengerDrafts();
 }
 function updateMessengerThemePicker(){
   const picker=document.getElementById('mess-theme-picker');
@@ -2987,6 +2999,8 @@ function toggleMessengerThemeMenu(){document.getElementById('mess-theme-menu')?.
 function selectMessengerTheme(theme){messTheme=normalizeMessengerTheme(theme);document.getElementById('mess-theme-menu')?.classList.remove('open');updateMessengerThemePicker();renderMessengerDrafts();}
 function setMessengerFooterVisible(visible){messShowFooter=!!visible;renderMessengerDrafts();}
 function updateMessengerFooterToggle(){const input=document.getElementById('mess-footer-toggle');if(input)input.checked=messShowFooter;}
+function setMessengerBlocked(blocked){messBlocked=!!blocked;renderMessengerDrafts();}
+function updateMessengerBlockedToggle(){const input=document.getElementById('mess-blocked-toggle'),wrap=document.getElementById('mess-blocked-toggle-wrap');if(input)input.checked=messBlocked;if(wrap)wrap.style.display=messPlatform==='messenger'?'':'none';}
 function setMessengerHeaderVisible(visible){messShowHeader=!!visible;renderMessengerDrafts();}
 function updateMessengerHeaderToggle(){const input=document.getElementById('mess-header-toggle');if(input)input.checked=messShowHeader;}
 const MESSENGER_FOOTER_ICON_PRESETS = ['👍','👎','❤️','🩷','🧡','💛','💚','💙','💜','🖤','🤍','🤎','💔','❤️‍🔥','💯','✨','🔥','⭐','🌟','💥','🎉','🎊','👏','🙌','🙏','💪','👀','✅','❌','❗','❓','💬','😂','🤣','😆','😄','😃','😀','😊','🥰','😍','😘','😎','🤩','🥳','😮','😯','😲','😳','🥹','😭','😢','😥','😡','🤬','😱','🤯','🤔','🫡','🤗','🫶','🫰','👌','🤝','👋','🙋','🤷','🙆','💁','✌️','🤞','🫵','👉','👈','☝️','👑','💅','🫠','😴','🤤','😈','👻','💩','🤖','🎁','🌹','🥂','🍻','☕','🍀','🌈','⚡','🎵','🎶','📸','📞','🚀','💸','🔒','🔑','💡','📌','🧠','🫂'];
@@ -3002,6 +3016,7 @@ function applyMessengerFooterIconInput(){const input=document.getElementById('me
 document.addEventListener('keydown',e=>{if(e.key==='Escape'&&document.getElementById('mess-footer-icon-overlay')?.classList.contains('open')){e.preventDefault();closeMessengerFooterIconPicker();}});
 document.addEventListener('click',e=>{if(!e.target.closest('.mess-preview-toolbar')){document.getElementById('mess-platform-menu')?.classList.remove('open');document.getElementById('mess-theme-menu')?.classList.remove('open');}});
 function openMessengerModal(stepId = null, conversationMode = false) {
+  ensureMessengerBlockedTool();
   messEditingStepId = stepId;
   messEditingConversationId = null;
   messTtsDirty = false;
@@ -3020,6 +3035,7 @@ function openMessengerModal(stepId = null, conversationMode = false) {
   messPlatform = normalizeMessengerPlatform(s?.messPlatform);
   messShowFooter = !!s?.messShowFooter;
   messShowHeader = s?.messShowHeader !== false;
+  messBlocked = !!s?.messBlocked;
   messTheme = normalizeMessengerTheme(s?.messTheme);
   messFooterIcon = String(s?.messFooterIcon || '').trim();
   messSideVoiceIdx = s && s.messSideVoices ? { ...s.messSideVoices } : { theirs: messengerVoiceIndexByLabel('Nhỏ Ngọt Ngào',0), mine: messengerVoiceIndexByLabel('Thanh Niên Tự Tin',22) };
@@ -3028,6 +3044,10 @@ function openMessengerModal(stepId = null, conversationMode = false) {
   messPendingImage = null;
   messPendingCall = null;
   messDrafts = s ? (s.messHistory || []).map(x => ({...x, voiceOverride:x.voiceOverride ?? true})) : [];
+  if(conversationMode&&s){
+    const blockedCards=steps.filter(step=>step.type==='mess'&&step.conversationId===s.conversationId&&isMessengerBlockedStep(step)).sort((a,b)=>steps.indexOf(a)-steps.indexOf(b));
+    for(const blockedCard of blockedCards){const insertAt=Math.max(0,Math.min(messDrafts.length,(blockedCard.messIndex??messDrafts.length-1)+1));messDrafts.splice(insertAt,0,{kind:blockedCard.messBlockMode==='self'?'blocked-self':'blocked'});}
+  }
   document.getElementById('mess-modal-title').textContent = conversationMode ? 'Chi tiết Box tin nhắn' : s ? 'Sửa tin nhắn' : 'Thêm đoạn chat';
   document.getElementById('mess-json-paste-wrap').style.display = 'none';
   document.getElementById('mess-json-paste').value = '';
@@ -3044,6 +3064,7 @@ function openMessengerModal(stepId = null, conversationMode = false) {
   updateMessengerPlatformPicker();
   updateMessengerThemePicker();
   updateMessengerFooterToggle();
+  updateMessengerBlockedToggle();
   updateMessengerHeaderToggle();
   document.getElementById('mess-auto-received-tone').checked=false;
   document.getElementById('mess-auto-sent-tone').checked=false;
@@ -3102,9 +3123,11 @@ function updateMessengerTtsCounter(){
 }
 function messengerVoiceIndexByLabel(label,fallback){const idx=ttsVoices.findIndex(v=>v?.label===label);return idx>=0?idx:fallback;}
 function messengerHistoryMessage(msg){const {parallelAudios,...clean}=msg;return clean;}
-function messengerItemKind(msg){return msg?.kind==='time'||msg?.kind==='call'?msg.kind:'message';}
+function messengerItemKind(msg){return msg?.kind==='time'||msg?.kind==='call'||msg?.kind==='blocked'||msg?.kind==='blocked-self'?msg.kind:'message';}
 function messengerDraftLabel(msg){
   if(messengerItemKind(msg)==='time')return `Mốc giờ: ${msg.timeLabel||''}`;
+  if(messengerItemKind(msg)==='blocked')return 'Giao diện: Người này đã chặn bạn';
+  if(messengerItemKind(msg)==='blocked-self')return 'Giao diện: Bạn đã chặn người này';
   if(messengerItemKind(msg)==='call'){
     const direction=msg.side==='mine'?'Tôi gọi':'Đối phương gọi';
     const type=msg.callType==='video'?'video':'thoại';
@@ -3228,6 +3251,27 @@ function addMessengerCallDraft(){
   if(!callMeta){alert('Nhập dòng nhỏ dưới cuộc gọi, ví dụ: 16 giây hoặc 21:52.');return;}
   saveMessengerSpecialDraft({kind:'call',side:document.getElementById('mess-call-side').value,callType:document.getElementById('mess-call-type').value,state:document.getElementById('mess-call-state').value,callMeta,emphasisBubble:document.getElementById('mess-emphasis').checked});
 }
+function addMessengerBlockedDraft(){
+  if(messPlatform!=='messenger'){alert('Card chặn chỉ dùng giao diện Messenger. Hãy chuyển nền tảng preview về Messenger trước.');return;}
+  saveMessengerSpecialDraft({kind:'blocked'});
+}
+function addMessengerBlockedSelfDraft(){
+  if(messPlatform!=='messenger'){alert('Card chặn chỉ dùng giao diện Messenger. Hãy chuyển nền tảng preview về Messenger trước.');return;}
+  saveMessengerSpecialDraft({kind:'blocked-self'});
+}
+function ensureMessengerBlockedTool(){
+  const addTool=(side,key,title,label,handler)=>{
+    const tools=document.getElementById(`mess-media-menu-${side}`)?.previousElementSibling;
+    if(!tools||tools.querySelector(`[data-mess-blocked-tool="${key}"]`))return;
+    const button=document.createElement('button');
+    button.type='button';button.className='mess-media-trigger';button.dataset.messBlockedTool=key;
+    button.title=title;button.setAttribute('aria-label',title);button.textContent=label;
+    button.onclick=event=>{event.stopPropagation();handler();};
+    tools.append(button);
+  };
+  addTool('theirs','them','Thêm card người này chặn bạn','⊘',addMessengerBlockedDraft);
+  addTool('mine','self','Thêm card bạn chặn người này','⊗',addMessengerBlockedSelfDraft);
+}
 function removeMessengerDraft(i){
   if(!messDrafts[i])return;messDrafts.splice(i,1);
   if(messDraftEditIndex===i)resetMessengerComposer();else if(messDraftEditIndex!=null&&messDraftEditIndex>i)messDraftEditIndex--;
@@ -3252,7 +3296,7 @@ function fillMessengerComposer(msg){
   document.getElementById('mess-theirs').value=msg.side==='theirs'?(msg.text||''):'';document.getElementById('mess-mine').value=msg.side==='mine'?(msg.text||''):'';document.getElementById('mess-tts').value=msg.ttsText??msg.text??'';document.getElementById('mess-echo').checked=!!msg.echo;document.getElementById('mess-emphasis').checked=!!msg.emphasisBubble;document.getElementById('mess-image-side').value=msg.side;messPendingImage=msg.imageUrl?{url:msg.imageUrl,name:msg.imageName||'ảnh',type:msg.imageType||'image',desktopPath:msg.imageDesktopPath||null}:null;document.getElementById('mess-image-url').value=msg.imageUrl&&/^https?:/i.test(msg.imageUrl)?msg.imageUrl:'';document.getElementById('mess-voice').value=msg.voiceOverride?String(msg.voiceIdx):'';messTtsDirty=true;messVoiceTouched=!!msg.voiceOverride;renderMessengerImagePreview();updateMessengerTtsCounter();
 }
 function closeMessengerDraftMenus(){document.querySelectorAll('.mess-draft-actions.open').forEach(el=>el.classList.remove('open'));}
-function editMessengerDraft(i){const msg=messDrafts[i];if(!msg)return;closeMessengerDraftMenus();messDraftEditIndex=i;messInsertAt=null;const kind=messengerItemKind(msg);if(kind==='time'){document.getElementById('mess-time-marker').value=msg.timeLabel||'';setMessengerSpecialComposer('time');}else if(kind==='call'){messPendingImage=null;messPendingCall={...msg,kind:'call',side:msg.side==='mine'?'mine':'theirs',callType:msg.callType==='video'?'video':'voice',state:msg.state==='connected'?'connected':'missed',callMeta:msg.callMeta||'',emphasisBubble:!!msg.emphasisBubble};setMessengerSpecialComposer(null);renderMessengerImagePreview();}else{fillMessengerComposer(msg);setMessengerSpecialComposer(null);}updateMessengerComposerMode();document.getElementById(kind==='message'?'mess-theirs':kind==='time'?'mess-time-marker':`mess-${msg.side==='mine'?'mine':'theirs'}`).scrollIntoView({behavior:'smooth',block:'center'});}
+function editMessengerDraft(i){const msg=messDrafts[i];if(!msg)return;closeMessengerDraftMenus();const kind=messengerItemKind(msg);if(kind==='blocked'){alert('Card chặn không có nội dung để sửa. Bạn có thể kéo, đổi thời lượng hoặc xóa card này trên timeline.');return;}messDraftEditIndex=i;messInsertAt=null;if(kind==='time'){document.getElementById('mess-time-marker').value=msg.timeLabel||'';setMessengerSpecialComposer('time');}else if(kind==='call'){messPendingImage=null;messPendingCall={...msg,kind:'call',side:msg.side==='mine'?'mine':'theirs',callType:msg.callType==='video'?'video':'voice',state:msg.state==='connected'?'connected':'missed',callMeta:msg.callMeta||'',emphasisBubble:!!msg.emphasisBubble};setMessengerSpecialComposer(null);renderMessengerImagePreview();}else{fillMessengerComposer(msg);setMessengerSpecialComposer(null);}updateMessengerComposerMode();document.getElementById(kind==='message'?'mess-theirs':kind==='time'?'mess-time-marker':`mess-${msg.side==='mine'?'mine':'theirs'}`).scrollIntoView({behavior:'smooth',block:'center'});}
 function deleteMessengerDraft(i){closeMessengerDraftMenus();if(!messDrafts[i]||!confirm(`Xóa tin nhắn #${i+1}?`))return;removeMessengerDraft(i);}
 function beginMessengerInsert(i){resetMessengerComposer();messInsertAt=i;updateMessengerComposerMode();document.getElementById('mess-theirs').scrollIntoView({behavior:'smooth',block:'center'});document.getElementById('mess-theirs').focus();}
 function beginMessengerTimeInsert(i){resetMessengerComposer();messInsertAt=i;openMessengerSpecialComposer('time');}
@@ -3330,6 +3374,16 @@ function messengerAudioDuration(url){
     audio.onloadedmetadata=()=>done(Number.isFinite(audio.duration)&&audio.duration>0?audio.duration:null);
     audio.onerror=()=>done(null);
     audio.src=url;
+  });
+}
+function libraryVideoDuration(url){
+  return new Promise(resolve=>{
+    const video=document.createElement('video');
+    const done=value=>{video.removeAttribute('src');video.load();resolve(value);};
+    video.preload='metadata';
+    video.onloadedmetadata=()=>done(Number.isFinite(video.duration)&&video.duration>0?video.duration:null);
+    video.onerror=()=>done(null);
+    video.src=url;
   });
 }
 async function resolveMessengerAutoTone(kind){
@@ -3420,7 +3474,7 @@ async function loadMessengerQuickAudioLibrary(){
   grid.innerHTML='<div class="lib-empty">Đang tải...</div>';
   try{
     const items=await messengerAudioLibraryItems();if(!items.length){grid.innerHTML='<div class="lib-empty">Thư mục thư viện đang trống.</div>';return;}
-    grid.innerHTML=items.map(it=>{const url=/^(?:file:|https?:|blob:)/i.test(it.url)?it.url:MEDIA_SERVER_URL+it.url,itemJson=JSON.stringify({url,filename:it.filename,duration:it.duration||null,desktopPath:it.desktopPath||null}).replace(/&/g,'&amp;').replace(/'/g,'&#39;').replace(/</g,'&lt;'),label=it.label||it.filename,tip=it.description||label;return `<div class="lib-item lib-item-audio" data-item='${itemJson}' onclick="setMessengerQuickAudioMedia(JSON.parse(this.dataset.item))" title="${esc(tip)}"><button type="button" class="lib-play-btn" onclick="event.stopPropagation();setMessengerQuickAudioMedia(JSON.parse(this.closest('.lib-item').dataset.item));toggleLibraryPreviewAudio('${url}',this)">▶</button><span class="lib-item-name">${esc(label)}</span></div>`;}).join('');
+    grid.innerHTML=items.map(it=>{const url=/^(?:file:|https?:|blob:)/i.test(it.url)?it.url:MEDIA_SERVER_URL+it.url,itemJson=JSON.stringify({url,filename:it.filename,duration:it.duration||null,desktopPath:it.desktopPath||null}).replace(/&/g,'&amp;').replace(/'/g,'&#39;').replace(/</g,'&lt;'),label=it.label||it.filename,tip=it.description||label;return `<div class="lib-item lib-item-audio" data-item='${itemJson}' onclick="setMessengerQuickAudioMedia(JSON.parse(this.dataset.item))" title="${esc(tip)}"><button type="button" class="lib-play-btn" onclick="event.stopPropagation();toggleLibraryPreviewAudio('${url}',this)">▶</button><span class="lib-item-name">${esc(label)}</span></div>`;}).join('');
   }catch(e){grid.innerHTML='<div class="lib-empty" style="color:#ef4444">⚠ Không tải được thư viện — kiểm tra media_server.py đang chạy</div>';}
 }
 async function uploadMessengerQuickAudio(file){
@@ -3475,7 +3529,7 @@ function buildMessengerJson() {
   return {
     _format: 'threads-messenger-conversation', _version: 1,
     platform: messPlatform, theme: messTheme, footerIcon: messFooterIcon,
-    showFooter: !!messShowFooter, showHeader: !!messShowHeader,
+    showFooter: !!messShowFooter, showHeader: !!messShowHeader, blocked: !!messBlocked,
     partnerName: messPartnerName.trim() || 'Tùng', partnerAvatar: messPartnerAvatar || MESS_DEFAULT_AVATAR,
     theirsVoiceIdx: messSideVoiceIdx.theirs, mineVoiceIdx: messSideVoiceIdx.mine, ttsSpeed: messTtsSpeed,
     messages,
@@ -3497,6 +3551,7 @@ function applyMessengerJson(raw) {
     messFooterIcon = String(raw.footerIcon ?? raw.messFooterIcon ?? '').trim();
     messShowFooter = !!(raw.showFooter ?? raw.messShowFooter);
     messShowHeader = (raw.showHeader ?? raw.messShowHeader) !== false;
+    messBlocked = !!(raw.blocked ?? raw.messBlocked);
     const theirsVoice = raw.theirsVoiceIdx ?? raw.opponentVoiceIdx;
     const mineVoice = raw.mineVoiceIdx ?? raw.myVoiceIdx;
     if (Number.isInteger(Number(theirsVoice))) messSideVoiceIdx.theirs = Number(theirsVoice);
@@ -3516,6 +3571,7 @@ function applyMessengerJson(raw) {
       if(!timeLabel)throw new Error(`Mốc giờ thứ ${i+1} đang trống.`);
       return {kind:'time',timeLabel};
     }
+    if(kind==='blocked'||kind==='blocked-self')return {kind};
     const sideRaw = String(item.side || '').toLowerCase();
     const side = ['mine','me','right','toi','tôi'].includes(sideRaw) ? 'mine'
       : ['theirs','left','other','opponent','doi-phuong','đối phương'].includes(sideRaw) ? 'theirs' : null;
@@ -3536,6 +3592,7 @@ function applyMessengerJson(raw) {
   updateMessengerPlatformPicker();
   updateMessengerThemePicker();
   updateMessengerFooterToggle();
+  updateMessengerBlockedToggle();
   updateMessengerHeaderToggle();
   resetMessengerComposer();
   renderMessengerDrafts();
@@ -3564,8 +3621,9 @@ function importMessengerJson(input) {
   reader.readAsText(file);
 }
 function renderMessengerDrafts() {
-  document.getElementById('mess-draft-list').innerHTML = messEditingStepId == null ? messDrafts.map((m,i)=>`<div class="mess-draft-item"><b>${messengerItemKind(m)==='time'?'Mốc giờ':messengerItemKind(m)==='call'?'Cuộc gọi':m.side==='mine'?'Tôi':'Đối phương'}</b><span>${esc(messengerDraftLabel(m))}</span><button onclick="removeMessengerDraft(${i})">✕</button></div>`).join('') : '';
-  document.getElementById('mess-live-preview').innerHTML = buildMessengerHtml({ messHistory: messDrafts, messPartnerName, messPartnerAvatar, messPlatform, messTheme, messFooterIcon, messShowFooter, messShowHeader, messEditable:messEditingStepId==null||messEditingConversationId!=null, messIdentityEditable:true, messAudioIndexes:messengerAudioIndexesForConversation(messengerConversationIdForQuickAudio()) });
+  document.getElementById('mess-draft-list').innerHTML = messEditingStepId == null ? messDrafts.map((m,i)=>`<div class="mess-draft-item"><b>${messengerItemKind(m)==='time'?'Mốc giờ':messengerItemKind(m)==='call'?'Cuộc gọi':['blocked','blocked-self'].includes(messengerItemKind(m))?'Chặn':m.side==='mine'?'Tôi':'Đối phương'}</b><span>${esc(messengerDraftLabel(m))}</span><button onclick="removeMessengerDraft(${i})">✕</button></div>`).join('') : '';
+  const lastTimelineDraft=[...messDrafts].reverse().find(messengerCreatesTimelineStep),previewKind=messengerItemKind(lastTimelineDraft),previewHistory=messDrafts.filter(item=>!['blocked','blocked-self'].includes(messengerItemKind(item)));
+  document.getElementById('mess-live-preview').innerHTML = buildMessengerHtml({ messHistory: previewHistory, messPartnerName, messPartnerAvatar, messPlatform, messTheme, messFooterIcon, messShowFooter, messShowHeader, messBlocked:previewKind==='blocked', messBlockMode:previewKind==='blocked-self'?'self':'', messEditable:messEditingStepId==null||messEditingConversationId!=null, messIdentityEditable:true, messAudioIndexes:messengerAudioIndexesForConversation(messengerConversationIdForQuickAudio()) });
   autoScrollMessenger(document.getElementById('mess-live-preview'));
 }
 function commitPendingMessengerDraft(){
@@ -3588,15 +3646,24 @@ async function generateMessengerTtsResults(messages,status,reuseSteps=[]){
   status.textContent='✓ Đã lưu card; TTS sẽ tạo khi nhấn Play.';
   return results;
 }
+function isMessengerBlockedStep(step){return step?.type==='mess'&&!!step.messBlocked;}
 function makeMessengerStep(msg,index,history,conversationId,ttsResult,oldStep=null){
+  if(['blocked','blocked-self'].includes(messengerItemKind(msg)))return makeMessengerBlockedStep(history,conversationId,oldStep,messengerItemKind(msg)==='blocked-self'?'self':'them');
   const isMessage=messengerItemKind(msg)==='message';
-  return {id:oldStep?.id??stepIdCounter++,type:'mess',conversationId,groupId:oldStep?.groupId===false?false:(oldStep?.groupId||conversationId),messIndex:index,messPlatform,messTheme,messFooterIcon,messShowFooter,messShowHeader,messPartnerName:messPartnerName.trim()||'Tùng',messPartnerAvatar,messSideVoices:{...messSideVoiceIdx},messTtsSpeed,messHistory:history.map(x=>({...x})),text:isMessage?msg.text:'',ttsText:isMessage?msg.ttsText:'',voiceIdx:isMessage?msg.voiceIdx:messengerDefaultVoice('theirs'),echo:isMessage&&!!msg.echo,emphasisBubble:!!msg.emphasisBubble,audioUrl:ttsResult?.audioUrl||null,audioDesktopPath:ttsResult?.audioDesktopPath||null,audioServerUrl:ttsResult?.remoteAudioUrl||null,ttsDuration:ttsResult?.duration||null,duration:ttsResult?.duration||(messengerItemKind(msg)==='time'?1.5:DEFAULT_DUR.mess),gap:oldStep?.gap??0,clearBefore:oldStep?.clearBefore??true,hue:oldStep?.hue??0,offsetX:oldStep?.offsetX??0,offsetY:oldStep?.offsetY??0,rotation:oldStep?.rotation??0};
+  const durationOverride=!!oldStep?.durationOverride;
+  const baseDuration=oldStep?.duration??ttsResult?.duration??(messengerItemKind(msg)==='time'?1.5:DEFAULT_DUR.mess);
+  const duration=durationOverride?baseDuration:(ttsResult?.duration??baseDuration);
+  return {id:oldStep?.id??stepIdCounter++,type:'mess',conversationId,groupId:oldStep?.groupId===false?false:(oldStep?.groupId||conversationId),messIndex:index,messPlatform,messTheme,messFooterIcon,messShowFooter,messShowHeader,messBlocked:false,messPartnerName:messPartnerName.trim()||'Tùng',messPartnerAvatar,messSideVoices:{...messSideVoiceIdx},messTtsSpeed,messHistory:history.map(x=>({...x})),text:isMessage?msg.text:'',ttsText:isMessage?msg.ttsText:'',voiceIdx:isMessage?msg.voiceIdx:messengerDefaultVoice('theirs'),echo:isMessage&&!!msg.echo,emphasisBubble:!!msg.emphasisBubble,audioUrl:ttsResult?.audioUrl||null,audioDesktopPath:ttsResult?.audioDesktopPath||null,audioServerUrl:ttsResult?.remoteAudioUrl||null,ttsDuration:ttsResult?.duration||null,duration,durationOverride,gap:oldStep?.gap??0,clearBefore:oldStep?.clearBefore??true,hue:oldStep?.hue??0,offsetX:oldStep?.offsetX??0,offsetY:oldStep?.offsetY??0,rotation:oldStep?.rotation??0};
+}
+function makeMessengerBlockedStep(history,conversationId,oldStep=null,blockMode='them'){
+  return {id:oldStep?.id??stepIdCounter++,type:'mess',conversationId,groupId:oldStep?.groupId===false?false:(oldStep?.groupId||conversationId),messIndex:Math.max(0,history.length-1),messPlatform:'messenger',messTheme,messFooterIcon,messShowFooter:false,messShowHeader,messBlocked:true,messBlockMode:blockMode,messPartnerName:messPartnerName.trim()||'Tùng',messPartnerAvatar,messSideVoices:{...messSideVoiceIdx},messTtsSpeed,messHistory:history.map(x=>({...x})),text:'',ttsText:'',voiceIdx:null,echo:false,emphasisBubble:false,audioUrl:null,audioDesktopPath:null,audioServerUrl:null,ttsDuration:null,duration:oldStep?.duration||DEFAULT_DUR.mess,durationOverride:!!oldStep?.durationOverride,gap:oldStep?.gap??0,clearBefore:oldStep?.clearBefore??true,hue:oldStep?.hue??0,offsetX:oldStep?.offsetX??0,offsetY:oldStep?.offsetY??0,rotation:oldStep?.rotation??0};
 }
 function messengerCreatesTimelineStep(msg){return messengerItemKind(msg)!=='time';}
 function messengerHistoryForTimelineStep(drafts,index){
+  if(['blocked','blocked-self'].includes(messengerItemKind(drafts[index])))return drafts.slice(0,index).filter(item=>!['blocked','blocked-self'].includes(messengerItemKind(item))).map(messengerHistoryMessage);
   const nextIndex=drafts.findIndex((item,itemIndex)=>itemIndex>index&&messengerCreatesTimelineStep(item));
   const end=nextIndex<0?drafts.length:nextIndex;
-  return drafts.slice(0,end).map(messengerHistoryMessage);
+  return drafts.slice(0,end).filter(item=>!['blocked','blocked-self'].includes(messengerItemKind(item))).map(messengerHistoryMessage);
 }
 function insertPendingMessengerAudios(drafts,messSteps){
   drafts.forEach((msg,i)=>{
@@ -3610,13 +3677,13 @@ async function submitMessengerConversation() {
   const finish = document.getElementById('mess-finish-btn');
   if(messEditingConversationId!=null){
     commitPendingMessengerDraft();if(!messDrafts.some(messengerCreatesTimelineStep)){alert('Box tin nhắn phải có ít nhất một tin nhắn, ảnh, sticker hoặc cuộc gọi.');return;}
-    const conv=messEditingConversationId,oldSteps=steps.filter(s=>s.type==='mess'&&s.conversationId===conv).sort((a,b)=>(a.messIndex??0)-(b.messIndex??0));
+    const conv=messEditingConversationId,oldSteps=steps.filter(s=>s.type==='mess'&&s.conversationId===conv).sort((a,b)=>steps.indexOf(a)-steps.indexOf(b)),oldMessageSteps=oldSteps.filter(s=>!isMessengerBlockedStep(s)),oldBlockedSteps=oldSteps.filter(isMessengerBlockedStep);
     const boxClearBefore=oldSteps.some(s=>s.clearBefore);
     finish.disabled=true;
     try{
       messSideVoiceIdx={theirs:parseInt(document.getElementById('mess-theirs-voice').value,10),mine:parseInt(document.getElementById('mess-mine-voice').value,10)};messPartnerName=messPartnerName.trim()||'Tùng';
-      const ttsResults=await generateMessengerTtsResults(messDrafts,status,oldSteps),replacements=[];
-      messDrafts.forEach((msg,i)=>{if(!messengerCreatesTimelineStep(msg))return;const oldStep=oldSteps.find(step=>step.messIndex===i)||null;const replacement=makeMessengerStep(msg,i,messengerHistoryForTimelineStep(messDrafts,i),conv,ttsResults.get(i)||null,oldStep);replacement.clearBefore=boxClearBefore;replacements.push(replacement);});
+      const ttsResults=await generateMessengerTtsResults(messDrafts,status,oldMessageSteps),replacements=[];
+      messDrafts.forEach((msg,i)=>{if(!messengerCreatesTimelineStep(msg))return;const oldStep=messengerItemKind(msg)==='blocked'?(oldBlockedSteps.shift()||null):(oldMessageSteps.find(step=>step.messIndex===i)||null);const replacement=makeMessengerStep(msg,i,messengerHistoryForTimelineStep(messDrafts,i),conv,ttsResults.get(i)||null,oldStep);replacement.clearBefore=boxClearBefore;replacements.push(replacement);});
       const rebuilt=[];let replacementIndex=0,lastConversationPosition=-1;
       for(const step of steps){if(step.type==='mess'&&step.conversationId===conv){if(replacementIndex<replacements.length){rebuilt.push(replacements[replacementIndex++]);lastConversationPosition=rebuilt.length;}}else rebuilt.push(step);}
       if(replacementIndex<replacements.length)rebuilt.splice(lastConversationPosition<0?rebuilt.length:lastConversationPosition,0,...replacements.slice(replacementIndex));
@@ -3632,10 +3699,11 @@ async function submitMessengerConversation() {
       const idx=(s.messHistory||[]).length-1; const conv=s.conversationId;
       messSideVoiceIdx={theirs:parseInt(document.getElementById('mess-theirs-voice').value,10),mine:parseInt(document.getElementById('mess-mine-voice').value,10)};
       messPartnerName=messPartnerName.trim()||'Tùng';
-      for(const related of steps.filter(x=>x.type==='mess'&&x.conversationId===conv)){related.messPlatform=messPlatform;related.messTheme=messTheme;related.messFooterIcon=messFooterIcon;related.messShowFooter=messShowFooter;related.messShowHeader=messShowHeader;related.messPartnerName=messPartnerName;related.messPartnerAvatar=messPartnerAvatar;related.messSideVoices={...messSideVoiceIdx};related.messTtsSpeed=messTtsSpeed;}
+      for(const related of steps.filter(x=>x.type==='mess'&&x.conversationId===conv&&!isMessengerBlockedStep(x))){related.messPlatform=messPlatform;related.messTheme=messTheme;related.messFooterIcon=messFooterIcon;related.messShowFooter=messShowFooter;related.messShowHeader=messShowHeader;related.messPartnerName=messPartnerName;related.messPartnerAvatar=messPartnerAvatar;related.messSideVoices={...messSideVoiceIdx};related.messTtsSpeed=messTtsSpeed;}
       for (const later of steps.filter(x=>x.type==='mess'&&x.conversationId===conv&&((x.messIndex??0)>=idx))) if(later.messHistory&&later.messHistory[idx]) later.messHistory[idx]={...msg};
       const isMessage=messengerItemKind(msg)==='message';
-      s.text=isMessage?(msg.text||''):'';s.ttsText=isMessage?(msg.ttsText||''):'';s.voiceIdx=isMessage?msg.voiceIdx:messengerDefaultVoice('theirs');s.echo=isMessage&&!!msg.echo;s.emphasisBubble=!!msg.emphasisBubble;s.audioUrl=null;s.audioDesktopPath=null;s.ttsDuration=null;s.duration=messengerItemKind(msg)==='time'?1.5:DEFAULT_DUR.mess;
+      s.text=isMessage?(msg.text||''):'';s.ttsText=isMessage?(msg.ttsText||''):'';s.voiceIdx=isMessage?msg.voiceIdx:messengerDefaultVoice('theirs');s.echo=isMessage&&!!msg.echo;s.emphasisBubble=!!msg.emphasisBubble;s.audioUrl=null;s.audioDesktopPath=null;s.ttsDuration=null;
+      if(!s.durationOverride)s.duration=messengerItemKind(msg)==='time'?1.5:DEFAULT_DUR.mess;
       for (const x of steps.filter(x=>x.type==='mess'&&x.conversationId===conv)) bumpStepRevision(x.id);
     } catch(e){alert('Không tạo được giọng đọc: '+e.message);finish.disabled=false;return}
     finish.disabled=false;closeMessengerModal();renderStepList();focusScriptStep(s.id,{refreshPreview:true});return;
@@ -3888,7 +3956,7 @@ function libraryItemHtml(category, item, i) {
     </div>`;
   if (category === 'audio') {
     return `<div class="lib-item lib-item-audio" data-filename="${esc(item.filename)}" data-item="${itemJson}" onclick="selectLibraryItem(this)" title="${esc(tooltip)}">
-      <button type="button" class="lib-play-btn" onclick="event.stopPropagation();selectLibraryItem(this.closest('.lib-item'));toggleLibraryPreviewAudio('${url}',this)">▶</button>
+      <button type="button" class="lib-play-btn" onclick="event.stopPropagation();toggleLibraryPreviewAudio('${url}',this)">▶</button>
       <span class="lib-item-name">${esc(displayLabel)}</span>
       ${editActions}
     </div>`;
@@ -3966,6 +4034,9 @@ async function selectLibraryItem(el) {
   const item = JSON.parse(decodeURIComponent(el.dataset.item));
   const url = /^(?:file:|https?:|blob:)/i.test(item.url) ? item.url : MEDIA_SERVER_URL + item.url;
   modalUploadedMedia = { url, filename: item.filename, isVideo: item.isVideo, duration: item.duration, desktopPath: item.desktopPath || null };
+  if(modalUploadedMedia.isVideo&&!(Number(modalUploadedMedia.duration)>0)){
+    modalUploadedMedia.duration=await libraryVideoDuration(url);
+  }
   if(!modalUploadedMedia.isVideo&&!modalUploadedMedia.duration&&/\.(mp3|wav|m4a|aac|ogg|flac|opus)$/i.test(item.filename||'')){
     modalUploadedMedia.duration=await messengerAudioDuration(url)||DEFAULT_DUR.audio;
   }
@@ -4404,6 +4475,27 @@ function stepTtsGapAfter(s, clipIndex) {
 function stepTtsTotalDuration(s) {
   const clips = stepTtsClips(s).filter(clip => clip.text || clip.audioUrl);
   return clips.reduce((sum, clip, index) => sum + (Number(clip.duration) || 0) + (index < clips.length - 1 ? stepTtsGapAfter(s, index) : 0), 0);
+}
+function removeLegacyTtsTailPadding(step) {
+  if (!step || step.type === 'audio') return false;
+  if (step.durationOverride) return false;
+  const spokenDuration = stepTtsTotalDuration(step);
+  // Bản cũ cộng .2s để che độ trễ đổi MP3. Preview giờ preload clip kế tiếp,
+  // nên trả các card đã bị cộng đúng mẫu này về duration giọng thật.
+  if (!spokenDuration || Math.abs(Number(step.duration) - (spokenDuration + .2)) > 1e-6) return false;
+  step.duration = spokenDuration;
+  bumpStepRevision(step.id);
+  return true;
+}
+function shouldAutoSyncStepDuration(step) {
+  return !step?.durationOverride;
+}
+function syncStepDurationFromTts(step, fallbackDuration = 0) {
+  const spokenDuration = stepTtsTotalDuration(step) || Number(fallbackDuration) || 0;
+  if (spokenDuration && shouldAutoSyncStepDuration(step)) step.duration = spokenDuration;
+}
+function syncProgressiveStepDuration(step) {
+  syncStepDurationFromTts(step, stepTtsTotalDuration(step));
 }
 
 // Khối UI cho các đoạn TTS THÊM (sau đoạn #1) trong modal soạn step — mỗi
@@ -5377,7 +5469,7 @@ async function addImageCropStep() {
       const s = steps.find(x => x.id === editingStepId);
       if (!s) throw new Error('Không tìm thấy step đang sửa (đã bị xoá?)');
       Object.assign(s, data);
-      if (ttsDuration != null) s.duration = ttsDuration;
+      if (ttsDuration != null && !s.durationOverride) s.duration = ttsDuration;
       doneMsg = '✓ Đã cập nhật ảnh cho step này';
     } else {
       insertStepByGroup({
@@ -5687,8 +5779,13 @@ async function submitStepModal() {
 
   if (editingStepId != null) {
     const s = steps.find(x => x.id === editingStepId);
+    const manualDuration = s?.durationOverride ? Number(s.duration) : null;
     Object.assign(s, data); // giữ nguyên id, gap, clearBefore, hue
-    if (ttsDuration != null) s.duration = ttsDuration;
+    if (manualDuration != null) {
+      s.duration = manualDuration;
+      s.durationOverride = true;
+    }
+    if (ttsDuration != null && !s.durationOverride) s.duration = ttsDuration;
     bumpStepRevision(s.id); // nội dung đã đổi — buộc renderAtTime() vẽ lại card này dù id giữ nguyên
   } else {
     insertStepByGroup({
@@ -5736,6 +5833,7 @@ function stepTypeLabel(s) {
 
 function stepSummary(s) {
   if (s.type === 'mess') {
+    if (isMessengerBlockedStep(s)) return 'Người này đã chặn bạn';
     const history = s.messHistory || [];
     const latest = history.length ? history[history.length - 1] : null;
     return `${history.length || 1} tin · ${latest && latest.side === 'mine' ? 'Tôi' : 'Đối phương'}: ${s.text || (latest && latest.imageUrl ? '🖼️ Ảnh' : '')}`;
@@ -5876,7 +5974,7 @@ function stepCardHtml(s, idx) {
         <div class="sc-actions">
           ${s.type==='image'&&s.mediaIsVideo?`<button class="media-video-toggle" onclick="toggleCardVideoPlayback(${s.id})" title="Phát video đúng một lượt">▶ Phát video</button>`:''}
           ${s.type==='sticker'||(s.type==='image'&&!s.mediaIsVideo&&!/\.gif(\?|$)/i.test(s.mediaUrl||s.mediaName||''))?'':`<button onclick="resetStepTime(${s.id})" title="Đưa thời lượng về đúng độ dài âm thanh/video gốc">⟲ Reset time</button>`}
-          <button onclick="${s.type==='mess'?`openMessengerModal(${s.id})`:`openStepModal('${s.type}',${s.id})`}" title="Sửa">✎</button>
+          ${isMessengerBlockedStep(s)?'<button disabled title="Card chặn không có nội dung để sửa">✎</button>':`<button onclick="${s.type==='mess'?`openMessengerModal(${s.id})`:`openStepModal('${s.type}',${s.id})`}" title="Sửa">✎</button>`}
           ${isParallelMedia(s)?`<button onclick="detachParallelMedia(${s.id})" title="Tách khỏi step đang phát song song">↳ Tách</button>`:''}
           <button onclick="deleteStep(${s.id})" title="Xoá">🗑</button>
         </div>
@@ -6039,7 +6137,7 @@ function updateProgressiveContentField(stepId, partIndex, field, rawValue){
   }else if(field==='gapAfter'){
     if(partIndex===0)step.progressiveGapAfterFirst=value;else clip.gapAfter=value;
   }
-  step.duration=stepTtsTotalDuration(step)||step.duration;
+  syncProgressiveStepDuration(step);
   bumpStepRevision(step.id);
   renderStepList();
   renderIdleScene();
@@ -6052,7 +6150,7 @@ function resetProgressiveContentTime(stepId, partIndex){
   const duration=Number(partIndex===0?step.ttsDuration:clip.duration)||0;
   if(!duration)return alert('CONTENT này chưa có file TTS để reset time.');
   if(partIndex===0)step.ttsDuration=duration;else clip.duration=duration;
-  step.duration=stepTtsTotalDuration(step)||step.duration;
+  syncProgressiveStepDuration(step);
   bumpStepRevision(step.id);
   renderStepList();
   renderIdleScene();
@@ -6084,7 +6182,7 @@ function deleteProgressiveContent(stepId, partIndex){
     const old=oldSettings[index+1]||{};
     return {text,voiceIdx:old.voiceIdx??step.voiceIdx,echo:!!old.echo,gapAfter:old.gapAfter??.3,audioUrl:old.audioUrl||null,audioDesktopPath:old.audioDesktopPath||null,duration:old.duration||0};
   });
-  step.duration=stepTtsTotalDuration(step)||step.duration;
+  syncProgressiveStepDuration(step);
   bumpStepRevision(step.id);
   renderStepList();
   renderIdleScene();
@@ -6128,7 +6226,8 @@ function messengerBoxHtml(groupSteps,groupId){
 }
 function openMessengerBox(groupId){
   const related=steps.filter(s=>s.type==='mess'&&stepGroupId(s)===groupId);if(!related.length)return;
-  const fullest=related.reduce((best,s)=>(s.messHistory||[]).length>(best.messHistory||[]).length?s:best,related[0]);openMessengerModal(fullest.id,true);
+  const regular=related.filter(s=>!isMessengerBlockedStep(s));
+  const fullest=(regular.length?regular:related).reduce((best,s)=>(s.messHistory||[]).length>(best.messHistory||[]).length?s:best,regular[0]||related[0]);openMessengerModal(fullest.id,true);
 }
 function setMessengerBoxClearBefore(groupId,checked){
   const related=steps.filter(s=>s.type==='mess'&&stepGroupId(s)===groupId);
@@ -6334,7 +6433,7 @@ function applyProgressiveContentOrder(step,payloads){
   step.audioDesktopPath=first.audioDesktopPath||null;
   step.extraTtsSegments=payloads.slice(1).map(item=>({text:item.text,voiceIdx:item.clip.voiceIdx??step.voiceIdx,echo:!!item.clip.echo,gapAfter:item.clip.gapAfter??.3,audioUrl:item.clip.audioUrl||null,audioDesktopPath:item.clip.audioDesktopPath||null,duration:item.clip.duration||0}));
   payloads.forEach((item,index)=>item.media.forEach(media=>{media.parallelAnchorStepId=step.id;media.parallelAnchorPartIndex=index;}));
-  step.duration=stepTtsTotalDuration(step)||step.duration;
+  syncProgressiveStepDuration(step);
   bumpStepRevision(step.id);
 }
 function reorderProgressiveContent(stepId,fromIndex,toIndex){
@@ -6687,6 +6786,7 @@ function normalizeMessengerConversationOrder(){
   for(const related of conversations.values()){
     const history=[];
     related.forEach((step,index)=>{
+      if(isMessengerBlockedStep(step)){step.messIndex=Math.max(0,history.length-1);step.messHistory=history.map(item=>({...item}));bumpStepRevision(step.id);return;}
       const previousIndex=step.messIndex??((step.messHistory||[]).length-1),stored=(step.messHistory||[])[previousIndex]||(step.messHistory||[]).at(-1)||{};
       const message=messengerItemKind(stored)==='message'?{...stored,side:stored.side||'theirs',text:step.text??stored.text??'',ttsText:step.ttsText??stored.ttsText??step.text??'',voiceIdx:step.voiceIdx??stored.voiceIdx,voiceOverride:stored.voiceOverride??false}:{...stored};
       history.push(message);step.messIndex=index;step.messHistory=history.map(item=>({...item}));bumpStepRevision(step.id);
@@ -6699,6 +6799,7 @@ function updateStepField(id, field, val) {
   if (!s) return;
   if (field === 'clearBefore' || field === 'absoluteUntilEnd') s[field] = !!val;
   else s[field] = parseFloat(val) || 0;
+  if (field === 'duration') s.durationOverride = true;
   computeTimeline();
   // cập nhật lại nhãn thời gian mà không rebuild toàn bộ (giữ focus input)
   renderStepList();
@@ -6717,7 +6818,7 @@ async function resetStepTime(id){
     duration=stepTtsClips(s).reduce((sum,clip)=>sum+(Number(clip.duration)||0),0)||Number(s.ttsDuration||0);
   }
   if(!duration)duration=DEFAULT_DUR[s.type]||1;
-  s.intrinsicMediaDuration=duration;s.duration=duration;
+  s.intrinsicMediaDuration=duration;s.duration=duration;s.durationOverride=false;
   computeTimeline();renderStepList();renderIdleScene();
 }
 
@@ -6947,6 +7048,7 @@ function deleteStep(id) {
     return;
   }
   if (deleting && deleting.type === 'mess') {
+    if (isMessengerBlockedStep(deleting)) { steps = steps.filter(x => x.id !== id); renderStepList(); renderIdleScene(); return; }
     const removedIndex = deleting.messIndex ?? ((deleting.messHistory || []).length - 1);
     for (const s of steps) {
       if (s.type !== 'mess' || s.conversationId !== deleting.conversationId || (s.messIndex ?? -1) <= removedIndex) continue;
@@ -7027,7 +7129,7 @@ function compileAiMessengerCard(card){
   return card.messages.map((message,index)=>{
     if(!message.ttsText)throw new Error(`Tin nhắn AI thứ ${index+1} thiếu ttsText`);
     const voiceIdx=message.side==='mine'?mineVoice:theirsVoice,msg={side:message.side,text:message.text,ttsText:message.ttsText,voiceIdx,voiceOverride:false,echo:!!message.echo,emphasisBubble:!!(message.emphasisBubble || message.emphasis?.enabled),imageUrl:null,imageName:null,imageType:'image',imageDesktopPath:null};history.push({...msg});
-    return {...aiBaseStep('mess'),conversationId,groupId:conversationId,messIndex:index,messPlatform:'messenger',messShowFooter:true,messShowHeader:true,messPartnerName:card.partnerName||'Đối phương',messPartnerAvatar:'messenger-default-avatar.png',messSideVoices:{mine:mineVoice,theirs:theirsVoice},messTtsSpeed:1,messHistory:history.map(item=>({...item})),text:msg.text,ttsText:msg.ttsText,voiceIdx,echo:msg.echo,emphasisBubble:msg.emphasisBubble,audioUrl:null,ttsDuration:null,clearBefore:true};
+    return {...aiBaseStep('mess'),conversationId,groupId:conversationId,messIndex:index,messPlatform:'messenger',messShowFooter:true,messShowHeader:true,messBlocked:false,messPartnerName:card.partnerName||'Đối phương',messPartnerAvatar:'messenger-default-avatar.png',messSideVoices:{mine:mineVoice,theirs:theirsVoice},messTtsSpeed:1,messHistory:history.map(item=>({...item})),text:msg.text,ttsText:msg.ttsText,voiceIdx,echo:msg.echo,emphasisBubble:msg.emphasisBubble,audioUrl:null,ttsDuration:null,clearBefore:true};
   });
 }
 function compileAiScript(script){
@@ -7410,6 +7512,7 @@ function normalizeImportedProject(project) {
       messIndex: history.length - 1, messPlatform: platform,
       messShowFooter: step.messShowFooter !== false,
       messShowHeader: step.messShowHeader !== false,
+      messBlocked: !!step.messBlocked,
       messHistory: history.map(item => ({ ...item })),
       text: message.text, ttsText: message.ttsText,
       voiceIdx: message.voiceIdx, echo: message.echo, emphasisBubble: message.emphasisBubble, clearBefore: true,
@@ -7439,6 +7542,17 @@ function normalizeImportedProject(project) {
     step.duration = duration > 100 ? duration / 1000 : duration;
     step.gap ??= 0; step.clearBefore ??= true; step.hue ??= 0;
     step.offsetX ??= 0; step.offsetY ??= 0; step.rotation ??= 0;
+  }
+  // Bản thử nghiệm trước từng ghi cờ chặn lên mọi cảnh trong cùng một box.
+  // Khi nạp lại, giữ riêng cảnh cuối làm card chặn để không phá lịch sử cũ.
+  const blockedByConversation = new Map();
+  for (const step of project.steps) {
+    if (step?.type !== 'mess' || !step.conversationId || !step.messBlocked) continue;
+    const list = blockedByConversation.get(step.conversationId) || [];
+    list.push(step); blockedByConversation.set(step.conversationId, list);
+  }
+  for (const list of blockedByConversation.values()) {
+    for (const step of list.slice(0, -1)) step.messBlocked = false;
   }
   project.stepIdCounter = Math.max(0, ...project.steps.map(step => Number(step?.id) || 0)) + 1;
   return project;
@@ -7642,7 +7756,7 @@ function ttsClipAt(t) {
       const dur = clip.duration || 0;
       const localT = t - s._start - appearanceDelay(s) - acc;
       if (localT < -1e-6) return null; // đang ở khoảng nghỉ trước đoạn này
-      if (localT < dur - 1e-6 || i === clips.length - 1) {
+      if (localT < dur - 1e-6) {
         return { url: clip.audioUrl, offset: localT, stepId: s.id, part: i + 1 };
       }
       acc += dur + (i < clips.length - 1 ? stepTtsGapAfter(s, i) : 0);
@@ -7652,6 +7766,49 @@ function ttsClipAt(t) {
 }
 
 let _lastTtsClipKey = null;
+let _ttsPlaybackRequestId = 0;
+let _activeTtsAudioEl = null;
+const ttsPreviewAudioEls = new Map();
+
+function ttsPreviewAudio(clipKey, url) {
+  let el = ttsPreviewAudioEls.get(clipKey);
+  if (!el || el.dataset.sourceUrl !== url) {
+    if (el) el.pause();
+    el = new Audio();
+    el.preload = 'auto';
+    el.dataset.sourceUrl = url;
+    el.src = url;
+    el.load();
+    ttsPreviewAudioEls.set(clipKey, el);
+  }
+  return el;
+}
+
+function primeUpcomingTtsAudio(t) {
+  const readableTypes = new Set(['post', 'comment', 'reply', 'text', 'note', 'image', 'mess']);
+  const upcoming = [];
+  for (const step of steps) {
+    if (!readableTypes.has(step.type)) continue;
+    let offset = appearanceDelay(step);
+    for (const [index, clip] of stepTtsClips(step).entries()) {
+      const duration = Number(clip.duration) || 0;
+      const start = step._start + offset;
+      if (clip.audioUrl && start >= t - .05) upcoming.push({ start, clip, key: `${step.id}:${index + 1}` });
+      offset += duration + (index < stepTtsClips(step).length - 1 ? stepTtsGapAfter(step, index) : 0);
+    }
+  }
+  upcoming.sort((a, b) => a.start - b.start);
+  upcoming.slice(0, 2).forEach(item => ttsPreviewAudio(item.key, item.clip.audioUrl));
+}
+
+function stopTtsPreviewAudio() {
+  _ttsPlaybackRequestId++;
+  _activeTtsAudioEl?.pause();
+  _activeTtsAudioEl = null;
+  document.getElementById('tts-audio').pause();
+  _lastTtsClipKey = null;
+}
+
 function playTtsElement(ttsEl) {
   ttsEl.muted = false;
   ttsEl.volume = 1;
@@ -7662,23 +7819,40 @@ function playTtsElement(ttsEl) {
   });
 }
 function syncTtsAudio(t) {
-  const ttsEl = document.getElementById('tts-audio');
   const clip = ttsClipAt(t);
   const clipKey = clip ? (clip.stepId + ':' + clip.part) : '';
   if (!clip) {
-    if (_lastTtsClipKey) { ttsEl.pause(); _lastTtsClipKey = null; }
+    if (_lastTtsClipKey) {
+      stopTtsPreviewAudio();
+    }
     return;
   }
   if (clipKey !== _lastTtsClipKey) {
-    if (ttsEl.src !== clip.url) ttsEl.src = clip.url;
+    // renderAtTime chạy mỗi animation frame. Phải ghi nhận clip MỚI trước
+    // khi await play(): nếu không, các frame tiếp theo sẽ lại gán src/
+    // currentTime cho cùng một MP3, cắt đầu câu và làm tiếng khựng lúc đổi card.
+    _lastTtsClipKey = clipKey;
+    const requestId = ++_ttsPlaybackRequestId;
+    // Preload clip hiện tại và card kế tiếp ngay khi vào một mốc mới, thay vì
+    // quét lại cả project ở mỗi animation frame.
+    primeUpcomingTtsAudio(t);
+    const ttsEl = ttsPreviewAudio(clipKey, clip.url);
+    if (_activeTtsAudioEl && _activeTtsAudioEl !== ttsEl) _activeTtsAudioEl.pause();
+    _activeTtsAudioEl = ttsEl;
     ttsEl.currentTime = Math.max(0, clip.offset);
-    playTtsElement(ttsEl).then(() => { _lastTtsClipKey = clipKey; }).catch(() => { _lastTtsClipKey = null; });
-  } else if (Math.abs(ttsEl.currentTime - clip.offset) > 0.35) {
+    playTtsElement(ttsEl).catch(() => {
+      if (_ttsPlaybackRequestId === requestId && _lastTtsClipKey === clipKey) {
+        _lastTtsClipKey = null;
+      }
+    });
+  } else {
+    const ttsEl = _activeTtsAudioEl || ttsPreviewAudio(clipKey, clip.url);
+    _activeTtsAudioEl = ttsEl;
+    if (Math.abs(ttsEl.currentTime - clip.offset) > 0.35) {
     // lệch quá nhiều (vd tua timeline) — chỉnh lại cho khớp
-    ttsEl.currentTime = Math.max(0, clip.offset);
-    if (ttsEl.paused) playTtsElement(ttsEl).catch(() => { _lastTtsClipKey = null; });
-  } else if (ttsEl.paused) {
-    playTtsElement(ttsEl).catch(() => { _lastTtsClipKey = null; });
+      ttsEl.currentTime = Math.max(0, clip.offset);
+    }
+    if (ttsEl.paused) playTtsElement(ttsEl).catch(() => { if (_lastTtsClipKey === clipKey) _lastTtsClipKey = null; });
   }
 }
 
@@ -8315,8 +8489,7 @@ function stopPlay() {
   document.getElementById('play-btn').textContent = '▶ Play';
   if (previewVideoEl.src) previewVideoEl.pause();
   if (previewAudioEl.src) previewAudioEl.pause();
-  document.getElementById('tts-audio').pause();
-  _lastTtsClipKey = null;
+  stopTtsPreviewAudio();
   stopAllSfxAudio();
   document.querySelectorAll('#meme-overlay video, #retained-meme-layer video').forEach(video => video.pause());
   document.querySelectorAll('.media-video-toggle').forEach(button => {
@@ -8332,8 +8505,7 @@ function seekPreview(value) {
   setPreviewMediaTime(previewVideoEl, playheadT);
   setPreviewMediaTime(previewAudioEl, playheadT);
   if (!playing) {
-    document.getElementById('tts-audio').pause();
-    _lastTtsClipKey = null;
+    stopTtsPreviewAudio();
     stopAllSfxAudio();
   }
   renderAtTime(playheadT);
