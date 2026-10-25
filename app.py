@@ -5,7 +5,7 @@ Chạy: python3 app.py
 Mở:   http://localhost:8080
 """
 
-import sys, io, os
+import sys, os
 os.environ.setdefault("PYTHONUTF8", "1")
 for _s in ("stdout", "stderr"):
     _stream = getattr(sys, _s)
@@ -14,10 +14,6 @@ for _s in ("stdout", "stderr"):
             _stream.reconfigure(encoding="utf-8", errors="replace")
         except Exception:
             pass
-    if hasattr(_stream, "buffer"):
-        setattr(sys, _s, io.TextIOWrapper(
-            _stream.buffer, encoding="utf-8", errors="replace", line_buffering=True
-        ))
 
 import asyncio
 import json
@@ -1125,9 +1121,11 @@ if __name__ == "__main__":
         import anyio
         anyio.open_file = _patched_open_file
 
+    # Allow another local Gradio app to coexist without editing this file again.
+    gradio_port = int(os.environ.get("GRADIO_SERVER_PORT", "8003"))
     demo.launch(
         server_name="0.0.0.0",
-        server_port=8003,
+        server_port=gradio_port,
         share=False,
         theme=gr.themes.Soft(),
         head=f"<script>{_BEEP_JS}</script>",
