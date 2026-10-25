@@ -4,7 +4,7 @@ translate_server.py â€” FastAPI port 8005
 Web UI cho tab Dá»‹ch Video (thay tháº¿ Gradio)
 """
 
-import sys, io, os
+import sys, os
 os.environ.setdefault("PYTHONUTF8", "1")
 for _s in ("stdout", "stderr"):
     _stream = getattr(sys, _s)
@@ -13,10 +13,6 @@ for _s in ("stdout", "stderr"):
             _stream.reconfigure(encoding="utf-8", errors="replace")
         except Exception:
             pass
-    if hasattr(_stream, "buffer"):
-        setattr(sys, _s, io.TextIOWrapper(
-            _stream.buffer, encoding="utf-8", errors="replace", line_buffering=True
-        ))
 
 import asyncio
 import json

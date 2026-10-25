@@ -14,7 +14,7 @@ CĂ¡ch dĂ¹ng:
   python3 translate_video.py --key YOUR_GROQ_KEY  (override .env)
 """
 
-import sys, io, os
+import sys, os
 os.environ.setdefault("PYTHONUTF8", "1")
 for _s in ("stdout", "stderr"):
     _stream = getattr(sys, _s)
@@ -23,10 +23,6 @@ for _s in ("stdout", "stderr"):
             _stream.reconfigure(encoding="utf-8", errors="replace")
         except Exception:
             pass
-    if hasattr(_stream, "buffer"):
-        setattr(sys, _s, io.TextIOWrapper(
-            _stream.buffer, encoding="utf-8", errors="replace", line_buffering=True
-        ))
 
 import argparse
 import asyncio
@@ -114,7 +110,7 @@ TTS_VOICE        = "vi-VN-HoaiMyNeural"
 TTS_SPEED_BOOST  = 1.00   # khĂ´ng tÄƒng tá»‘c máº·c Ä‘á»‹nh, tá»± khá»›p theo window
 ATEMPO_MAX       = 2.0    # FFmpeg atempo tá»‘i Ä‘a 2.0x má»—i filter
 ATEMPO_MIN       = 0.5
-CHUNK_BLOCKS     = 30     # sá»‘ block SRT má»—i láº§n gá»­i dá»‹ch
+CHUNK_BLOCKS     = 60     # 50đ/request tier: giữ mỗi request dưới 25K token, giảm số request
 CONTEXT_BLOCKS   = 5      # sá»‘ block context giá»¯ láº¡i giá»¯a cĂ¡c chunk
 PARALLEL_CHUNKS  = 3      # sá»‘ chunk gá»­i song song cĂ¹ng lĂºc
 DEMUCS_MODEL     = "htdemucs"   # model Demucs tĂ¡ch vocals
@@ -346,6 +342,17 @@ def stt_groq(audio_path: Path, groq_key: str) -> list[dict]:
 # STEP 3: Translate via Groq LLM
 # ---------------------------------------------------------------------------
 
+def _repair_legacy_mojibake(text: str) -> str:
+    """Repair legacy UTF-8 text that was decoded once as Latin-1.
+
+    Keep already-valid Unicode unchanged; source subtitles may contain Chinese
+    characters, which cannot be encoded as Latin-1 and therefore bypass repair.
+    """
+    try:
+        return text.encode("latin-1").decode("utf-8")
+    except (UnicodeEncodeError, UnicodeDecodeError):
+        return text
+
 SYSTEM_PROMPT = """Báº¡n lĂ  dá»‹ch giáº£ phá»¥ Ä‘á» tiáº¿ng Viá»‡t chuyĂªn nghiá»‡p, dá»‹ch tá»« Báº¤T Ká»² ngĂ´n ngá»¯ nĂ o sang tiáº¿ng Viá»‡t Ä‘á»ƒ Ä‘á»c thĂ nh tiáº¿ng (TTS).
 
 === Äá»NH Dáº NG Äáº¦U RA â€” VI PHáº M = SAI HOĂ€N TOĂ€N ===
@@ -378,9 +385,26 @@ SYSTEM_PROMPT = """Báº¡n lĂ  dá»‹ch giáº£ phá»¥ Ä‘á» tiá�
 === KĂ Tá»° Bá» Cáº¤M (TTS sáº½ Ä‘á»c sai) ===
 KhĂ´ng dĂ¹ng: - _ / ( ) ... vĂ  dáº¥u cháº¥m há»i cuá»‘i cĂ¢u thay báº±ng dáº¥u cháº¥m."""
 
+# This prompt predates the UTF-8 cleanup above and is stored mojibaked in the
+# repository. Repair it once before sending it to the model.
+SYSTEM_PROMPT = _repair_legacy_mojibake(SYSTEM_PROMPT)
+
+# Canonical UTF-8 prompt.  The legacy prompt above was saved with multiple
+# incompatible encodings; keep this concise version as the actual instruction.
+SYSTEM_PROMPT = """Bạn là dịch giả phụ đề chuyên nghiệp. Dịch từ ngôn ngữ nguồn sang tiếng Việt tự nhiên để đọc bằng TTS.
+
+YÊU CẦU BẮT BUỘC:
+- Trả về SRT thuần túy, không markdown, không giải thích.
+- Giữ nguyên số thứ tự và timestamp của từng block.
+- Mỗi block đầu vào phải có đúng một block đầu ra tương ứng; không gộp, bỏ hoặc tách block.
+- Chỉ dịch phần lời thoại sang tiếng Việt có dấu Unicode chuẩn. Không trả về chữ lỗi mã hóa như "Giáº" hoặc "Ä‘".
+- Dịch tự nhiên, đầy đủ chủ ngữ vị ngữ, phù hợp thời lượng và giọng đọc TTS.
+- Giữ nhất quán cách xưng hô, tên riêng và thuật ngữ trong toàn bộ video.
+- Không dùng ký tự -, _, /, (), hoặc ... trong lời dịch vì TTS có thể đọc sai."""
+
 
 BEEKNOEE_BASE_URL = "https://platform.beeknoee.com/api/v1"
-BEEKNOEE_MODEL    = "gemini-2.5-flash-lite"
+BEEKNOEE_MODEL    = "bee/gemini-3.5-flash-lite"
 
 
 def _make_chat_client(groq_key: str, beeknoee_key: str | None):
@@ -401,10 +425,12 @@ def translate_chunk(cues: list[dict], context_cues: list[dict],
     prompt = ""
     if context_cues:
         ctx_srt = build_srt(context_cues)
-        prompt += f"[NGá»® Cáº¢NH ÄĂƒ Dá»CH - chá»‰ tham chiáº¿u xÆ°ng hĂ´/tĂªn, KHĂ”NG dá»‹ch láº¡i]:\n{ctx_srt}\n\n"
+        prompt += "[NGỮ CẢNH ĐÃ DỊCH - chỉ tham chiếu xưng hô/tên, KHÔNG dịch lại]:\n"
+        prompt += ctx_srt + "\n\n"
 
     src_srt = build_srt(cues)
-    prompt += f"Dá»‹ch ÄĂNG {len(cues)} block sau, Ä‘áº§u ra pháº£i cĂ³ ÄĂNG {len(cues)} block, khĂ´ng hÆ¡n khĂ´ng kĂ©m:\n\n{src_srt}"
+    prompt += f"Dịch ĐÚNG {len(cues)} block sau, đầu ra phải có ĐÚNG {len(cues)} block, không hơn không kém:\n\n"
+    prompt += src_srt
 
     max_attempts = 5
     backoff = 5  # giĂ¢y, tÄƒng dáº§n khi gáº·p 429
@@ -427,7 +453,7 @@ def translate_chunk(cues: list[dict], context_cues: list[dict],
                 continue
             raise
 
-        raw = resp.choices[0].message.content or ""
+        raw = _repair_legacy_mojibake(resp.choices[0].message.content or "")
         raw = re.sub(r"```\w*\n?", "", raw).strip()
         translated = parse_srt(raw)
         if len(translated) == len(cues):
@@ -440,7 +466,7 @@ def translate_chunk(cues: list[dict], context_cues: list[dict],
             return translated
         best_partial = translated
         if attempt < max_attempts - 1:
-            prompt += f"\n\n[Lá»–I: cáº§n Ä‘Ăºng {len(cues)} block, nháº­n Ä‘Æ°á»£c {len(translated)}. KHĂ”NG gá»™p/bá» block nĂ o.]"
+            prompt += f"\n\n[LỖI: cần đúng {len(cues)} block, nhận được {len(translated)}. KHÔNG gộp/bỏ block nào.]"
             time.sleep(3)
 
     # Fallback: align by SRT index, fill missing with source text
@@ -468,8 +494,8 @@ def _translate_single_shot(cues: list[dict], groq_key: str,
     """NĂ©m toĂ n bá»™ cues vĂ o 1 request. Tráº£ vá» None náº¿u output lá»‡ch."""
     client, model = _make_chat_client(groq_key, beeknoee_key)
     src_srt = build_srt(cues)
-    prompt = (f"Dá»‹ch ÄĂNG {len(cues)} block sau, Ä‘áº§u ra pháº£i cĂ³ ÄĂNG {len(cues)} block, "
-              f"khĂ´ng hÆ¡n khĂ´ng kĂ©m:\n\n{src_srt}")
+    prompt = (f"Dịch ĐÚNG {len(cues)} block sau, đầu ra phải có ĐÚNG {len(cues)} block, "
+              f"không hơn không kém:\n\n{src_srt}")
 
     backoff = 5
     for attempt in range(4):
@@ -492,7 +518,7 @@ def _translate_single_shot(cues: list[dict], groq_key: str,
             print(f"     [single-shot] Lá»—i: {e}")
             return None
 
-        raw = resp.choices[0].message.content or ""
+        raw = _repair_legacy_mojibake(resp.choices[0].message.content or "")
         raw = re.sub(r"```\w*\n?", "", raw).strip()
         translated = parse_srt(raw)
         if len(translated) == len(cues):
