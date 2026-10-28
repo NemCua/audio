@@ -37,14 +37,32 @@ from pathlib import Path
 # ---------------------------------------------------------------------------
 BASE_DIR   = Path(sys.executable).resolve().parent if getattr(sys, "frozen", False) else Path(__file__).parent
 
+def _user_config_file() -> Path:
+    """Return a writable per-user config file, never the install directory."""
+    if sys.platform == "win32":
+        root = Path(os.environ.get("APPDATA", Path.home() / "AppData" / "Roaming"))
+        return root / "Dich Video" / ".env"
+    if sys.platform == "darwin":
+        return Path.home() / "Library" / "Application Support" / "Dich Video" / ".env"
+    return Path(os.environ.get("XDG_CONFIG_HOME", Path.home() / ".config")) / "dich-video" / ".env"
+
+USER_ENV_FILE = _user_config_file()
+
+def _load_env_file(path: Path, *, override: bool = False) -> None:
+    if not path.exists():
+        return
+    for line in path.read_text(encoding="utf-8", errors="replace").splitlines():
+        line = line.strip()
+        if line and not line.startswith("#") and "=" in line:
+            key, value = line.split("=", 1)
+            if override or key.strip() not in os.environ:
+                os.environ[key.strip()] = value.strip()
+
 # Load .env
 _env_file = BASE_DIR / ".env"
-if _env_file.exists():
-    for _line in _env_file.read_text().splitlines():
-        _line = _line.strip()
-        if _line and not _line.startswith("#") and "=" in _line:
-            _k, _v = _line.split("=", 1)
-            os.environ.setdefault(_k.strip(), _v.strip())
+_load_env_file(_env_file)
+# User settings override bundled defaults and remain writable under Program Files.
+_load_env_file(USER_ENV_FILE, override=True)
 INPUT_DIR  = BASE_DIR / "input"
 OUTPUT_DIR = BASE_DIR / "output"
 WORK_DIR   = BASE_DIR / "workdir"
@@ -814,14 +832,19 @@ async def build_tts_track(cues: list[dict], work_dir: Path, video_duration: floa
         def _new_device_id() -> str:
             import random
             new_id = str(random.randint(7000000000000000000, 7999999999999999999))
-            # Cáº­p nháº­t .env Ä‘á»ƒ láº§n sau dĂ¹ng luĂ´n
-            env_path = BASE_DIR / ".env"
-            if env_path.exists():
-                lines = env_path.read_text().splitlines()
+            # Program Files is read-only for normal users. Persist the new ID
+            # under the user's profile instead of modifying bundled .env.
+            try:
+                USER_ENV_FILE.parent.mkdir(parents=True, exist_ok=True)
+                lines = USER_ENV_FILE.read_text(encoding="utf-8", errors="replace").splitlines() if USER_ENV_FILE.exists() else []
                 new_lines = [f"CAPCUT_DEVICE_ID={new_id}" if l.startswith("CAPCUT_DEVICE_ID=") else l for l in lines]
                 if not any(l.startswith("CAPCUT_DEVICE_ID=") for l in lines):
                     new_lines.append(f"CAPCUT_DEVICE_ID={new_id}")
-                env_path.write_text("\n".join(new_lines) + "\n")
+                USER_ENV_FILE.write_text("\n".join(new_lines) + "\n", encoding="utf-8")
+                os.environ["CAPCUT_DEVICE_ID"] = new_id
+            except OSError as exc:
+                # Keep this job running even if a user profile is unavailable.
+                print(f"  -> Khong the luu device_id moi: {exc}")
             print(f"  -> Äá»•i device_id má»›i: {new_id}")
             return new_id
 

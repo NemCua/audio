@@ -36,6 +36,16 @@ from pydantic import BaseModel
 _env_base = Path(sys.executable).parent if getattr(sys, 'frozen', False) else Path(__file__).parent
 load_dotenv(_env_base / ".env")
 
+# The installer lives in Program Files, where normal users cannot update .env.
+# Load mutable settings (such as a refreshed CapCut device ID) from their profile.
+if sys.platform == "win32":
+    _user_env = Path(os.environ.get("APPDATA", Path.home() / "AppData" / "Roaming")) / "Dich Video" / ".env"
+elif sys.platform == "darwin":
+    _user_env = Path.home() / "Library" / "Application Support" / "Dich Video" / ".env"
+else:
+    _user_env = Path(os.environ.get("XDG_CONFIG_HOME", Path.home() / ".config")) / "dich-video" / ".env"
+load_dotenv(_user_env, override=True)
+
 RUNTIME_DIR = Path(sys.executable).resolve().parent if getattr(sys, "frozen", False) else Path(__file__).resolve().parent
 
 def _resolve_tool_binary(env_name: str, sibling_of: str | None, tool_name: str) -> str:
@@ -408,9 +418,9 @@ def _run_translate_pipeline(job_id: str, video_path: str, req: TranslateRequest)
 
 
 def _run_render(job_id: str, voice: str, bg_volume: float, tts_volume: float,
-                keep_original_audio: bool = False, original_volume: float = 0.25,
+                keep_original_audio: bool = True, original_volume: float = 0.25,
                 sync_offset: float = 0.0,
-                capcut_rate: str = "1.0", speed_ratio: float = 1.15,
+                capcut_rate: str = "1.0", speed_ratio: float = 1.25,
                 bg_music_path: str | None = None,
                 logo_path: str | None = None,
                 logo_pos: str = "topright", logo_size: int = 100,
@@ -488,7 +498,7 @@ def _run_preview(job_id: str, voice: str, bg_volume: float, tts_volume: float,
                  keep_original_audio: bool, original_volume: float,
                  sync_offset: float,
                  preview_start: float, preview_duration: float,
-                 capcut_rate: str = "1.0", speed_ratio: float = 1.15,
+                 capcut_rate: str = "1.0", speed_ratio: float = 1.25,
                  bg_music_path: str | None = None,
                  logo_text: str = "",
                  render_preset: str = "veryfast"):
@@ -983,10 +993,10 @@ async def render(
     voice:        str   = Form("BV421_vivn_streaming"),
     bg_volume:    float = Form(0.3),
     tts_volume:   float = Form(1.0),
-    keep_original_audio: bool = Form(False),
+    keep_original_audio: bool = Form(True),
     original_volume: float = Form(0.25),
     sync_offset:  float = Form(0.0),
-    speed_ratio:  float = Form(1.15),
+    speed_ratio:  float = Form(1.25),
     logo_pos:     str   = Form("topright"),
     logo_size:    int   = Form(100),
     logo_tab:     str   = Form("none"),
@@ -1037,10 +1047,10 @@ async def preview(
     voice:        str   = Form("BV421_vivn_streaming"),
     bg_volume:    float = Form(0.3),
     tts_volume:   float = Form(1.0),
-    keep_original_audio: bool = Form(False),
+    keep_original_audio: bool = Form(True),
     original_volume: float = Form(0.25),
     sync_offset:  float = Form(0.0),
-    speed_ratio:  float = Form(1.15),
+    speed_ratio:  float = Form(1.25),
     preview_start: float = Form(0.0),
     preview_duration: float = Form(30.0),
     logo_text:    str   = Form(""),
@@ -1077,10 +1087,10 @@ async def rerender(
     voice:        str   = Form("BV421_vivn_streaming"),
     bg_volume:    float = Form(0.3),
     tts_volume:   float = Form(1.0),
-    keep_original_audio: bool = Form(False),
+    keep_original_audio: bool = Form(True),
     original_volume: float = Form(0.25),
     sync_offset:  float = Form(0.0),
-    speed_ratio:  float = Form(1.15),
+    speed_ratio:  float = Form(1.25),
     logo_pos:     str   = Form("topright"),
     logo_size:    int   = Form(100),
     logo_tab:     str   = Form("none"),

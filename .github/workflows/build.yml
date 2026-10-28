@@ -61,6 +61,7 @@ jobs:
       - name: Prepare Electron resources
         env:
           BEEKNOEE_API_KEY: ${{ secrets.BEEKNOEE_API_KEY }}
+          GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}
           CAPCUT_DEVICE_ID: ${{ secrets.CAPCUT_DEVICE_ID }}
           CAPCUT_IID: ${{ secrets.CAPCUT_IID }}
         run: |
@@ -83,6 +84,7 @@ jobs:
             "FFPROBE_BIN=ffprobe.exe"
           )
           if ($env:BEEKNOEE_API_KEY) { $envLines += "BEEKNOEE_API_KEY=$env:BEEKNOEE_API_KEY" }
+          if ($env:GROQ_API_KEY) { $envLines += "GROQ_API_KEY=$env:GROQ_API_KEY" }
           if ($env:CAPCUT_DEVICE_ID) { $envLines += "CAPCUT_DEVICE_ID=$env:CAPCUT_DEVICE_ID" }
           if ($env:CAPCUT_IID) { $envLines += "CAPCUT_IID=$env:CAPCUT_IID" }
           $envLines | Set-Content "$resourceDir\.env" -Encoding UTF8
