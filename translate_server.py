@@ -45,6 +45,7 @@ elif sys.platform == "darwin":
 else:
     _user_env = Path(os.environ.get("XDG_CONFIG_HOME", Path.home() / ".config")) / "dich-video" / ".env"
 load_dotenv(_user_env, override=True)
+USER_DATA_DIR = _user_env.parent
 
 RUNTIME_DIR = Path(sys.executable).resolve().parent if getattr(sys, "frozen", False) else Path(__file__).resolve().parent
 
@@ -833,8 +834,10 @@ async def voice_preview(voice_type: str, request: Request):
     if cached and Path(cached).exists():
         return FileResponse(cached, media_type="audio/mpeg", filename=f"{voice_type}.mp3")
 
-    preview_dir = RUNTIME_DIR / "voice_previews"
-    preview_dir.mkdir(exist_ok=True)
+    # Generated previews are runtime data.  Never write them beside the
+    # bundled Python files because that directory is read-only after install.
+    preview_dir = USER_DATA_DIR / "voice_previews"
+    preview_dir.mkdir(parents=True, exist_ok=True)
     out_path = preview_dir / f"{voice_type}.mp3"
     preview_name = VOICE_PREVIEW_NAMES.get(voice_type, name)
     text = f"Xin ch\u00e0o b\u1ea1n, \u0111\u00e2y l\u00e0 gi\u1ecdng \u0111\u1ecdc {preview_name}."
@@ -1212,12 +1215,17 @@ async def load_srt(job_id: str, request: Request, file: UploadFile = File(...)):
 
 # Serve static assets.
 voice_preview_dir = RUNTIME_DIR / "voice_previews"
-voice_preview_dir.mkdir(exist_ok=True)
+# Bundled previews are read-only assets.  The workflow always packages them;
+# do not create this directory under Program Files at runtime.
+if not voice_preview_dir.exists():
+    voice_preview_dir = USER_DATA_DIR / "voice_previews"
+    voice_preview_dir.mkdir(parents=True, exist_ok=True)
 app.mount("/voice_previews", StaticFiles(directory=str(voice_preview_dir)), name="voice_previews")
 
 # Serve static â€” pháº£i Ä‘áº·t cuá»‘i
 static_dir = RUNTIME_DIR / "static_translate"
-static_dir.mkdir(exist_ok=True)
+if not static_dir.exists():
+    raise RuntimeError(f"Missing bundled web UI: {static_dir}")
 app.mount("/", StaticFiles(directory=str(static_dir), html=True), name="static")
 
 if __name__ == "__main__":
