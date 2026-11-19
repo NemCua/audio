@@ -1,0 +1,72 @@
+[
+  {
+    "t0": 0.0,
+    "t1": 0.033333,
+    "img_path": "/Users/nguyenquochuy/test-audio/threads/exports/3673d14acf3a/stack_0000.png",
+    "dynamic_meme": null,
+    "dynamic_memes": []
+  },
+  {
+    "t0": 0.033333,
+    "t1": 0.066667,
+    "img_path": "/Users/nguyenquochuy/test-audio/threads/exports/3673d14acf3a/stack_0001.png",
+    "dynamic_meme": null,
+    "dynamic_memes": []
+  },
+  {
+    "t0": 0.066667,
+    "t1": 0.1,
+    "img_path": "/Users/nguyenquochuy/test-audio/threads/exports/3673d14acf3a/stack_0002.png",
+    "dynamic_meme": null,
+    "dynamic_memes": []
+  },
+  {
+    "t0": 0.1,
+    "t1": 0.133333,
+    "img_path": "/Users/nguyenquochuy/test-audio/threads/exports/3673d14acf3a/stack_0003.png",
+    "dynamic_meme": null,
+    "dynamic_memes": []
+  },
+  {
+    "t0": 0.133333,
+    "t1": 0.166667,
+    "img_path": "/Users/nguyenquochuy/test-audio/threads/exports/3673d14acf3a/stack_0004.png",
+    "dynamic_meme": null,
+    "dynamic_memes": []
+  },
+  {
+    "t0": 0.166667,
+    "t1": 0.175,
+    "img_path": "/Users/nguyenquochuy/test-audio/threads/exports/3673d14acf3a/stack_0005.png",
+    "dynamic_meme": null,
+    "dynamic_memes": []
+  },
+  {
+    "t0": 0.175,
+    "t1": 1.651,
+    "img_path": "/Users/nguyenquochuy/test-audio/threads/exports/3673d14acf3a/stack_0006.png",
+    "dynamic_meme": null,
+    "dynamic_memes": []
+  },
+  {
+    "t0": 1.651,
+    "t1": 3.967,
+    "img_path": "/Users/nguyenquochuy/test-audio/threads/exports/3673d14acf3a/stack_0007.png",
+    "dynamic_meme": null,
+    "dynamic_memes": []
+  },
+  {
+    "t0": 3.967,
+    "t1": 6.02,
+    "img_path": "/Users/nguyenquochuy/test-audio/threads/exports/3673d14acf3a/stack_0008.png",
+    "dynamic_meme": null,
+    "dynamic_memes": []
+  },
+  {
+    "t0": 6.02,
+    "t1": 6.17,
+    "img_path": "/Users/nguyenquochuy/test-audio/threads/exports/3673d14acf3a/stack_0009.png",
+    "dynamic_meme": null,
+    "dynamic_memes": []
+  }
+]

@@ -1,0 +1,65 @@
+[
+  {
+    "id": 1,
+    "type": "post",
+    "duration": 5.845,
+    "gap": 0.15,
+    "clearBefore": true,
+    "hue": 20,
+    "offsetX": 0,
+    "offsetY": -1,
+    "rotation": 0,
+    "appearance": "drop-bounce",
+    "progressiveReveal": true,
+    "progressiveRevealMode": "advanced",
+    "progressivePause": 0.3,
+    "progressiveGapAfterFirst": 0.3,
+    "text": "Test POST progressive dòng 1\nDòng 2 hiện sau 0,3s\nDòng 3 có echo và highlight",
+    "ttsText": "Test post dòng một",
+    "voiceIdx": 0,
+    "echo": false,
+    "emphasisBubble": false,
+    "extraTtsSegments": [
+      {
+        "text": "Dòng hai hiện sau không phẩy ba giây",
+        "voiceIdx": 0,
+        "echo": false,
+        "emphasisBubble": false,
+        "gapAfter": 0.3,
+        "duration": 2.016,
+        "audioUrl": "file:///Users/nguyenquochuy/Documents/Threads%20Video%20Maker/Media/TTS/tts-1788461655144-e76124f5.mp3",
+        "audioDesktopPath": "/Users/nguyenquochuy/Documents/Threads Video Maker/Media/TTS/tts-1788461655144-e76124f5.mp3",
+        "audioServerUrl": "/audio/cab755806865428cb6ea26c7b8620df8.mp3"
+      },
+      {
+        "text": "Dòng ba có vang và phóng to",
+        "voiceIdx": 0,
+        "echo": true,
+        "emphasisBubble": true,
+        "gapAfter": 0.3,
+        "duration": 2.053,
+        "audioUrl": "file:///Users/nguyenquochuy/Documents/Threads%20Video%20Maker/Media/TTS/tts-1788461655151-a5c0c5a3.mp3",
+        "audioDesktopPath": "/Users/nguyenquochuy/Documents/Threads Video Maker/Media/TTS/tts-1788461655151-a5c0c5a3.mp3",
+        "audioServerUrl": "/audio/a2defd165a6246f5bfdea1df2a55bade.mp3"
+      }
+    ],
+    "uname": "tester_post",
+    "avatarUrl": "file:///Users/nguyenquochuy/test-audio/threads/avatarthreads/358389238_577583710976396_4095180163388838913_n.jpg",
+    "identityBlurMode": "",
+    "stats": {
+      "likes": "1,2K",
+      "comments": "34",
+      "reposts": "8",
+      "shares": "150",
+      "timeLabel": "1 giờ"
+    },
+    "imgUrl": null,
+    "isAuthor": false,
+    "audioUrl": "file:///Users/nguyenquochuy/Documents/Threads%20Video%20Maker/Media/TTS/tts-1788461655150-b4018fd0.mp3",
+    "audioDesktopPath": "/Users/nguyenquochuy/Documents/Threads Video Maker/Media/TTS/tts-1788461655150-b4018fd0.mp3",
+    "audioServerUrl": "/audio/7dfddda9bc9e445c956e056dc71b5ada.mp3",
+    "ttsDuration": 1.176,
+    "_start": 0.0,
+    "_end": 6.02
+  }
+]

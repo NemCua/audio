@@ -1,0 +1,634 @@
+{
+  "content": "Ngay lúc bạn đang xem video này, có một sinh vật đang sống trong đại dương lớn hơn bất kỳ loài khủng long nào từng tồn tại trên Trái Đất.\n\nĐó là cá voi xanh. Và mọi thứ về nó đều thách thức trí tưởng tượng của con người.\n\nMột con cá voi xanh trưởng thành dài khoảng ba mươi mét, tức là tương đương chiều dài của một sân bóng rổ. Cân nặng có thể lên tới hai trăm tấn, bằng khoảng ba mươi ba con voi châu Phi cộng lại. Chỉ riêng cái lưỡi của nó đã nặng khoảng ba tấn, tương đương một con voi trưởng thành. Và trái tim của nó, trái tim lớn nhất từng tồn tại trên hành tinh này, nặng khoảng một trăm tám mươi ki lô gram, to bằng một chiếc xe hơi cỡ nhỏ.\n\nMạch máu chính từ trái tim đó đủ lớn để một đứa trẻ có thể bò qua bên trong.\n\nNhưng điều kỳ lạ hơn nữa là cách trái tim khổng lồ đó hoạt động. Khi cá voi xanh lặn sâu để kiếm ăn, nhịp tim của nó chậm lại còn khoảng hai nhịp mỗi phút. Đúng vậy, hai nhịp trong sáu mươi giây. Đây là cách cơ thể nó tiết kiệm oxy để có thể ở dưới nước lâu hơn. Khi nó trồi lên lại, nhịp tim tăng vọt lên gần ba mươi nhịp mỗi phút để bù đắp.\n\nCá voi xanh cũng là sinh vật ồn ào nhất trên Trái Đất. Tiếng gọi của nó có thể đạt cường độ một trăm tám mươi tám decibel, còn to hơn cả tiếng động cơ máy bay phản lực cất cánh. Nhưng phần đáng kinh ngạc không phải ở độ ồn. Phần đáng kinh ngạc là ở khoảng cách. Hai con cá voi xanh có thể trò chuyện với nhau qua khoảng cách hơn một nghìn sáu trăm ki lô mét đại dương, xa hơn khoảng cách từ Hà Nội đến Sài Gòn.\n\nChúng ta không hiểu chính xác chúng đang nói gì với nhau. Nhưng chúng ta biết chúng đang nói.\n\nVà đây là phần đau lòng. Vào đầu thế kỷ hai mươi, con người đã săn bắt cá voi xanh gần đến mức tuyệt chủng. Từ khoảng ba trăm nghìn con trước đó, số lượng giảm xuống chỉ còn khoảng vài trăm cá thể. Sau khi lệnh cấm săn bắn được ban hành năm một chín sáu sáu, quần thể mới bắt đầu hồi phục, nhưng cực kỳ chậm.\n\nHôm nay, ước tính chỉ còn khoảng mười đến hai mươi lăm nghìn con cá voi xanh trên toàn bộ đại dương thế giới.\n\nSinh vật lớn nhất từng tồn tại trên Trái Đất đang bơi cô đơn trong lòng đại dương rộng lớn, gọi nhau qua hàng nghìn ki lô mét, và có thể chưa bao giờ nhận được lời hồi đáp.",
+  "voice": "BV421_vivn_streaming",
+  "rate": 1,
+  "scenes": [
+    {
+      "text": "Ngay lúc bạn đang xem video này,",
+      "type": "HOOK",
+      "query": "blue whale underwater massive body slow motion cinematic",
+      "query2": "giant whale ocean surface aerial drone wide shot",
+      "query3": "whale ocean deep blue cinematic wide",
+      "query_vi": "cá voi xanh dưới nước hùng vĩ",
+      "vi_note": "Cần cú sốc thị giác ngay từ đầu: thân cá voi lấp đầy khung hình, nhấn mạnh quy mô khổng lồ vượt trí tưởng tượng.",
+      "strategy": "DIRECT",
+      "duration": 3,
+      "media": {
+        "url": "https://videos.pexels.com/video-files/11279748/11279748-hd_1280_720_30fps.mp4",
+        "thumb": "https://images.pexels.com/videos/11279748/baby-humpback-mother-motherhood-11279748.jpeg?auto=compress&cs=tinysrgb&fit=crop&h=630&w=1200",
+        "is_video": true,
+        "duration": 7,
+        "source": "pexels"
+      },
+      "trigger_idx": 0
+    },
+    {
+      "text": "có một sinh vật đang sống trong đại dương lớn hơn bất kỳ loài khủng long nào từng tồn tại trên Trái Đất.",
+      "type": "HOOK",
+      "query": "blue whale underwater massive body slow motion cinematic close up",
+      "query2": "giant whale ocean surface aerial drone wide shot",
+      "query3": "whale ocean deep blue cinematic wide",
+      "query_vi": "cá voi xanh dưới nước hùng vĩ",
+      "vi_note": "Cần cú sốc thị giác ngay từ đầu: thân cá voi lấp đầy khung hình, nhấn mạnh quy mô khổng lồ vượt trí tưởng tượng.",
+      "strategy": "DIRECT",
+      "duration": 10,
+      "media": {
+        "url": "https://cdn.pixabay.com/video/2022/05/21/117702-713017028_medium.mp4",
+        "thumb": "https://cdn.pixabay.com/video/2022/05/21/117702-713017028_medium.jpg",
+        "is_video": true,
+        "duration": 20,
+        "source": "pixabay"
+      },
+      "trigger_idx": 2
+    },
+    {
+      "text": "Đó là cá voi xanh. Và mọi thứ về nó đều thách thức trí tưởng tượng của con người.",
+      "type": "CONCRETE_OBJECT",
+      "query": "blue whale full body underwater slow motion side view",
+      "query2": "blue whale surfacing ocean exhale spout slow motion",
+      "query3": "blue whale ocean surface sunlight cinematic",
+      "query_vi": "cá voi xanh toàn thân dưới nước",
+      "vi_note": "Giới thiệu nhân vật chính với toàn thân trong khung hình, tạo cảm giác kỳ vĩ và tôn trọng.",
+      "strategy": "DIRECT",
+      "duration": 6,
+      "media": {
+        "url": "https://videos.pexels.com/video-files/19460372/19460372-hd_1280_720_30fps.mp4",
+        "thumb": "https://images.pexels.com/videos/19460372/australia-beach-beached-beached-whale-19460372.jpeg?auto=compress&cs=tinysrgb&fit=crop&h=630&w=1200",
+        "is_video": true,
+        "duration": 9,
+        "source": "pexels"
+      },
+      "trigger_idx": 2
+    },
+    {
+      "text": "Một con cá voi xanh trưởng thành dài khoảng ba mươi mét, tức là tương đương chiều dài của một sân bóng rổ.",
+      "type": "DATA",
+      "query": "blue whale size comparison basketball court aerial scale animation",
+      "query2": "whale length scale infographic 30 meters basketball court side by side",
+      "query3": "basketball court aerial top down view full length",
+      "query_vi": "so sánh kích thước cá voi sân bóng rổ",
+      "vi_note": "Dùng hình ảnh so sánh trực quan để người xem cảm nhận chiều dài 30m một cách cụ thể và dễ hiểu.",
+      "strategy": "SIMULATION",
+      "duration": 6,
+      "media": {
+        "url": "https://videos.pexels.com/video-files/10708812/10708812-hd_1280_720_30fps.mp4",
+        "thumb": "https://images.pexels.com/videos/10708812/basketball-basketball-sport-basketball-background-basketball-court-10708812.jpeg?auto=compress&cs=tinysrgb&fit=crop&h=630&w=1200",
+        "is_video": true,
+        "duration": 15,
+        "source": "pexels"
+      },
+      "trigger_idx": 20
+    },
+    {
+      "text": "Cân nặng có thể lên tới hai trăm tấn, bằng khoảng ba mươi ba con voi châu Phi cộng lại.",
+      "type": "DATA",
+      "query": "african elephant herd aerial wide shot savanna thirty elephants",
+      "query2": "large elephant herd walking dust aerial drone cinematic",
+      "query3": "elephant herd savanna wide shot Africa",
+      "query_vi": "đàn voi châu Phi đông đúc từ trên cao",
+      "vi_note": "Hiện đàn 33 con voi từ trên cao giúp khán giả cảm nhận trực tiếp khối lượng 200 tấn qua phép so sánh sống động.",
+      "strategy": "METAPHOR",
+      "duration": 6,
+      "media": {
+        "url": "https://images.pexels.com/photos/19530816/pexels-photo-19530816.jpeg?auto=compress&cs=tinysrgb&dpr=2&h=650&w=940",
+        "thumb": "https://images.pexels.com/photos/19530816/pexels-photo-19530816.jpeg?auto=compress&cs=tinysrgb&h=350",
+        "is_video": false,
+        "duration": 6,
+        "source": "pexels"
+      },
+      "trigger_idx": 9
+    },
+    {
+      "text": "Chỉ riêng cái lưỡi của nó đã nặng khoảng ba tấn, tương đương một con voi trưởng thành.",
+      "type": "DATA",
+      "query": "blue whale mouth open feeding close up underwater",
+      "query2": "whale baleen mouth close up underwater slow motion",
+      "query3": "single elephant standing side view full body",
+      "query_vi": "miệng cá voi mở rộng cận cảnh",
+      "vi_note": "Cận cảnh miệng cá voi đang mở tạo ấn tượng mạnh về kích thước chiếc lưỡi bằng cả một con voi.",
+      "strategy": "DIRECT",
+      "duration": 6,
+      "media": {
+        "url": "/var/folders/7h/7_jpnx8j4k7ft2hc4kwf_zpw0000gn/T/cv_upload_sm5nobzi/upload.jpeg",
+        "thumb": "blob:http://localhost:8004/f2eea421-5a20-422e-af88-3d8e12aca234",
+        "is_video": false,
+        "duration": 6,
+        "source": "local"
+      },
+      "trigger_idx": 3
+    },
+    {
+      "text": "Và trái tim của nó,",
+      "type": "DATA",
+      "query": "whale heart",
+      "query2": "giant heart anatomical model car comparison scale visualization",
+      "query3": "small compact car close up full body side view",
+      "query_vi": "trái tim cá voi so sánh xe hơi",
+      "vi_note": "Animation 3D trái tim cá voi đặt cạnh xe hơi nhỏ giúp khán giả hình dung kích thước phi thường một cách trực tiếp.",
+      "strategy": "SIMULATION",
+      "duration": 2.2,
+      "media": {
+        "url": "/var/folders/7h/7_jpnx8j4k7ft2hc4kwf_zpw0000gn/T/cv_upload_2zl49j4j/upload.webp",
+        "thumb": "blob:http://localhost:8004/5ddaff31-90f7-48e5-b7f0-64f757637460",
+        "is_video": false,
+        "duration": 2.2,
+        "source": "local"
+      },
+      "trigger_idx": 0
+    },
+    {
+      "text": "trái tim lớn nhất từng tồn tại trên hành tinh này,",
+      "type": "DATA",
+      "query": "whale heart",
+      "query2": "giant heart anatomical model car comparison scale visualization",
+      "query3": "small compact car close up full body side view",
+      "query_vi": "trái tim cá voi so sánh xe hơi",
+      "vi_note": "Animation 3D trái tim cá voi đặt cạnh xe hơi nhỏ giúp khán giả hình dung kích thước phi thường một cách trực tiếp.",
+      "strategy": "SIMULATION",
+      "duration": 4.8,
+      "media": {
+        "url": "/var/folders/7h/7_jpnx8j4k7ft2hc4kwf_zpw0000gn/T/cv_upload_t4hys0d2/upload.jpg",
+        "thumb": "blob:http://localhost:8004/29f41622-063e-487f-b5c2-73ac95524040",
+        "is_video": false,
+        "duration": 4.8,
+        "source": "local"
+      },
+      "trigger_idx": 0
+    },
+    {
+      "text": "nặng khoảng một trăm tám mươi ki lô gram,",
+      "type": "DATA",
+      "query": "scale",
+      "query2": "giant heart anatomical model car comparison scale visualization",
+      "query3": "small compact car close up full body side view",
+      "query_vi": "trái tim cá voi so sánh xe hơi",
+      "vi_note": "Animation 3D trái tim cá voi đặt cạnh xe hơi nhỏ giúp khán giả hình dung kích thước phi thường một cách trực tiếp.",
+      "strategy": "SIMULATION",
+      "duration": 3.9,
+      "media": {
+        "url": "/var/folders/7h/7_jpnx8j4k7ft2hc4kwf_zpw0000gn/T/cv_upload_5q_dzg79/upload.jpg",
+        "thumb": "blob:http://localhost:8004/547ec965-81a7-400d-a2ba-d4384eff2ca8",
+        "is_video": false,
+        "duration": 3.9,
+        "source": "local"
+      },
+      "trigger_idx": 0
+    },
+    {
+      "text": "to bằng một chiếc xe hơi cỡ nhỏ.",
+      "type": "DATA",
+      "query": "blue whale heart 3d animation size comparison small car slow motion",
+      "query2": "giant heart anatomical model car comparison scale visualization",
+      "query3": "small compact car close up full body side view",
+      "query_vi": "trái tim cá voi so sánh xe hơi",
+      "vi_note": "Animation 3D trái tim cá voi đặt cạnh xe hơi nhỏ giúp khán giả hình dung kích thước phi thường một cách trực tiếp.",
+      "strategy": "SIMULATION",
+      "duration": 3.5,
+      "media": {
+        "url": "https://videos.pexels.com/video-files/38383809/16301050_1280_720_50fps.mp4",
+        "thumb": "https://images.pexels.com/videos/38383809/china-culture-china-itinerary-china-tourism-china-travel-38383809.jpeg?auto=compress&cs=tinysrgb&fit=crop&h=630&w=1200",
+        "is_video": true,
+        "duration": 10,
+        "source": "pexels"
+      },
+      "trigger_idx": 2
+    },
+    {
+      "text": "Mạch máu chính từ trái tim đó đủ lớn để một đứa trẻ có thể bò qua bên trong.",
+      "type": "MECHANISM",
+      "query": "aorta blood vessel cross section 3d animation human child crawling tunnel",
+      "query2": "giant blood vessel interior 3d render tunnel scale child",
+      "query3": "child crawling through tunnel close up",
+      "query_vi": "mạch máu lớn trẻ em bò qua",
+      "vi_note": "Hình ảnh trẻ em bò qua đường hầm kết hợp animation mạch máu tạo cảm giác kinh ngạc tức thì về kích thước.",
+      "strategy": "SIMULATION",
+      "duration": 6,
+      "media": {
+        "url": "/var/folders/7h/7_jpnx8j4k7ft2hc4kwf_zpw0000gn/T/cv_upload_fvhnsqmp/upload.webp",
+        "thumb": "blob:http://localhost:8004/d82187b5-43a9-41cf-b45e-1592d10e6455",
+        "is_video": false,
+        "duration": 6,
+        "source": "local"
+      },
+      "trigger_idx": 0
+    },
+    {
+      "text": "Khi cá voi xanh lặn sâu để kiếm ăn, nhịp tim của nó chậm lại còn khoảng hai nhịp mỗi phút.",
+      "type": "MECHANISM",
+      "query": "whale",
+      "query2": "whale diving deep dark water slow motion cinematic",
+      "query3": "deep ocean dark water slow motion descending",
+      "query_vi": "cá voi lặn sâu đại dương tối",
+      "vi_note": "Cảnh lặn xuống vùng tối kết hợp nhịp tim cực chậm tạo cảm giác yên tĩnh và kỳ bí của cơ chế sinh tồn.",
+      "strategy": "DIRECT",
+      "duration": 9.1,
+      "media": {
+        "url": "https://cdn.pixabay.com/video/2024/12/01/244188_medium.mp4",
+        "thumb": "https://cdn.pixabay.com/video/2024/12/01/244188_medium.jpg",
+        "is_video": true,
+        "duration": 8,
+        "source": "pixabay"
+      },
+      "trigger_idx": 4
+    },
+    {
+      "text": "Đúng vậy, hai nhịp trong sáu mươi giây.",
+      "type": "MECHANISM",
+      "query": "heart rate",
+      "query2": "whale diving deep dark water slow motion cinematic",
+      "query3": "deep ocean dark water slow motion descending",
+      "query_vi": "cá voi lặn sâu đại dương tối",
+      "vi_note": "Cảnh lặn xuống vùng tối kết hợp nhịp tim cực chậm tạo cảm giác yên tĩnh và kỳ bí của cơ chế sinh tồn.",
+      "strategy": "DIRECT",
+      "duration": 3.5,
+      "media": {
+        "url": "https://cdn.pixabay.com/video/2016/08/11/4360-178617258_medium.mp4",
+        "thumb": "https://cdn.pixabay.com/video/2016/08/11/4360-178617258_medium.jpg",
+        "is_video": true,
+        "duration": 20,
+        "source": "pixabay"
+      },
+      "trigger_idx": 2
+    },
+    {
+      "text": "Đây là cách cơ thể nó tiết kiệm oxy để có thể ở dưới nước lâu hơn.",
+      "type": "MECHANISM",
+      "query": "oxi",
+      "query2": "whale breaching ocean surface slow motion sunlight dramatic",
+      "query3": "whale surfacing water spray slow motion close up",
+      "query_vi": "cá voi trồi lên bề mặt nước mạnh mẽ",
+      "vi_note": "Cú trồi lên bùng nổ đối lập với cảnh lặn yên tĩnh trước đó, thể hiện nhịp tim tăng vọt qua năng lượng hình ảnh.",
+      "strategy": "DIRECT",
+      "duration": 7.4,
+      "media": {
+        "url": "https://images.pexels.com/photos/28490731/pexels-photo-28490731.jpeg?auto=compress&cs=tinysrgb&dpr=2&h=650&w=940",
+        "thumb": "https://images.pexels.com/photos/28490731/pexels-photo-28490731.jpeg?auto=compress&cs=tinysrgb&h=350",
+        "is_video": false,
+        "duration": 7.4,
+        "source": "pexels"
+      },
+      "trigger_idx": 6
+    },
+    {
+      "text": "Khi nó trồi lên lại, nhịp tim tăng vọt lên gần ba mươi nhịp mỗi phút để bù đắp.",
+      "type": "MECHANISM",
+      "query": "blue whale surfacing explosive breach water spray slow motion close up",
+      "query2": "whale breaching ocean surface slow motion sunlight dramatic",
+      "query3": "whale surfacing water spray slow motion close up",
+      "query_vi": "cá voi trồi lên bề mặt nước mạnh mẽ",
+      "vi_note": "Cú trồi lên bùng nổ đối lập với cảnh lặn yên tĩnh trước đó, thể hiện nhịp tim tăng vọt qua năng lượng hình ảnh.",
+      "strategy": "DIRECT",
+      "duration": 8.3,
+      "media": {
+        "url": "https://videos.pexels.com/video-files/27941813/12270176_1280_720_30fps.mp4",
+        "thumb": "https://images.pexels.com/videos/27941813/aerial-animals-cabo-cabo-mexico-27941813.jpeg?auto=compress&cs=tinysrgb&fit=crop&h=630&w=1200",
+        "is_video": true,
+        "duration": 31,
+        "source": "pexels"
+      },
+      "trigger_idx": 2
+    },
+    {
+      "text": "Cá voi xanh cũng là sinh vật ồn ào nhất trên Trái Đất.",
+      "type": "DATA",
+      "query": "whale",
+      "query2": "airplane jet takeoff runway blast noise dramatic",
+      "query3": "airplane takeoff runway close up powerful",
+      "query_vi": "động cơ máy bay phản lực cất cánh",
+      "vi_note": "Hình ảnh động cơ phản lực gầm rú là chuẩn mực âm thanh cực lớn mà khán giả đã biết, giúp so sánh 188 decibel trở nên có thực.",
+      "strategy": "METAPHOR",
+      "duration": 5.7,
+      "media": {
+        "url": "https://cdn.pixabay.com/video/2022/07/28/125906-735656354_medium.mp4",
+        "thumb": "https://cdn.pixabay.com/video/2022/07/28/125906-735656354_medium.jpg",
+        "is_video": true,
+        "duration": 6,
+        "source": "pixabay"
+      },
+      "trigger_idx": 0
+    },
+    {
+      "text": "Tiếng gọi của nó có thể đạt cường độ một trăm tám mươi tám decibel,",
+      "type": "DATA",
+      "query": "jet engine takeoff close up roaring exhaust slow motion close up",
+      "query2": "airplane jet takeoff runway blast noise dramatic",
+      "query3": "airplane takeoff runway close up powerful",
+      "query_vi": "động cơ máy bay phản lực cất cánh",
+      "vi_note": "Hình ảnh động cơ phản lực gầm rú là chuẩn mực âm thanh cực lớn mà khán giả đã biết, giúp so sánh 188 decibel trở nên có thực.",
+      "strategy": "METAPHOR",
+      "duration": 6.5,
+      "media": {
+        "url": "https://videos.pexels.com/video-files/28586470/12427546_1280_720_24fps.mp4",
+        "thumb": "https://images.pexels.com/videos/28586470/airplane-clouds-door-engine-28586470.jpeg?auto=compress&cs=tinysrgb&fit=crop&h=630&w=1200",
+        "is_video": true,
+        "duration": 9,
+        "source": "pexels"
+      },
+      "trigger_idx": 7
+    },
+    {
+      "text": "còn to hơn cả tiếng động cơ máy bay phản lực cất cánh.",
+      "type": "DATA",
+      "query": "jet engine takeoff close up roaring exhaust slow motion cinematic",
+      "query2": "airplane jet takeoff runway blast noise dramatic",
+      "query3": "airplane takeoff runway close up powerful",
+      "query_vi": "động cơ máy bay phản lực cất cánh",
+      "vi_note": "Hình ảnh động cơ phản lực gầm rú là chuẩn mực âm thanh cực lớn mà khán giả đã biết, giúp so sánh 188 decibel trở nên có thực.",
+      "strategy": "METAPHOR",
+      "duration": 5.7,
+      "media": {
+        "url": "https://videos.pexels.com/video-files/4285866/4285866-hd_1280_720_30fps.mp4",
+        "thumb": "https://images.pexels.com/videos/4285866/airline-airplane-airport-crj-taxiing-4285866.jpeg?auto=compress&cs=tinysrgb&fit=crop&h=630&w=1200",
+        "is_video": true,
+        "duration": 20,
+        "source": "pexels"
+      },
+      "trigger_idx": 4
+    },
+    {
+      "text": "Nhưng phần đáng kinh ngạc không phải ở độ ồn.",
+      "type": "ABSTRACT_CONCEPT",
+      "query": "sound wave traveling ocean underwater animation two whales distance vast",
+      "query2": "sonar sound wave ocean 3d animation long distance communication",
+      "query3": "ocean vast aerial wide shot horizon endless",
+      "query_vi": "sóng âm truyền qua đại dương xa",
+      "vi_note": "Animation sóng âm lan rộng qua đại dương mênh mông thể hiện khoảng cách giao tiếp phi thường, gây kinh ngạc hơn hình ảnh tĩnh.",
+      "strategy": "SIMULATION",
+      "duration": 4.3,
+      "media": {
+        "url": "https://pixabay.com/get/g34252d6b4a17635c0f73dd9bbb6b3990cdaab8bd36390f7ff9c2ce63c3286cd53961d0c630627e29ca6dc7a719415c5e39377ddc06d527c06d6c598acca121ac_1280.jpg",
+        "thumb": "https://pixabay.com/get/gff862982764f1be2bedc9c8278aa1b0d6c15a069fd93963515918963f1df936356227fb97c9e8f97db3978bb8e33c7bc0e28707990c71ac283b4666879735128_640.jpg",
+        "is_video": false,
+        "duration": 4.3,
+        "source": "pixabay"
+      },
+      "trigger_idx": 0
+    },
+    {
+      "text": "Phần đáng kinh ngạc là ở khoảng cách.",
+      "type": "ABSTRACT_CONCEPT",
+      "query": "distance",
+      "query2": "sonar sound wave ocean 3d animation long distance communication",
+      "query3": "ocean vast aerial wide shot horizon endless",
+      "query_vi": "sóng âm truyền qua đại dương xa",
+      "vi_note": "Animation sóng âm lan rộng qua đại dương mênh mông thể hiện khoảng cách giao tiếp phi thường, gây kinh ngạc hơn hình ảnh tĩnh.",
+      "strategy": "SIMULATION",
+      "duration": 3.5,
+      "media": {
+        "url": "https://videos.pexels.com/video-files/9699305/9699305-hd_1280_720_30fps.mp4",
+        "thumb": "https://images.pexels.com/videos/9699305/4k-aerial-aerial-photography-aerial-view-9699305.jpeg?auto=compress&cs=tinysrgb&fit=crop&h=630&w=1200",
+        "is_video": true,
+        "duration": 12,
+        "source": "pexels"
+      },
+      "trigger_idx": 6
+    },
+    {
+      "text": "Hai con cá voi xanh có thể trò chuyện với nhau qua khoảng cách hơn một nghìn sáu trăm ki lô mét đại dương,",
+      "type": "ABSTRACT_CONCEPT",
+      "query": "sound wave traveling ocean underwater animation two whales distance vast cinematic",
+      "query2": "sonar sound wave ocean 3d animation long distance communication",
+      "query3": "ocean vast aerial wide shot horizon endless",
+      "query_vi": "sóng âm truyền qua đại dương xa",
+      "vi_note": "Animation sóng âm lan rộng qua đại dương mênh mông thể hiện khoảng cách giao tiếp phi thường, gây kinh ngạc hơn hình ảnh tĩnh.",
+      "strategy": "SIMULATION",
+      "duration": 10.4,
+      "media": {
+        "url": "/var/folders/7h/7_jpnx8j4k7ft2hc4kwf_zpw0000gn/T/cv_upload_a0wvxxzu/upload.gif",
+        "thumb": "blob:http://localhost:8004/e5790c65-b6c9-4636-ac01-6ec91fe8a39d",
+        "is_video": false,
+        "duration": 10.4,
+        "source": "local"
+      },
+      "trigger_idx": 0
+    },
+    {
+      "text": "xa hơn khoảng cách từ Hà Nội đến Sài Gòn.",
+      "type": "ABSTRACT_CONCEPT",
+      "query": "sound wave traveling ocean underwater animation two whales distance vast slow motion",
+      "query2": "sonar sound wave ocean 3d animation long distance communication",
+      "query3": "ocean vast aerial wide shot horizon endless",
+      "query_vi": "sóng âm truyền qua đại dương xa",
+      "vi_note": "Animation sóng âm lan rộng qua đại dương mênh mông thể hiện khoảng cách giao tiếp phi thường, gây kinh ngạc hơn hình ảnh tĩnh.",
+      "strategy": "SIMULATION",
+      "duration": 4.3,
+      "media": {
+        "url": "https://videos.pexels.com/video-files/7102652/7102652-hd_1280_720_30fps.mp4",
+        "thumb": "https://images.pexels.com/videos/7102652/drone-camera-drone-flying-drone-footage-humpback-whale-7102652.jpeg?auto=compress&cs=tinysrgb&fit=crop&h=630&w=1200",
+        "is_video": true,
+        "duration": 28,
+        "source": "pexels"
+      },
+      "trigger_idx": 2
+    },
+    {
+      "text": "Chúng ta không hiểu chính xác chúng đang nói gì với nhau. Nhưng chúng ta biết chúng đang nói.",
+      "type": "EMOTIONAL_MOMENT",
+      "query": "two blue whales distant underwater slowly moving toward each other",
+      "query2": "whale underwater alone dark ocean slow motion silhouette",
+      "query3": "ocean deep blue water slow motion peaceful",
+      "query_vi": "hai cá voi xa nhau dưới nước",
+      "vi_note": "Khoảnh khắc dừng lại và suy ngẫm: hình ảnh hai sinh vật cô đơn kết nối từ xa gợi cảm xúc về sự bí ẩn và đồng loại.",
+      "strategy": "METAPHOR",
+      "duration": 7,
+      "media": {
+        "url": "https://videos.pexels.com/video-files/28097890/12298731_1280_720_30fps.mp4",
+        "thumb": "https://images.pexels.com/videos/28097890/animal-animals-big-whale-blue-28097890.jpeg?auto=compress&cs=tinysrgb&fit=crop&h=630&w=1200",
+        "is_video": true,
+        "duration": 90,
+        "source": "pexels"
+      },
+      "trigger_idx": 6
+    },
+    {
+      "text": "Và đây là phần đau lòng.",
+      "type": "HISTORICAL_EVENT",
+      "query": "heartbreaking",
+      "query2": "vintage whaling industry old photograph dead whale boat 1900s",
+      "query3": "old whaling archive documentary black white ship ocean",
+      "query_vi": "tàu săn cá voi lịch sử đen trắng",
+      "vi_note": "Cảnh tư liệu đen trắng về săn bắt cá voi tạo sự tương phản đau lòng với vẻ hùng vĩ vừa được khắc họa.",
+      "strategy": "SIMULATION",
+      "duration": 2.6,
+      "media": {
+        "url": "https://videos.pexels.com/video-files/6840821/6840821-hd_1280_720_30fps.mp4",
+        "thumb": "https://images.pexels.com/videos/6840821/anxiety-baby-loss-bereavement-cemeteries-6840821.jpeg?auto=compress&cs=tinysrgb&fit=crop&h=630&w=1200",
+        "is_video": true,
+        "duration": 37,
+        "source": "pexels"
+      },
+      "trigger_idx": 4
+    },
+    {
+      "text": "Vào đầu thế kỷ hai mươi, con người đã săn bắt cá voi xanh gần đến mức tuyệt chủng.",
+      "type": "HISTORICAL_EVENT",
+      "query": "historical whaling ship harpoon hunting archive footage black white close up",
+      "query2": "vintage whaling industry old photograph dead whale boat 1900s",
+      "query3": "old whaling archive documentary black white ship ocean",
+      "query_vi": "tàu săn cá voi lịch sử đen trắng",
+      "vi_note": "Cảnh tư liệu đen trắng về săn bắt cá voi tạo sự tương phản đau lòng với vẻ hùng vĩ vừa được khắc họa.",
+      "strategy": "SIMULATION",
+      "duration": 8.3,
+      "media": {
+        "url": "/var/folders/7h/7_jpnx8j4k7ft2hc4kwf_zpw0000gn/T/cv_upload_1izzd0p2/upload.jpeg",
+        "thumb": "blob:http://localhost:8004/60c20ebf-0795-4545-afbd-01b51d298c1f",
+        "is_video": false,
+        "duration": 8.3,
+        "source": "local"
+      },
+      "trigger_idx": 6
+    },
+    {
+      "text": "Từ khoảng ba trăm nghìn con trước đó, số lượng giảm xuống chỉ còn khoảng vài trăm cá thể.",
+      "type": "DATA",
+      "query": "population decline graph animation dots disappearing dramatic visualization",
+      "query2": "data visualization population crash numbers falling animation",
+      "query3": "countdown numbers dropping fast animation red decline",
+      "query_vi": "đồ thị sụt giảm số lượng nhanh",
+      "vi_note": "Hình ảnh các điểm biến mất hoặc số đếm sụt giảm nhanh chóng truyền tải sức tàn phá của nạn săn bắt cực kỳ trực quan.",
+      "strategy": "SIMULATION",
+      "duration": 6,
+      "media": {
+        "url": "https://cdn.pixabay.com/video/2022/08/06/126943-737187503_medium.mp4",
+        "thumb": "https://cdn.pixabay.com/video/2022/08/06/126943-737187503_medium.jpg",
+        "is_video": true,
+        "duration": 6,
+        "source": "pixabay"
+      },
+      "trigger_idx": 8
+    },
+    {
+      "text": "Sau khi lệnh cấm săn bắn được ban hành năm một chín sáu sáu,",
+      "type": "ABSTRACT_CONCEPT",
+      "query": "ban",
+      "query2": "plant slowly sprouting soil timelapse delicate growth",
+      "query3": "seedling sprouting timelapse green hopeful",
+      "query_vi": "mầm cây mọc chậm chạp hồi phục",
+      "vi_note": "Cây mầm mọc chậm là ẩn dụ hoàn hảo cho sự hồi phục mong manh và cực kỳ chậm của quần thể cá voi sau thảm họa.",
+      "strategy": "METAPHOR",
+      "duration": 6.1,
+      "media": {
+        "url": "https://videos.pexels.com/video-files/7397248/7397248-hd_1280_720_30fps.mp4",
+        "thumb": "https://images.pexels.com/videos/7397248/pexels-photo-7397248.jpeg?auto=compress&cs=tinysrgb&fit=crop&h=630&w=1200",
+        "is_video": true,
+        "duration": 17,
+        "source": "pexels"
+      },
+      "trigger_idx": 0
+    },
+    {
+      "text": "quần thể mới bắt đầu hồi phục, nhưng cực kỳ chậm.",
+      "type": "ABSTRACT_CONCEPT",
+      "query": "seedling growing slowly timelapse fragile recovery nature close up",
+      "query2": "plant slowly sprouting soil timelapse delicate growth",
+      "query3": "seedling sprouting timelapse green hopeful",
+      "query_vi": "mầm cây mọc chậm chạp hồi phục",
+      "vi_note": "Cây mầm mọc chậm là ẩn dụ hoàn hảo cho sự hồi phục mong manh và cực kỳ chậm của quần thể cá voi sau thảm họa.",
+      "strategy": "METAPHOR",
+      "duration": 4.8,
+      "media": {
+        "url": "https://videos.pexels.com/video-files/8522207/8522207-hd_1280_720_30fps.mp4",
+        "thumb": "https://images.pexels.com/videos/8522207/grow-growth-lapse-plant-8522207.jpeg?auto=compress&cs=tinysrgb&fit=crop&h=630&w=1200",
+        "is_video": true,
+        "duration": 13,
+        "source": "pexels"
+      },
+      "trigger_idx": 3
+    },
+    {
+      "text": "Hôm nay,",
+      "type": "DATA",
+      "query": "vast empty ocean aerial drone wide shot lonely horizon",
+      "query2": "ocean expanse aerial blue water endless horizon drone",
+      "query3": "ocean wide aerial shot empty horizon",
+      "query_vi": "đại dương mênh mông trống vắng từ trên cao",
+      "vi_note": "Đại dương rộng lớn và trống vắng nhấn mạnh sự thưa thớt của 10–25 nghìn con trong toàn bộ các đại dương thế giới.",
+      "strategy": "REFLECTION",
+      "duration": 2,
+      "media": {
+        "url": "https://videos.pexels.com/video-files/33185814/14142633_1280_720_60fps.mp4",
+        "thumb": "https://images.pexels.com/videos/33185814/pexels-photo-33185814.jpeg?auto=compress&cs=tinysrgb&fit=crop&h=630&w=1200",
+        "is_video": true,
+        "duration": 17,
+        "source": "pexels"
+      },
+      "trigger_idx": 0
+    },
+    {
+      "text": "ước tính chỉ còn khoảng mười đến hai mươi lăm nghìn con cá voi xanh trên toàn bộ đại dương thế giới.",
+      "type": "DATA",
+      "query": "whale",
+      "query2": "ocean expanse aerial blue water endless horizon drone",
+      "query3": "ocean wide aerial shot empty horizon",
+      "query_vi": "đại dương mênh mông trống vắng từ trên cao",
+      "vi_note": "Đại dương rộng lớn và trống vắng nhấn mạnh sự thưa thớt của 10–25 nghìn con trong toàn bộ các đại dương thế giới.",
+      "strategy": "REFLECTION",
+      "duration": 9.6,
+      "media": {
+        "url": "https://videos.pexels.com/video-files/26245637/11942707_1280_720_60fps.mp4",
+        "thumb": "https://images.pexels.com/videos/26245637/whale-whales-26245637.jpeg?auto=compress&cs=tinysrgb&fit=crop&h=630&w=1200",
+        "is_video": true,
+        "duration": 16,
+        "source": "pexels"
+      },
+      "trigger_idx": 4
+    },
+    {
+      "text": "Sinh vật lớn nhất từng tồn tại trên Trái Đất đang bơi cô đơn trong lòng đại dương rộng lớn,",
+      "type": "EMOTIONAL_MOMENT",
+      "query": "single blue whale alone dark deep ocean slow motion wide cinematic",
+      "query2": "lone whale underwater vast dark ocean silhouette slow motion",
+      "query3": "whale alone ocean deep blue slow motion peaceful sad",
+      "query_vi": "cá voi đơn độc đại dương sâu thẳm",
+      "vi_note": "Một con cá voi đơn độc giữa đại dương tối tăm và vô tận là hình ảnh kết thúc mang sức nặng cảm xúc lớn nhất toàn video.",
+      "strategy": "DIRECT",
+      "duration": 8.7,
+      "media": {
+        "url": "https://videos.pexels.com/video-files/10377449/10377449-hd_1280_720_30fps.mp4",
+        "thumb": "https://images.pexels.com/videos/10377449/pexels-photo-10377449.jpeg?auto=compress&cs=tinysrgb&fit=crop&h=630&w=1200",
+        "is_video": true,
+        "duration": 29,
+        "source": "pexels"
+      },
+      "trigger_idx": 0
+    },
+    {
+      "text": "gọi nhau qua hàng nghìn ki lô mét,",
+      "type": "EMOTIONAL_MOMENT",
+      "query": "distance",
+      "query2": "lone whale underwater vast dark ocean silhouette slow motion",
+      "query3": "whale alone ocean deep blue slow motion peaceful sad",
+      "query_vi": "cá voi đơn độc đại dương sâu thẳm",
+      "vi_note": "Một con cá voi đơn độc giữa đại dương tối tăm và vô tận là hình ảnh kết thúc mang sức nặng cảm xúc lớn nhất toàn video.",
+      "strategy": "DIRECT",
+      "duration": 3.5,
+      "media": {
+        "url": "https://videos.pexels.com/video-files/8493716/8493716-sd_960_506_24fps.mp4",
+        "thumb": "https://images.pexels.com/videos/8493716/pexels-photo-8493716.jpeg?auto=compress&cs=tinysrgb&fit=crop&h=630&w=1200",
+        "is_video": true,
+        "duration": 8,
+        "source": "pexels"
+      },
+      "trigger_idx": 3
+    },
+    {
+      "text": "và có thể chưa bao giờ nhận được lời hồi đáp.",
+      "type": "EMOTIONAL_MOMENT",
+      "query": "single blue whale alone dark deep ocean slow motion wide cinematic cinematic",
+      "query2": "lone whale underwater vast dark ocean silhouette slow motion",
+      "query3": "whale alone ocean deep blue slow motion peaceful sad",
+      "query_vi": "cá voi đơn độc đại dương sâu thẳm",
+      "vi_note": "Một con cá voi đơn độc giữa đại dương tối tăm và vô tận là hình ảnh kết thúc mang sức nặng cảm xúc lớn nhất toàn video.",
+      "strategy": "DIRECT",
+      "duration": 4.8,
+      "media": {
+        "url": "https://videos.pexels.com/video-files/10377084/10377084-hd_1280_720_30fps.mp4",
+        "thumb": "https://images.pexels.com/videos/10377084/pexels-photo-10377084.jpeg?auto=compress&cs=tinysrgb&fit=crop&h=630&w=1200",
+        "is_video": true,
+        "duration": 29,
+        "source": "pexels"
+      },
+      "trigger_idx": 0
+    }
+  ]
+}
