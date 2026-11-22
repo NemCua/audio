@@ -336,6 +336,8 @@ tr.cjk-hit .cjk-badge{display:block}
           <h3>API</h3>
           <label>Groq API Key (STT)</label>
           <input type="password" id="groq-key" placeholder="De trong = dung key da dong goi trong app" autocomplete="off"/>
+          <label>Model dich / sua loi (Beeknoee)</label>
+          <input type="text" id="chat-model" value="deepseek/deepseek-v4-flash-0731" placeholder="deepseek/deepseek-v4-flash-0731" autocomplete="off"/>
         </div>
         <div class="sec" style="border:1px solid #1e2340;border-radius:8px;margin-bottom:12px">
           <h3>Render</h3>
@@ -1049,32 +1051,6 @@ async function loadJsonFile(input) {
   }
 }
 
-async function loadSrtFile(input) {
-  if (!currentJobId || !input.files[0]) return;
-  const btn = document.getElementById('btn-load-srt');
-  btn.disabled = true;
-  btn.textContent = 'Dang nap...';
-
-  const fd = new FormData();
-  fd.append('file', input.files[0]);
-
-  try {
-    const res  = await apiFetch(`${API}/api/load-srt/${currentJobId}`, { method: 'POST', body: fd });
-    const data = await res.json();
-    if (!res.ok) throw new Error(data.error || res.statusText);
-    subtitleRows = data.rows || [];
-    setChineseHits([]);
-    renderTable();
-    switchTab('subs');
-    btn.textContent = 'Da nap xong!';
-  } catch(e) {
-    alert('Loi: ' + e.message);
-    btn.textContent = 'Nap SRT tu may';
-  } finally {
-    btn.disabled = false;
-    input.value = '';
-  }
-}
 
 async function saveSubtitles(showOk = true) {
   if (!currentJobId) return;

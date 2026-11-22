@@ -98,6 +98,10 @@ app.add_middleware(CORSMiddleware, allow_origins=["*"], allow_methods=["*"], all
 async def ngrok_skip_warning(request: Request, call_next):
     response = await call_next(request)
     response.headers["ngrok-skip-browser-warning"] = "1"
+    # Khong cho Electron/trinh duyet giu giao dien cu sau khi cap nhat app.
+    path = request.url.path
+    if path == "/" or path.endswith(".html"):
+        response.headers["Cache-Control"] = "no-store, must-revalidate"
     return response
 
 jobs: dict[str, dict] = {}   # job_id -> {status, progress, message, output, ...}

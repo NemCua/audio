@@ -149,6 +149,38 @@ jobs:
             if (Test-Path $logErr) { Get-Content $logErr -Tail 200 }
           }
 
+      - name: Smoke test UI ids and video render
+        run: |
+          $resourceDir = Resolve-Path "electron\resources\python"
+          $py = Join-Path $resourceDir "python_runtime\python.exe"
+          & $py tools\check_html_ids.py (Join-Path $resourceDir "static_translate\index.html")
+          if ($LASTEXITCODE -ne 0) { throw "Giao dien goi toi id khong ton tai (JS se loi khi tai trang)" }
+          $env:FFMPEG_BIN = Join-Path $resourceDir "ffmpeg.exe"
+          $env:FFPROBE_BIN = Join-Path $resourceDir "ffprobe.exe"
+          $env:PYTHONPATH = $resourceDir
+          & $py tools\smoke_render.py (Join-Path $env:RUNNER_TEMP "smoke_render")
+          if ($LASTEXITCODE -ne 0) { throw "Render video (burn sub + mix TTS) that bai" }
+
+      - name: Check API keys from secrets
+        env:
+          BEEKNOEE_API_KEY: ${{ secrets.BEEKNOEE_API_KEY }}
+          GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}
+        run: |
+          if (-not $env:GROQ_API_KEY) { throw "Thieu secret GROQ_API_KEY" }
+          if (-not $env:BEEKNOEE_API_KEY) { throw "Thieu secret BEEKNOEE_API_KEY" }
+          try {
+            Invoke-RestMethod "https://api.groq.com/openai/v1/models" -Headers @{ Authorization = "Bearer $env:GROQ_API_KEY" } -TimeoutSec 30 | Out-Null
+            Write-Host "Groq key OK"
+          } catch { throw "GROQ_API_KEY khong hop le: $($_.Exception.Message)" }
+          try {
+            $body = @{ model = "deepseek/deepseek-v4-flash-0731"; messages = @(@{ role = "user"; content = "Dich sang tieng Viet: 你好" }) } | ConvertTo-Json -Depth 5
+            $r = Invoke-RestMethod "https://platform.beeknoee.com/api/v1/chat/completions" -Method Post `
+              -Headers @{ Authorization = "Bearer $env:BEEKNOEE_API_KEY" } -ContentType "application/json; charset=utf-8" `
+              -Body ([System.Text.Encoding]::UTF8.GetBytes($body)) -TimeoutSec 90
+            if (-not $r.choices) { throw "Khong co choices trong phan hoi" }
+            Write-Host "Beeknoee key + model OK"
+          } catch { throw "BEEKNOEE_API_KEY hoac model deepseek/deepseek-v4-flash-0731 loi: $($_.Exception.Message)" }
+
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
