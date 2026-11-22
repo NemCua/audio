@@ -280,7 +280,7 @@ def separate_background(video_path: Path, work_dir: Path) -> Path:
 def stt_groq(audio_path: Path, groq_key: str) -> list[dict]:
     print("  -> STT Groq Whisper (zh)...")
     from groq import Groq
-    client = Groq(api_key=groq_key)
+    client = Groq(api_key=_clean_key(groq_key) or DEFAULT_GROQ_KEY)
     with open(audio_path, "rb") as f:
         try:
             resp = client.audio.transcriptions.create(
@@ -422,19 +422,37 @@ YÊU CẦU BẮT BUỘC:
 
 
 BEEKNOEE_BASE_URL = "https://platform.beeknoee.com/api/v1"
-BEEKNOEE_MODEL    = "bee/gemini-3.5-flash-lite"
+BEEKNOEE_MODEL    = "deepseek/deepseek-v4-flash-0731"
 GROQ_CHAT_MODEL   = os.environ.get("GROQ_MODEL", "openai/gpt-oss-120b")
+
+# Key that khong luu trong code: build Windows ghi vao .env tu GitHub Secrets (GROQ_API_KEY / BEEKNOEE_API_KEY).
+DEFAULT_GROQ_KEY    = ""
+DEFAULT_BEEKNOEE_KEY = ""
+
+_model_override = ""
+
+
+def set_chat_model(model):
+    """Model do nguoi dung nhap trong app (rong = dung mac dinh)."""
+    global _model_override
+    _model_override = (model or "").strip()
+
+
+def _clean_key(k) -> str:
+    k = (k or "").strip()
+    return "" if (not k or k.startswith("your_")) else k
 
 
 def _make_chat_client(groq_key: str, beeknoee_key: str | None):
-    """Tráº£ vá» (client, model). Æ¯u tiĂªn Beeknoee náº¿u cĂ³ key."""
+    """Tra ve (client, model). Uu tien Beeknoee (key nhap > .env > key dong goi san)."""
+    beeknoee_key = _clean_key(beeknoee_key) or _clean_key(os.environ.get("BEEKNOEE_API_KEY")) or DEFAULT_BEEKNOEE_KEY
     if beeknoee_key:
         from openai import OpenAI
         client = OpenAI(api_key=beeknoee_key, base_url=BEEKNOEE_BASE_URL)
-        return client, BEEKNOEE_MODEL
+        return client, (_model_override or BEEKNOEE_MODEL)
     else:
         from groq import Groq
-        return Groq(api_key=groq_key), GROQ_CHAT_MODEL
+        return Groq(api_key=_clean_key(groq_key) or DEFAULT_GROQ_KEY), GROQ_CHAT_MODEL
 
 
 def translate_chunk(cues: list[dict], context_cues: list[dict],

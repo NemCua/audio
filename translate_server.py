@@ -129,12 +129,14 @@ class TranslateRequest(BaseModel):
     original_volume: float = 0.25
     groq_key: str = ""          # user tá»± nháº­p
     beeknoee_key: str = ""
+    model: str = ""
 
 
 class SubtitleRowsRequest(BaseModel):
     rows: list[dict]
     groq_key: str = ""
     beeknoee_key: str = ""
+    model: str = ""
 
 
 class FixCueRequest(BaseModel):
@@ -142,6 +144,7 @@ class FixCueRequest(BaseModel):
     rows: list[dict]
     groq_key: str = ""
     beeknoee_key: str = ""
+    model: str = ""
 
 
 class SplitLongCuesRequest(BaseModel):
@@ -219,10 +222,6 @@ def _has_cjk(text: str) -> bool:
 def _repair_vi_text(zh_text: str, vi_text: str, groq_key: str = "", beeknoee_key: str = "") -> str:
     from translate_video import _make_chat_client
 
-    beeknoee_key = (beeknoee_key or os.environ.get("BEEKNOEE_API_KEY", "")).strip()
-    groq_key = (groq_key or os.environ.get("GROQ_API_KEY", "")).strip()
-    if not beeknoee_key and not groq_key:
-        raise RuntimeError("Chua co API key de sua ban dich")
 
     client, model = _make_chat_client(groq_key, beeknoee_key)
     prompt = (
@@ -366,8 +365,10 @@ def _run_translate_pipeline(job_id: str, video_path: str, req: TranslateRequest)
 
     jobs[job_id].update(status="running", progress=0, message="Dang khoi dong...")
 
-    groq_key     = req.groq_key.strip() or os.environ.get("GROQ_API_KEY", "")
-    beeknoee_key = req.beeknoee_key.strip() or os.environ.get("BEEKNOEE_API_KEY", "")
+    from translate_video import _clean_key, set_chat_model, DEFAULT_GROQ_KEY
+    set_chat_model(req.model)
+    groq_key     = _clean_key(req.groq_key or os.environ.get("GROQ_API_KEY", "")) or DEFAULT_GROQ_KEY
+    beeknoee_key = _clean_key(req.beeknoee_key or os.environ.get("BEEKNOEE_API_KEY", ""))
 
     if not groq_key:
         jobs[job_id].update(status="error", message="Chua co Groq API key")
@@ -628,6 +629,7 @@ async def upload_video(
     tts_volume: float = Form(1.0),
     original_volume: float = Form(0.25),
     groq_key: str = Form(""),
+    model: str = Form(""),
 ):
     suffix  = Path(file.filename).suffix or ".mp4"
     tmp     = tempfile.NamedTemporaryFile(delete=False, suffix=suffix)
@@ -640,7 +642,7 @@ async def upload_video(
         req    = TranslateRequest(job_id=job_id, voice=voice,
                                   bg_volume=bg_volume, tts_volume=tts_volume,
                                   original_volume=original_volume,
-                                  groq_key=groq_key)
+                                  groq_key=groq_key, model=model)
         jobs[job_id] = {
             "status": "pending", "progress": 0, "message": "Dang cho...",
             "filename": file.filename,
@@ -936,6 +938,8 @@ async def fix_chinese(job_id: str, body: FixCueRequest, request: Request):
             zh_text = str(zh_cues[target_pos].get("text", ""))
 
     try:
+        from translate_video import set_chat_model
+        set_chat_model(body.model)
         fixed = _repair_vi_text(zh_text, vi_text, body.groq_key, body.beeknoee_key)
     except Exception as e:
         return JSONResponse({"error": str(e)}, status_code=500)

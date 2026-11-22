@@ -335,7 +335,7 @@ tr.cjk-hit .cjk-badge{display:block}
         <div class="sec" style="border:1px solid #1e2340;border-radius:8px;margin-bottom:12px">
           <h3>API</h3>
           <label>Groq API Key (STT)</label>
-          <input type="password" id="groq-key" placeholder="gsk_..." autocomplete="off"/>
+          <input type="password" id="groq-key" placeholder="De trong = dung key da dong goi trong app" autocomplete="off"/>
         </div>
         <div class="sec" style="border:1px solid #1e2340;border-radius:8px;margin-bottom:12px">
           <h3>Render</h3>
@@ -379,9 +379,14 @@ let voiceAudio = new Audio();
 window.addEventListener('load', () => {
   const saved = localStorage.getItem('groq_key');
   if (saved) document.getElementById('groq-key').value = saved;
+  const savedModel = localStorage.getItem('chat_model');
+  if (savedModel) document.getElementById('chat-model').value = savedModel;
   toggleOriginalAudioSettings();
   onBgMusicPicked(document.getElementById('bg-music-input'));
   loadVoices();
+});
+document.getElementById('chat-model').addEventListener('change', e => {
+  localStorage.setItem('chat_model', e.target.value.trim());
 });
 document.getElementById('groq-key').addEventListener('change', e => {
   localStorage.setItem('groq_key', e.target.value.trim());
@@ -544,7 +549,6 @@ async function startJob() {
   const file = dz._file || document.getElementById('file-input').files[0];
   if (!file) { alert('Chua chon video!'); return; }
   const groqKey = document.getElementById('groq-key').value.trim();
-  if (!groqKey) { alert('Nhap Groq API Key truoc!'); return; }
 
   clearPoll();
   setStatus('running', 'Dang upload...', 0);
@@ -561,6 +565,7 @@ async function startJob() {
   fd.append('keep_original_audio', document.getElementById('keep-orig-audio').checked ? 'true' : 'false');
   fd.append('sync_offset', document.getElementById('sync-offset').value);
   fd.append('groq_key',   groqKey);
+  fd.append('model',      document.getElementById('chat-model').value.trim());
 
   try {
     const res  = await apiFetch(`${API}/api/upload`, { method: 'POST', body: fd });
@@ -793,7 +798,7 @@ function renderTable() {
         <div class="cjk-badge">Con tieng Trung trong ban dich</div>
       </td>
       <td>
-        <button class="mini-btn" onclick="fixChineseRow(${i})">Dich lai</button>
+        <button class="mini-btn" id="fix-row-${i}" onclick="fixChineseRow(${i})">Dich lai</button>
       </td>
     </tr>
   `).join('');
@@ -865,6 +870,7 @@ async function detectChinese() {
       body: JSON.stringify({
         rows: subtitleRows,
         groq_key: document.getElementById('groq-key').value.trim(),
+        model: document.getElementById('chat-model').value.trim(),
       }),
     });
     const data = await res.json();
@@ -888,13 +894,13 @@ async function detectChinese() {
 async function fixChineseRow(rowIndex) {
   if (!currentJobId || rowIndex < 0 || rowIndex >= subtitleRows.length) return;
   const row = subtitleRows[rowIndex];
-  await saveSubtitles(false);
-  const buttons = document.querySelectorAll('.mini-btn');
-  if (buttons[rowIndex]) {
-    buttons[rowIndex].disabled = true;
-    buttons[rowIndex].textContent = 'Dang sua...';
+  const fixBtn = document.getElementById('fix-row-' + rowIndex);
+  if (fixBtn) {
+    fixBtn.disabled = true;
+    fixBtn.textContent = 'Dang sua...';
   }
   try {
+    await saveSubtitles(false);
     const res = await apiFetch(`${API}/api/fix-chinese/${currentJobId}`, {
       method: 'POST',
       headers: {'Content-Type': 'application/json'},
@@ -902,6 +908,7 @@ async function fixChineseRow(rowIndex) {
         idx: Number(row.idx),
         rows: subtitleRows,
         groq_key: document.getElementById('groq-key').value.trim(),
+        model: document.getElementById('chat-model').value.trim(),
       }),
     });
     const data = await res.json();
@@ -914,23 +921,40 @@ async function fixChineseRow(rowIndex) {
     await saveSubtitles(false);
     renderTable();
     updateChineseReport();
+    const okMsg = data.has_chinese
+      ? `Dong ${row.idx}: da sua nhung van con chu Trung, bam Dich lai them lan nua`
+      : `Dong ${row.idx}: da sua xong -> ${data.vi}`;
     setStatus('translated', cjkHits.size ? `Con ${cjkHits.size} dong can kiem tra` : 'Da sua sach cac dong phat hien', 100);
+    if (!fixingAll) alert(okMsg);
   } catch(e) {
     showError(e.message);
-    if (buttons[rowIndex]) {
-      buttons[rowIndex].disabled = false;
-      buttons[rowIndex].textContent = 'Dich lai';
+    if (!fixingAll) alert(`Sua dong ${row.idx} that bai: ${e.message}`);
+    else throw e;
+    const b = document.getElementById('fix-row-' + rowIndex);
+    if (b) {
+      b.disabled = false;
+      b.textContent = 'Dich lai';
     }
   }
 }
 
+let fixingAll = false;
 async function fixAllChinese() {
   const ids = Array.from(cjkHits);
-  for (const idx of ids) {
-    const rowIndex = subtitleRows.findIndex(r => Number(r.idx) === idx);
-    if (rowIndex >= 0) await fixChineseRow(rowIndex);
+  fixingAll = true;
+  let failed = 0;
+  try {
+    for (const idx of ids) {
+      const rowIndex = subtitleRows.findIndex(r => Number(r.idx) === idx);
+      if (rowIndex >= 0) {
+        try { await fixChineseRow(rowIndex); } catch (e) { failed++; }
+      }
+    }
+  } finally {
+    fixingAll = false;
   }
   await saveSubtitles(false);
+  if (failed) alert(`Co ${failed}/${ids.length} dong sua that bai, xem thong bao loi o tren`);
   await detectChinese();
 }
 
