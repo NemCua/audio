@@ -30,7 +30,7 @@
       }
     ],
     "win": {
-      "target": "nsis"
+      "target": ["nsis", "zip"]
     },
     "mac": {
       "target": "dmg"

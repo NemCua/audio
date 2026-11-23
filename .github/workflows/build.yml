@@ -223,6 +223,7 @@ jobs:
           path: |
             electron/dist/*.exe
             electron/dist/*.blockmap
+            electron/dist/*.zip
             electron/dist/latest*.yml
           retention-days: 30
 
@@ -233,4 +234,5 @@ jobs:
           files: |
             electron/dist/*.exe
             electron/dist/*.blockmap
+            electron/dist/*.zip
             electron/dist/latest*.yml
