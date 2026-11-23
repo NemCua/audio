@@ -172,14 +172,22 @@ jobs:
             Invoke-RestMethod "https://api.groq.com/openai/v1/models" -Headers @{ Authorization = "Bearer $env:GROQ_API_KEY" } -TimeoutSec 30 | Out-Null
             Write-Host "Groq key OK"
           } catch { throw "GROQ_API_KEY khong hop le: $($_.Exception.Message)" }
-          try {
-            $body = @{ model = "deepseek/deepseek-v4-flash-0731"; messages = @(@{ role = "user"; content = "Dich sang tieng Viet: 你好" }) } | ConvertTo-Json -Depth 5
-            $r = Invoke-RestMethod "https://platform.beeknoee.com/api/v1/chat/completions" -Method Post `
-              -Headers @{ Authorization = "Bearer $env:BEEKNOEE_API_KEY" } -ContentType "application/json; charset=utf-8" `
-              -Body ([System.Text.Encoding]::UTF8.GetBytes($body)) -TimeoutSec 90
-            if (-not $r.choices) { throw "Khong co choices trong phan hoi" }
-            Write-Host "Beeknoee key + model OK"
-          } catch { throw "BEEKNOEE_API_KEY hoac model deepseek/deepseek-v4-flash-0731 loi: $($_.Exception.Message)" }
+          $body = @{ model = "deepseek/deepseek-v4-flash-0731"; messages = @(@{ role = "user"; content = "Dich sang tieng Viet: 你好" }) } | ConvertTo-Json -Depth 5
+          $ok = $false; $last = ""
+          for ($i = 1; $i -le 4 -and -not $ok; $i++) {
+            try {
+              $r = Invoke-RestMethod "https://platform.beeknoee.com/api/v1/chat/completions" -Method Post `
+                -Headers @{ Authorization = "Bearer $env:BEEKNOEE_API_KEY" } -ContentType "application/json; charset=utf-8" `
+                -Body ([System.Text.Encoding]::UTF8.GetBytes($body)) -TimeoutSec 90
+              if ($r.choices) { $ok = $true; Write-Host "Beeknoee key + model OK" }
+            } catch {
+              $last = $_.Exception.Message
+              $code = 0; if ($_.Exception.Response) { $code = [int]$_.Exception.Response.StatusCode }
+              if ($code -eq 401 -or $code -eq 403 -or $code -eq 404 -or $code -eq 400) { throw "BEEKNOEE_API_KEY hoac model deepseek/deepseek-v4-flash-0731 loi: $last" }
+              Write-Host "Beeknoee tam loi (lan $i): $last"; Start-Sleep 15
+            }
+          }
+          if (-not $ok) { Write-Host "::warning::Beeknoee dang tam loi ($last) - van build tiep" }
 
       - name: Setup Node.js
         uses: actions/setup-node@v4

@@ -448,7 +448,7 @@ def _make_chat_client(groq_key: str, beeknoee_key: str | None):
     beeknoee_key = _clean_key(beeknoee_key) or _clean_key(os.environ.get("BEEKNOEE_API_KEY")) or DEFAULT_BEEKNOEE_KEY
     if beeknoee_key:
         from openai import OpenAI
-        client = OpenAI(api_key=beeknoee_key, base_url=BEEKNOEE_BASE_URL)
+        client = OpenAI(api_key=beeknoee_key, base_url=BEEKNOEE_BASE_URL, max_retries=6)
         return client, (_model_override or BEEKNOEE_MODEL)
     else:
         from groq import Groq
@@ -483,7 +483,7 @@ def translate_chunk(cues: list[dict], context_cues: list[dict],
             )
         except Exception as e:
             err = str(e)
-            if "429" in err or "rate_limit" in err or "too_many_requests" in err:
+            if any(t in err for t in ("429", "rate_limit", "too_many_requests", "503", "502", "500", "overloaded", "Service Unavailable")):
                 wait = backoff * (2 ** attempt)
                 print(f"     Rate limit, chá» {wait}s rá»“i thá»­ láº¡i...")
                 time.sleep(wait)
@@ -547,7 +547,7 @@ def _translate_single_shot(cues: list[dict], groq_key: str,
             )
         except Exception as e:
             err = str(e)
-            if "429" in err or "rate_limit" in err or "too_many_requests" in err:
+            if any(t in err for t in ("429", "rate_limit", "too_many_requests", "503", "502", "500", "overloaded", "Service Unavailable")):
                 wait = backoff * (2 ** attempt)
                 print(f"     [single-shot] Rate limit, chá» {wait}s...")
                 time.sleep(wait)
