@@ -422,7 +422,7 @@ YÊU CẦU BẮT BUỘC:
 
 
 BEEKNOEE_BASE_URL = "https://platform.beeknoee.com/api/v1"
-BEEKNOEE_MODEL    = "deepseek/deepseek-v4-flash-0731"
+BEEKNOEE_MODEL    = "bee-tok/gemini-3.5-flash-lite"
 GROQ_CHAT_MODEL   = os.environ.get("GROQ_MODEL", "openai/gpt-oss-120b")
 
 # Key that khong luu trong code: build Windows ghi vao .env tu GitHub Secrets (GROQ_API_KEY / BEEKNOEE_API_KEY).

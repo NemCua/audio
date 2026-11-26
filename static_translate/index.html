@@ -337,7 +337,7 @@ tr.cjk-hit .cjk-badge{display:block}
           <label>Groq API Key (STT)</label>
           <input type="password" id="groq-key" placeholder="De trong = dung key da dong goi trong app" autocomplete="off"/>
           <label>Model dich / sua loi (Beeknoee)</label>
-          <input type="text" id="chat-model" value="deepseek/deepseek-v4-flash-0731" placeholder="deepseek/deepseek-v4-flash-0731" autocomplete="off"/>
+          <input type="text" id="chat-model" value="bee-tok/gemini-3.5-flash-lite" placeholder="bee-tok/gemini-3.5-flash-lite" autocomplete="off"/>
         </div>
         <div class="sec" style="border:1px solid #1e2340;border-radius:8px;margin-bottom:12px">
           <h3>Render</h3>
@@ -382,7 +382,9 @@ window.addEventListener('load', () => {
   const saved = localStorage.getItem('groq_key');
   if (saved) document.getElementById('groq-key').value = saved;
   const savedModel = localStorage.getItem('chat_model');
-  if (savedModel) document.getElementById('chat-model').value = savedModel;
+  // Bo model cu da luu tu ban truoc de luon dung mac dinh moi
+  if (savedModel && !savedModel.startsWith('deepseek/deepseek-v4-flash')) document.getElementById('chat-model').value = savedModel;
+  else localStorage.removeItem('chat_model');
   toggleOriginalAudioSettings();
   onBgMusicPicked(document.getElementById('bg-music-input'));
   loadVoices();
